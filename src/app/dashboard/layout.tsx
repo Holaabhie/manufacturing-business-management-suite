@@ -209,18 +209,25 @@ export default function DashboardLayout({
             <span className="text-foreground capitalize">{pathname.split("/").pop() || "Overview"}</span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-chart-3 rounded-full border-2 border-background" />
-            </Button>
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground md:hidden" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-              {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </Button>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-chart-1 flex items-center justify-center text-accent-foreground font-bold shadow-sm cursor-pointer hover:ring-2 hover:ring-accent/20 transition-all">
-              AD
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
+                <Bell className="h-5 w-5" />
+                <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-chart-3 rounded-full border-2 border-background" />
+              </Button>
+              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground md:hidden" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+                {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </Button>
+              {user && (
+                <Link href="/dashboard/profile">
+                  <Avatar className="h-10 w-10 ring-2 ring-accent/20 cursor-pointer hover:ring-accent transition-all">
+                    <AvatarImage src={user.user_metadata?.avatar_url} />
+                    <AvatarFallback className="bg-gradient-to-br from-accent to-chart-1 text-accent-foreground font-bold">
+                      {user.email?.substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                </Link>
+              )}
             </div>
-          </div>
         </header>
 
         {/* Mobile Menu Overlay */}
