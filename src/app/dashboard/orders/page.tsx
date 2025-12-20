@@ -11,10 +11,11 @@ import {
   Calendar,
   DollarSign,
   Box,
-  CheckCircle2,
-  Clock,
-  Download
-} from "lucide-react";
+    CheckCircle2,
+    Clock,
+    Download,
+    IndianRupee
+  } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
