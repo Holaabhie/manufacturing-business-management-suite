@@ -27,7 +27,7 @@ import { Switch } from "@/components/ui/switch";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
-export default function ProfilePage() {
+function ProfileContent() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -38,13 +38,20 @@ export default function ProfilePage() {
   useEffect(() => {
     const tab = searchParams.get("tab");
     if (tab === "settings" || tab === "notifications") {
-      setActiveTab(tab);
+      setActiveTab(tab as any);
     }
   }, [searchParams]);
 
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",
+  });
+
+  const [preferences, setPreferences] = useState({
+    darkMode: true,
+    autoRefresh: true,
+    emailNotifications: true,
+    pushNotifications: false,
   });
 
   useEffect(() => {
@@ -56,11 +63,27 @@ export default function ProfilePage() {
           full_name: user.user_metadata?.full_name || "",
           email: user.email || "",
         });
+        setPreferences({
+          darkMode: user.user_metadata?.preferences?.darkMode ?? true,
+          autoRefresh: user.user_metadata?.preferences?.autoRefresh ?? true,
+          emailNotifications: user.user_metadata?.preferences?.emailNotifications ?? true,
+          pushNotifications: user.user_metadata?.preferences?.pushNotifications ?? false,
+        });
       }
       setLoading(false);
     };
     fetchUser();
   }, []);
+
+  const handleUpdatePreferences = async (newPrefs: Partial<typeof preferences>) => {
+    const updatedPrefs = { ...preferences, ...newPrefs };
+    setPreferences(updatedPrefs);
+    
+    await supabase.auth.updateUser({
+      data: { preferences: updatedPrefs }
+    });
+    toast.success("Preferences updated");
+  };
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
