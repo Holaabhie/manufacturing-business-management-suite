@@ -186,7 +186,7 @@ export default function DashboardPage() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="space-y-1">
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Factory Analytics</h1>
-          <p className="text-muted-foreground">Performance overview for PlasticPrint Manufacturing.</p>
+          <p className="text-muted-foreground">Performance overview for IND Manager Manufacturing.</p>
         </div>
         <div className="flex items-center gap-2 bg-card p-1 rounded-xl border shadow-sm">
           <Button variant="ghost" size="sm" className="rounded-lg bg-accent text-accent-foreground shadow-sm">Daily</Button>
