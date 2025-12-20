@@ -75,6 +75,16 @@ function ProfileContent() {
     fetchUser();
   }, []);
 
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        full_name: user.user_metadata?.full_name || prev.full_name,
+        email: user.email || prev.email,
+      }));
+    }
+  }, [user]);
+
   const handleUpdatePreferences = async (newPrefs: Partial<typeof preferences>) => {
     const updatedPrefs = { ...preferences, ...newPrefs };
     setPreferences(updatedPrefs);
