@@ -155,7 +155,7 @@ export default function DashboardLayout({
             {/* Footer Section */}
             <div className="p-4 mt-auto border-t border-sidebar-border space-y-2">
               <AnimatePresence mode="wait">
-                {!isCollapsed && user && (
+                {user && (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -163,22 +163,27 @@ export default function DashboardLayout({
                   >
                     <Link 
                       href="/dashboard/profile"
-                      className="flex items-center gap-3 p-2 rounded-xl bg-sidebar-accent/50 mb-2 hover:bg-sidebar-accent transition-colors"
+                      className={cn(
+                        "flex items-center gap-3 p-2 rounded-xl transition-colors hover:bg-sidebar-accent",
+                        isCollapsed ? "justify-center" : "bg-sidebar-accent/50 mb-2"
+                      )}
                     >
-                      <Avatar className="h-9 w-9 border-2 border-accent/20">
+                      <Avatar className={cn("border-2 border-accent/20 transition-all", isCollapsed ? "h-10 w-10" : "h-9 w-9")}>
                         <AvatarImage src={user.user_metadata?.avatar_url} />
                         <AvatarFallback className="bg-accent text-accent-foreground font-bold">
                           {user.email?.substring(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-sm font-bold truncate text-sidebar-foreground">
-                          {user.user_metadata?.full_name || user.email?.split('@')[0]}
-                        </span>
-                        <span className="text-[10px] text-sidebar-foreground/50 truncate">
-                          {user.email}
-                        </span>
-                      </div>
+                      {!isCollapsed && (
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm font-bold truncate text-sidebar-foreground">
+                            {user.user_metadata?.full_name || user.email?.split('@')[0]}
+                          </span>
+                          <span className="text-[10px] text-sidebar-foreground/50 truncate">
+                            {user.email}
+                          </span>
+                        </div>
+                      )}
                     </Link>
                   </motion.div>
                 )}
