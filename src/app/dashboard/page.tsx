@@ -8,9 +8,15 @@ import {
   ShoppingCart, 
   TrendingUp, 
   AlertTriangle,
-  Clock
+  Clock,
+  ArrowUpRight,
+  ArrowDownRight,
+  DollarSign,
+  Box,
+  ChevronRight,
+  Activity
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
   Table, 
   TableBody, 
@@ -20,6 +26,37 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { motion } from "framer-motion";
+import { 
+  AreaChart, 
+  Area, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  Cell
+} from "recharts";
+
+// Mock data for charts
+const revenueData = [
+  { name: 'Mon', total: 2400 },
+  { name: 'Tue', total: 1398 },
+  { name: 'Wed', total: 9800 },
+  { name: 'Thu', total: 3908 },
+  { name: 'Fri', total: 4800 },
+  { name: 'Sat', total: 3800 },
+  { name: 'Sun', total: 4300 },
+];
+
+const orderStatusData = [
+  { name: 'Pending', value: 45, color: 'oklch(0.8 0.15 40)' },
+  { name: 'Processing', value: 30, color: 'oklch(0.7 0.15 240)' },
+  { name: 'Completed', value: 25, color: 'oklch(0.7 0.15 140)' },
+];
 
 export default function DashboardPage() {
   const [stats, setStats] = useState({
@@ -27,8 +64,10 @@ export default function DashboardPage() {
     totalOrders: 0,
     totalRevenue: 0,
     lowStockItems: 0,
+    totalStockValue: 0,
   });
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
+  const [lowStockProducts, setLowStockProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -47,138 +86,388 @@ export default function DashboardPage() {
       
       const totalRevenue = ordersData?.reduce((acc, order) => acc + Number(order.total_amount), 0) || 0;
 
-      // Fetch Low Stock Items
+      // Fetch Inventory
       const { data: inventoryData } = await supabase
         .from('inventory')
-        .select('quantity, min_stock_level');
+        .select('*');
       
-      const lowStockCount = inventoryData?.filter(item => Number(item.quantity) < Number(item.min_stock_level)).length || 0;
+      const lowStockItems = inventoryData?.filter(item => Number(item.quantity) < Number(item.min_stock_level)) || [];
+      const totalStockValue = inventoryData?.reduce((acc, item) => acc + (Number(item.quantity) * Number(item.price || 0)), 0) || 0;
 
       // Fetch Recent Orders
       const { data: recent } = await supabase
         .from('orders')
         .select('*, clients(name)')
         .order('created_at', { ascending: false })
-        .limit(5);
+        .limit(6);
 
       setStats({
         totalClients: clientCount || 0,
         totalOrders: ordersData?.length || 0,
         totalRevenue,
-        lowStockItems: lowStockCount || 0,
+        lowStockItems: lowStockItems.length,
+        totalStockValue,
       });
       setRecentOrders(recent || []);
+      setLowStockProducts(lowStockItems.slice(0, 3));
       setLoading(false);
     };
 
     fetchDashboardData();
   }, []);
 
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const item = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 }
+  };
+
   if (loading) {
-    return <div className="flex items-center justify-center h-full">Loading...</div>;
+    return (
+      <div className="grid gap-6">
+        <div className="flex flex-col gap-2">
+          <div className="h-10 w-48 bg-muted animate-pulse rounded-lg" />
+          <div className="h-5 w-72 bg-muted animate-pulse rounded-lg" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="h-32 bg-muted animate-pulse rounded-xl" />
+          ))}
+        </div>
+        <div className="grid gap-6 md:grid-cols-7">
+          <div className="md:col-span-4 h-[400px] bg-muted animate-pulse rounded-xl" />
+          <div className="md:col-span-3 h-[400px] bg-muted animate-pulse rounded-xl" />
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Factory Overview</h1>
-        <p className="text-zinc-500">Welcome back. Here's what's happening today.</p>
+    <motion.div 
+      variants={container}
+      initial="hidden"
+      animate="show"
+      className="space-y-8"
+    >
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Factory Analytics</h1>
+          <p className="text-muted-foreground">Performance overview for PlasticPrint Manufacturing.</p>
+        </div>
+        <div className="flex items-center gap-2 bg-card p-1 rounded-xl border shadow-sm">
+          <Button variant="ghost" size="sm" className="rounded-lg bg-accent text-accent-foreground">Daily</Button>
+          <Button variant="ghost" size="sm" className="rounded-lg">Weekly</Button>
+          <Button variant="ghost" size="sm" className="rounded-lg">Monthly</Button>
+        </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${stats.totalRevenue.toLocaleString()}</div>
-            <p className="text-xs text-zinc-500">+12% from last month</p>
-          </CardContent>
-        </Card>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <motion.div variants={item}>
+          <Card className="relative overflow-hidden group hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 border-none bg-primary text-primary-foreground">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+              <DollarSign size={80} />
+            </div>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium opacity-80">Total Revenue</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold tracking-tight">${stats.totalRevenue.toLocaleString()}</div>
+              <div className="flex items-center mt-2 text-xs font-medium text-accent">
+                <ArrowUpRight className="mr-1 h-3 w-3" />
+                <span>12.5% from last period</span>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-zinc-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalOrders}</div>
-            <p className="text-xs text-zinc-500">Active orders in system</p>
-          </CardContent>
-        </Card>
+        <motion.div variants={item}>
+          <Card className="group hover:shadow-xl hover:shadow-accent/5 transition-all duration-300 border-border bg-card">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Active Orders</CardTitle>
+              <div className="p-2 bg-accent/10 rounded-lg group-hover:bg-accent/20 transition-colors">
+                <ShoppingCart className="h-4 w-4 text-accent" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold tracking-tight">{stats.totalOrders}</div>
+              <div className="mt-3">
+                <div className="flex items-center justify-between text-[10px] uppercase font-bold text-muted-foreground mb-1">
+                  <span>Capacity</span>
+                  <span>78%</span>
+                </div>
+                <Progress value={78} className="h-1.5 bg-muted" indicatorClassName="bg-accent" />
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
-            <Users className="h-4 w-4 text-zinc-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalClients}</div>
-            <p className="text-xs text-zinc-500">Registered customers</p>
-          </CardContent>
-        </Card>
+        <motion.div variants={item}>
+          <Card className="group hover:shadow-xl transition-all duration-300 border-border bg-card">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Clients</CardTitle>
+              <div className="p-2 bg-chart-1/10 rounded-lg group-hover:bg-chart-1/20 transition-colors">
+                <Users className="h-4 w-4 text-chart-1" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold tracking-tight">{stats.totalClients}</div>
+              <div className="flex items-center mt-2 text-xs text-muted-foreground">
+                <span className="flex items-center text-chart-2 font-medium">
+                  <ArrowUpRight className="mr-1 h-3 w-3" />
+                  +4 new
+                </span>
+                <span className="ml-1">this week</span>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-        <Card className={stats.lowStockItems > 0 ? "border-red-200 bg-red-50 dark:bg-red-950/20" : ""}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Stock Alerts</CardTitle>
-            <AlertTriangle className={stats.lowStockItems > 0 ? "h-4 w-4 text-red-500" : "h-4 w-4 text-zinc-500"} />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.lowStockItems}</div>
-            <p className="text-xs text-zinc-500">Items below minimum level</p>
-          </CardContent>
-        </Card>
+        <motion.div variants={item}>
+          <Card className={cn(
+            "group hover:shadow-xl transition-all duration-300 border-border",
+            stats.lowStockItems > 0 ? "border-chart-3/30 bg-chart-3/5" : "bg-card"
+          )}>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Inventory Alerts</CardTitle>
+              <div className={cn(
+                "p-2 rounded-lg transition-colors",
+                stats.lowStockItems > 0 ? "bg-chart-3/20" : "bg-muted"
+              )}>
+                <AlertTriangle className={cn("h-4 w-4", stats.lowStockItems > 0 ? "text-chart-3" : "text-muted-foreground")} />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold tracking-tight">{stats.lowStockItems}</div>
+              <p className="text-xs text-muted-foreground mt-2">
+                {stats.lowStockItems > 0 ? `${stats.lowStockItems} items need restocking` : "All stock levels healthy"}
+              </p>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
 
-      {/* Recent Orders Table */}
-      <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-7">
-        <Card className="lg:col-span-7">
-          <CardHeader>
-            <CardTitle>Recent Orders</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Payment</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentOrders.map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell className="font-medium">{order.product_name}</TableCell>
-                    <TableCell>{order.clients?.name}</TableCell>
-                    <TableCell>
-                      <Badge variant={order.status === 'completed' ? 'default' : 'secondary'}>
-                        {order.status}
+      <div className="grid gap-6 md:grid-cols-7">
+        {/* Revenue Chart */}
+        <motion.div variants={item} className="md:col-span-4">
+          <Card className="h-full border-none shadow-md bg-card">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-lg">Revenue Trend</CardTitle>
+                <CardDescription>Daily financial performance</CardDescription>
+              </div>
+              <div className="p-2 bg-muted rounded-lg cursor-pointer hover:bg-muted/80 transition-colors">
+                <TrendingUp className="h-4 w-4 text-primary" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[300px] w-full mt-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={revenueData}>
+                    <defs>
+                      <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="oklch(0.7 0.15 140)" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="oklch(0.7 0.15 140)" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="oklch(0.9 0.02 240)" />
+                    <XAxis 
+                      dataKey="name" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: 'oklch(0.5 0.02 240)', fontSize: 12 }}
+                      dy={10}
+                    />
+                    <YAxis 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: 'oklch(0.5 0.02 240)', fontSize: 12 }}
+                      tickFormatter={(value) => `$${value}`}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'oklch(1 0 0)', 
+                        border: '1px solid oklch(0.9 0.02 240)',
+                        borderRadius: '12px',
+                        boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'
+                      }} 
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="total" 
+                      stroke="oklch(0.7 0.15 140)" 
+                      strokeWidth={3}
+                      fillOpacity={1} 
+                      fill="url(#colorTotal)" 
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Order Status / Inventory Overview */}
+        <motion.div variants={item} className="md:col-span-3">
+          <Card className="h-full border-none shadow-md bg-card">
+            <CardHeader>
+              <CardTitle className="text-lg">Stock Management</CardTitle>
+              <CardDescription>Value and low-stock indicators</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="p-4 bg-muted/50 rounded-2xl flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Box className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium">Inventory Value</p>
+                    <p className="text-xl font-bold">${stats.totalStockValue.toLocaleString()}</p>
+                  </div>
+                </div>
+                <div className="h-12 w-24">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={revenueData.slice(-4)}>
+                      <Bar dataKey="total" fill="oklch(0.3 0.05 240)" radius={[2, 2, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-bold flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-chart-3" />
+                    Restock Required
+                  </h4>
+                  <Link href="/dashboard/inventory" className="text-xs text-primary font-bold hover:underline">View All</Link>
+                </div>
+                <div className="space-y-3">
+                  {lowStockProducts.length > 0 ? lowStockProducts.map((p) => (
+                    <div key={p.id} className="flex items-center justify-between p-3 border rounded-xl hover:bg-muted/50 transition-colors">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium">{p.product_name}</span>
+                        <span className="text-xs text-muted-foreground">Current: {p.quantity} {p.unit}</span>
+                      </div>
+                      <Badge variant="outline" className="border-chart-3 text-chart-3">
+                        Min: {p.min_stock_level}
                       </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={order.payment_status === 'paid' ? 'default' : 'outline'}>
-                        {order.payment_status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">${Number(order.total_amount).toLocaleString()}</TableCell>
-                  </TableRow>
-                ))}
-                {recentOrders.length === 0 && (
+                    </div>
+                  )) : (
+                    <div className="text-center py-6 text-muted-foreground bg-muted/20 rounded-xl">
+                      <Activity className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                      <p className="text-sm">Stock is looking good!</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-7">
+        {/* Recent Orders Table */}
+        <motion.div variants={item} className="md:col-span-5">
+          <Card className="border-none shadow-md overflow-hidden bg-card">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-lg">Recent Orders</CardTitle>
+                <CardDescription>Last 6 orders placed in the factory</CardDescription>
+              </div>
+              <Button variant="outline" size="sm" className="rounded-lg font-bold gap-2">
+                All Orders <ChevronRight className="h-4 w-4" />
+              </Button>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader className="bg-muted/50">
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-4 text-zinc-500">
-                      No orders found.
-                    </TableCell>
+                    <TableHead className="pl-6 font-bold text-xs uppercase text-muted-foreground tracking-wider">Product</TableHead>
+                    <TableHead className="font-bold text-xs uppercase text-muted-foreground tracking-wider">Client</TableHead>
+                    <TableHead className="font-bold text-xs uppercase text-muted-foreground tracking-wider">Status</TableHead>
+                    <TableHead className="text-right pr-6 font-bold text-xs uppercase text-muted-foreground tracking-wider">Amount</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                </TableHeader>
+                <TableBody>
+                  {recentOrders.map((order) => (
+                    <TableRow key={order.id} className="hover:bg-muted/30 transition-colors">
+                      <TableCell className="pl-6">
+                        <div className="flex flex-col">
+                          <span className="font-bold text-sm">{order.product_name}</span>
+                          <span className="text-[10px] text-muted-foreground font-mono">{new Date(order.created_at).toLocaleDateString()}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-muted-foreground font-medium">{order.clients?.name}</span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          className={cn(
+                            "rounded-full px-2 py-0 h-5 text-[10px] font-bold uppercase tracking-tighter",
+                            order.status === 'completed' ? "bg-accent/10 text-accent border-accent/20" : 
+                            order.status === 'processing' ? "bg-primary/10 text-primary border-primary/20" :
+                            "bg-chart-3/10 text-chart-3 border-chart-3/20"
+                          )}
+                          variant="outline"
+                        >
+                          {order.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right pr-6">
+                        <span className="font-bold text-sm">${Number(order.total_amount).toLocaleString()}</span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Recent Activity Timeline */}
+        <motion.div variants={item} className="md:col-span-2">
+          <Card className="h-full border-none shadow-md bg-card">
+            <CardHeader>
+              <CardTitle className="text-lg">Recent Activity</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="relative space-y-6 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-border before:via-border before:to-transparent">
+                {[
+                  { title: 'New order created', time: '2 mins ago', type: 'order', color: 'bg-accent' },
+                  { title: 'Payment received', time: '1 hour ago', type: 'payment', color: 'bg-chart-1' },
+                  { title: 'Stock updated', time: '3 hours ago', type: 'stock', color: 'bg-chart-3' },
+                  { title: 'Client registered', time: 'Yesterday', type: 'client', color: 'bg-primary' },
+                ].map((activity, idx) => (
+                  <div key={idx} className="relative flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className={cn("relative w-10 h-10 rounded-full flex items-center justify-center ring-4 ring-background", activity.color)}>
+                        <Clock className="h-4 w-4 text-white" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-bold text-foreground">{activity.title}</span>
+                        <span className="text-xs text-muted-foreground">{activity.time}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 }
+
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
