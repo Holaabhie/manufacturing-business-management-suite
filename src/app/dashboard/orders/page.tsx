@@ -401,49 +401,66 @@ export default function OrdersPage() {
               <TableHead>Client</TableHead>
               <TableHead>Total Amount</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Payment</TableHead>
-              <TableHead className="w-[100px]">Invoice</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">Loading orders...</TableCell>
+                <TableHead>Payment</TableHead>
+                <TableHead className="w-[120px]">Actions</TableHead>
               </TableRow>
-            ) : filteredOrders.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-zinc-500">No orders found.</TableCell>
-              </TableRow>
-            ) : filteredOrders.map((order) => (
-              <TableRow key={order.id}>
-                <TableCell>
-                  <div className="font-medium">{order.product_name}</div>
-                  <div className="text-xs text-zinc-500 flex items-center mt-1">
-                    <Box className="mr-1 h-3 w-3" /> {order.quantity} units
-                  </div>
-                </TableCell>
-                <TableCell>{order.clients?.name}</TableCell>
-                  <TableCell className="font-semibold">₹{order.total_amount}</TableCell>
-                <TableCell>
-                  <Badge variant={order.status === 'completed' ? 'default' : 'secondary'}>
-                    {order.status}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={order.payment_status === 'paid' ? 'default' : 'outline'}>
-                    {order.payment_status}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Button variant="ghost" size="sm" onClick={() => generateInvoice(order)}>
-                    <Download className="h-4 w-4 mr-2" /> PDF
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">Loading orders...</TableCell>
+                </TableRow>
+              ) : filteredOrders.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-zinc-500">No orders found.</TableCell>
+                </TableRow>
+              ) : filteredOrders.map((order) => (
+                <TableRow key={order.id}>
+                  <TableCell>
+                    <div className="font-medium">{order.product_name}</div>
+                    <div className="text-xs text-zinc-500 flex items-center mt-1">
+                      <Box className="mr-1 h-3 w-3" /> {order.quantity} units
+                    </div>
+                  </TableCell>
+                  <TableCell>{order.clients?.name}</TableCell>
+                  <TableCell className="font-semibold">₹{Number(order.total_amount).toLocaleString()}</TableCell>
+                  <TableCell>
+                    <Badge variant={order.status === 'completed' ? 'default' : 'secondary'}>
+                      {order.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={order.payment_status === 'paid' ? 'default' : 'outline'}>
+                      {order.payment_status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => generateInvoice(order)}>
+                        <Download className="h-4 w-4" />
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEditDialog(order)}>
+                            <Edit2 className="mr-2 h-4 w-4" /> Edit Status
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(order.id)}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
