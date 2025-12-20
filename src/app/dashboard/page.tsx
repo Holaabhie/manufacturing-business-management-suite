@@ -110,6 +110,30 @@ export default function DashboardPage() {
     };
 
     fetchDashboardData();
+
+    // Set up Real-time subscriptions
+    const clientsChannel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'clients' },
+        () => fetchDashboardData()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        () => fetchDashboardData()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'inventory' },
+        () => fetchDashboardData()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(clientsChannel);
+    };
   }, []);
 
   const container = {
