@@ -408,20 +408,27 @@ function ProfileContent() {
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label className="text-base font-bold">Email Notifications</Label>
-                          <p className="text-sm text-muted-foreground">Receive order updates and stock alerts via email.</p>
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label className="text-base font-bold">Email Notifications</Label>
+                            <p className="text-sm text-muted-foreground">Receive order updates and stock alerts via email.</p>
+                          </div>
+                          <Switch 
+                            checked={preferences.emailNotifications} 
+                            onCheckedChange={(checked) => handleUpdatePreferences({ emailNotifications: checked })} 
+                          />
                         </div>
-                        <Switch defaultChecked />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label className="text-base font-bold">Push Notifications</Label>
-                          <p className="text-sm text-muted-foreground">Browser notifications for critical system alerts.</p>
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label className="text-base font-bold">Push Notifications</Label>
+                            <p className="text-sm text-muted-foreground">Browser notifications for critical system alerts.</p>
+                          </div>
+                          <Switch 
+                            checked={preferences.pushNotifications} 
+                            onCheckedChange={(checked) => handleUpdatePreferences({ pushNotifications: checked })} 
+                          />
                         </div>
-                        <Switch />
-                      </div>
+
                     </div>
                   </CardContent>
                 </Card>
