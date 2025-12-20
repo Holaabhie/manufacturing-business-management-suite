@@ -15,13 +15,15 @@ import {
   ChevronLeft,
   ChevronRight,
   Settings,
-  Bell
+  Bell,
+  User
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -29,6 +31,7 @@ const navigation = [
   { name: "Inventory", href: "/dashboard/inventory", icon: Package },
   { name: "Clients", href: "/dashboard/clients", icon: Users },
   { name: "Payments", href: "/dashboard/payments", icon: CreditCard },
+  { name: "Profile", href: "/dashboard/profile", icon: User },
 ];
 
 export default function DashboardLayout({
