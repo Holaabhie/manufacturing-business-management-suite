@@ -287,7 +287,7 @@ export default function DashboardPage() {
                       axisLine={false} 
                       tickLine={false} 
                       tick={{ fill: 'oklch(0.5 0.02 240)', fontSize: 12 }}
-                      tickFormatter={(value) => `$${value}`}
+                      tickFormatter={(value) => `₹${value}`}
                     />
                     <Tooltip 
                       contentStyle={{ 
