@@ -32,7 +32,16 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<"profile" | "settings" | "notifications">("profile");
+  
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab === "settings" || tab === "notifications") {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",
