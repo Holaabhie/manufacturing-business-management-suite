@@ -235,14 +235,46 @@ export default function DashboardLayout({
                 {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </Button>
               {user && (
-                <Link href="/dashboard/profile">
-                  <Avatar className="h-10 w-10 ring-2 ring-accent/20 cursor-pointer hover:ring-accent transition-all">
-                    <AvatarImage src={user.user_metadata?.avatar_url} />
-                    <AvatarFallback className="bg-gradient-to-br from-accent to-chart-1 text-accent-foreground font-bold">
-                      {user.email?.substring(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                </Link>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Avatar className="h-10 w-10 ring-2 ring-accent/20 cursor-pointer hover:ring-accent transition-all">
+                      <AvatarImage src={user.user_metadata?.avatar_url} />
+                      <AvatarFallback className="bg-gradient-to-br from-accent to-chart-1 text-accent-foreground font-bold">
+                        {user.email?.substring(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">
+                          {user.user_metadata?.full_name || user.email?.split('@')[0]}
+                        </p>
+                        <p className="text-xs leading-none text-muted-foreground">
+                          {user.email}
+                        </p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/dashboard/profile" className="cursor-pointer w-full">
+                        <User className="mr-2 h-4 w-4" />
+                        <span>Profile</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/dashboard/profile?tab=settings" className="cursor-pointer w-full">
+                        <Settings className="mr-2 h-4 w-4" />
+                        <span>Settings</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="text-destructive focus:text-destructive cursor-pointer" onClick={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Log out</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
             </div>
         </header>
