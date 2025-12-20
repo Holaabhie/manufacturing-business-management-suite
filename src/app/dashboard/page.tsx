@@ -171,13 +171,13 @@ export default function DashboardPage() {
         <motion.div variants={item}>
           <Card className="relative overflow-hidden group hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 border-none bg-primary text-primary-foreground">
             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
-              <DollarSign size={80} />
+              <IndianRupee size={80} />
             </div>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium opacity-80">Total Revenue</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold tracking-tight">${stats.totalRevenue.toLocaleString()}</div>
+              <div className="text-3xl font-bold tracking-tight">₹{stats.totalRevenue.toLocaleString()}</div>
               <div className="flex items-center mt-2 text-xs font-medium text-accent">
                 <ArrowUpRight className="mr-1 h-3 w-3" />
                 <span>12.5% from last period</span>
