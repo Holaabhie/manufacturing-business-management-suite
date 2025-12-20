@@ -422,7 +422,7 @@ export default function DashboardPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right pr-6">
-                        <span className="font-bold text-sm">${Number(order.total_amount).toLocaleString()}</span>
+                        <span className="font-bold text-sm">₹{Number(order.total_amount).toLocaleString()}</span>
                       </TableCell>
                     </TableRow>
                   ))}
