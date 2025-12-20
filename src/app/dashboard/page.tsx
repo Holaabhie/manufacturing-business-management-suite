@@ -69,23 +69,27 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
       
       // Fetch Clients Count
       const { count: clientCount } = await supabase
         .from('clients')
-        .select('*', { count: 'exact', head: true });
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user?.id);
 
       // Fetch Orders Stats
       const { data: ordersData } = await supabase
         .from('orders')
-        .select('total_amount');
+        .select('total_amount')
+        .eq('user_id', user?.id);
       
       const totalRevenue = ordersData?.reduce((acc, order) => acc + Number(order.total_amount), 0) || 0;
 
       // Fetch Inventory
       const { data: inventoryData } = await supabase
         .from('inventory')
-        .select('*');
+        .select('*')
+        .eq('user_id', user?.id);
       
       const lowStockItems = inventoryData?.filter(item => Number(item.quantity) < Number(item.min_stock_level)) || [];
       const totalStockValue = inventoryData?.reduce((acc, item) => acc + (Number(item.quantity) * Number(item.price || 0)), 0) || 0;
@@ -94,6 +98,7 @@ export default function DashboardPage() {
       const { data: recent } = await supabase
         .from('orders')
         .select('*, clients(name)')
+        .eq('user_id', user?.id)
         .order('created_at', { ascending: false })
         .limit(6);
 
