@@ -55,9 +55,12 @@ export default function ClientsPage() {
 
   const fetchClients = async () => {
     setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    
     const { data, error } = await supabase
       .from('clients')
       .select('*')
+      .eq('user_id', user?.id)
       .order('name');
     
     if (error) toast.error("Failed to fetch clients");
@@ -67,10 +70,25 @@ export default function ClientsPage() {
 
   useEffect(() => {
     fetchClients();
+
+    const channel = supabase
+      .channel('clients-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'clients' },
+        () => fetchClients()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const { data: { user } } = await supabase.auth.getUser();
+
     if (currentClient) {
       const { error } = await supabase
         .from('clients')
@@ -86,7 +104,7 @@ export default function ClientsPage() {
     } else {
       const { error } = await supabase
         .from('clients')
-        .insert([formData]);
+        .insert([{ ...formData, user_id: user?.id }]);
       
       if (error) toast.error("Failed to create client");
       else {
