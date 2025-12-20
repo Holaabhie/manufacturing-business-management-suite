@@ -246,114 +246,140 @@ export default function OrdersPage() {
           <h1 className="text-3xl font-bold tracking-tight">Orders</h1>
           <p className="text-zinc-500">Track production orders and delivery schedules.</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" /> New Order
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Create New Order</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
-              <div className="col-span-2 space-y-2">
-                <Label>Client *</Label>
-                <Select onValueChange={(v) => setFormData({...formData, client_id: v})} required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a client" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clients.map(c => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="col-span-2 space-y-2">
-                <Label>Product Name *</Label>
-                <Input 
-                  value={formData.product_name} 
-                  onChange={(e) => setFormData({...formData, product_name: e.target.value})}
-                  placeholder="e.g. 50kg Printed LDPE Bags"
-                  required 
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Quantity</Label>
-                <Input 
-                  type="number"
-                  value={formData.quantity} 
-                  onChange={(e) => setFormData({...formData, quantity: parseFloat(e.target.value)})}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Rate (per unit)</Label>
-                <Input 
-                  type="number"
-                  step="0.01"
-                  value={formData.rate} 
-                  onChange={(e) => setFormData({...formData, rate: parseFloat(e.target.value)})}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Delivery Date</Label>
-                <Input 
-                  type="date"
-                  value={formData.delivery_date} 
-                  onChange={(e) => setFormData({...formData, delivery_date: e.target.value})}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Payment Status</Label>
-                <Select onValueChange={(v) => setFormData({...formData, payment_status: v})} defaultValue="pending">
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="partial">Partial</SelectItem>
-                    <SelectItem value="paid">Paid</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="col-span-2 border-t pt-4 mt-2">
-                <h3 className="text-sm font-semibold mb-3">Inventory Deduction (Optional)</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Material Used</Label>
-                    <Select onValueChange={(v) => setFormData({...formData, inventory_item_id: v})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select material" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {inventory.map(i => (
-                          <SelectItem key={i.id} value={i.id}>{i.name} ({i.quantity} {i.unit} available)</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Quantity Consumed</Label>
-                    <Input 
-                      type="number"
-                      step="0.1"
-                      value={formData.inventory_consumed} 
-                      onChange={(e) => setFormData({...formData, inventory_consumed: parseFloat(e.target.value)})}
-                    />
-                  </div>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) resetForm();
+          }}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" /> New Order
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>{currentOrder ? "Edit Order" : "Create New Order"}</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
+                <div className="col-span-2 space-y-2">
+                  <Label>Client *</Label>
+                  <Select 
+                    value={formData.client_id} 
+                    onValueChange={(v) => setFormData({...formData, client_id: v})} 
+                    required
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a client" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients.map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              </div>
+                <div className="col-span-2 space-y-2">
+                  <Label>Product Name *</Label>
+                  <Input 
+                    value={formData.product_name} 
+                    onChange={(e) => setFormData({...formData, product_name: e.target.value})}
+                    placeholder="e.g. 50kg Printed LDPE Bags"
+                    required 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Quantity</Label>
+                  <Input 
+                    type="number"
+                    value={formData.quantity} 
+                    onChange={(e) => setFormData({...formData, quantity: parseFloat(e.target.value)})}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Rate (per unit)</Label>
+                  <Input 
+                    type="number"
+                    step="0.01"
+                    value={formData.rate} 
+                    onChange={(e) => setFormData({...formData, rate: parseFloat(e.target.value)})}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Delivery Date</Label>
+                  <Input 
+                    type="date"
+                    value={formData.delivery_date} 
+                    onChange={(e) => setFormData({...formData, delivery_date: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Order Status</Label>
+                  <Select value={formData.status} onValueChange={(v) => setFormData({...formData, status: v})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="processing">Processing</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Payment Status</Label>
+                  <Select value={formData.payment_status} onValueChange={(v) => setFormData({...formData, payment_status: v})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="partial">Partial</SelectItem>
+                      <SelectItem value="paid">Paid</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {!currentOrder && (
+                  <div className="col-span-2 border-t pt-4 mt-2">
+                    <h3 className="text-sm font-semibold mb-3">Inventory Deduction (Optional)</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Material Used</Label>
+                        <Select onValueChange={(v) => setFormData({...formData, inventory_item_id: v})}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select material" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {inventory.map(i => (
+                              <SelectItem key={i.id} value={i.id}>{i.name} ({i.quantity} {i.unit} available)</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Quantity Consumed</Label>
+                        <Input 
+                          type="number"
+                          step="0.1"
+                          value={formData.inventory_consumed} 
+                          onChange={(e) => setFormData({...formData, inventory_consumed: parseFloat(e.target.value)})}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
-              <DialogFooter className="col-span-2 mt-4">
-                <Button type="submit" className="w-full">Create Order & Deduct Stock</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+                <DialogFooter className="col-span-2 mt-4">
+                  <Button type="submit" className="w-full">
+                    {currentOrder ? "Update Order" : "Create Order & Deduct Stock"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="flex items-center space-x-2">
