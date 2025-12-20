@@ -47,11 +47,12 @@ export default function DashboardPage() {
       
       const totalRevenue = ordersData?.reduce((acc, order) => acc + Number(order.total_amount), 0) || 0;
 
-      // Fetch Low Stock Count
-      const { count: lowStockCount } = await supabase
+      // Fetch Low Stock Items
+      const { data: inventoryData } = await supabase
         .from('inventory')
-        .select('*', { count: 'exact', head: true })
-        .lt('quantity', 'min_stock_level');
+        .select('quantity, min_stock_level');
+      
+      const lowStockCount = inventoryData?.filter(item => Number(item.quantity) < Number(item.min_stock_level)).length || 0;
 
       // Fetch Recent Orders
       const { data: recent } = await supabase
