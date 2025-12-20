@@ -166,14 +166,14 @@ export default function OrdersPage() {
     
     doc.text(order.product_name, 20, 135);
     doc.text(order.quantity.toString(), 120, 135);
-    doc.text(`$${order.rate}`, 145, 135);
-    doc.text(`$${order.total_amount}`, 175, 135);
+    doc.text(`Rs. ${order.rate}`, 145, 135);
+    doc.text(`Rs. ${order.total_amount}`, 175, 135);
     
     doc.line(20, 145, 190, 145);
     
     doc.setFont("helvetica", "bold");
     doc.text("GRAND TOTAL:", 140, 160);
-    doc.text(`$${order.total_amount}`, 175, 160);
+    doc.text(`Rs. ${order.total_amount}`, 175, 160);
     
     doc.setFont("helvetica", "normal");
     doc.text(`Delivery Date: ${order.delivery_date || "N/A"}`, 20, 180);
