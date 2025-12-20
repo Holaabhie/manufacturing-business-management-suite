@@ -31,9 +31,12 @@ export default function PaymentsPage() {
 
   const fetchPayments = async () => {
     setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+
     const { data, error } = await supabase
       .from('orders')
       .select('*, clients(name)')
+      .eq('user_id', user?.id)
       .order('created_at', { ascending: false });
     
     if (error) toast.error("Failed to fetch payments");
@@ -43,6 +46,19 @@ export default function PaymentsPage() {
 
   useEffect(() => {
     fetchPayments();
+
+    const channel = supabase
+      .channel('payments-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        () => fetchPayments()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const updatePaymentStatus = async (orderId: string, status: string) => {
