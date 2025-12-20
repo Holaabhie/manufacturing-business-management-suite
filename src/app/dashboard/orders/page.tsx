@@ -57,21 +57,9 @@ export default function OrdersPage() {
   const [inventory, setInventory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [currentOrder, setCurrentOrder] = useState<any>(null);
 
-  const [formData, setFormData] = useState({
-    client_id: "",
-    product_name: "",
-    quantity: 0,
-    rate: 0,
-    delivery_date: "",
-    inventory_item_id: "",
-    inventory_consumed: 0,
-    status: "pending",
-    payment_status: "pending"
-  });
-
-  const fetchData = async () => {
+    const fetchData = async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
 
