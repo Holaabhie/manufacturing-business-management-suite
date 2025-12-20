@@ -226,7 +226,8 @@ export default function DashboardLayout({
             <div className="w-10 h-10 bg-accent rounded-xl flex items-center justify-center">
               <Factory className="h-5 w-5 text-accent-foreground" />
             </div>
-            <span className="font-bold text-lg">PlasticPrint</span>
+              <span className="font-bold text-lg">IND Manager</span>
+
           </div>
 
           <div className="hidden md:flex items-center gap-2 text-sm font-medium text-muted-foreground">
