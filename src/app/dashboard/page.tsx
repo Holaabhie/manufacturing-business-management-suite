@@ -43,17 +43,6 @@ import {
   Bar
 } from "recharts";
 
-// Mock data for charts
-const revenueData = [
-  { name: 'Mon', total: 2400 },
-  { name: 'Tue', total: 1398 },
-  { name: 'Wed', total: 9800 },
-  { name: 'Thu', total: 3908 },
-  { name: 'Fri', total: 4800 },
-  { name: 'Sat', total: 3800 },
-  { name: 'Sun', total: 4300 },
-];
-
 export default function DashboardPage() {
   const [timeRange, setTimeRange] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [stats, setStats] = useState({
@@ -65,6 +54,11 @@ export default function DashboardPage() {
     totalStockValue: 0,
     revenueGrowth: 0,
   });
+  const [recentOrders, setRecentOrders] = useState<any[]>([]);
+  const [lowStockProducts, setLowStockProducts] = useState<any[]>([]);
+  const [revenueData, setRevenueData] = useState<any[]>([]);
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -181,66 +175,6 @@ export default function DashboardPage() {
         lowStockItems: lowStockItems.length,
         totalStockValue,
         revenueGrowth,
-      });
-  const [recentOrders, setRecentOrders] = useState<any[]>([]);
-  const [lowStockProducts, setLowStockProducts] = useState<any[]>([]);
-  const [revenueData, setRevenueData] = useState<any[]>([]);
-  const [recentActivity, setRecentActivity] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const fetchDashboardData = async () => {
-    setLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // 1. Fetch Clients Count
-      const { count: clientCount } = await supabase
-        .from('clients')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id);
-
-      // 2. Fetch Orders for Stats and Chart
-      const { data: allOrders } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('user_id', user.id);
-
-      const activeOrders = allOrders?.filter(o => o.status !== 'completed').length || 0;
-      const totalRevenue = allOrders?.reduce((acc, o) => acc + Number(o.total_amount), 0) || 0;
-
-      // 3. Process Revenue Data for Chart
-      const chartData = processRevenueData(allOrders || [], timeRange);
-      setRevenueData(chartData);
-
-      // 4. Fetch Inventory
-      const { data: inventoryData } = await supabase
-        .from('inventory')
-        .select('*')
-        .eq('user_id', user.id);
-      
-      const lowStockItems = inventoryData?.filter(item => Number(item.quantity) <= Number(item.min_stock_level)) || [];
-      const totalStockValue = inventoryData?.reduce((acc, item) => acc + (Number(item.quantity) * Number(item.rate_per_unit || 0)), 0) || 0;
-
-      // 5. Fetch Recent Orders
-      const { data: recent } = await supabase
-        .from('orders')
-        .select('*, clients(name)')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(6);
-
-      // 6. Fetch Recent Activity (Combining latest from multiple tables)
-      const activity = await fetchActivityFeed(user.id);
-      setRecentActivity(activity);
-
-      setStats({
-        totalClients: clientCount || 0,
-        activeOrders,
-        totalRevenue,
-        lowStockItems: lowStockItems.length,
-        totalStockValue,
-        revenueGrowth: 12.5, // Mock growth for now
       });
       setRecentOrders(recent || []);
       setLowStockProducts(lowStockItems.slice(0, 3));
@@ -433,8 +367,8 @@ export default function DashboardPage() {
             <CardContent>
               <div className="text-3xl font-bold tracking-tight">₹{stats.totalRevenue.toLocaleString()}</div>
               <div className="flex items-center mt-2 text-xs font-medium text-accent">
-                <ArrowUpRight className="mr-1 h-3 w-3" />
-                <span>{stats.revenueGrowth}% from last period</span>
+                {stats.revenueGrowth >= 0 ? <ArrowUpRight className="mr-1 h-3 w-3" /> : <ArrowDownRight className="mr-1 h-3 w-3" />}
+                <span>{Math.abs(stats.revenueGrowth)}% from last period</span>
               </div>
             </CardContent>
           </Card>
@@ -474,7 +408,7 @@ export default function DashboardPage() {
               <div className="flex items-center mt-2 text-xs text-muted-foreground">
                 <span className="flex items-center text-chart-2 font-medium">
                   <ArrowUpRight className="mr-1 h-3 w-3" />
-                  +4 new
+                  +{stats.newClientsThisWeek} new
                 </span>
                 <span className="ml-1">this week</span>
               </div>
@@ -513,7 +447,7 @@ export default function DashboardPage() {
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-lg">Revenue Trend</CardTitle>
-                <CardDescription>Daily financial performance</CardDescription>
+                <CardDescription>{timeRange.charAt(0).toUpperCase() + timeRange.slice(1)} financial performance</CardDescription>
               </div>
               <div className="p-2 bg-muted rounded-lg cursor-pointer hover:bg-muted/80 transition-colors">
                 <TrendingUp className="h-4 w-4 text-primary" />
