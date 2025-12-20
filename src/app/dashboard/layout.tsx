@@ -106,7 +106,7 @@ export default function DashboardLayout({
                     exit={{ opacity: 0, x: -10 }}
                     className="text-xl font-bold tracking-tight text-sidebar-foreground whitespace-nowrap"
                   >
-                    PlasticPrint
+                    IND Manager
                   </motion.span>
                 )}
               </AnimatePresence>
