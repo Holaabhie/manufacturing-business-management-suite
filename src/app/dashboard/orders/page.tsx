@@ -347,7 +347,7 @@ export default function OrdersPage() {
                   </div>
                 </TableCell>
                 <TableCell>{order.clients?.name}</TableCell>
-                <TableCell className="font-semibold">${order.total_amount}</TableCell>
+                  <TableCell className="font-semibold">₹{order.total_amount}</TableCell>
                 <TableCell>
                   <Badge variant={order.status === 'completed' ? 'default' : 'secondary'}>
                     {order.status}
