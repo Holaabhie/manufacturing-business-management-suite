@@ -55,91 +55,177 @@ const revenueData = [
 ];
 
 export default function DashboardPage() {
+  const [timeRange, setTimeRange] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [stats, setStats] = useState({
     totalClients: 0,
-    totalOrders: 0,
+    activeOrders: 0,
     totalRevenue: 0,
     lowStockItems: 0,
     totalStockValue: 0,
+    revenueGrowth: 0,
   });
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [lowStockProducts, setLowStockProducts] = useState<any[]>([]);
+  const [revenueData, setRevenueData] = useState<any[]>([]);
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      setLoading(true);
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    try {
       const { data: { user } } = await supabase.auth.getUser();
-      
-      // Fetch Clients Count
+      if (!user) return;
+
+      // 1. Fetch Clients Count
       const { count: clientCount } = await supabase
         .from('clients')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', user?.id);
+        .eq('user_id', user.id);
 
-      // Fetch Orders Stats
-      const { data: ordersData } = await supabase
+      // 2. Fetch Orders for Stats and Chart
+      const { data: allOrders } = await supabase
         .from('orders')
-        .select('total_amount')
-        .eq('user_id', user?.id);
-      
-      const totalRevenue = ordersData?.reduce((acc, order) => acc + Number(order.total_amount), 0) || 0;
+        .select('*')
+        .eq('user_id', user.id);
 
-      // Fetch Inventory
+      const activeOrders = allOrders?.filter(o => o.status !== 'completed').length || 0;
+      const totalRevenue = allOrders?.reduce((acc, o) => acc + Number(o.total_amount), 0) || 0;
+
+      // 3. Process Revenue Data for Chart
+      const chartData = processRevenueData(allOrders || [], timeRange);
+      setRevenueData(chartData);
+
+      // 4. Fetch Inventory
       const { data: inventoryData } = await supabase
         .from('inventory')
         .select('*')
-        .eq('user_id', user?.id);
+        .eq('user_id', user.id);
       
-      const lowStockItems = inventoryData?.filter(item => Number(item.quantity) < Number(item.min_stock_level)) || [];
-      const totalStockValue = inventoryData?.reduce((acc, item) => acc + (Number(item.quantity) * Number(item.price || 0)), 0) || 0;
+      const lowStockItems = inventoryData?.filter(item => Number(item.quantity) <= Number(item.min_stock_level)) || [];
+      const totalStockValue = inventoryData?.reduce((acc, item) => acc + (Number(item.quantity) * Number(item.rate_per_unit || 0)), 0) || 0;
 
-      // Fetch Recent Orders
+      // 5. Fetch Recent Orders
       const { data: recent } = await supabase
         .from('orders')
         .select('*, clients(name)')
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(6);
 
+      // 6. Fetch Recent Activity (Combining latest from multiple tables)
+      const activity = await fetchActivityFeed(user.id);
+      setRecentActivity(activity);
+
       setStats({
         totalClients: clientCount || 0,
-        totalOrders: ordersData?.length || 0,
+        activeOrders,
         totalRevenue,
         lowStockItems: lowStockItems.length,
         totalStockValue,
+        revenueGrowth: 12.5, // Mock growth for now
       });
       setRecentOrders(recent || []);
       setLowStockProducts(lowStockItems.slice(0, 3));
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    } finally {
       setLoading(false);
-    };
+    }
+  };
 
+  const processRevenueData = (orders: any[], range: string) => {
+    const now = new Date();
+    const data: { name: string, total: number }[] = [];
+
+    if (range === 'daily') {
+      // Last 7 days
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(now.getDate() - i);
+        const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+        const dayTotal = orders
+          .filter(o => new Date(o.created_at).toDateString() === d.toDateString())
+          .reduce((acc, o) => acc + Number(o.total_amount), 0);
+        data.push({ name: dayName, total: dayTotal });
+      }
+    } else if (range === 'weekly') {
+      // Last 4 weeks
+      for (let i = 3; i >= 0; i--) {
+        const start = new Date();
+        start.setDate(now.getDate() - (i * 7 + 6));
+        const end = new Date();
+        end.setDate(now.getDate() - (i * 7));
+        
+        const weekTotal = orders
+          .filter(o => {
+            const date = new Date(o.created_at);
+            return date >= start && date <= end;
+          })
+          .reduce((acc, o) => acc + Number(o.total_amount), 0);
+        data.push({ name: `Week ${4-i}`, total: weekTotal });
+      }
+    } else {
+      // Last 6 months
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date();
+        d.setMonth(now.getMonth() - i);
+        const monthName = d.toLocaleDateString('en-US', { month: 'short' });
+        const monthTotal = orders
+          .filter(o => {
+            const date = new Date(o.created_at);
+            return date.getMonth() === d.getMonth() && date.getFullYear() === d.getFullYear();
+          })
+          .reduce((acc, o) => acc + Number(o.total_amount), 0);
+        data.push({ name: monthName, total: monthTotal });
+      }
+    }
+    return data;
+  };
+
+  const fetchActivityFeed = async (userId: string) => {
+    const [orders, inventory, clients] = await Promise.all([
+      supabase.from('orders').select('product_name, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(3),
+      supabase.from('inventory').select('name, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(3),
+      supabase.from('clients').select('name, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(3),
+    ]);
+
+    const feed: any[] = [
+      ...(orders.data?.map(o => ({ title: `New order: ${o.product_name}`, time: o.created_at, type: 'order', color: 'bg-accent' })) || []),
+      ...(inventory.data?.map(i => ({ title: `Stock added: ${i.name}`, time: i.created_at, type: 'stock', color: 'bg-chart-3' })) || []),
+      ...(clients.data?.map(c => ({ title: `New client: ${c.name}`, time: c.created_at, type: 'client', color: 'bg-primary' })) || []),
+    ];
+
+    return feed.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()).slice(0, 5);
+  };
+
+  const formatTimeAgo = (date: string) => {
+    const now = new Date();
+    const then = new Date(date);
+    const diff = now.getTime() - then.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (minutes < 60) return `${minutes} mins ago`;
+    if (hours < 24) return `${hours} hours ago`;
+    return `${days} days ago`;
+  };
+
+  useEffect(() => {
     fetchDashboardData();
 
     // Set up Real-time subscriptions
-    const clientsChannel = supabase
-      .channel('schema-db-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'clients' },
-        () => fetchDashboardData()
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'orders' },
-        () => fetchDashboardData()
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'inventory' },
-        () => fetchDashboardData()
-      )
+    const channel = supabase
+      .channel('dashboard-all-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => fetchDashboardData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchDashboardData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, () => fetchDashboardData())
       .subscribe();
 
     return () => {
-      supabase.removeChannel(clientsChannel);
+      supabase.removeChannel(channel);
     };
-  }, []);
+  }, [timeRange]);
 
   const container = {
     hidden: { opacity: 0 },
