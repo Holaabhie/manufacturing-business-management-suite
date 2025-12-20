@@ -135,26 +135,53 @@ export default function DashboardLayout({
             })}
           </nav>
 
-          {/* Footer Section */}
-          <div className="p-4 mt-auto border-t border-sidebar-border">
-            <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="hidden md:flex w-full items-center justify-center h-10 rounded-lg hover:bg-sidebar-accent text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors mb-2"
-            >
-              {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <div className="flex items-center gap-2"><ChevronLeft className="h-5 w-5" /> <span className="text-sm font-medium">Collapse</span></div>}
-            </button>
-            <Button 
-              variant="ghost" 
-              className={cn(
-                "w-full justify-start text-sidebar-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-all",
-                isCollapsed && "justify-center"
-              )}
-              onClick={handleLogout}
-            >
-              <LogOut className={cn("h-5 w-5", !isCollapsed && "mr-3")} />
-              {!isCollapsed && <span className="font-medium">Logout</span>}
-            </Button>
-          </div>
+            {/* Footer Section */}
+            <div className="p-4 mt-auto border-t border-sidebar-border space-y-2">
+              <AnimatePresence mode="wait">
+                {!isCollapsed && user && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="flex items-center gap-3 p-2 rounded-xl bg-sidebar-accent/50 mb-2"
+                  >
+                    <Avatar className="h-9 w-9 border-2 border-accent/20">
+                      <AvatarImage src={user.user_metadata?.avatar_url} />
+                      <AvatarFallback className="bg-accent text-accent-foreground font-bold">
+                        {user.email?.substring(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-sm font-bold truncate text-sidebar-foreground">
+                        {user.user_metadata?.full_name || user.email?.split('@')[0]}
+                      </span>
+                      <span className="text-[10px] text-sidebar-foreground/50 truncate">
+                        {user.email}
+                      </span>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <button
+                onClick={() => setIsCollapsed(!isCollapsed)}
+                className="hidden md:flex w-full items-center justify-center h-10 rounded-lg hover:bg-sidebar-accent text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors"
+              >
+                {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <div className="flex items-center gap-2"><ChevronLeft className="h-5 w-5" /> <span className="text-sm font-medium">Collapse</span></div>}
+              </button>
+              
+              <Button 
+                variant="ghost" 
+                className={cn(
+                  "w-full justify-start text-sidebar-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-all",
+                  isCollapsed && "justify-center"
+                )}
+                onClick={handleLogout}
+              >
+                <LogOut className={cn("h-5 w-5", !isCollapsed && "mr-3")} />
+                {!isCollapsed && <span className="font-medium">Logout</span>}
+              </Button>
+            </div>
         </div>
       </motion.aside>
 
