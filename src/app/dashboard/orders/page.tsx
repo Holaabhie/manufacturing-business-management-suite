@@ -8,13 +8,12 @@ import {
   MoreVertical, 
   FileText, 
   Trash2, 
-  Calendar,
-  DollarSign,
-  Box,
+    Calendar,
+    IndianRupee,
+    Box,
     CheckCircle2,
     Clock,
-    Download,
-    IndianRupee
+    Download
   } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
