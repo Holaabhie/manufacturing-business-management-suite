@@ -57,9 +57,12 @@ export default function InventoryPage() {
 
   const fetchInventory = async () => {
     setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    
     const { data, error } = await supabase
       .from('inventory')
       .select('*')
+      .eq('user_id', user?.id)
       .order('name');
     
     if (error) toast.error("Failed to fetch inventory");
@@ -69,10 +72,25 @@ export default function InventoryPage() {
 
   useEffect(() => {
     fetchInventory();
+
+    const channel = supabase
+      .channel('inventory-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'inventory' },
+        () => fetchInventory()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const { data: { user } } = await supabase.auth.getUser();
+
     if (currentItem) {
       const { error } = await supabase
         .from('inventory')
@@ -88,7 +106,7 @@ export default function InventoryPage() {
     } else {
       const { error } = await supabase
         .from('inventory')
-        .insert([formData]);
+        .insert([{ ...formData, user_id: user?.id }]);
       
       if (error) toast.error("Failed to add item");
       else {
