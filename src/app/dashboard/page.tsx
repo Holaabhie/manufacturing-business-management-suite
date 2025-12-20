@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { 
   Users, 
@@ -27,6 +28,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { 
   AreaChart, 
@@ -37,8 +40,7 @@ import {
   Tooltip, 
   ResponsiveContainer,
   BarChart,
-  Bar,
-  Cell
+  Bar
 } from "recharts";
 
 // Mock data for charts
@@ -50,12 +52,6 @@ const revenueData = [
   { name: 'Fri', total: 4800 },
   { name: 'Sat', total: 3800 },
   { name: 'Sun', total: 4300 },
-];
-
-const orderStatusData = [
-  { name: 'Pending', value: 45, color: 'oklch(0.8 0.15 40)' },
-  { name: 'Processing', value: 30, color: 'oklch(0.7 0.15 240)' },
-  { name: 'Completed', value: 25, color: 'oklch(0.7 0.15 140)' },
 ];
 
 export default function DashboardPage() {
@@ -164,7 +160,7 @@ export default function DashboardPage() {
           <p className="text-muted-foreground">Performance overview for PlasticPrint Manufacturing.</p>
         </div>
         <div className="flex items-center gap-2 bg-card p-1 rounded-xl border shadow-sm">
-          <Button variant="ghost" size="sm" className="rounded-lg bg-accent text-accent-foreground">Daily</Button>
+          <Button variant="ghost" size="sm" className="rounded-lg bg-accent text-accent-foreground shadow-sm">Daily</Button>
           <Button variant="ghost" size="sm" className="rounded-lg">Weekly</Button>
           <Button variant="ghost" size="sm" className="rounded-lg">Monthly</Button>
         </div>
@@ -384,9 +380,11 @@ export default function DashboardPage() {
                 <CardTitle className="text-lg">Recent Orders</CardTitle>
                 <CardDescription>Last 6 orders placed in the factory</CardDescription>
               </div>
-              <Button variant="outline" size="sm" className="rounded-lg font-bold gap-2">
-                All Orders <ChevronRight className="h-4 w-4" />
-              </Button>
+              <Link href="/dashboard/orders">
+                <Button variant="outline" size="sm" className="rounded-lg font-bold gap-2">
+                  All Orders <ChevronRight className="h-4 w-4" />
+                </Button>
+              </Link>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
@@ -400,7 +398,7 @@ export default function DashboardPage() {
                 </TableHeader>
                 <TableBody>
                   {recentOrders.map((order) => (
-                    <TableRow key={order.id} className="hover:bg-muted/30 transition-colors">
+                    <TableRow key={order.id} className="hover:bg-muted/30 transition-colors border-border">
                       <TableCell className="pl-6">
                         <div className="flex flex-col">
                           <span className="font-bold text-sm">{order.product_name}</span>
@@ -428,6 +426,13 @@ export default function DashboardPage() {
                       </TableCell>
                     </TableRow>
                   ))}
+                  {recentOrders.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-10 text-muted-foreground bg-muted/5">
+                        No orders found.
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
@@ -444,7 +449,7 @@ export default function DashboardPage() {
               <div className="relative space-y-6 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-border before:via-border before:to-transparent">
                 {[
                   { title: 'New order created', time: '2 mins ago', type: 'order', color: 'bg-accent' },
-                  { title: 'Payment received', time: '1 hour ago', type: 'payment', color: 'bg-chart-1' },
+                  { title: 'Payment received', time: '1 hour ago', type: 'payment', color: 'bg-chart-2' },
                   { title: 'Stock updated', time: '3 hours ago', type: 'stock', color: 'bg-chart-3' },
                   { title: 'Client registered', time: 'Yesterday', type: 'client', color: 'bg-primary' },
                 ].map((activity, idx) => (
@@ -468,6 +473,3 @@ export default function DashboardPage() {
     </motion.div>
   );
 }
-
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
