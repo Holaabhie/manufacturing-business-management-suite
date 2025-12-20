@@ -61,7 +61,7 @@ export default function LoginPage() {
           <div className="p-3 bg-zinc-900 rounded-xl mb-2">
             <Factory className="h-6 w-6 text-white" />
           </div>
-          <CardTitle className="text-2xl font-bold">PlasticPrint Manager</CardTitle>
+          <CardTitle className="text-2xl font-bold">IND Manager</CardTitle>
           <CardDescription>
             Enter your credentials to access the factory dashboard
           </CardDescription>
