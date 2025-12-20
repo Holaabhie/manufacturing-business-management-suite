@@ -88,19 +88,19 @@ export default function PaymentsPage() {
             <CardTitle className="text-sm font-medium">Collected Revenue</CardTitle>
             <CheckCircle2 className="h-4 w-4 text-green-600" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-700">${totals.paid.toLocaleString()}</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-amber-50 dark:bg-amber-950/20 border-amber-200">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Pending Receivables</CardTitle>
-            <Clock className="h-4 w-4 text-amber-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-amber-700">${totals.pending.toLocaleString()}</div>
-          </CardContent>
-        </Card>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-700">₹{totals.paid.toLocaleString()}</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-amber-50 dark:bg-amber-950/20 border-amber-200">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Pending Receivables</CardTitle>
+              <Clock className="h-4 w-4 text-amber-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-amber-700">₹{totals.pending.toLocaleString()}</div>
+            </CardContent>
+          </Card>
       </div>
 
       <div className="flex items-center space-x-2">
