@@ -73,10 +73,12 @@ export default function OrdersPage() {
 
   const fetchData = async () => {
     setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+
     const [ordersRes, clientsRes, inventoryRes] = await Promise.all([
-      supabase.from('orders').select('*, clients(name, email, address)').order('created_at', { ascending: false }),
-      supabase.from('clients').select('id, name'),
-      supabase.from('inventory').select('id, name, quantity, unit')
+      supabase.from('orders').select('*, clients(name, email, address)').eq('user_id', user?.id).order('created_at', { ascending: false }),
+      supabase.from('clients').select('id, name').eq('user_id', user?.id),
+      supabase.from('inventory').select('id, name, quantity, unit').eq('user_id', user?.id)
     ]);
     
     setOrders(ordersRes.data || []);
@@ -87,18 +89,33 @@ export default function OrdersPage() {
 
   useEffect(() => {
     fetchData();
+
+    const channel = supabase
+      .channel('orders-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        () => fetchData()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const total_amount = formData.quantity * formData.rate;
+    const { data: { user } } = await supabase.auth.getUser();
     
     // 1. Create Order
     const { data: newOrder, error: orderError } = await supabase
       .from('orders')
       .insert([{
         ...formData,
-        total_amount
+        total_amount,
+        user_id: user?.id
       }])
       .select()
       .single();
