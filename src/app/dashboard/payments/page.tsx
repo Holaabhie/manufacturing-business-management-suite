@@ -139,7 +139,7 @@ export default function PaymentsPage() {
               <TableRow key={order.id}>
                 <TableCell className="font-medium">{order.clients?.name}</TableCell>
                 <TableCell>{order.product_name}</TableCell>
-                <TableCell>${Number(order.total_amount).toLocaleString()}</TableCell>
+                  <TableCell>₹{Number(order.total_amount).toLocaleString()}</TableCell>
                 <TableCell>
                   <Badge variant={
                     order.payment_status === 'paid' ? 'default' : 
