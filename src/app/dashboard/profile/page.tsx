@@ -349,20 +349,27 @@ function ProfileContent() {
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label className="text-base font-bold">Dark Mode</Label>
-                          <p className="text-sm text-muted-foreground">Adjust the interface for low light conditions.</p>
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label className="text-base font-bold">Dark Mode</Label>
+                            <p className="text-sm text-muted-foreground">Adjust the interface for low light conditions.</p>
+                          </div>
+                          <Switch 
+                            checked={preferences.darkMode} 
+                            onCheckedChange={(checked) => handleUpdatePreferences({ darkMode: checked })} 
+                          />
                         </div>
-                        <Switch defaultChecked />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label className="text-base font-bold">Auto-refresh Data</Label>
-                          <p className="text-sm text-muted-foreground">Automatically update tables every 5 minutes.</p>
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label className="text-base font-bold">Auto-refresh Data</Label>
+                            <p className="text-sm text-muted-foreground">Automatically update tables every 5 minutes.</p>
+                          </div>
+                          <Switch 
+                            checked={preferences.autoRefresh} 
+                            onCheckedChange={(checked) => handleUpdatePreferences({ autoRefresh: checked })} 
+                          />
                         </div>
-                        <Switch defaultChecked />
-                      </div>
+
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
                           <Label className="text-base font-bold">Language</Label>
