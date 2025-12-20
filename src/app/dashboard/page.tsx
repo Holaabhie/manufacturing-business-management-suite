@@ -487,7 +487,7 @@ export default function DashboardPage() {
                   {lowStockProducts.length > 0 ? lowStockProducts.map((p) => (
                     <div key={p.id} className="flex items-center justify-between p-3 border rounded-xl hover:bg-muted/50 transition-colors">
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium">{p.product_name}</span>
+                        <span className="text-sm font-medium">{p.name}</span>
                         <span className="text-xs text-muted-foreground">Current: {p.quantity} {p.unit}</span>
                       </div>
                       <Badge variant="outline" className="border-chart-3 text-chart-3">
@@ -583,24 +583,24 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="relative space-y-6 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-border before:via-border before:to-transparent">
-                {[
-                  { title: 'New order created', time: '2 mins ago', type: 'order', color: 'bg-accent' },
-                  { title: 'Payment received', time: '1 hour ago', type: 'payment', color: 'bg-chart-2' },
-                  { title: 'Stock updated', time: '3 hours ago', type: 'stock', color: 'bg-chart-3' },
-                  { title: 'Client registered', time: 'Yesterday', type: 'client', color: 'bg-primary' },
-                ].map((activity, idx) => (
+                {recentActivity.map((activity, idx) => (
                   <div key={idx} className="relative flex items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                      <div className={cn("relative w-10 h-10 rounded-full flex items-center justify-center ring-4 ring-background", activity.color)}>
+                      <div className={cn("relative w-10 h-10 rounded-full flex items-center justify-center ring-4 ring-background shadow-sm", activity.color)}>
                         <Clock className="h-4 w-4 text-white" />
                       </div>
                       <div className="flex flex-col">
                         <span className="text-sm font-bold text-foreground">{activity.title}</span>
-                        <span className="text-xs text-muted-foreground">{activity.time}</span>
+                        <span className="text-xs text-muted-foreground">{formatTimeAgo(activity.time)}</span>
                       </div>
                     </div>
                   </div>
                 ))}
+                {recentActivity.length === 0 && (
+                  <div className="text-center py-10 text-muted-foreground">
+                    No recent activity
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
