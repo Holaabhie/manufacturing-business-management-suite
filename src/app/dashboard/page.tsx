@@ -275,9 +275,30 @@ export default function DashboardPage() {
           <p className="text-muted-foreground">Performance overview for IND Manager Manufacturing.</p>
         </div>
         <div className="flex items-center gap-2 bg-card p-1 rounded-xl border shadow-sm">
-          <Button variant="ghost" size="sm" className="rounded-lg bg-accent text-accent-foreground shadow-sm">Daily</Button>
-          <Button variant="ghost" size="sm" className="rounded-lg">Weekly</Button>
-          <Button variant="ghost" size="sm" className="rounded-lg">Monthly</Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className={cn("rounded-lg", timeRange === 'daily' && "bg-accent text-accent-foreground shadow-sm")}
+            onClick={() => setTimeRange('daily')}
+          >
+            Daily
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className={cn("rounded-lg", timeRange === 'weekly' && "bg-accent text-accent-foreground shadow-sm")}
+            onClick={() => setTimeRange('weekly')}
+          >
+            Weekly
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className={cn("rounded-lg", timeRange === 'monthly' && "bg-accent text-accent-foreground shadow-sm")}
+            onClick={() => setTimeRange('monthly')}
+          >
+            Monthly
+          </Button>
         </div>
       </div>
 
@@ -295,7 +316,7 @@ export default function DashboardPage() {
               <div className="text-3xl font-bold tracking-tight">₹{stats.totalRevenue.toLocaleString()}</div>
               <div className="flex items-center mt-2 text-xs font-medium text-accent">
                 <ArrowUpRight className="mr-1 h-3 w-3" />
-                <span>12.5% from last period</span>
+                <span>{stats.revenueGrowth}% from last period</span>
               </div>
             </CardContent>
           </Card>
@@ -310,13 +331,13 @@ export default function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold tracking-tight">{stats.totalOrders}</div>
+              <div className="text-3xl font-bold tracking-tight">{stats.activeOrders}</div>
               <div className="mt-3">
                 <div className="flex items-center justify-between text-[10px] uppercase font-bold text-muted-foreground mb-1">
                   <span>Capacity</span>
-                  <span>78%</span>
+                  <span>{Math.min(100, Math.round((stats.activeOrders / 50) * 100))}%</span>
                 </div>
-                <Progress value={78} className="h-1.5 bg-muted" indicatorClassName="bg-accent" />
+                <Progress value={Math.min(100, (stats.activeOrders / 50) * 100)} className="h-1.5 bg-muted" indicatorClassName="bg-accent" />
               </div>
             </CardContent>
           </Card>
