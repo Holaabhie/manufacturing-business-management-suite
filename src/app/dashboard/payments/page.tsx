@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { 
   CreditCard, 
   Search, 
-  DollarSign, 
+  IndianRupee, 
   TrendingUp, 
   Clock, 
   CheckCircle2 
