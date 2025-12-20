@@ -25,6 +25,7 @@ import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
