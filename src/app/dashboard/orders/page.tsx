@@ -92,58 +92,104 @@ export default function OrdersPage() {
     };
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const total_amount = formData.quantity * formData.rate;
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    // 1. Create Order
-    const { data: newOrder, error: orderError } = await supabase
-      .from('orders')
-      .insert([{
-        ...formData,
-        total_amount,
-        user_id: user?.id
-      }])
-      .select()
-      .single();
-
-    if (orderError) {
-      toast.error("Failed to create order");
-      return;
-    }
-
-    // 2. Deduct inventory if specified
-    if (formData.inventory_item_id && formData.inventory_consumed > 0) {
-      const selectedItem = inventory.find(i => i.id === formData.inventory_item_id);
-      if (selectedItem) {
-        const newQuantity = selectedItem.quantity - formData.inventory_consumed;
-        const { error: invError } = await supabase
-          .from('inventory')
-          .update({ quantity: newQuantity })
-          .eq('id', formData.inventory_item_id);
+    const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      const total_amount = formData.quantity * formData.rate;
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (currentOrder) {
+        // Update
+        const { error } = await supabase
+          .from('orders')
+          .update({
+            ...formData,
+            total_amount
+          })
+          .eq('id', currentOrder.id);
         
-        if (invError) toast.error("Inventory deduction failed, but order was created.");
-        else toast.success("Order created and inventory updated");
-      }
-    } else {
-      toast.success("Order created");
-    }
+        if (error) toast.error("Failed to update order");
+        else {
+          toast.success("Order updated");
+          fetchData();
+          setIsDialogOpen(false);
+          resetForm();
+        }
+      } else {
+        // Create
+        const { data: newOrder, error: orderError } = await supabase
+          .from('orders')
+          .insert([{
+            ...formData,
+            total_amount,
+            user_id: user?.id
+          }])
+          .select()
+          .single();
 
-    fetchData();
-    setIsDialogOpen(false);
-    setFormData({
-      client_id: "",
-      product_name: "",
-      quantity: 0,
-      rate: 0,
-      delivery_date: "",
-      inventory_item_id: "",
-      inventory_consumed: 0,
-      status: "pending",
-      payment_status: "pending"
-    });
-  };
+        if (orderError) {
+          toast.error("Failed to create order");
+          return;
+        }
+
+        // Deduct inventory if specified
+        if (formData.inventory_item_id && formData.inventory_consumed > 0) {
+          const selectedItem = inventory.find(i => i.id === formData.inventory_item_id);
+          if (selectedItem) {
+            const newQuantity = selectedItem.quantity - formData.inventory_consumed;
+            await supabase
+              .from('inventory')
+              .update({ quantity: newQuantity })
+              .eq('id', formData.inventory_item_id);
+          }
+        }
+        toast.success("Order created");
+        fetchData();
+        setIsDialogOpen(false);
+        resetForm();
+      }
+    };
+
+    const resetForm = () => {
+      setFormData({
+        client_id: "",
+        product_name: "",
+        quantity: 0,
+        rate: 0,
+        delivery_date: "",
+        inventory_item_id: "",
+        inventory_consumed: 0,
+        status: "pending",
+        payment_status: "pending"
+      });
+      setCurrentOrder(null);
+    };
+
+    const openEditDialog = (order: any) => {
+      setCurrentOrder(order);
+      setFormData({
+        client_id: order.client_id,
+        product_name: order.product_name,
+        quantity: order.quantity,
+        rate: order.rate,
+        delivery_date: order.delivery_date || "",
+        inventory_item_id: "", 
+        inventory_consumed: 0,
+        status: order.status,
+        payment_status: order.payment_status
+      });
+      setIsDialogOpen(true);
+    };
+
+    const handleDelete = async (id: string) => {
+      if (confirm("Delete this order?")) {
+        const { error } = await supabase.from('orders').delete().eq('id', id);
+        if (error) toast.error("Delete failed");
+        else {
+          toast.success("Order deleted");
+          fetchData();
+        }
+      }
+    };
 
   const generateInvoice = (order: any) => {
     const doc = new jsPDF();
