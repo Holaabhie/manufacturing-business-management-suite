@@ -57,7 +57,19 @@ export default function OrdersPage() {
   const [inventory, setInventory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-    const [currentOrder, setCurrentOrder] = useState<any>(null);
+  const [currentOrder, setCurrentOrder] = useState<any>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    client_id: "",
+    product_name: "",
+    quantity: 0,
+    rate: 0,
+    delivery_date: "",
+    inventory_item_id: "",
+    inventory_consumed: 0,
+    status: "pending",
+    payment_status: "pending"
+  });
 
     const fetchData = async () => {
     setLoading(true);
