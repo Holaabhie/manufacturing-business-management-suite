@@ -375,34 +375,37 @@ export default function DashboardPage() {
               <IndianRupee size={80} />
             </div>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium opacity-80">Total Revenue</CardTitle>
+              <CardTitle className="text-sm font-medium opacity-80">Collected Revenue</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold tracking-tight">₹{stats.totalRevenue.toLocaleString()}</div>
+              <div className="text-3xl font-bold tracking-tight">₹{stats.totalCollected.toLocaleString()}</div>
               <div className="flex items-center mt-2 text-xs font-medium text-accent">
-                {stats.revenueGrowth >= 0 ? <ArrowUpRight className="mr-1 h-3 w-3" /> : <ArrowDownRight className="mr-1 h-3 w-3" />}
-                <span>{Math.abs(stats.revenueGrowth)}% from last period</span>
+                <span>Total from {stats.totalRevenue.toLocaleString()} billed</span>
               </div>
             </CardContent>
           </Card>
         </motion.div>
 
         <motion.div variants={item}>
-          <Card className="group hover:shadow-xl hover:shadow-accent/5 transition-all duration-300 border-border bg-card">
+          <Card className="group hover:shadow-xl hover:shadow-amber-500/5 transition-all duration-300 border-amber-200 bg-amber-50/50 dark:bg-amber-950/10">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Active Orders</CardTitle>
-              <div className="p-2 bg-accent/10 rounded-lg group-hover:bg-accent/20 transition-colors">
-                <ShoppingCart className="h-4 w-4 text-accent" />
+              <CardTitle className="text-sm font-medium text-amber-600">Pending Arrears</CardTitle>
+              <div className="p-2 bg-amber-100 rounded-lg">
+                <Clock className="h-4 w-4 text-amber-600" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold tracking-tight">{stats.activeOrders}</div>
+              <div className="text-3xl font-bold tracking-tight text-amber-700">₹{stats.totalOutstanding.toLocaleString()}</div>
               <div className="mt-3">
-                <div className="flex items-center justify-between text-[10px] uppercase font-bold text-muted-foreground mb-1">
-                  <span>Capacity</span>
-                  <span>{Math.min(100, Math.round((stats.activeOrders / 50) * 100))}%</span>
+                <div className="flex items-center justify-between text-[10px] uppercase font-bold text-amber-600 mb-1">
+                  <span>Recovery Efficiency</span>
+                  <span>{stats.totalRevenue > 0 ? Math.round((stats.totalCollected / stats.totalRevenue) * 100) : 100}%</span>
                 </div>
-                <Progress value={Math.min(100, (stats.activeOrders / 50) * 100)} className="h-1.5 bg-muted" indicatorClassName="bg-accent" />
+                <Progress 
+                  value={stats.totalRevenue > 0 ? (stats.totalCollected / stats.totalRevenue) * 100 : 100} 
+                  className="h-1.5 bg-amber-100" 
+                  indicatorClassName="bg-amber-500" 
+                />
               </div>
             </CardContent>
           </Card>
@@ -411,19 +414,17 @@ export default function DashboardPage() {
         <motion.div variants={item}>
           <Card className="group hover:shadow-xl transition-all duration-300 border-border bg-card">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Clients</CardTitle>
-              <div className="p-2 bg-chart-1/10 rounded-lg group-hover:bg-chart-1/20 transition-colors">
-                <Users className="h-4 w-4 text-chart-1" />
+              <CardTitle className="text-sm font-medium text-muted-foreground">Active Orders</CardTitle>
+              <div className="p-2 bg-accent/10 rounded-lg group-hover:bg-accent/20 transition-colors">
+                <ShoppingCart className="h-4 w-4 text-accent" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold tracking-tight">{stats.totalClients}</div>
+              <div className="text-3xl font-bold tracking-tight">{stats.activeOrders}</div>
               <div className="flex items-center mt-2 text-xs text-muted-foreground">
                 <span className="flex items-center text-chart-2 font-medium">
-                  <ArrowUpRight className="mr-1 h-3 w-3" />
-                  +{stats.newClientsThisWeek} new
+                  Currently in production
                 </span>
-                <span className="ml-1">this week</span>
               </div>
             </CardContent>
           </Card>
