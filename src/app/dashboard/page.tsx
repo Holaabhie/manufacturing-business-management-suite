@@ -164,7 +164,7 @@ export default function DashboardPage() {
         .eq('user_id', user.id);
       
       const lowStockItems = inventoryData?.filter(item => Number(item.quantity) <= Number(item.min_stock_level)) || [];
-      const totalStockValue = inventoryData?.reduce((acc, item) => acc + (Number(item.quantity) * Number(item.rate_per_unit || 0)), 0) || 0;
+      const totalStockValue = inventoryData?.reduce((acc, item) => acc + (Number(item.quantity) * Number(item.purchase_cost_per_unit || 0)), 0) || 0;
 
       // 6. Fetch Recent Orders
       const { data: recent } = await supabase
