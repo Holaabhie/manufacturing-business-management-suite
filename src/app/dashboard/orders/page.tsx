@@ -287,11 +287,15 @@ export default function OrdersPage() {
                   <SelectTrigger>
                     <SelectValue placeholder="Select a client" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {clients.map(c => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
+                    <SelectContent>
+                      {clients.length === 0 ? (
+                        <div className="p-2 text-sm text-zinc-500 text-center">No clients found. Please add a client first.</div>
+                      ) : (
+                        clients.map(c => (
+                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
                 </Select>
               </div>
               <div className="col-span-2 space-y-2">
