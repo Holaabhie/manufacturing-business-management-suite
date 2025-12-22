@@ -282,38 +282,44 @@ export default function InventoryPage() {
       </div>
 
       {/* Stats Board */}
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card className="bg-primary text-primary-foreground border-none shadow-xl">
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="bg-primary text-primary-foreground border-none shadow-xl overflow-hidden relative">
+          <div className="absolute -right-4 -top-4 opacity-10">
+            <TrendingUp size={120} />
+          </div>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium opacity-80 uppercase tracking-widest">Total Valuation (Landing)</CardTitle>
+            <CardTitle className="text-xs font-semibold opacity-90 uppercase tracking-widest">Total Valuation (Landing)</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold flex items-baseline gap-2">
-              <IndianRupee className="h-6 w-6" /> {totalPurchasingCost.toLocaleString()}
+            <div className="text-2xl sm:text-3xl font-bold flex items-center gap-1">
+              <span className="text-xl opacity-80">₹</span>
+              {formatCurrency(totalPurchasingCost)}
             </div>
-            <p className="text-xs mt-2 opacity-70">Calculated across {items.length} items</p>
+            <p className="text-[10px] mt-2 opacity-70 font-medium">Value of {items.length} items in stock</p>
           </CardContent>
         </Card>
         
-        <Card className="bg-white dark:bg-zinc-900 border shadow-md">
+        <Card className="bg-white dark:bg-zinc-900 border shadow-sm relative overflow-hidden">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-zinc-500 uppercase tracking-widest">Total Items</CardTitle>
+            <CardTitle className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Total Materials</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold flex items-baseline gap-2 text-zinc-900 dark:text-zinc-100">
-              <Box className="h-6 w-6 text-primary" /> {items.length}
+            <div className="text-2xl sm:text-3xl font-bold flex items-center gap-2 text-zinc-900 dark:text-zinc-100">
+              <Box className="h-6 w-6 text-primary/40" /> {items.length}
             </div>
+            <p className="text-[10px] mt-2 text-zinc-400 font-medium">Distinct categories</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-zinc-900 border shadow-md">
+        <Card className="bg-white dark:bg-zinc-900 border shadow-sm relative overflow-hidden">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-zinc-500 uppercase tracking-widest">Low Stock Items</CardTitle>
+            <CardTitle className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Critical Stock</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold flex items-baseline gap-2 text-red-600">
-              <AlertCircle className="h-6 w-6" /> {items.filter(i => i.quantity <= i.min_stock_level).length}
+            <div className="text-2xl sm:text-3xl font-bold flex items-center gap-2 text-red-600">
+              <AlertCircle className="h-6 w-6 opacity-40" /> {items.filter(i => i.quantity <= i.min_stock_level).length}
             </div>
+            <p className="text-[10px] mt-2 text-zinc-400 font-medium">Items below alert level</p>
           </CardContent>
         </Card>
       </div>
