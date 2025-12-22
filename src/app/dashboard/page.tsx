@@ -50,6 +50,8 @@ export default function DashboardPage() {
     newClientsThisWeek: 0,
     activeOrders: 0,
     totalRevenue: 0,
+    totalCollected: 0,
+    totalOutstanding: 0,
     lowStockItems: 0,
     totalStockValue: 0,
     revenueGrowth: 0,
