@@ -555,29 +555,42 @@ export default function PaymentsPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div className="text-zinc-500">Total Billed</div>
+                    <div className="text-zinc-500">Orders Billed</div>
                     <div className="text-right font-bold">₹{summary.billed.toLocaleString()}</div>
-                    <div className="text-zinc-500">Total Paid</div>
+                    <div className="text-zinc-500">Payments Recv.</div>
                     <div className="text-right font-bold text-emerald-600">₹{summary.received.toLocaleString()}</div>
                   </div>
                   <div className="pt-3 border-t flex items-center justify-between">
-                    <span className="text-xs font-black uppercase text-zinc-400">Outstanding</span>
-                    <span className={cn(
-                      "font-black text-lg",
-                      summary.outstanding > 0 ? "text-amber-600" : "text-emerald-600"
-                    )}>
-                      ₹{summary.outstanding.toLocaleString()}
-                    </span>
+                    <div>
+                      <span className="text-[10px] font-black uppercase text-zinc-400 block">Balance Status</span>
+                      <span className={cn(
+                        "font-black text-sm px-2 py-0.5 rounded-full",
+                        summary.outstanding > 0 ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+                      )}>
+                        {summary.outstanding > 0 ? 'Due' : 'Settled'}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] font-black uppercase text-zinc-400 block">Outstanding</span>
+                      <span className={cn(
+                        "font-black text-lg",
+                        summary.outstanding > 0 ? "text-amber-600" : "text-emerald-600"
+                      )}>
+                        ₹{summary.outstanding.toLocaleString()}
+                      </span>
+                    </div>
                   </div>
-                  <Button 
-                    className="w-full h-9 bg-zinc-50 dark:bg-zinc-900 border text-zinc-900 dark:text-zinc-100 font-bold text-xs"
-                    onClick={() => {
-                      setFormData({...formData, client_id: summary.id, order_id: ""});
-                      setIsDialogOpen(true);
-                    }}
-                  >
-                    Post General Payment
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button 
+                      className="flex-1 h-9 bg-zinc-50 dark:bg-zinc-900 border text-zinc-900 dark:text-zinc-100 font-bold text-xs"
+                      onClick={() => {
+                        setFormData({...formData, client_id: summary.id, order_id: ""});
+                        setIsDialogOpen(true);
+                      }}
+                    >
+                      Record Payment
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
