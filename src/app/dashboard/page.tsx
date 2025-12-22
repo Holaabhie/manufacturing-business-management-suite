@@ -144,11 +144,20 @@ export default function DashboardPage() {
         ? (currentPeriodRevenue > 0 ? 100 : 0) 
         : Math.round(((currentPeriodRevenue - previousPeriodRevenue) / previousPeriodRevenue) * 100);
 
-      // 3. Process Revenue Data for Chart
+      // 3. Fetch Payments for Stats
+      const { data: allPayments } = await supabase
+        .from('payments')
+        .select('amount')
+        .eq('user_id', user.id);
+
+      const totalCollected = allPayments?.reduce((acc, p) => acc + Number(p.amount), 0) || 0;
+      const totalOutstanding = totalRevenue - totalCollected;
+
+      // 4. Process Revenue Data for Chart
       const chartData = processRevenueData(allOrders || [], timeRange);
       setRevenueData(chartData);
 
-      // 4. Fetch Inventory
+      // 5. Fetch Inventory
       const { data: inventoryData } = await supabase
         .from('inventory')
         .select('*')
@@ -157,7 +166,7 @@ export default function DashboardPage() {
       const lowStockItems = inventoryData?.filter(item => Number(item.quantity) <= Number(item.min_stock_level)) || [];
       const totalStockValue = inventoryData?.reduce((acc, item) => acc + (Number(item.quantity) * Number(item.rate_per_unit || 0)), 0) || 0;
 
-      // 5. Fetch Recent Orders
+      // 6. Fetch Recent Orders
       const { data: recent } = await supabase
         .from('orders')
         .select('*, clients(name)')
@@ -165,7 +174,7 @@ export default function DashboardPage() {
         .order('created_at', { ascending: false })
         .limit(6);
 
-      // 6. Fetch Recent Activity
+      // 7. Fetch Recent Activity
       const activity = await fetchActivityFeed(user.id);
       setRecentActivity(activity);
 
@@ -174,6 +183,8 @@ export default function DashboardPage() {
         newClientsThisWeek,
         activeOrders,
         totalRevenue,
+        totalCollected,
+        totalOutstanding,
         lowStockItems: lowStockItems.length,
         totalStockValue,
         revenueGrowth,
