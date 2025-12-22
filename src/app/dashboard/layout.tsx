@@ -238,11 +238,9 @@ export default function DashboardLayout({
           </div>
 
             <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
-                <Bell className="h-5 w-5" />
-                <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-chart-3 rounded-full border-2 border-background" />
-              </Button>
+              <NotificationDropdown />
               <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground md:hidden" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+
                 {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </Button>
               {user && (
