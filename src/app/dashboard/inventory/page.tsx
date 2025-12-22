@@ -94,6 +94,12 @@ export default function InventoryPage() {
     acc + (Number(item.quantity) * Number(item.purchase_cost_per_unit || 0)), 0
   );
 
+  const formatCurrency = (amount: number) => {
+    return amount.toLocaleString('en-IN', {
+      maximumFractionDigits: 0,
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.supplier_whatsapp) {
