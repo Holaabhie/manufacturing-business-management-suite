@@ -380,7 +380,7 @@ export default function InventoryPage() {
                     </div>
                   </TableCell>
                   <TableCell className="py-4">
-                    <span className="font-semibold text-zinc-700 dark:text-zinc-300">₹{Number(item.purchase_cost_per_unit || 0).toLocaleString()}</span>
+                    <span className="font-semibold text-zinc-700 dark:text-zinc-300">₹{Number(item.purchase_cost_per_unit || 0).toLocaleString('en-IN')}</span>
                   </TableCell>
                   <TableCell className="py-4">
                     {isLowStock ? (
