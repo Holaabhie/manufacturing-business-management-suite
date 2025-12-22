@@ -14,7 +14,6 @@ import {
   IndianRupee,
   ShoppingBag,
   ExternalLink,
-  trendingUp,
   Box,
   TrendingUp
 } from "lucide-react";
