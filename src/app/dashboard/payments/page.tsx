@@ -187,8 +187,6 @@ export default function PaymentsPage() {
   };
 
   const handleDeletePayment = async (paymentId: string) => {
-    if (!confirm("Are you sure you want to delete this payment record?")) return;
-
     const paymentToDelete = payments.find(p => p.id === paymentId);
     if (!paymentToDelete) return;
 
@@ -221,6 +219,8 @@ export default function PaymentsPage() {
     }
 
     toast.success("Payment deleted");
+    setIsDeleteDialogOpen(false);
+    setPaymentToDeleteId(null);
     fetchData();
   };
 
