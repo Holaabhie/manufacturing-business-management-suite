@@ -184,6 +184,44 @@ export default function PaymentsPage() {
     fetchData();
   };
 
+  const handleDeletePayment = async (paymentId: string) => {
+    if (!confirm("Are you sure you want to delete this payment record?")) return;
+
+    const paymentToDelete = payments.find(p => p.id === paymentId);
+    if (!paymentToDelete) return;
+
+    const { error } = await supabase
+      .from('payments')
+      .delete()
+      .eq('id', paymentId);
+
+    if (error) {
+      return toast.error("Failed to delete payment");
+    }
+
+    // Update order status if it was linked to an order
+    if (paymentToDelete.order_id) {
+      const selectedOrder = orders.find(o => o.id === paymentToDelete.order_id);
+      if (selectedOrder) {
+        const remainingPayments = payments
+          .filter(p => p.order_id === paymentToDelete.order_id && p.id !== paymentId)
+          .reduce((acc, p) => acc + Number(p.amount), 0);
+        
+        let newStatus = 'pending';
+        if (remainingPayments >= Number(selectedOrder.total_amount) - 0.01) newStatus = 'paid';
+        else if (remainingPayments > 0) newStatus = 'partial';
+
+        await supabase
+          .from('orders')
+          .update({ payment_status: newStatus })
+          .eq('id', paymentToDelete.order_id);
+      }
+    }
+
+    toast.success("Payment deleted");
+    fetchData();
+  };
+
   const getClientOrders = (clientId: string) => {
     return orders.filter(o => o.client_id === clientId && o.payment_status !== 'paid');
   };
