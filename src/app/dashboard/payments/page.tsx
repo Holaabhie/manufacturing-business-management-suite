@@ -626,8 +626,16 @@ export default function PaymentsPage() {
                         <span className="text-[10px] text-zinc-400 truncate max-w-[150px] italic">{p.remarks}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right flex items-center justify-end gap-2">
                       <span className="font-black text-emerald-600">₹{Number(p.amount).toLocaleString()}</span>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 w-8 p-0 text-zinc-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => handleDeletePayment(p.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
