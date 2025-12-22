@@ -649,7 +649,10 @@ export default function PaymentsPage() {
                         variant="ghost" 
                         size="sm" 
                         className="h-8 w-8 p-0 text-zinc-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => handleDeletePayment(p.id)}
+                        onClick={() => {
+                          setPaymentToDeleteId(p.id);
+                          setIsDeleteDialogOpen(true);
+                        }}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
