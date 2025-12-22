@@ -132,6 +132,21 @@ export default function OrdersPage() {
     setCurrentOrder(null);
   };
 
+  const openEditDialog = (order: any) => {
+    setCurrentOrder(order);
+    setFormData({
+      client_id: order.client_id,
+      product_name: order.product_name,
+      quantity: order.quantity,
+      rate: order.rate,
+      delivery_date: order.delivery_date ? new Date(order.delivery_date).toISOString().split('T')[0] : "",
+      status: order.status,
+      payment_status: order.payment_status,
+      order_items: [] 
+    });
+    setIsDialogOpen(true);
+  };
+
   const handleClientChange = (clientId: string) => {
     setFormData({ ...formData, client_id: clientId, product_name: "", rate: 0 });
     fetchClientMaterials(clientId);
