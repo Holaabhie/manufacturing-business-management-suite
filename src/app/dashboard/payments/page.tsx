@@ -565,18 +565,20 @@ export default function PaymentsPage() {
                       <span className="text-[10px] font-black uppercase text-zinc-400 block">Balance Status</span>
                       <span className={cn(
                         "font-black text-sm px-2 py-0.5 rounded-full",
-                        summary.outstanding > 0 ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+                        summary.outstanding > 0 ? "bg-amber-100 text-amber-700" : (summary.outstanding < 0 ? "bg-emerald-100 text-emerald-700" : "bg-zinc-100 text-zinc-700")
                       )}>
-                        {summary.outstanding > 0 ? 'Due' : 'Settled'}
+                        {summary.outstanding > 0 ? 'Due' : (summary.outstanding < 0 ? 'Advance' : 'Settled')}
                       </span>
                     </div>
                     <div className="text-right">
-                      <span className="text-[10px] font-black uppercase text-zinc-400 block">Outstanding</span>
+                      <span className="text-[10px] font-black uppercase text-zinc-400 block">
+                        {summary.outstanding >= 0 ? 'Outstanding' : 'Credit Balance'}
+                      </span>
                       <span className={cn(
                         "font-black text-lg",
-                        summary.outstanding > 0 ? "text-amber-600" : "text-emerald-600"
+                        summary.outstanding > 0 ? "text-amber-600" : (summary.outstanding < 0 ? "text-emerald-600" : "text-zinc-600")
                       )}>
-                        ₹{summary.outstanding.toLocaleString()}
+                        ₹{Math.abs(summary.outstanding).toLocaleString()}
                       </span>
                     </div>
                   </div>
