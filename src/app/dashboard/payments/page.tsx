@@ -116,8 +116,10 @@ export default function PaymentsPage() {
     const { data: { user } } = await supabase.auth.getUser();
 
     // Validation for order-specific payment
-    if (formData.order_id) {
+    if (formData.order_id && formData.order_id !== "none") {
       const selectedOrder = orders.find(o => o.id === formData.order_id);
+      if (!selectedOrder) return toast.error("Selected order not found");
+      
       const paidForOrder = payments
         .filter(p => p.order_id === formData.order_id)
         .reduce((acc, p) => acc + Number(p.amount), 0);
@@ -132,7 +134,7 @@ export default function PaymentsPage() {
       .from('payments')
       .insert([{
         client_id: formData.client_id,
-        order_id: formData.order_id || null,
+        order_id: formData.order_id && formData.order_id !== "none" ? formData.order_id : null,
         amount: amountNum,
         payment_method: formData.payment_method,
         payment_date: formData.payment_date,
@@ -149,20 +151,22 @@ export default function PaymentsPage() {
     }
 
     // Update order status if order_id was provided
-    if (formData.order_id) {
+    if (formData.order_id && formData.order_id !== "none") {
       const selectedOrder = orders.find(o => o.id === formData.order_id);
-      const updatedTotalPaid = payments
-        .filter(p => p.order_id === formData.order_id)
-        .reduce((acc, p) => acc + Number(p.amount), 0) + amountNum;
-      
-      let newStatus = 'pending';
-      if (updatedTotalPaid >= Number(selectedOrder.total_amount)) newStatus = 'paid';
-      else if (updatedTotalPaid > 0) newStatus = 'partial';
+      if (selectedOrder) {
+        const updatedTotalPaid = payments
+          .filter(p => p.order_id === formData.order_id)
+          .reduce((acc, p) => acc + Number(p.amount), 0) + amountNum;
+        
+        let newStatus = 'pending';
+        if (updatedTotalPaid >= Number(selectedOrder.total_amount) - 0.01) newStatus = 'paid';
+        else if (updatedTotalPaid > 0) newStatus = 'partial';
 
-      await supabase
-        .from('orders')
-        .update({ payment_status: newStatus })
-        .eq('id', formData.order_id);
+        await supabase
+          .from('orders')
+          .update({ payment_status: newStatus })
+          .eq('id', formData.order_id);
+      }
     }
 
     toast.success("Payment recorded successfully");
