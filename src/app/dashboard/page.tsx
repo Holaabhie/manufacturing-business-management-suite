@@ -532,7 +532,7 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground font-medium">Inventory Value</p>
-                    <p className="text-xl font-bold">₹{stats.totalStockValue.toLocaleString()}</p>
+                    <p className="text-xl font-bold">₹{stats.totalStockValue.toLocaleString('en-IN')}</p>
                   </div>
                 </div>
                 <div className="h-12 w-24">
