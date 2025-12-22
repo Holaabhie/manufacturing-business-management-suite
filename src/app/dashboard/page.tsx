@@ -248,16 +248,18 @@ export default function DashboardPage() {
   };
 
   const fetchActivityFeed = async (userId: string) => {
-    const [orders, inventory, clients] = await Promise.all([
+    const [orders, inventory, clients, payments] = await Promise.all([
       supabase.from('orders').select('product_name, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(3),
       supabase.from('inventory').select('name, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(3),
       supabase.from('clients').select('name, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(3),
+      supabase.from('payments').select('amount, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(3),
     ]);
 
     const feed: any[] = [
       ...(orders.data?.map(o => ({ title: `New order: ${o.product_name}`, time: o.created_at, type: 'order', color: 'bg-accent' })) || []),
       ...(inventory.data?.map(i => ({ title: `Stock added: ${i.name}`, time: i.created_at, type: 'stock', color: 'bg-chart-3' })) || []),
       ...(clients.data?.map(c => ({ title: `New client: ${c.name}`, time: c.created_at, type: 'client', color: 'bg-primary' })) || []),
+      ...(payments.data?.map(p => ({ title: `Payment received: ₹${p.amount}`, time: p.created_at, type: 'payment', color: 'bg-emerald-500' })) || []),
     ];
 
     return feed.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()).slice(0, 5);
