@@ -117,6 +117,13 @@ export default function OrdersPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate numbers
+    if (isNaN(formData.quantity) || isNaN(formData.rate)) {
+      toast.error("Quantity and Rate must be valid numbers");
+      return;
+    }
+
     const total_amount = formData.quantity * formData.rate;
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -125,7 +132,7 @@ export default function OrdersPage() {
       return;
     }
 
-    if (!formData.client_id) {
+    if (!formData.client_id || formData.client_id === "") {
       toast.error("Please select a client");
       return;
     }
@@ -135,60 +142,56 @@ export default function OrdersPage() {
       product_name: formData.product_name,
       quantity: formData.quantity,
       rate: formData.rate,
-      delivery_date: formData.delivery_date || null,
+      delivery_date: formData.delivery_date === "" ? null : formData.delivery_date,
       status: formData.status,
       payment_status: formData.payment_status,
       total_amount,
       user_id: user.id
     };
     
-    if (currentOrder) {
-      const { error } = await supabase
-        .from('orders')
-        .update(orderData)
-        .eq('id', currentOrder.id);
-      
-      if (error) {
-        console.error("Update error:", error);
-        toast.error(`Update failed: ${error.message}`);
-      } else {
+    try {
+      if (currentOrder) {
+        const { error } = await supabase
+          .from('orders')
+          .update(orderData)
+          .eq('id', currentOrder.id);
+        
+        if (error) throw error;
+        
         toast.success("Order updated");
         fetchData();
         setIsDialogOpen(false);
         resetForm();
-      }
-    } else {
-      const { data: newOrder, error: orderError } = await supabase
-        .from('orders')
-        .insert([orderData])
-        .select()
-        .single();
-  
-      if (orderError) {
-        console.error("Insert error:", orderError);
-        toast.error(`Create failed: ${orderError.message}`);
-        return;
-      }
+      } else {
+        const { error: orderError } = await supabase
+          .from('orders')
+          .insert([orderData]);
+    
+        if (orderError) throw orderError;
 
-      if (formData.inventory_item_id && formData.inventory_consumed > 0) {
-        const selectedItem = inventory.find(i => i.id === formData.inventory_item_id);
-        if (selectedItem) {
-          const newQuantity = selectedItem.quantity - formData.inventory_consumed;
-          const { error: invError } = await supabase
-            .from('inventory')
-            .update({ quantity: newQuantity })
-            .eq('id', formData.inventory_item_id);
-          
-          if (invError) {
-            console.error("Inventory update error:", invError);
-            toast.error("Order created, but inventory update failed");
+        if (formData.inventory_item_id && formData.inventory_consumed > 0) {
+          const selectedItem = inventory.find(i => i.id === formData.inventory_item_id);
+          if (selectedItem) {
+            const newQuantity = selectedItem.quantity - formData.inventory_consumed;
+            const { error: invError } = await supabase
+              .from('inventory')
+              .update({ quantity: newQuantity })
+              .eq('id', formData.inventory_item_id);
+            
+            if (invError) {
+              console.error("Inventory update error:", invError);
+              toast.error("Order created, but inventory update failed");
+            }
           }
         }
+        toast.success("Order created");
+        fetchData();
+        setIsDialogOpen(false);
+        resetForm();
       }
-      toast.success("Order created");
-      fetchData();
-      setIsDialogOpen(false);
-      resetForm();
+    } catch (error: any) {
+      console.error("Supabase error:", error);
+      toast.error(`Operation failed: ${error.message || "Unknown error"}`);
     }
   };
 
