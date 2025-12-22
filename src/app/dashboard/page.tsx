@@ -282,12 +282,13 @@ export default function DashboardPage() {
     fetchDashboardData();
 
     // Set up Real-time subscriptions
-    const channel = supabase
-      .channel('dashboard-all-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => fetchDashboardData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchDashboardData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, () => fetchDashboardData())
-      .subscribe();
+      const channel = supabase
+        .channel('dashboard-all-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => fetchDashboardData())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchDashboardData())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, () => fetchDashboardData())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () => fetchDashboardData())
+        .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
