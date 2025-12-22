@@ -24,6 +24,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { NotificationDropdown } from "@/components/NotificationDropdown";
 
 import {
   DropdownMenu,
