@@ -264,14 +264,14 @@ export default function OrdersPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Delete this order record? This will NOT restore inventory automatically.")) {
-      const { error } = await supabase.from('orders').delete().eq('id', id);
-      if (error) toast.error("Delete failed");
-      else {
-        toast.success("Order deleted");
-        fetchData();
-      }
+    const { error } = await supabase.from('orders').delete().eq('id', id);
+    if (error) toast.error("Delete failed");
+    else {
+      toast.success("Order deleted");
+      fetchData();
     }
+    setIsDeleteDialogOpenConfirm(false);
+    setOrderToDeleteId(null);
   };
 
   const generateInvoice = (order: any) => {
