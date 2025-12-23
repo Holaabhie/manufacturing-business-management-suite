@@ -36,7 +36,8 @@ import {
   DialogHeader, 
   DialogTitle, 
   DialogTrigger,
-  DialogFooter
+  DialogFooter,
+  DialogDescription
 } from "@/components/ui/dialog";
 import { 
   DropdownMenu, 
@@ -66,7 +67,9 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentOrder, setCurrentOrder] = useState<any>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isDeleteDialogOpenConfirm, setIsDeleteDialogOpenConfirm] = useState(false);
+    const [orderToDeleteId, setOrderToDeleteId] = useState<string | null>(null);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -270,6 +273,8 @@ export default function OrdersPage() {
       toast.success("Order deleted");
       fetchData();
     }
+    setIsDeleteDialogOpenConfirm(false);
+    setOrderToDeleteId(null);
   };
 
   const generateInvoice = (order: any) => {
@@ -527,6 +532,26 @@ export default function OrdersPage() {
       </div>
 
       <div className="rounded-2xl border bg-white dark:bg-zinc-950 shadow-md overflow-hidden">
+        <Dialog open={isDeleteDialogOpenConfirm} onOpenChange={setIsDeleteDialogOpenConfirm}>
+          <DialogContent className="max-w-[350px]">
+            <DialogHeader>
+              <DialogTitle>Delete Order</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete this order record? This will NOT restore inventory automatically.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex gap-2">
+              <Button variant="outline" onClick={() => setIsDeleteDialogOpenConfirm(false)} className="flex-1">Cancel</Button>
+              <Button 
+                variant="destructive" 
+                onClick={() => orderToDeleteId && handleDelete(orderToDeleteId)}
+                className="flex-1"
+              >
+                Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         <Table>
           <TableHeader className="bg-zinc-50 dark:bg-zinc-900">
             <TableRow>
@@ -599,7 +624,10 @@ export default function OrdersPage() {
                         <DropdownMenuItem onClick={() => openEditDialog(order)}>
                           <Edit2 className="mr-2 h-4 w-4" /> Change Progress
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-500" onClick={() => handleDelete(order.id)}>
+                        <DropdownMenuItem className="text-red-500" onClick={() => {
+                          setOrderToDeleteId(order.id);
+                          setIsDeleteDialogOpenConfirm(true);
+                        }}>
                           <Trash2 className="mr-2 h-4 w-4" /> Delete Order
                         </DropdownMenuItem>
                       </DropdownMenuContent>
