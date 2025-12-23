@@ -56,7 +56,9 @@ export default function ClientsPage() {
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+    const [isDeleteDialogOpenConfirm, setIsDeleteDialogOpenConfirm] = useState(false);
+    const [clientToDeleteId, setClientToDeleteId] = useState<string | null>(null);
+    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
   
   // Materials and Orders for selected client
@@ -165,21 +167,20 @@ export default function ClientsPage() {
     }
   };
 
-  const handleDeleteClient = async (id: string, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    if (confirm("Are you sure you want to delete this client? All their materials and order history will be affected.")) {
-      const { error } = await supabase
-        .from('clients')
-        .delete()
-        .eq('id', id);
-      
-      if (error) toast.error("Failed to delete client");
-      else {
-        toast.success("Client deleted");
-        if (selectedClient?.id === id) setSelectedClient(null);
-        fetchClients();
-      }
+  const handleDeleteClient = async (id: string) => {
+    const { error } = await supabase
+      .from('clients')
+      .delete()
+      .eq('id', id);
+    
+    if (error) toast.error("Failed to delete client");
+    else {
+      toast.success("Client deleted");
+      if (selectedClient?.id === id) setSelectedClient(null);
+      fetchClients();
     }
+    setIsDeleteDialogOpenConfirm(false);
+    setClientToDeleteId(null);
   };
 
   const handleSelectClient = (client: any) => {
@@ -240,6 +241,26 @@ export default function ClientsPage() {
         "flex-1 flex flex-col gap-4 min-w-0 transition-all duration-300",
         selectedClient ? "hidden lg:flex max-w-[400px]" : "w-full"
       )}>
+        <Dialog open={isDeleteDialogOpenConfirm} onOpenChange={setIsDeleteDialogOpenConfirm}>
+          <DialogContent className="max-w-[350px]">
+            <DialogHeader>
+              <DialogTitle>Delete Client</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete this client? All their materials and order history will be affected. This cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex gap-2">
+              <Button variant="outline" onClick={() => setIsDeleteDialogOpenConfirm(false)} className="flex-1">Cancel</Button>
+              <Button 
+                variant="destructive" 
+                onClick={() => clientToDeleteId && handleDeleteClient(clientToDeleteId)}
+                className="flex-1"
+              >
+                Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold tracking-tight">Clients</h1>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -342,9 +363,13 @@ export default function ClientsPage() {
                         <DropdownMenuItem onClick={() => handleSelectClient(client)}>
                           <Edit2 className="mr-2 h-4 w-4" /> View Details
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-500" onClick={(e) => handleDeleteClient(client.id, e)}>
-                          <Trash2 className="mr-2 h-4 w-4" /> Delete
-                        </DropdownMenuItem>
+                          <DropdownMenuItem className="text-red-500" onClick={(e) => {
+                            e.stopPropagation();
+                            setClientToDeleteId(client.id);
+                            setIsDeleteDialogOpenConfirm(true);
+                          }}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                          </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
