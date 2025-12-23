@@ -665,7 +665,7 @@ export default function PaymentsPage() {
         )}
       </div>
 
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <Dialog open={isDeleteDialogOpenConfirm} onOpenChange={setIsDeleteDialogOpenConfirm}>
         <DialogContent className="max-w-[350px]">
           <DialogHeader>
             <DialogTitle>Delete Payment</DialogTitle>
