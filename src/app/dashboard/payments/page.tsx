@@ -61,9 +61,8 @@ export default function PaymentsPage() {
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [paymentToDeleteId, setPaymentToDeleteId] = useState<string | null>(null);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [paymentToDeleteId, setPaymentToDeleteId] = useState<string | null>(null);
   const [viewType, setViewType] = useState<"receivables" | "history" | "clients">("receivables");
 
   // New Payment Form
