@@ -677,3 +677,13 @@ export default function PaymentsPage() {
             <Button 
               variant="destructive" 
               onClick={() => paymentToDeleteId && handleDeletePayment(paymentToDeleteId)}
+              className="flex-1"
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
