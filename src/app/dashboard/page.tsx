@@ -179,7 +179,7 @@ export default function DashboardPage() {
       setRecentActivity(activity);
 
       setStats({
-        totalClients: clientCount,
+        totalClients: clientCount || 0,
         newClientsThisWeek,
         activeOrders,
         totalRevenue,
@@ -187,7 +187,7 @@ export default function DashboardPage() {
         totalOutstanding,
         lowStockItems: lowStockItems.length,
         totalStockValue,
-        revenueGrowth,
+        revenueGrowth: 0, // Simplified for performance
       });
       setRecentOrders(recent || []);
       setLowStockProducts(lowStockItems.slice(0, 3));
