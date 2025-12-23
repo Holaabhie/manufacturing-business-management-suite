@@ -651,7 +651,7 @@ export default function PaymentsPage() {
                         className="h-8 w-8 p-0 text-zinc-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
                         onClick={() => {
                           setPaymentToDeleteId(p.id);
-                          setIsDeleteDialogOpenConfirm(true);
+                          setIsDeleteDialogOpen(true);
                         }}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -674,7 +674,7 @@ export default function PaymentsPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex gap-2">
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpenConfirm(false)} className="flex-1">Cancel</Button>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} className="flex-1">Cancel</Button>
             <Button 
               variant="destructive" 
               onClick={() => paymentToDeleteId && handleDeletePayment(paymentToDeleteId)}
