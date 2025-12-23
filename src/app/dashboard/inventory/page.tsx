@@ -412,23 +412,48 @@ export default function InventoryPage() {
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openEditDialog(item)}>
-                            <Edit2 className="mr-2 h-4 w-4" /> Edit Item
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(item.id)}>
-                            <Trash2 className="mr-2 h-4 w-4" /> Mark as Removed
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </div>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openEditDialog(item)}>
+                          <Edit2 className="mr-2 h-4 w-4" /> Edit Item
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="text-red-600" onClick={() => {
+                          setItemToDeleteId(item.id);
+                          setIsDeleteDialogOpenConfirm(true);
+                        }}>
+                          <Trash2 className="mr-2 h-4 w-4" /> Mark as Removed
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
     </div>
-  );
+
+    <Dialog open={isDeleteDialogOpenConfirm} onOpenChange={setIsDeleteDialogOpenConfirm}>
+      <DialogContent className="max-w-[350px]">
+        <DialogHeader>
+          <DialogTitle>Delete Material</DialogTitle>
+          <DialogDescription>
+            Are you sure you want to remove this item? This action cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="flex gap-2">
+          <Button variant="outline" onClick={() => setIsDeleteDialogOpenConfirm(false)} className="flex-1">Cancel</Button>
+          <Button 
+            variant="destructive" 
+            onClick={() => itemToDeleteId && handleDelete(itemToDeleteId)}
+            className="flex-1"
+          >
+            Delete
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  </div>
+);
 }
+
