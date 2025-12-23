@@ -50,7 +50,9 @@ export default function InventoryPage() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isDeleteDialogOpenConfirm, setIsDeleteDialogOpenConfirm] = useState(false);
+    const [itemToDeleteId, setItemToDeleteId] = useState<string | null>(null);
   const [currentItem, setCurrentItem] = useState<any>(null);
 
   const [formData, setFormData] = useState({
@@ -142,18 +144,18 @@ export default function InventoryPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this item?")) {
-      const { error } = await supabase
-        .from('inventory')
-        .delete()
-        .eq('id', id);
-      
-      if (error) toast.error("Failed to delete item");
-      else {
-        toast.success("Item deleted");
-        fetchInventory();
-      }
+    const { error } = await supabase
+      .from('inventory')
+      .delete()
+      .eq('id', id);
+    
+    if (error) toast.error("Failed to delete item");
+    else {
+      toast.success("Item deleted");
+      fetchInventory();
     }
+    setIsDeleteDialogOpenConfirm(false);
+    setItemToDeleteId(null);
   };
 
   const openEditDialog = (item: any) => {
@@ -414,9 +416,12 @@ export default function InventoryPage() {
                           <DropdownMenuItem onClick={() => openEditDialog(item)}>
                             <Edit2 className="mr-2 h-4 w-4" /> Edit Item
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(item.id)}>
-                            <Trash2 className="mr-2 h-4 w-4" /> Mark as Removed
-                          </DropdownMenuItem>
+                            <DropdownMenuItem className="text-red-600" onClick={() => {
+                              setItemToDeleteId(item.id);
+                              setIsDeleteDialogOpenConfirm(true);
+                            }}>
+                              <Trash2 className="mr-2 h-4 w-4" /> Mark as Removed
+                            </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
