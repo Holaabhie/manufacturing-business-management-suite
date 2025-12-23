@@ -68,118 +68,48 @@ export default function DashboardPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // 1. Fetch Clients
-      const { data: clientsData } = await supabase
-        .from('clients')
-        .select('created_at')
-        .eq('user_id', user.id);
-      
-      const clientCount = clientsData?.length || 0;
+      // Parallel fetch for main stats
+      const [clientsRes, ordersRes, paymentsRes, inventoryRes] = await Promise.all([
+        supabase.from('clients').select('created_at', { count: 'exact' }).eq('user_id', user.id),
+        supabase.from('orders').select('total_amount, status, created_at').eq('user_id', user.id),
+        supabase.from('payments').select('amount').eq('user_id', user.id),
+        supabase.from('inventory').select('quantity, min_stock_level, purchase_cost_per_unit, id, name, unit').eq('user_id', user.id)
+      ]);
+
+      const clientCount = clientsRes.count || 0;
+      const allOrders = ordersRes.data || [];
+      const allPayments = paymentsRes.data || [];
+      const inventoryData = inventoryRes.data || [];
+
+      // 1. Client Stats
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-      const newClientsThisWeek = clientsData?.filter(c => new Date(c.created_at) >= oneWeekAgo).length || 0;
+      const newClientsThisWeek = (clientsRes.data as any[])?.filter(c => new Date(c.created_at) >= oneWeekAgo).length || 0;
 
-      // 2. Fetch Orders for Stats and Chart
-      const { data: allOrders } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('user_id', user.id);
+      // 2. Order Stats
+      const activeOrders = allOrders.filter(o => o.status !== 'completed').length;
+      const totalRevenue = allOrders.reduce((acc, o) => acc + Number(o.total_amount), 0);
 
-      const activeOrders = allOrders?.filter(o => o.status !== 'completed').length || 0;
-      const totalRevenue = allOrders?.reduce((acc, o) => acc + Number(o.total_amount), 0) || 0;
-
-      // Calculate Revenue Growth
-      const now = new Date();
-      let currentPeriodRevenue = 0;
-      let previousPeriodRevenue = 0;
-
-      if (timeRange === 'daily') {
-        const periodStart = new Date(now);
-        periodStart.setDate(now.getDate() - 7);
-        const prevPeriodStart = new Date(periodStart);
-        prevPeriodStart.setDate(periodStart.getDate() - 7);
-
-        currentPeriodRevenue = allOrders?.filter(o => {
-          const d = new Date(o.created_at);
-          return d >= periodStart && d <= now;
-        }).reduce((acc, o) => acc + Number(o.total_amount), 0) || 0;
-
-        previousPeriodRevenue = allOrders?.filter(o => {
-          const d = new Date(o.created_at);
-          return d >= prevPeriodStart && d < periodStart;
-        }).reduce((acc, o) => acc + Number(o.total_amount), 0) || 0;
-      } else if (timeRange === 'weekly') {
-        const periodStart = new Date(now);
-        periodStart.setDate(now.getDate() - 28);
-        const prevPeriodStart = new Date(periodStart);
-        prevPeriodStart.setDate(periodStart.getDate() - 28);
-
-        currentPeriodRevenue = allOrders?.filter(o => {
-          const d = new Date(o.created_at);
-          return d >= periodStart && d <= now;
-        }).reduce((acc, o) => acc + Number(o.total_amount), 0) || 0;
-
-        previousPeriodRevenue = allOrders?.filter(o => {
-          const d = new Date(o.created_at);
-          return d >= prevPeriodStart && d < periodStart;
-        }).reduce((acc, o) => acc + Number(o.total_amount), 0) || 0;
-      } else {
-        const periodStart = new Date(now);
-        periodStart.setMonth(now.getMonth() - 6);
-        const prevPeriodStart = new Date(periodStart);
-        prevPeriodStart.setMonth(periodStart.getMonth() - 6);
-
-        currentPeriodRevenue = allOrders?.filter(o => {
-          const d = new Date(o.created_at);
-          return d >= periodStart && d <= now;
-        }).reduce((acc, o) => acc + Number(o.total_amount), 0) || 0;
-
-        previousPeriodRevenue = allOrders?.filter(o => {
-          const d = new Date(o.created_at);
-          return d >= prevPeriodStart && d < periodStart;
-        }).reduce((acc, o) => acc + Number(o.total_amount), 0) || 0;
-      }
-
-      const revenueGrowth = previousPeriodRevenue === 0 
-        ? (currentPeriodRevenue > 0 ? 100 : 0) 
-        : Math.round(((currentPeriodRevenue - previousPeriodRevenue) / previousPeriodRevenue) * 100);
-
-      // 3. Fetch Payments for Stats
-      const { data: allPayments } = await supabase
-        .from('payments')
-        .select('amount')
-        .eq('user_id', user.id);
-
-      const totalCollected = allPayments?.reduce((acc, p) => acc + Number(p.amount), 0) || 0;
+      // 3. Payment Stats
+      const totalCollected = allPayments.reduce((acc, p) => acc + Number(p.amount), 0);
       const totalOutstanding = totalRevenue - totalCollected;
 
-      // 4. Process Revenue Data for Chart
-      const chartData = processRevenueData(allOrders || [], timeRange);
-      setRevenueData(chartData);
+      // 4. Inventory Stats
+      const lowStockItems = inventoryData.filter(item => Number(item.quantity) <= Number(item.min_stock_level));
+      const totalStockValue = inventoryData.reduce((acc, item) => acc + (Number(item.quantity) * Number(item.purchase_cost_per_unit || 0)), 0);
 
-      // 5. Fetch Inventory
-      const { data: inventoryData } = await supabase
-        .from('inventory')
-        .select('*')
-        .eq('user_id', user.id);
+      // 5. Charts & Activity (Parallel)
+      const [recentOrdersRes, activity] = await Promise.all([
+        supabase.from('orders').select('*, clients(name)').eq('user_id', user.id).order('created_at', { ascending: false }).limit(6),
+        fetchActivityFeed(user.id)
+      ]);
+
+      const chartData = processRevenueData(allOrders, timeRange);
       
-      const lowStockItems = inventoryData?.filter(item => Number(item.quantity) <= Number(item.min_stock_level)) || [];
-      const totalStockValue = inventoryData?.reduce((acc, item) => acc + (Number(item.quantity) * Number(item.purchase_cost_per_unit || 0)), 0) || 0;
-
-      // 6. Fetch Recent Orders
-      const { data: recent } = await supabase
-        .from('orders')
-        .select('*, clients(name)')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(6);
-
-      // 7. Fetch Recent Activity
-      const activity = await fetchActivityFeed(user.id);
+      setRevenueData(chartData);
       setRecentActivity(activity);
-
       setStats({
-        totalClients: clientCount || 0,
+        totalClients: clientCount,
         newClientsThisWeek,
         activeOrders,
         totalRevenue,
@@ -187,9 +117,9 @@ export default function DashboardPage() {
         totalOutstanding,
         lowStockItems: lowStockItems.length,
         totalStockValue,
-        revenueGrowth: 0, // Simplified for performance
+        revenueGrowth: 0,
       });
-      setRecentOrders(recent || []);
+      setRecentOrders(recentOrdersRes.data || []);
       setLowStockProducts(lowStockItems.slice(0, 3));
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
