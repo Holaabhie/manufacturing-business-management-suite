@@ -37,7 +37,8 @@ import {
   DialogHeader, 
   DialogTitle, 
   DialogTrigger,
-  DialogFooter
+  DialogFooter,
+  DialogDescription
 } from "@/components/ui/dialog";
 import { 
   DropdownMenu, 
@@ -58,6 +59,8 @@ export default function ClientsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
+  const [isDeleteDialogOpenConfirm, setIsDeleteDialogOpenConfirm] = useState(false);
+  const [clientToDeleteId, setClientToDeleteId] = useState<string | null>(null);
   
   // Materials and Orders for selected client
   const [clientMaterials, setClientMaterials] = useState<any[]>([]);
@@ -341,7 +344,11 @@ export default function ClientsPage() {
                         <DropdownMenuItem onClick={() => handleSelectClient(client)}>
                           <Edit2 className="mr-2 h-4 w-4" /> View Details
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-500" onClick={(e) => handleDeleteClient(client.id, e)}>
+                        <DropdownMenuItem className="text-red-500" onClick={(e) => {
+                          e.stopPropagation();
+                          setClientToDeleteId(client.id);
+                          setIsDeleteDialogOpenConfirm(true);
+                        }}>
                           <Trash2 className="mr-2 h-4 w-4" /> Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -600,6 +607,27 @@ export default function ClientsPage() {
           <p className="text-zinc-500 max-w-sm mt-2">Select a client from the list to manage their profile, specific material rates, and view full transaction history.</p>
         </div>
       )}
+
+      <Dialog open={isDeleteDialogOpenConfirm} onOpenChange={setIsDeleteDialogOpenConfirm}>
+        <DialogContent className="max-w-[350px]">
+          <DialogHeader>
+            <DialogTitle>Delete Client</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this client? All their materials and order history will be affected. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpenConfirm(false)} className="flex-1">Cancel</Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => clientToDeleteId && handleDeleteClient(clientToDeleteId)}
+              className="flex-1"
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
