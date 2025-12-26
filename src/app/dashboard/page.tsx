@@ -43,6 +43,8 @@ import {
   Bar
 } from "recharts";
 
+import { Skeleton } from "@/components/ui/skeleton";
+
 export default function DashboardPage() {
   const [timeRange, setTimeRange] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [stats, setStats] = useState({
