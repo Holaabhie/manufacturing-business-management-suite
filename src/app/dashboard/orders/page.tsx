@@ -59,7 +59,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { jsPDF } from "jspdf";
 import { cn } from "@/lib/utils";
 
+import { Skeleton } from "@/components/ui/skeleton";
+import { useRole } from "@/lib/hooks/use-role";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 export default function OrdersPage() {
+  const { isAdmin } = useRole();
   const [orders, setOrders] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
   const [inventory, setInventory] = useState<any[]>([]);
@@ -67,9 +72,35 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentOrder, setCurrentOrder] = useState<any>(null);
-    const [isDeleteDialogOpenConfirm, setIsDeleteDialogOpenConfirm] = useState(false);
-    const [orderToDeleteId, setOrderToDeleteId] = useState<string | null>(null);
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDeleteDialogOpenConfirm, setIsDeleteDialogOpenConfirm] = useState(false);
+  const [orderToDeleteId, setOrderToDeleteId] = useState<string | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const exportToCSV = () => {
+    const headers = ["Product", "Client", "Qty", "Rate", "Total", "Status", "Delivery"];
+    const rows = orders.map(order => [
+      order.product_name,
+      order.clients?.name,
+      order.quantity,
+      order.rate,
+      order.total_amount,
+      order.status,
+      order.delivery_date
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + headers.join(",") + "\n"
+      + rows.map(e => e.join(",")).join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `orders_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Orders exported!");
+  };
 
   // Form State
   const [formData, setFormData] = useState({
