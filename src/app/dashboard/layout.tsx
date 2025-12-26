@@ -185,14 +185,21 @@ export default function DashboardLayout({
                         </AvatarFallback>
                       </Avatar>
                       {!isCollapsed && (
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-sm font-bold truncate text-sidebar-foreground">
-                            {user.user_metadata?.full_name || user.email?.split('@')[0]}
-                          </span>
-                          <span className="text-[10px] text-sidebar-foreground/50 truncate">
-                            {user.email}
-                          </span>
-                        </div>
+                          <div className="flex flex-col min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-bold truncate text-sidebar-foreground">
+                                {user.user_metadata?.full_name || user.email?.split('@')[0]}
+                              </span>
+                              {role && (
+                                <Badge variant="outline" className="h-4 text-[8px] px-1 bg-accent/10 text-accent border-accent/20">
+                                  {role}
+                                </Badge>
+                              )}
+                            </div>
+                            <span className="text-[10px] text-sidebar-foreground/50 truncate">
+                              {user.email}
+                            </span>
+                          </div>
                       )}
                     </Link>
                   </motion.div>
