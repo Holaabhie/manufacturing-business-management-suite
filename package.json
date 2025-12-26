@@ -10,8 +10,10 @@
     },
     "dependencies": {
         "@babel/parser": "^7.28.5",
+        "@capacitor/android": "^8.0.0",
         "@capacitor/cli": "^8.0.0",
         "@capacitor/core": "^8.0.0",
+        "@capacitor/ios": "^8.0.0",
         "@headlessui/react": "^2.2.9",
         "@heroicons/react": "^2.2.0",
         "@hookform/resolvers": "^5.2.2",
