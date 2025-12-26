@@ -17,9 +17,16 @@ export async function POST(request: NextRequest) {
 
     const { data: profile } = await supabaseAdmin
       .from('profiles')
-      .select('stripe_customer_id')
+      .select('stripe_customer_id, stripe_subscription_id')
       .eq('id', userId)
       .single();
+
+    if (profile?.stripe_subscription_id) {
+      return NextResponse.json(
+        { error: 'User already has an active subscription' },
+        { status: 400 }
+      );
+    }
 
     let customerId = profile?.stripe_customer_id;
 
@@ -41,27 +48,27 @@ export async function POST(request: NextRequest) {
       items: [{ price: priceId }],
       payment_behavior: 'default_incomplete',
       payment_settings: { save_default_payment_method: 'on_subscription' },
-      expand: ['latest_invoice.confirmation_secret', 'pending_setup_intent'],
+      expand: ['latest_invoice.payment_intent', 'pending_setup_intent'],
       metadata: { supabase_user_id: userId },
     });
 
     const invoice = subscription.latest_invoice as any;
     const pendingSetupIntent = subscription.pending_setup_intent as any;
+    const paymentIntent = invoice?.payment_intent as any;
 
     let clientSecret: string;
     let confirmationType: 'payment' | 'setup';
 
-    if (pendingSetupIntent) {
+    if (pendingSetupIntent?.client_secret) {
       clientSecret = pendingSetupIntent.client_secret;
       confirmationType = 'setup';
-    } else {
-      clientSecret = invoice?.confirmation_secret?.client_secret;
+    } else if (paymentIntent?.client_secret) {
+      clientSecret = paymentIntent.client_secret;
       confirmationType = 'payment';
-    }
-
-    if (!clientSecret) {
+    } else {
+      await stripe.subscriptions.cancel(subscription.id);
       return NextResponse.json(
-        { error: 'Failed to get client secret' },
+        { error: 'Failed to get client secret from subscription' },
         { status: 500 }
       );
     }
