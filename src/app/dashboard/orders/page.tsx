@@ -359,198 +359,207 @@ export default function OrdersPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight">Orders & Production</h1>
-          <p className="text-zinc-500 font-medium flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-primary" /> Integrated material flow
-          </p>
-        </div>
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          setIsDialogOpen(open);
-          if (!open) resetForm();
-        }}>
-          <DialogTrigger asChild>
-            <Button size="lg" className="rounded-xl shadow-xl shadow-primary/20 gap-2">
-              <Plus className="h-5 w-5" /> New Production Order
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="space-y-1">
+            <h1 className="text-3xl font-bold tracking-tight">Orders & Production</h1>
+            <p className="text-zinc-500 font-medium flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-primary" /> Integrated material flow
+            </p>
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button variant="outline" onClick={exportToCSV} className="hidden sm:flex">
+              <Download className="mr-2 h-4 w-4" /> Export CSV
             </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-bold flex items-center gap-2">
-                <Factory className="h-6 w-6 text-primary" />
-                {currentOrder ? "Edit Production Status" : "Configure Production Order"}
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-8 mt-4">
-              {/* Step 1: Client & Product */}
-              <div className="grid grid-cols-2 gap-6 p-4 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border">
-                <div className="col-span-2 space-y-2">
-                  <Label className="font-bold uppercase text-[10px] tracking-widest text-zinc-500">Target Client</Label>
-                  <Select 
-                    value={formData.client_id} 
-                    onValueChange={handleClientChange} 
-                    required
-                  >
-                    <SelectTrigger className="h-12 bg-white dark:bg-zinc-950 font-medium">
-                      <SelectValue placeholder="Select from directory..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="col-span-2 space-y-2">
-                  <Label className="font-bold uppercase text-[10px] tracking-widest text-zinc-500">Pick Stored Material OR Type New Product</Label>
-                  <Select 
-                    value={clientMaterials.find(m => m.name === formData.product_name) ? formData.product_name : ""} 
-                    onValueChange={handleMaterialSelect}
-                  >
-                    <SelectTrigger className="h-12 bg-white dark:bg-zinc-950">
-                      <SelectValue placeholder="Quick-select client material..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clientMaterials.map(m => (
-                        <SelectItem key={m.id} value={m.name}>{m.name} (Rate: ₹{m.default_rate})</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Input 
-                    placeholder="Type product name if not in list..."
-                    value={formData.product_name} 
-                    className="mt-2 h-11 bg-white dark:bg-zinc-950"
-                    onChange={(e) => setFormData({...formData, product_name: e.target.value})}
-                    required 
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="font-bold uppercase text-[10px] tracking-widest text-zinc-500">Ordered Quantity</Label>
-                  <Input 
-                    type="number"
-                    value={formData.quantity} 
-                    className="h-12 bg-white dark:bg-zinc-950 font-bold text-lg"
-                    onChange={(e) => setFormData({...formData, quantity: parseFloat(e.target.value)})}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="font-bold uppercase text-[10px] tracking-widest text-zinc-500">Rate (₹ / Unit)</Label>
-                  <Input 
-                    type="number"
-                    step="0.01"
-                    value={formData.rate} 
-                    className="h-12 bg-white dark:bg-zinc-950 font-bold text-lg text-primary"
-                    onChange={(e) => setFormData({...formData, rate: parseFloat(e.target.value)})}
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Step 2: Inventory Deduction */}
-              {!currentOrder && (
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center px-1">
-                    <h3 className="font-bold text-lg flex items-center gap-2">
-                      <Box className="h-5 w-5 text-zinc-500" />
-                      Mandatory Material Deduction
-                    </h3>
-                    <Button type="button" variant="outline" size="sm" onClick={addDeductionRow} className="rounded-full">
-                      <Plus className="h-4 w-4 mr-1" /> Add Component
-                    </Button>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    {formData.order_items.length === 0 && (
-                      <div className="py-8 text-center bg-zinc-100 rounded-xl border-2 border-dashed border-zinc-300">
-                        <AlertCircle className="h-6 w-6 mx-auto mb-2 text-zinc-400" />
-                        <p className="text-sm text-zinc-500">You must select which raw materials are used for this order.</p>
-                      </div>
-                    )}
-                    {formData.order_items.map((item, idx) => (
-                      <div key={idx} className="flex gap-4 items-end animate-in slide-in-from-left-2 transition-all">
-                        <div className="flex-1 space-y-1">
-                          <Label className="text-[10px] font-bold text-zinc-500 uppercase ml-1">Raw Material</Label>
+            <Dialog open={isDialogOpen} onOpenChange={(open) => {
+              setIsDialogOpen(open);
+              if (!open) resetForm();
+            }}>
+              <DialogTrigger asChild>
+                <Button size="lg" className="rounded-xl shadow-xl shadow-primary/20 gap-2 flex-1 sm:flex-none">
+                  <Plus className="h-5 w-5" /> New Order
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-3xl p-0 overflow-hidden">
+                <ScrollArea className="max-h-[90vh]">
+                  <div className="p-6">
+                    <DialogHeader>
+                      <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+                        <Factory className="h-6 w-6 text-primary" />
+                        {currentOrder ? "Edit Production Status" : "Configure Production Order"}
+                      </DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleSubmit} className="space-y-8 mt-4">
+                      {/* Step 1: Client & Product */}
+                      <div className="grid grid-cols-2 gap-6 p-4 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border">
+                        <div className="col-span-2 space-y-2">
+                          <Label className="font-bold uppercase text-[10px] tracking-widest text-zinc-500">Target Client</Label>
                           <Select 
-                            value={item.inventory_id} 
-                            onValueChange={(v) => updateDeductionRow(idx, 'inventory_id', v)}
+                            value={formData.client_id} 
+                            onValueChange={handleClientChange} 
+                            required
                           >
-                            <SelectTrigger className="h-11 bg-white dark:bg-zinc-950">
-                              <SelectValue placeholder="Select stock..." />
+                            <SelectTrigger className="h-12 bg-white dark:bg-zinc-950 font-medium">
+                              <SelectValue placeholder="Select from directory..." />
                             </SelectTrigger>
                             <SelectContent>
-                              {inventory.map(i => (
-                                <SelectItem key={i.id} value={i.id} disabled={i.quantity <= 0}>
-                                  {i.name} ({i.quantity} {i.unit} left)
-                                </SelectItem>
-                              ))}
+                              {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="w-40 space-y-1">
-                          <Label className="text-[10px] font-bold text-zinc-500 uppercase ml-1">Qty Used</Label>
+
+                        <div className="col-span-2 space-y-2">
+                          <Label className="font-bold uppercase text-[10px] tracking-widest text-zinc-500">Pick Stored Material OR Type New Product</Label>
+                          <Select 
+                            value={clientMaterials.find(m => m.name === formData.product_name) ? formData.product_name : ""} 
+                            onValueChange={handleMaterialSelect}
+                          >
+                            <SelectTrigger className="h-12 bg-white dark:bg-zinc-950">
+                              <SelectValue placeholder="Quick-select client material..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {clientMaterials.map(m => (
+                                <SelectItem key={m.id} value={m.name}>{m.name} (Rate: ₹{m.default_rate})</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <Input 
-                            type="number" 
-                            className="h-11 bg-white dark:bg-zinc-950 font-bold"
-                            value={item.quantity_deducted}
-                            onChange={(e) => updateDeductionRow(idx, 'quantity_deducted', parseFloat(e.target.value))}
+                            placeholder="Type product name if not in list..."
+                            value={formData.product_name} 
+                            className="mt-2 h-11 bg-white dark:bg-zinc-950"
+                            onChange={(e) => setFormData({...formData, product_name: e.target.value})}
+                            required 
                           />
                         </div>
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-11 w-11 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl"
-                          onClick={() => removeDeductionRow(idx)}
-                        >
-                          <X className="h-5 w-5" />
-                        </Button>
+
+                        <div className="space-y-2">
+                          <Label className="font-bold uppercase text-[10px] tracking-widest text-zinc-500">Ordered Quantity</Label>
+                          <Input 
+                            type="number"
+                            value={formData.quantity} 
+                            className="h-12 bg-white dark:bg-zinc-950 font-bold text-lg"
+                            onChange={(e) => setFormData({...formData, quantity: parseFloat(e.target.value)})}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="font-bold uppercase text-[10px] tracking-widest text-zinc-500">Rate (₹ / Unit)</Label>
+                          <Input 
+                            type="number"
+                            step="0.01"
+                            value={formData.rate} 
+                            className="h-12 bg-white dark:bg-zinc-950 font-bold text-lg text-primary"
+                            onChange={(e) => setFormData({...formData, rate: parseFloat(e.target.value)})}
+                            required
+                          />
+                        </div>
                       </div>
-                    ))}
+
+                      {/* Step 2: Inventory Deduction */}
+                      {!currentOrder && (
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center px-1">
+                            <h3 className="font-bold text-lg flex items-center gap-2">
+                              <Box className="h-5 w-5 text-zinc-500" />
+                              Mandatory Material Deduction
+                            </h3>
+                            <Button type="button" variant="outline" size="sm" onClick={addDeductionRow} className="rounded-full">
+                              <Plus className="h-4 w-4 mr-1" /> Add Component
+                            </Button>
+                          </div>
+                          
+                          <div className="space-y-3">
+                            {formData.order_items.length === 0 && (
+                              <div className="py-8 text-center bg-zinc-100 rounded-xl border-2 border-dashed border-zinc-300">
+                                <AlertCircle className="h-6 w-6 mx-auto mb-2 text-zinc-400" />
+                                <p className="text-sm text-zinc-500">You must select which raw materials are used for this order.</p>
+                              </div>
+                            )}
+                            {formData.order_items.map((item, idx) => (
+                              <div key={idx} className="flex gap-4 items-end animate-in slide-in-from-left-2 transition-all">
+                                <div className="flex-1 space-y-1">
+                                  <Label className="text-[10px] font-bold text-zinc-500 uppercase ml-1">Raw Material</Label>
+                                  <Select 
+                                    value={item.inventory_id} 
+                                    onValueChange={(v) => updateDeductionRow(idx, 'inventory_id', v)}
+                                  >
+                                    <SelectTrigger className="h-11 bg-white dark:bg-zinc-950">
+                                      <SelectValue placeholder="Select stock..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {inventory.map(i => (
+                                        <SelectItem key={i.id} value={i.id} disabled={i.quantity <= 0}>
+                                          {i.name} ({i.quantity} {i.unit} left)
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="w-40 space-y-1">
+                                  <Label className="text-[10px] font-bold text-zinc-500 uppercase ml-1">Qty Used</Label>
+                                  <Input 
+                                    type="number" 
+                                    className="h-11 bg-white dark:bg-zinc-950 font-bold"
+                                    value={item.quantity_deducted}
+                                    onChange={(e) => updateDeductionRow(idx, 'quantity_deducted', parseFloat(e.target.value))}
+                                  />
+                                </div>
+                                <Button 
+                                  type="button" 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-11 w-11 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl"
+                                  onClick={() => removeDeductionRow(idx)}
+                                >
+                                  <X className="h-5 w-5" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Step 3: Status & Payment */}
+                      <div className="grid grid-cols-2 gap-4 border-t pt-6">
+                        <div className="space-y-2">
+                          <Label>Expected Delivery</Label>
+                          <Input 
+                            type="date"
+                            value={formData.delivery_date} 
+                            onChange={(e) => setFormData({...formData, delivery_date: e.target.value})}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Payment Status</Label>
+                          <Select value={formData.payment_status} onValueChange={(v) => setFormData({...formData, payment_status: v})}>
+                            <SelectTrigger className="h-10">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="partial">Partial</SelectItem>
+                              <SelectItem value="paid">Fully Paid</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="bg-primary/5 p-4 rounded-2xl flex justify-between items-center border border-primary/20">
+                        <span className="font-bold text-zinc-700 uppercase text-xs">Calculated Total Order Value</span>
+                        <span className="text-2xl font-black text-primary">₹{(formData.quantity * formData.rate).toLocaleString()}</span>
+                      </div>
+
+                      <DialogFooter className="sticky bottom-0 bg-white dark:bg-zinc-950 pt-4 border-t">
+                        <Button type="submit" size="lg" className="w-full h-12 rounded-xl text-lg font-bold">
+                          {currentOrder ? "Push Updates" : "Issue Order & Deduct Materials"}
+                        </Button>
+                      </DialogFooter>
+                    </form>
                   </div>
-                </div>
-              )}
-
-              {/* Step 3: Status & Payment */}
-              <div className="grid grid-cols-2 gap-4 border-t pt-6">
-                <div className="space-y-2">
-                  <Label>Expected Delivery</Label>
-                  <Input 
-                    type="date"
-                    value={formData.delivery_date} 
-                    onChange={(e) => setFormData({...formData, delivery_date: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Payment Status</Label>
-                  <Select value={formData.payment_status} onValueChange={(v) => setFormData({...formData, payment_status: v})}>
-                    <SelectTrigger className="h-10">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="partial">Partial</SelectItem>
-                      <SelectItem value="paid">Fully Paid</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="bg-primary/5 p-4 rounded-2xl flex justify-between items-center border border-primary/20">
-                <span className="font-bold text-zinc-700 uppercase text-xs">Calculated Total Order Value</span>
-                <span className="text-2xl font-black text-primary">₹{(formData.quantity * formData.rate).toLocaleString()}</span>
-              </div>
-
-              <DialogFooter className="sticky bottom-0 bg-white dark:bg-zinc-950 pt-4 border-t">
-                <Button type="submit" size="lg" className="w-full h-12 rounded-xl text-lg font-bold">
-                  {currentOrder ? "Push Updates" : "Issue Order & Deduct Materials"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
+                </ScrollArea>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
