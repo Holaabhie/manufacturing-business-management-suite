@@ -214,105 +214,114 @@ export default function InventoryPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Inventory</h1>
-          <p className="text-zinc-500">Track raw materials, costs, and supplier connectivity.</p>
-        </div>
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          setIsDialogOpen(open);
-          if (!open) {
-            setCurrentItem(null);
-            setFormData({ 
-              name: "", 
-              quantity: 0, 
-              unit: "kg", 
-              min_stock_level: 10,
-              supplier_whatsapp: "",
-              purchase_cost_per_unit: 0
-            });
-          }
-        }}>
-          <DialogTrigger asChild>
-            <Button className="shadow-lg shadow-primary/20">
-              <Plus className="mr-2 h-4 w-4" /> Add New Material
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Inventory</h1>
+            <p className="text-zinc-500">Track raw materials, costs, and supplier connectivity.</p>
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button variant="outline" onClick={exportToCSV} className="hidden sm:flex">
+              <Download className="mr-2 h-4 w-4" /> Export
             </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>{currentItem ? "Modify Inventory Item" : "New Inventory Item"}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Material Name *</Label>
-                <Input 
-                  id="name" 
-                  value={formData.name} 
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  placeholder="e.g. Polyester Yarn"
-                  required 
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="quantity">Stock Quantity</Label>
-                  <Input 
-                    id="quantity" 
-                    type="number"
-                    step="0.01"
-                    value={formData.quantity} 
-                    onChange={(e) => setFormData({...formData, quantity: parseFloat(e.target.value)})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="unit">Unit</Label>
-                  <Input 
-                    id="unit" 
-                    value={formData.unit} 
-                    placeholder="kg, pcs, meters"
-                    onChange={(e) => setFormData({...formData, unit: e.target.value})}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="min_stock">Low Stock Alert</Label>
-                  <Input 
-                    id="min_stock" 
-                    type="number"
-                    step="0.01"
-                    value={formData.min_stock_level} 
-                    onChange={(e) => setFormData({...formData, min_stock_level: parseFloat(e.target.value)})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cost">Landing Cost / Unit</Label>
-                  <Input 
-                    id="cost" 
-                    type="number"
-                    step="0.01"
-                    value={formData.purchase_cost_per_unit} 
-                    onChange={(e) => setFormData({...formData, purchase_cost_per_unit: parseFloat(e.target.value)})}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="whatsapp" className="text-primary font-bold">Supplier WhatsApp Number *</Label>
-                <Input 
-                  id="whatsapp" 
-                  value={formData.supplier_whatsapp} 
-                  onChange={(e) => setFormData({...formData, supplier_whatsapp: e.target.value})}
-                  placeholder="e.g. +91 9876543210"
-                  required
-                />
-              </div>
-              <DialogFooter className="pt-4">
-                <Button type="submit" className="w-full">{currentItem ? "Update Details" : "Save to Inventory"}</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
+            <Dialog open={isDialogOpen} onOpenChange={(open) => {
+              setIsDialogOpen(open);
+              if (!open) {
+                setCurrentItem(null);
+                setFormData({ 
+                  name: "", 
+                  quantity: 0, 
+                  unit: "kg", 
+                  min_stock_level: 10,
+                  supplier_whatsapp: "",
+                  purchase_cost_per_unit: 0
+                });
+              }
+            }}>
+              <DialogTrigger asChild>
+                <Button className="shadow-lg shadow-primary/20 flex-1 sm:flex-none">
+                  <Plus className="mr-2 h-4 w-4" /> Add New Material
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md p-0 overflow-hidden">
+                <ScrollArea className="max-h-[90vh]">
+                  <div className="p-6">
+                    <DialogHeader>
+                      <DialogTitle>{currentItem ? "Modify Inventory Item" : "New Inventory Item"}</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="name">Material Name *</Label>
+                        <Input 
+                          id="name" 
+                          value={formData.name} 
+                          onChange={(e) => setFormData({...formData, name: e.target.value})}
+                          placeholder="e.g. Polyester Yarn"
+                          required 
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="quantity">Stock Quantity</Label>
+                          <Input 
+                            id="quantity" 
+                            type="number"
+                            step="0.01"
+                            value={formData.quantity} 
+                            onChange={(e) => setFormData({...formData, quantity: parseFloat(e.target.value)})}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="unit">Unit</Label>
+                          <Input 
+                            id="unit" 
+                            value={formData.unit} 
+                            placeholder="kg, pcs, meters"
+                            onChange={(e) => setFormData({...formData, unit: e.target.value})}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="min_stock">Low Stock Alert</Label>
+                          <Input 
+                            id="min_stock" 
+                            type="number"
+                            step="0.01"
+                            value={formData.min_stock_level} 
+                            onChange={(e) => setFormData({...formData, min_stock_level: parseFloat(e.target.value)})}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="cost">Landing Cost / Unit</Label>
+                          <Input 
+                            id="cost" 
+                            type="number"
+                            step="0.01"
+                            value={formData.purchase_cost_per_unit} 
+                            onChange={(e) => setFormData({...formData, purchase_cost_per_unit: parseFloat(e.target.value)})}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="whatsapp" className="text-primary font-bold">Supplier WhatsApp Number *</Label>
+                        <Input 
+                          id="whatsapp" 
+                          value={formData.supplier_whatsapp} 
+                          onChange={(e) => setFormData({...formData, supplier_whatsapp: e.target.value})}
+                          placeholder="e.g. +91 9876543210"
+                          required
+                        />
+                      </div>
+                      <DialogFooter className="pt-4">
+                        <Button type="submit" className="w-full">{currentItem ? "Update Details" : "Save to Inventory"}</Button>
+                      </DialogFooter>
+                    </form>
+                  </div>
+                </ScrollArea>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
 
       {/* Stats Board */}
       <div className="grid gap-4 md:grid-cols-3">
