@@ -26,6 +26,7 @@ import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { NotificationDropdown } from "@/components/NotificationDropdown";
+import { Badge } from "@/components/ui/badge";
 
 import {
   DropdownMenu,
