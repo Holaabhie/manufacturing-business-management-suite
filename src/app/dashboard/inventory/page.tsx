@@ -52,7 +52,7 @@ import { useRole } from "@/lib/hooks/use-role";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function InventoryPage() {
-  const { isAdmin } = useRole();
+  const { isAdmin, isPro } = useRole();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -60,6 +60,22 @@ export default function InventoryPage() {
   const [isDeleteDialogOpenConfirm, setIsDeleteDialogOpenConfirm] = useState(false);
   const [itemToDeleteId, setItemToDeleteId] = useState<string | null>(null);
   const [currentItem, setCurrentItem] = useState<any>(null);
+
+  const starterLimit = 5;
+  const isAtLimit = !isPro && items.length >= starterLimit;
+
+  const handleAddNewClick = () => {
+    if (isAtLimit) {
+      toast.error(`Starter tier limit reached (${starterLimit} items). Please upgrade to Pro for unlimited inventory.`, {
+        action: {
+          label: "Upgrade",
+          onClick: () => window.location.href = "/dashboard/upgrade"
+        }
+      });
+      return;
+    }
+    setIsDialogOpen(true);
+  };
 
   const [formData, setFormData] = useState({
     name: "",
