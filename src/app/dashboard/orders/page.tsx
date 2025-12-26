@@ -601,82 +601,89 @@ export default function OrdersPage() {
               <TableHead className="w-[120px] py-4 pr-6 text-right">Action</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center py-20 text-zinc-400 font-medium">Crunching factory data...</TableCell>
-              </TableRow>
-            ) : filteredOrders.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center py-20 text-zinc-500">No active orders found.</TableCell>
-              </TableRow>
-            ) : filteredOrders.map((order) => (
-              <TableRow key={order.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/40">
-                <TableCell className="pl-6 py-5">
-                  <div className="flex flex-col">
-                    <span className="font-bold text-lg text-zinc-900 dark:text-zinc-100">{order.product_name}</span>
-                    <span className="text-sm font-medium text-zinc-500">Client: {order.clients?.name}</span>
-                    <div className="flex items-center gap-2 mt-2">
-                       <Badge variant="outline" className="text-[10px] font-bold py-0 h-5">{order.quantity} Units</Badge>
-                       <span className="text-[10px] text-zinc-400 font-mono uppercase">{order.id.slice(0,8)}</span>
+            <TableBody>
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell className="pl-6"><Skeleton className="h-16 w-full rounded-xl" /></TableCell>
+                    <TableCell><Skeleton className="h-16 w-full rounded-xl" /></TableCell>
+                    <TableCell><Skeleton className="h-16 w-full rounded-xl" /></TableCell>
+                    <TableCell className="pr-6"><Skeleton className="h-10 w-10 rounded-full ml-auto" /></TableCell>
+                  </TableRow>
+                ))
+              ) : filteredOrders.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-20 text-zinc-500">No active orders found.</TableCell>
+                </TableRow>
+              ) : filteredOrders.map((order) => (
+                <TableRow key={order.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/40">
+                  <TableCell className="pl-6 py-5">
+                    <div className="flex flex-col">
+                      <span className="font-bold text-lg text-zinc-900 dark:text-zinc-100">{order.product_name}</span>
+                      <span className="text-sm font-medium text-zinc-500">Client: {order.clients?.name}</span>
+                      <div className="flex items-center gap-2 mt-2">
+                         <Badge variant="outline" className="text-[10px] font-bold py-0 h-5">{order.quantity} Units</Badge>
+                         <span className="text-[10px] text-zinc-400 font-mono uppercase">{order.id.slice(0,8)}</span>
+                      </div>
                     </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-col">
-                    <span className="text-xl font-black text-primary">₹{Number(order.total_amount).toLocaleString()}</span>
-                    <Badge variant="outline" className={cn(
-                        "w-fit text-[9px] uppercase font-black tracking-tighter mt-1",
-                        order.payment_status === 'paid' ? "border-emerald-500 text-emerald-600 bg-emerald-50" : "border-amber-500 text-amber-600"
-                    )}>
-                        {order.payment_status}
-                    </Badge>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-1.5">
-                        <div className={cn(
-                            "h-2 w-2 rounded-full",
-                            order.status === 'completed' ? "bg-emerald-500" : "bg-amber-500 animate-pulse"
-                        )} />
-                        <span className="text-xs font-bold uppercase tracking-wider">{order.status}</span>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="text-xl font-black text-primary">₹{Number(order.total_amount).toLocaleString()}</span>
+                      <Badge variant="outline" className={cn(
+                          "w-fit text-[9px] uppercase font-black tracking-tighter mt-1",
+                          order.payment_status === 'paid' ? "border-emerald-500 text-emerald-600 bg-emerald-50" : "border-amber-500 text-amber-600"
+                      )}>
+                          {order.payment_status}
+                      </Badge>
                     </div>
-                    {order.delivery_date && (
-                        <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 w-fit px-2 py-0.5 rounded font-bold text-zinc-500">
-                            Due: {new Date(order.delivery_date).toLocaleDateString()}
-                        </span>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell className="pr-6 text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <Button variant="ghost" size="icon" className="text-zinc-500" onClick={() => generateInvoice(order)}>
-                        <Download className="h-4 w-4" />
-                    </Button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical className="h-5 w-5" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48">
-                        <DropdownMenuItem onClick={() => openEditDialog(order)}>
-                          <Edit2 className="mr-2 h-4 w-4" /> Change Progress
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-500" onClick={() => {
-                          setOrderToDeleteId(order.id);
-                          setIsDeleteDialogOpenConfirm(true);
-                        }}>
-                          <Trash2 className="mr-2 h-4 w-4" /> Delete Order
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-1.5">
+                          <div className={cn(
+                              "h-2 w-2 rounded-full",
+                              order.status === 'completed' ? "bg-emerald-500" : "bg-amber-500 animate-pulse"
+                          )} />
+                          <span className="text-xs font-bold uppercase tracking-wider">{order.status}</span>
+                      </div>
+                      {order.delivery_date && (
+                          <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 w-fit px-2 py-0.5 rounded font-bold text-zinc-500">
+                              Due: {new Date(order.delivery_date).toLocaleDateString()}
+                          </span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="pr-6 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button variant="ghost" size="icon" className="text-zinc-500 h-10 w-10 rounded-full" onClick={() => generateInvoice(order)}>
+                          <Download className="h-4 w-4" />
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full">
+                            <MoreVertical className="h-5 w-5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuItem onClick={() => openEditDialog(order)}>
+                            <Edit2 className="mr-2 h-4 w-4" /> Change Progress
+                          </DropdownMenuItem>
+                          {isAdmin && (
+                            <DropdownMenuItem className="text-red-500" onClick={() => {
+                              setOrderToDeleteId(order.id);
+                              setIsDeleteDialogOpenConfirm(true);
+                            }}>
+                              <Trash2 className="mr-2 h-4 w-4" /> Delete Order
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
         </Table>
       </div>
     </div>
