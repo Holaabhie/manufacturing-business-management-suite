@@ -53,7 +53,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
+import { Skeleton } from "@/components/ui/skeleton";
+import { useRole } from "@/lib/hooks/use-role";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 export default function ClientsPage() {
+  const { isAdmin } = useRole();
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -61,6 +66,29 @@ export default function ClientsPage() {
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [isDeleteDialogOpenConfirm, setIsDeleteDialogOpenConfirm] = useState(false);
   const [clientToDeleteId, setClientToDeleteId] = useState<string | null>(null);
+
+  const exportToCSV = () => {
+    const headers = ["Name", "Email", "Phone", "Address"];
+    const rows = clients.map(client => [
+      client.name,
+      client.email,
+      client.phone,
+      client.address
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + headers.join(",") + "\n"
+      + rows.map(e => e.join(",")).join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `clients_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Clients exported!");
+  };
   
   // Materials and Orders for selected client
   const [clientMaterials, setClientMaterials] = useState<any[]>([]);
