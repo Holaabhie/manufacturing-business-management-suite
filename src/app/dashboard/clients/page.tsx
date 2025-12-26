@@ -58,7 +58,7 @@ import { useRole } from "@/lib/hooks/use-role";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function ClientsPage() {
-  const { isAdmin } = useRole();
+  const { isAdmin, isPro } = useRole();
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -66,6 +66,22 @@ export default function ClientsPage() {
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [isDeleteDialogOpenConfirm, setIsDeleteDialogOpenConfirm] = useState(false);
   const [clientToDeleteId, setClientToDeleteId] = useState<string | null>(null);
+
+  const starterLimit = 5;
+  const isAtLimit = !isPro && clients.length >= starterLimit;
+
+  const handleAddNewClick = () => {
+    if (isAtLimit) {
+      toast.error(`Starter tier limit reached (${starterLimit} clients). Please upgrade to Pro for unlimited CRM capacity.`, {
+        action: {
+          label: "Upgrade",
+          onClick: () => window.location.href = "/dashboard/upgrade"
+        }
+      });
+      return;
+    }
+    setIsDialogOpen(true);
+  };
 
   const exportToCSV = () => {
     const headers = ["Name", "Email", "Phone", "Address"];
