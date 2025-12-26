@@ -390,18 +390,21 @@ function ProfileContent() {
                             />
                           </div>
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="role" className="text-sm font-medium">Role</Label>
-                          <div className="relative">
-                            <Briefcase className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                              id="role" 
-                              value={formData.role}
-                              onChange={(e) => setFormData({...formData, role: e.target.value})}
-                              className="pl-10 rounded-xl border-border focus-visible:ring-accent"
-                            />
+                          <div className="space-y-2">
+                            <Label htmlFor="role" className="text-sm font-medium">Role</Label>
+                            <div className="relative">
+                              <Briefcase className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                              <select 
+                                id="role" 
+                                value={formData.role}
+                                onChange={(e) => setFormData({...formData, role: e.target.value})}
+                                className="w-full h-10 pl-10 rounded-xl border border-border bg-background focus:ring-2 focus:ring-accent outline-none text-sm appearance-none"
+                              >
+                                <option value="Admin">Admin (Owner)</option>
+                                <option value="Staff">Staff</option>
+                              </select>
+                            </div>
                           </div>
-                        </div>
                       </div>
                       <Button 
                         type="submit" 
