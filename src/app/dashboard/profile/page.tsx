@@ -44,7 +44,8 @@ function ProfileContent() {
   const [updating, setUpdating] = useState(false);
   const [uploading, setUploading] = useState(false);
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState<"profile" | "settings" | "notifications">("profile");
+    const [activeTab, setActiveTab] = useState<"profile" | "settings" | "notifications">("profile");
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
   
   useEffect(() => {
     const tab = searchParams.get("tab");
