@@ -244,7 +244,7 @@ export default function ClientsPage() {
       )}>
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold tracking-tight">Clients</h1>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" /> New Client
