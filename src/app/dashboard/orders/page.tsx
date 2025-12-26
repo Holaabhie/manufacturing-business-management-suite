@@ -64,7 +64,7 @@ import { useRole } from "@/lib/hooks/use-role";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function OrdersPage() {
-  const { isAdmin } = useRole();
+  const { isAdmin, isPro } = useRole();
   const [orders, setOrders] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
   const [inventory, setInventory] = useState<any[]>([]);
@@ -75,6 +75,22 @@ export default function OrdersPage() {
   const [isDeleteDialogOpenConfirm, setIsDeleteDialogOpenConfirm] = useState(false);
   const [orderToDeleteId, setOrderToDeleteId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const starterLimit = 5;
+  const isAtLimit = !isPro && orders.length >= starterLimit;
+
+  const handleAddNewClick = () => {
+    if (isAtLimit) {
+      toast.error(`Starter tier limit reached (${starterLimit} orders). Please upgrade to Pro for unlimited production capacity.`, {
+        action: {
+          label: "Upgrade",
+          onClick: () => window.location.href = "/dashboard/upgrade"
+        }
+      });
+      return;
+    }
+    setIsDialogOpen(true);
+  };
 
   const exportToCSV = () => {
     const headers = ["Product", "Client", "Qty", "Rate", "Total", "Status", "Delivery"];
