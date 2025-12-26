@@ -389,87 +389,95 @@ export default function InventoryPage() {
               <TableHead className="w-[120px] py-4"></TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center py-20 text-zinc-400">Loading stock logs...</TableCell>
-              </TableRow>
-            ) : filteredItems.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center py-20 text-zinc-500 font-medium">No results found.</TableCell>
-              </TableRow>
-            ) : filteredItems.map((item) => {
-              const isLowStock = item.quantity <= item.min_stock_level;
-              return (
-                <TableRow key={item.id} className="group hover:bg-zinc-50 dark:hover:bg-zinc-900/40">
-                  <TableCell className="py-4">
-                    <div className="flex items-center">
-                      <div className="p-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg mr-3">
-                        <Package className="h-5 w-5 text-zinc-600 dark:text-zinc-400" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-zinc-900 dark:text-zinc-100">{item.name}</span>
-                        <div className="flex items-center text-xs text-primary font-medium mt-1">
-                          <Phone className="h-3 w-3 mr-1" /> {item.supplier_whatsapp}
+            <TableBody>
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-12 w-full rounded-xl" /></TableCell>
+                    <TableCell><Skeleton className="h-12 w-full rounded-xl" /></TableCell>
+                    <TableCell><Skeleton className="h-12 w-full rounded-xl" /></TableCell>
+                    <TableCell><Skeleton className="h-12 w-full rounded-xl" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-8 rounded-full ml-auto" /></TableCell>
+                  </TableRow>
+                ))
+              ) : filteredItems.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-20 text-zinc-500 font-medium">No results found.</TableCell>
+                </TableRow>
+              ) : filteredItems.map((item) => {
+                const isLowStock = item.quantity <= item.min_stock_level;
+                return (
+                  <TableRow key={item.id} className="group hover:bg-zinc-50 dark:hover:bg-zinc-900/40">
+                    <TableCell className="py-4">
+                      <div className="flex items-center">
+                        <div className="p-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg mr-3">
+                          <Package className="h-5 w-5 text-zinc-600 dark:text-zinc-400" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-zinc-900 dark:text-zinc-100">{item.name}</span>
+                          <div className="flex items-center text-xs text-primary font-medium mt-1">
+                            <Phone className="h-3 w-3 mr-1" /> {item.supplier_whatsapp}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="py-4">
-                    <div className="flex flex-col">
-                      <span className="font-bold text-lg">{item.quantity} {item.unit}</span>
-                      <span className="text-[10px] text-zinc-500 uppercase tracking-tighter">Min: {item.min_stock_level} {item.unit}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="py-4">
-                    <span className="font-semibold text-zinc-700 dark:text-zinc-300">₹{Number(item.purchase_cost_per_unit || 0).toLocaleString('en-IN')}</span>
-                  </TableCell>
-                  <TableCell className="py-4">
-                    {isLowStock ? (
-                      <Badge variant="destructive" className="flex items-center h-7 gap-1 px-3 rounded-full animate-pulse">
-                        <AlertCircle className="h-3 w-3" /> RESTOCK
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-emerald-600 border-emerald-200 bg-emerald-50 h-7 px-3 rounded-full">
-                        In Stock
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {isLowStock && (
-                        <Button 
-                          size="sm" 
-                          className="bg-green-600 hover:bg-green-700 text-white h-8 px-3 rounded-full font-bold text-xs"
-                          onClick={() => handleRestock(item)}
-                        >
-                          Restock
-                        </Button>
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-lg">{item.quantity} {item.unit}</span>
+                        <span className="text-[10px] text-zinc-500 uppercase tracking-tighter">Min: {item.min_stock_level} {item.unit}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <span className="font-semibold text-zinc-700 dark:text-zinc-300">₹{Number(item.purchase_cost_per_unit || 0).toLocaleString('en-IN')}</span>
+                    </TableCell>
+                    <TableCell className="py-4">
+                      {isLowStock ? (
+                        <Badge variant="destructive" className="flex items-center h-7 gap-1 px-3 rounded-full animate-pulse">
+                          <AlertCircle className="h-3 w-3" /> RESTOCK
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-emerald-600 border-emerald-200 bg-emerald-50 h-7 px-3 rounded-full">
+                          In Stock
+                        </Badge>
                       )}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-200 dark:hover:bg-zinc-800">
-                            <MoreVertical className="h-4 w-4" />
+                    </TableCell>
+                    <TableCell className="py-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {isLowStock && (
+                          <Button 
+                            size="sm" 
+                            className="bg-green-600 hover:bg-green-700 text-white h-8 px-3 rounded-full font-bold text-xs"
+                            onClick={() => handleRestock(item)}
+                          >
+                            Restock
                           </Button>
-                        </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openEditDialog(item)}>
-                          <Edit2 className="mr-2 h-4 w-4" /> Edit Item
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-600" onClick={() => {
-                          setItemToDeleteId(item.id);
-                          setIsDeleteDialogOpenConfirm(true);
-                        }}>
-                          <Trash2 className="mr-2 h-4 w-4" /> Mark as Removed
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
+                        )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-10 w-10 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-full">
+                              <MoreVertical className="h-5 w-5" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEditDialog(item)}>
+                            <Edit2 className="mr-2 h-4 w-4" /> Edit Item
+                          </DropdownMenuItem>
+                          {isAdmin && (
+                            <DropdownMenuItem className="text-red-600" onClick={() => {
+                              setItemToDeleteId(item.id);
+                              setIsDeleteDialogOpenConfirm(true);
+                            }}>
+                              <Trash2 className="mr-2 h-4 w-4" /> Mark as Removed
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
       </Table>
     </div>
 
