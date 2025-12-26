@@ -55,11 +55,20 @@ export default function DashboardLayout({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [role, setRole] = useState<string | null>(null);
 
     useEffect(() => {
       const fetchUser = async () => {
         const { data: { user } } = await supabase.auth.getUser();
         setUser(user);
+        if (user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("role")
+            .eq("id", user.id)
+            .single();
+          setRole(profile?.role || "Staff");
+        }
       };
       fetchUser();
 
