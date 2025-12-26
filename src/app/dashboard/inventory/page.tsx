@@ -15,7 +15,8 @@ import {
   ShoppingBag,
   ExternalLink,
   Box,
-  TrendingUp
+  TrendingUp,
+  Download
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,14 +47,18 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useRole } from "@/lib/hooks/use-role";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function InventoryPage() {
+  const { isAdmin } = useRole();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [isDeleteDialogOpenConfirm, setIsDeleteDialogOpenConfirm] = useState(false);
-    const [itemToDeleteId, setItemToDeleteId] = useState<string | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDeleteDialogOpenConfirm, setIsDeleteDialogOpenConfirm] = useState(false);
+  const [itemToDeleteId, setItemToDeleteId] = useState<string | null>(null);
   const [currentItem, setCurrentItem] = useState<any>(null);
 
   const [formData, setFormData] = useState({
@@ -64,6 +69,31 @@ export default function InventoryPage() {
     supplier_whatsapp: "",
     purchase_cost_per_unit: 0
   });
+
+  const exportToCSV = () => {
+    const headers = ["Name", "Quantity", "Unit", "Min Level", "Supplier", "Cost/Unit"];
+    const rows = items.map(item => [
+      item.name,
+      item.quantity,
+      item.unit,
+      item.min_stock_level,
+      item.supplier_whatsapp,
+      item.purchase_cost_per_unit
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + headers.join(",") + "\n"
+      + rows.map(e => e.join(",")).join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `inventory_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Inventory exported!");
+  };
 
   const fetchInventory = async () => {
     setLoading(true);
