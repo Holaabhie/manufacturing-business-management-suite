@@ -253,11 +253,9 @@ export default function InventoryPage() {
                 });
               }
             }}>
-              <DialogTrigger asChild>
-                <Button className="shadow-lg shadow-primary/20 flex-1 sm:flex-none">
-                  <Plus className="mr-2 h-4 w-4" /> Add New Material
-                </Button>
-              </DialogTrigger>
+            <Button className="shadow-lg shadow-primary/20 flex-1 sm:flex-none" onClick={handleAddNewClick}>
+              <Plus className="mr-2 h-4 w-4" /> Add New Material
+            </Button>
               <DialogContent className="max-w-md p-0 overflow-hidden">
                 <ScrollArea className="max-h-[90vh]">
                   <div className="p-6">
