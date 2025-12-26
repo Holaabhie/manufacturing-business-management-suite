@@ -350,64 +350,70 @@ export default function ClientsPage() {
           />
         </div>
 
-        <div className="flex-1 overflow-y-auto rounded-xl border bg-white dark:bg-zinc-950 shadow-sm">
-          {loading ? (
-            <div className="flex items-center justify-center h-40 text-zinc-500">Loading directory...</div>
-          ) : filteredClients.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-40 text-center p-4">
-              <User className="h-8 w-8 text-zinc-300 mb-2" />
-              <p className="text-zinc-500">No clients found matching "{searchTerm}"</p>
-            </div>
-          ) : (
-            <div className="divide-y">
-              {filteredClients.map((client) => (
-                <div 
-                  key={client.id}
-                  onClick={() => handleSelectClient(client)}
-                  className={cn(
-                    "group flex flex-col p-4 cursor-pointer transition-all hover:bg-zinc-50 dark:hover:bg-zinc-900/50",
-                    selectedClient?.id === client.id ? "bg-zinc-100 dark:bg-zinc-900 border-l-4 border-primary" : "border-l-4 border-transparent"
-                  )}
-                >
-                  <div className="flex justify-between items-start">
-                    <h3 className="font-bold text-lg leading-none">{client.name}</h3>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleSelectClient(client)}>
-                          <Edit2 className="mr-2 h-4 w-4" /> View Details
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-500" onClick={(e) => {
-                          e.stopPropagation();
-                          setClientToDeleteId(client.id);
-                          setIsDeleteDialogOpenConfirm(true);
-                        }}>
-                          <Trash2 className="mr-2 h-4 w-4" /> Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                  <div className="flex items-center gap-4 mt-2 text-zinc-500 text-sm">
-                    {client.phone && (
-                      <div className="flex items-center">
-                        <Phone className="mr-1 h-3 w-3" /> {client.phone}
-                      </div>
+          <div className="flex-1 overflow-y-auto rounded-xl border bg-white dark:bg-zinc-950 shadow-sm">
+            {loading ? (
+              <div className="p-4 space-y-4">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} className="h-20 w-full rounded-xl" />
+                ))}
+              </div>
+            ) : filteredClients.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-40 text-center p-4">
+                <User className="h-8 w-8 text-zinc-300 mb-2" />
+                <p className="text-zinc-500">No clients found matching "{searchTerm}"</p>
+              </div>
+            ) : (
+              <div className="divide-y">
+                {filteredClients.map((client) => (
+                  <div 
+                    key={client.id}
+                    onClick={() => handleSelectClient(client)}
+                    className={cn(
+                      "group flex flex-col p-4 cursor-pointer transition-all hover:bg-zinc-50 dark:hover:bg-zinc-900/50",
+                      selectedClient?.id === client.id ? "bg-zinc-100 dark:bg-zinc-900 border-l-4 border-primary" : "border-l-4 border-transparent"
                     )}
-                    {client.email && (
-                      <div className="flex items-center max-w-[150px] truncate">
-                        <Mail className="mr-1 h-3 w-3" /> {client.email}
-                      </div>
-                    )}
+                  >
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-bold text-lg leading-none">{client.name}</h3>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="icon" className="h-10 w-10 opacity-0 group-hover:opacity-100 rounded-full">
+                            <MoreVertical className="h-5 w-5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleSelectClient(client)}>
+                            <Edit2 className="mr-2 h-4 w-4" /> View Details
+                          </DropdownMenuItem>
+                          {isAdmin && (
+                            <DropdownMenuItem className="text-red-500" onClick={(e) => {
+                              e.stopPropagation();
+                              setClientToDeleteId(client.id);
+                              setIsDeleteDialogOpenConfirm(true);
+                            }}>
+                              <Trash2 className="mr-2 h-4 w-4" /> Delete
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    <div className="flex items-center gap-4 mt-2 text-zinc-500 text-sm">
+                      {client.phone && (
+                        <div className="flex items-center">
+                          <Phone className="mr-1 h-3 w-3" /> {client.phone}
+                        </div>
+                      )}
+                      {client.email && (
+                        <div className="flex items-center max-w-[150px] truncate">
+                          <Mail className="mr-1 h-3 w-3" /> {client.email}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            )}
+          </div>
       </div>
 
       {/* Detailed View */}
