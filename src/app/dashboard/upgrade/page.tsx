@@ -40,7 +40,18 @@ import {
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
-const TIERS = {
+const TIERS: Record<string, {
+  name: string;
+  price: number;
+  priceLabel: string;
+  description: string;
+  icon: any;
+  features: { text: string; included: boolean }[];
+  color: string;
+  accentColor: string;
+  buttonVariant: "outline" | "default";
+  popular?: boolean;
+}> = {
   starter: {
     name: "Starter",
     price: 0,
