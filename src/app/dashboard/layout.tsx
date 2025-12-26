@@ -43,7 +43,7 @@ const navigation = [
   { name: "Clients", href: "/dashboard/clients", icon: Users },
   { name: "Payments", href: "/dashboard/payments", icon: CreditCard },
   { name: "Profile", href: "/dashboard/profile", icon: User },
-  { name: "Upgrade", href: "/dashboard/upgrade", icon: CreditCard },
+  { name: "Upgrade", href: "/dashboard/upgrade", icon: Crown },
 ];
 
 export default function DashboardLayout({
