@@ -270,65 +270,74 @@ export default function ClientsPage() {
         "flex-1 flex flex-col gap-4 min-w-0 transition-all duration-300",
         selectedClient ? "hidden lg:flex max-w-[400px]" : "w-full"
       )}>
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center gap-2">
           <h1 className="text-3xl font-bold tracking-tight">Clients</h1>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" /> New Client
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add New Client</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleAddClient} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Client Name *</Label>
-                  <Input 
-                    id="name" 
-                    value={formData.name} 
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    placeholder="e.g. Acme Corp"
-                    required 
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input 
-                      id="email" 
-                      type="email" 
-                      value={formData.email} 
-                      onChange={(e) => setFormData({...formData, email: e.target.value})}
-                      placeholder="client@example.com"
-                    />
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon" onClick={exportToCSV} className="hidden sm:flex">
+              <Download className="h-4 w-4" />
+            </Button>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="shadow-lg shadow-primary/20">
+                  <Plus className="mr-2 h-4 w-4" /> New Client
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md p-0 overflow-hidden">
+                <ScrollArea className="max-h-[90vh]">
+                  <div className="p-6">
+                    <DialogHeader>
+                      <DialogTitle>Add New Client</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleAddClient} className="space-y-4 pt-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="name">Client Name *</Label>
+                        <Input 
+                          id="name" 
+                          value={formData.name} 
+                          onChange={(e) => setFormData({...formData, name: e.target.value})}
+                          placeholder="e.g. Acme Corp"
+                          required 
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="email">Email</Label>
+                          <Input 
+                            id="email" 
+                            type="email" 
+                            value={formData.email} 
+                            onChange={(e) => setFormData({...formData, email: e.target.value})}
+                            placeholder="client@example.com"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="phone">WhatsApp / Phone</Label>
+                          <Input 
+                            id="phone" 
+                            value={formData.phone} 
+                            onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                            placeholder="+91..."
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="address">Address</Label>
+                        <Input 
+                          id="address" 
+                          value={formData.address} 
+                          onChange={(e) => setFormData({...formData, address: e.target.value})}
+                          placeholder="Full business address"
+                        />
+                      </div>
+                      <DialogFooter className="pt-4">
+                        <Button type="submit" className="w-full">Create Client Profile</Button>
+                      </DialogFooter>
+                    </form>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">WhatsApp / Phone</Label>
-                    <Input 
-                      id="phone" 
-                      value={formData.phone} 
-                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                      placeholder="+91..."
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="address">Address</Label>
-                  <Input 
-                    id="address" 
-                    value={formData.address} 
-                    onChange={(e) => setFormData({...formData, address: e.target.value})}
-                    placeholder="Full business address"
-                  />
-                </div>
-                <DialogFooter>
-                  <Button type="submit" className="w-full">Create Client Profile</Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+                </ScrollArea>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         <div className="relative">
