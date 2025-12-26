@@ -434,8 +434,8 @@ function ProfileContent() {
                     <CardDescription>Manage your password and session security.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <div className="flex flex-col gap-4">
-                      <Dialog>
+                      <div className="flex flex-col gap-4">
+                        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
                           <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/30 border border-border/50 hover:bg-muted/50 transition-all cursor-pointer group">
                             <div className="flex items-center gap-4">
