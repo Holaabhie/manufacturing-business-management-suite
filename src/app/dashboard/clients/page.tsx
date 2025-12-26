@@ -147,7 +147,7 @@ export default function ClientsPage() {
     else {
       toast.success("Client created");
       fetchClients();
-      setIsAddDialogOpen(false);
+        setIsDialogOpen(false);
       setFormData({ name: "", email: "", phone: "", address: "" });
       handleSelectClient(data);
     }
