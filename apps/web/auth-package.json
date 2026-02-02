@@ -1,0 +1,28 @@
+{
+  "name": "ind-manager-auth-setup",
+  "version": "1.0.0",
+  "description": "Complete authentication system for IND Manager",
+  "main": "index.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "^14.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "next-auth": "^4.24.0",
+    "mongoose": "^8.0.0",
+    "twilio": "^4.20.0",
+    "libphonenumber-js": "^1.10.0",
+    "bcrypt": "^5.1.0",
+    "framer-motion": "^10.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.2.0",
+    "@types/bcrypt": "^5.0.0",
+    "typescript": "^5.0.0"
+  }
+}

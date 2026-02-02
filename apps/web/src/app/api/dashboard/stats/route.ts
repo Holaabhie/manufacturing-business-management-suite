@@ -1,0 +1,122 @@
+import { NextResponse } from "next/server";
+import { getSessionUser } from "@/lib/auth-session";
+import { getDb } from "@/lib/mongodb";
+
+export async function GET() {
+  try {
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const db = await getDb();
+    const userId = user._id.toString();
+
+    const now = new Date();
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const twoMonthsAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+
+    // Use parallel promise execution with efficient queries
+    const [
+      clientCount,
+      newClientsThisWeek,
+      activeOrders,
+      orderStats,
+      lastMonthRevenue,
+      prevMonthRevenue,
+      paymentStats,
+      lowStockCount,
+      inventoryValue
+    ] = await Promise.all([
+      // Total clients count
+      db.collection("clients").countDocuments({ userId }),
+
+      // New clients this week
+      db.collection("clients").countDocuments({
+        userId,
+        createdAt: { $gte: oneWeekAgo }
+      }),
+
+      // Active orders count
+      db.collection("orders").countDocuments({
+        userId,
+        status: { $ne: "completed" }
+      }),
+
+      // Total revenue from orders
+      db.collection("orders").aggregate([
+        { $match: { userId } },
+        { $group: { _id: null, total: { $sum: { $toDouble: "$total_amount" } } } }
+      ]).toArray(),
+
+      // Last month revenue
+      db.collection("orders").aggregate([
+        { $match: { userId, createdAt: { $gte: oneMonthAgo } } },
+        { $group: { _id: null, total: { $sum: { $toDouble: "$total_amount" } } } }
+      ]).toArray(),
+
+      // Previous month revenue (for growth calculation)
+      db.collection("orders").aggregate([
+        { $match: { userId, createdAt: { $gte: twoMonthsAgo, $lt: oneMonthAgo } } },
+        { $group: { _id: null, total: { $sum: { $toDouble: "$total_amount" } } } }
+      ]).toArray(),
+
+      // Total payments collected
+      db.collection("payments").aggregate([
+        { $match: { userId } },
+        { $group: { _id: null, total: { $sum: { $toDouble: "$amount" } } } }
+      ]).toArray(),
+
+      // Low stock items count
+      db.collection("inventory").countDocuments({
+        userId,
+        $expr: { $lte: ["$quantity", "$min_stock_level"] }
+      }),
+
+      // Total inventory value
+      db.collection("inventory").aggregate([
+        { $match: { userId } },
+        {
+          $group: {
+            _id: null,
+            total: {
+              $sum: {
+                $multiply: [
+                  { $toDouble: "$quantity" },
+                  { $toDouble: "$purchase_cost_per_unit" }
+                ]
+              }
+            }
+          }
+        }
+      ]).toArray()
+    ]);
+
+    const totalRevenue = orderStats[0]?.total || 0;
+    const totalCollected = paymentStats[0]?.total || 0;
+    const totalOutstanding = totalRevenue - totalCollected;
+    const totalStockValue = inventoryValue[0]?.total || 0;
+
+    const lastMonthRev = lastMonthRevenue[0]?.total || 0;
+    const prevMonthRev = prevMonthRevenue[0]?.total || 0;
+    const revenueGrowth = prevMonthRev > 0
+      ? ((lastMonthRev - prevMonthRev) / prevMonthRev) * 100
+      : 0;
+
+    return NextResponse.json({
+      totalClients: clientCount,
+      newClientsThisWeek,
+      activeOrders,
+      totalRevenue,
+      totalCollected,
+      totalOutstanding,
+      lowStockItems: lowStockCount,
+      totalStockValue,
+      revenueGrowth: Math.round(revenueGrowth * 10) / 10,
+    });
+  } catch (error: any) {
+    console.error("Error fetching dashboard stats:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

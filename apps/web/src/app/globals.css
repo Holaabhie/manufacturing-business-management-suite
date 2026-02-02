@@ -1,0 +1,601 @@
+/* Enterprise Dashboard - IND Manager */
+/* Updated for enterprise-grade styling */
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Animation definitions */
+  --animate-in: enter 0.15s ease forwards;
+  --animate-out: exit 0.15s ease forwards;
+  --animate-accordion-down: accordion-down 0.2s ease-out forwards;
+  --animate-accordion-up: accordion-up 0.2s ease-out forwards;
+  --animate-collapsible-down: collapsible-down 0.2s ease-out forwards;
+  --animate-collapsible-up: collapsible-up 0.2s ease-out forwards;
+  --animate-caret-blink: caret-blink 1.25s ease-out infinite;
+}
+
+/* Animation keyframes */
+@keyframes enter {
+  from {
+    opacity: var(--tw-enter-opacity, 1);
+    transform: translate3d(var(--tw-enter-translate-x, 0), var(--tw-enter-translate-y, 0), 0) scale3d(var(--tw-enter-scale, 1), var(--tw-enter-scale, 1), var(--tw-enter-scale, 1)) rotate(var(--tw-enter-rotate, 0));
+  }
+}
+
+@keyframes exit {
+  to {
+    opacity: var(--tw-exit-opacity, 1);
+    transform: translate3d(var(--tw-exit-translate-x, 0), var(--tw-exit-translate-y, 0), 0) scale3d(var(--tw-exit-scale, 1), var(--tw-exit-scale, 1), var(--tw-exit-scale, 1)) rotate(var(--tw-exit-rotate, 0));
+  }
+}
+
+@keyframes accordion-down {
+  from {
+    height: 0;
+  }
+
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+
+@keyframes accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+
+  to {
+    height: 0;
+  }
+}
+
+@keyframes collapsible-down {
+  from {
+    height: 0;
+  }
+
+  to {
+    height: var(--radix-collapsible-content-height);
+  }
+}
+
+@keyframes collapsible-up {
+  from {
+    height: var(--radix-collapsible-content-height);
+  }
+
+  to {
+    height: 0;
+  }
+}
+
+@keyframes caret-blink {
+
+  0%,
+  70%,
+  100% {
+    opacity: 1;
+  }
+
+  20%,
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes pulse-subtle {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes counter-increment {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
+   ENTERPRISE COLOR PALETTE - LIGHT MODE
+   Primary: Deep Indigo #1e293b (slate-800)
+   Success: Emerald #059669
+   Warning: Amber #f59e0b
+   Danger: Red #ef4444
+   ============================================ */
+:root {
+  --radius: 0.625rem;
+
+  /* Core Colors - Light Mode */
+  --background: #f8fafc;
+  /* slate-50 */
+  --foreground: #0f172a;
+  /* slate-900 */
+
+  /* Card & Popover */
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+
+  /* Primary - Deep Indigo/Slate */
+  --primary: #1e293b;
+  /* slate-800 */
+  --primary-foreground: #f8fafc;
+
+  /* Secondary */
+  --secondary: #f1f5f9;
+  /* slate-100 */
+  --secondary-foreground: #1e293b;
+
+  /* Muted */
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  /* slate-500 */
+
+  /* Accent - Emerald Success */
+  --accent: #059669;
+  /* emerald-600 */
+  --accent-foreground: #ffffff;
+
+  /* Destructive - Red */
+  --destructive: #ef4444;
+  /* red-500 */
+
+  /* Warning - Amber */
+  --warning: #f59e0b;
+  /* amber-500 */
+  --warning-foreground: #ffffff;
+
+  /* Info - Blue */
+  --info: #3b82f6;
+  /* blue-500 */
+  --info-foreground: #ffffff;
+
+  /* Border, Input, Ring */
+  --border: #e2e8f0;
+  /* slate-200 */
+  --input: #e2e8f0;
+  --ring: #1e293b;
+
+  /* Chart Colors */
+  --chart-1: #1e293b;
+  /* Primary slate */
+  --chart-2: #059669;
+  /* Emerald */
+  --chart-3: #f59e0b;
+  /* Amber */
+  --chart-4: #3b82f6;
+  /* Blue */
+  --chart-5: #8b5cf6;
+  /* Violet */
+
+  /* Sidebar - Light Mode */
+  --sidebar: #1e293b;
+  /* Deep slate */
+  --sidebar-foreground: #f1f5f9;
+  --sidebar-primary: #059669;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(255, 255, 255, 0.1);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-ring: #059669;
+  --sidebar-muted: rgba(255, 255, 255, 0.05);
+}
+
+/* ============================================
+   ENTERPRISE COLOR PALETTE - DARK MODE
+   ============================================ */
+.dark {
+  --background: #020617;
+  /* slate-950 */
+  --foreground: #f8fafc;
+
+  --card: #0f172a;
+  /* slate-900 */
+  --card-foreground: #f8fafc;
+  --popover: #0f172a;
+  --popover-foreground: #f8fafc;
+
+  --primary: #f8fafc;
+  --primary-foreground: #0f172a;
+
+  --secondary: #1e293b;
+  --secondary-foreground: #f8fafc;
+
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  /* slate-400 */
+
+  --accent: #10b981;
+  /* emerald-500 for better dark contrast */
+  --accent-foreground: #022c22;
+
+  --destructive: #f87171;
+  /* red-400 */
+  --warning: #fbbf24;
+  /* amber-400 */
+  --info: #60a5fa;
+  /* blue-400 */
+
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: #10b981;
+
+  /* Sidebar - Dark Mode */
+  --sidebar: #020617;
+  --sidebar-foreground: #f1f5f9;
+  --sidebar-border: rgba(255, 255, 255, 0.05);
+}
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Typography Scale */
+  h1 {
+    @apply text-2xl font-bold tracking-tight;
+  }
+
+  h2 {
+    @apply text-xl font-semibold tracking-tight;
+  }
+
+  h3 {
+    @apply text-lg font-semibold;
+  }
+
+  h4 {
+    @apply text-base font-medium;
+  }
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+@layer utilities {
+
+  /* Custom Scrollbar */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: #94a3b8;
+  }
+
+  .dark .scrollbar-thin {
+    scrollbar-color: #475569 transparent;
+  }
+
+  .dark .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: #475569;
+  }
+
+  /* Hide Scrollbar */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Gradient Text */
+  .gradient-text {
+    background: linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .gradient-text-primary {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Glass Effect */
+  .glass {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .dark .glass {
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  /* Glassmorphism Card */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  }
+
+  .dark .glass-card {
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Shimmer Loading Effect */
+  .shimmer {
+    background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.4) 50%,
+        transparent 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  .dark .shimmer {
+    background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.1) 50%,
+        transparent 100%);
+    background-size: 200% 100%;
+  }
+
+  /* Pulse Glow Animation */
+  .pulse-glow {
+    animation: pulse-subtle 2s ease-in-out infinite;
+  }
+
+  /* Slide Up Animation */
+  .animate-slide-up {
+    animation: slide-up 0.3s ease-out forwards;
+  }
+
+  /* Counter Animation */
+  .animate-counter {
+    animation: counter-increment 0.4s ease-out forwards;
+  }
+
+  /* Status Indicators */
+  .status-online {
+    @apply relative;
+  }
+
+  .status-online::after {
+    content: '';
+    @apply absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-background;
+  }
+
+  .status-offline::after {
+    @apply bg-slate-400;
+  }
+
+  .status-warning::after {
+    @apply bg-amber-500;
+  }
+
+  .status-error::after {
+    @apply bg-red-500;
+  }
+
+  /* Enterprise Card Styles */
+  .enterprise-card {
+    @apply bg-card border border-border rounded-xl shadow-sm transition-all duration-200;
+  }
+
+  .enterprise-card:hover {
+    @apply shadow-md border-border/80;
+  }
+
+  /* KPI Card Gradient Backgrounds */
+  .kpi-gradient-primary {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  }
+
+  .kpi-gradient-success {
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  }
+
+  .kpi-gradient-warning {
+    background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
+  }
+
+  .kpi-gradient-info {
+    background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+  }
+
+  /* Sidebar Active State */
+  .sidebar-item-active {
+    @apply bg-sidebar-accent text-sidebar-accent-foreground;
+    box-shadow: inset 3px 0 0 0 var(--sidebar-primary);
+  }
+
+  /* Nav Group Label */
+  .nav-group-label {
+    @apply text-[10px] font-bold uppercase tracking-wider text-sidebar-foreground/50 px-3 py-2;
+  }
+}
+
+/* ============================================
+   PROSE STYLING FOR AI CHAT
+   ============================================ */
+.prose strong {
+  font-weight: 700;
+  color: inherit;
+}
+
+.prose em {
+  font-style: italic;
+}
+
+.prose code {
+  font-size: 0.875em;
+  font-weight: 500;
+  padding: 0.2em 0.4em;
+  border-radius: 0.25rem;
+  background: var(--muted);
+}
+
+.prose table {
+  width: 100%;
+  margin: 1em 0;
+  border-collapse: collapse;
+  font-size: 0.875em;
+}
+
+.prose th,
+.prose td {
+  padding: 0.5em;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+
+.prose th {
+  background: var(--muted);
+  font-weight: 600;
+}
+
+/* ============================================
+   PRINT STYLES
+   ============================================ */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+/* ============================================
+   MOBILE BOTTOM SHEET STYLES
+   ============================================ */
+@media (max-width: 768px) {
+  .mobile-bottom-nav {
+    @apply fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .mobile-nav-item {
+    @apply flex flex-col items-center justify-center py-2 px-3 text-muted-foreground;
+  }
+
+  .mobile-nav-item.active {
+    @apply text-primary;
+  }
+
+  .mobile-nav-item svg {
+    @apply w-5 h-5 mb-1;
+  }
+
+  .mobile-nav-item span {
+    @apply text-[10px] font-medium;
+  }
+}
