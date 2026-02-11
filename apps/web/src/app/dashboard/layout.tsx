@@ -25,7 +25,8 @@ import {
   Sun,
   Moon,
   Monitor,
-  UserCog
+  UserCog,
+  Cog
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -67,6 +68,7 @@ const navigationGroups = [
     items: [
       { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
       { name: "Orders", href: "/dashboard/orders", icon: ShoppingCart, badge: 0 },
+      { name: "Production", href: "/dashboard/production", icon: Cog },
       { name: "Inventory", href: "/dashboard/inventory", icon: Package },
     ],
   },
@@ -103,6 +105,7 @@ const navigationGroups = [
 const mobileNavItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Orders", href: "/dashboard/orders", icon: ShoppingCart },
+  { name: "Production", href: "/dashboard/production", icon: Cog },
   { name: "Inventory", href: "/dashboard/inventory", icon: Package },
   { name: "AI", href: "/dashboard/assistant", icon: Bot },
   { name: "More", href: "#", icon: Menu, isMore: true },

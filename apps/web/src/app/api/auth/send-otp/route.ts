@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import { TwilioService } from "@/services/twilio.service";
 import { User } from "@/models/User";
 import { connectToDatabase } from "@/lib/mongodb";
-import { createSession } from "@/lib/auth-session";
-import bcrypt from "bcrypt";
 
 export async function POST(req: Request) {
   try {
@@ -31,15 +29,15 @@ export async function POST(req: Request) {
 
     // Send OTP
     await TwilioService.sendOtp(phone, purpose as 'login' | 'forgot-password');
-    
-    return NextResponse.json({ 
-      success: true, 
-      message: "OTP sent successfully" 
+
+    return NextResponse.json({
+      success: true,
+      message: "OTP sent successfully"
     });
   } catch (error: any) {
     console.error("Send OTP error:", error);
-    return NextResponse.json({ 
-      error: error.message || "Failed to send OTP" 
+    return NextResponse.json({
+      error: error.message || "Failed to send OTP"
     }, { status: 500 });
   }
 }
