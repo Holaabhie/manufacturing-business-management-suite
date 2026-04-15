@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth-session";
+import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 
 export async function GET() {
@@ -12,7 +12,7 @@ export async function GET() {
     const db = await getDb();
     const items = await db
       .collection("inventory")
-      .find({ userId: user._id.toString() })
+      .find({ userId: getDataOwnerId(user) })
       .sort({ name: 1 })
       .toArray();
 
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     const db = await getDb();
 
     const result = await db.collection("inventory").insertOne({
-      userId: user._id.toString(),
+      userId: getDataOwnerId(user),
       name: body.name,
       quantity: Number(body.quantity) || 0,
       unit: body.unit || "kg",

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth-session";
+import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
@@ -14,7 +14,7 @@ export async function GET() {
     const orders = await db
       .collection("orders")
       .aggregate([
-        { $match: { userId: user._id.toString() } },
+        { $match: { userId: getDataOwnerId(user) } },
         { $sort: { createdAt: -1 } },
         // Convert string client_id to ObjectId for proper lookup
         {
@@ -41,6 +41,8 @@ export async function GET() {
             _id: 1,
             product_name: 1,
             quantity: 1,
+            unit: 1,
+            material_source: 1,
             rate: 1,
             total_amount: 1,
             delivery_date: 1,
@@ -48,6 +50,8 @@ export async function GET() {
             payment_status: 1,
             client_id: 1,
             createdAt: 1,
+            processedAt: 1,
+            completedAt: 1,
             client: { $arrayElemAt: ["$client", 0] },
           },
         },
@@ -58,6 +62,8 @@ export async function GET() {
       id: o._id.toString(),
       product_name: o.product_name,
       quantity: o.quantity,
+      unit: o.unit || "kg",
+      materialSource: o.material_source || "own",
       rate: o.rate,
       total_amount: o.total_amount,
       delivery_date: o.delivery_date,
@@ -66,6 +72,8 @@ export async function GET() {
       client_id: o.client_id,
       created_at: o.createdAt,
       createdAt: o.createdAt,
+      processedAt: o.processedAt || null,
+      completedAt: o.completedAt || null,
       clients: o.client
         ? {
           name: o.client.name,
@@ -94,10 +102,12 @@ export async function POST(request: Request) {
 
     // Create order
     const orderResult = await db.collection("orders").insertOne({
-      userId: user._id.toString(),
+      userId: getDataOwnerId(user),
       client_id: body.client_id,
       product_name: body.product_name,
       quantity: Number(body.quantity),
+      unit: body.unit || "kg",
+      material_source: body.material_source || "own",
       rate: Number(body.rate),
       total_amount: Number(body.total_amount),
       delivery_date: body.delivery_date || null,
@@ -127,7 +137,7 @@ export async function POST(request: Request) {
           order_id: orderResult.insertedId.toString(),
           inventory_id: item.inventory_id,
           quantity_deducted: Number(item.quantity_deducted),
-          userId: user._id.toString(),
+          userId: getDataOwnerId(user),
           createdAt: new Date(),
         });
       }

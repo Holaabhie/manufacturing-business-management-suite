@@ -21,8 +21,8 @@ import {
   ExternalLink,
   ShoppingCart
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+
+
 import {
   Table,
   TableBody,
@@ -49,7 +49,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { GlassCard, GlassInput, GlassButton, TogglePill } from "@/components/ui/glass";
+import { Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
@@ -57,6 +58,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useRole } from "@/lib/hooks/use-role";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ReadOnlyBanner } from "@/components/AccessDenied";
+import { generateDataExportPDF } from "@/lib/pdf-generator";
+import { NumericInput } from "@/components/ui/numeric-input";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export default function ClientsPage() {
   const { isAdmin, isPro } = useRole();
@@ -84,56 +88,44 @@ export default function ClientsPage() {
     setIsDialogOpen(true);
   };
 
-  const exportToCSV = () => {
+  const exportToPDF = () => {
     const headers = ["Name", "Email", "Phone", "Address"];
     const rows = clients.map(client => [
-      client.name,
-      client.email,
-      client.phone,
-      client.address
+      client.name || "—",
+      client.email || "—",
+      client.phone || "—",
+      client.address || "—"
     ]);
 
-    const csvContent = "data:text/csv;charset=utf-8,"
-      + headers.join(",") + "\n"
-      + rows.map(e => e.join(",")).join("\n");
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `clients_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("Clients exported!");
+    generateDataExportPDF({
+      title: "Clients Directory",
+      subtitle: "Complete list of all registered clients",
+      headers,
+      rows,
+      filename: `clients_${new Date().toISOString().split('T')[0]}.pdf`,
+    });
+    toast.success("Clients report PDF downloaded!");
   };
 
-  // Materials and Orders for selected client
-  const [clientMaterials, setClientMaterials] = useState<any[]>([]);
+    // Products, Materials and Orders for selected client
+  const [clientProducts, setClientProducts] = useState<any[]>([]);
+  const [productMaterials, setProductMaterials] = useState<Record<string, any[]>>({});
+  const [expandedProducts, setExpandedProducts] = useState<string[]>([]);
   const [clientOrders, setClientOrders] = useState<any[]>([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [loadingMaterials, setLoadingMaterials] = useState<Record<string, boolean>>({});
 
   // New Client Form
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    address: ""
-  });
+  const [formData, setFormData] = useState({ name: "", email: "", phone: "", address: "", customerSince: new Date().toISOString().split("T")[0] });
 
-  // Edit Client Form (Detailed View)
-  const [editData, setEditData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    address: ""
-  });
+  // Edit Client Form
+  const [editData, setEditData] = useState({ name: "", email: "", phone: "", address: "", customerSince: "" });
+
+  // Product Form
+  const [productForm, setProductForm] = useState({ name: "", defaultRate: "" });
 
   // Material Form
-  const [materialForm, setMaterialForm] = useState({
-    name: "",
-    type: "",
-    default_rate: ""
-  });
+  const [materialForm, setMaterialForm] = useState({ productId: "", name: "", type: "", defaultQty: "" });
 
   const fetchClients = async () => {
     setLoading(true);
@@ -149,23 +141,52 @@ export default function ClientsPage() {
     }
   };
 
-  const fetchClientDetails = async (client: any) => {
+    const fetchClientDetails = async (client: any) => {
     setLoadingDetails(true);
     try {
-      const [materialsRes, ordersRes] = await Promise.all([
-        fetch(`/api/clients/${client.id}/materials`).then(r => r.json()),
-        fetch("/api/orders").then(r => r.json()).then(orders =>
-          orders.filter((o: any) => o.client_id === client.id)
-        )
+      const [productsRes, ordersRes] = await Promise.all([
+        fetch(`/api/v1/clients/${client.id}/products`).then(r => r.json()),
+        fetch(`/api/v1/orders?clientId=${client.id}`).then(r => r.json())
       ]);
 
-      setClientMaterials(materialsRes || []);
-      setClientOrders(ordersRes || []);
+      if (productsRes.error) throw new Error(productsRes.error.message);
+      if (ordersRes.error) throw new Error(ordersRes.error.message);
+
+      const filteredOrders = ordersRes.data || [];
+
+      setClientProducts(productsRes.data || []);
+      setClientOrders(filteredOrders);
+      setExpandedProducts([]);
     } catch (error) {
       toast.error("Failed to fetch client details");
     } finally {
       setLoadingDetails(false);
     }
+  };
+
+  const fetchMaterialsForProduct = async (productId: string) => {
+    if (!selectedClient) return;
+    setLoadingMaterials(prev => ({ ...prev, [productId]: true }));
+    try {
+      const res = await fetch(`/api/v1/clients/${selectedClient.id}/products/${productId}/materials`);
+      const json = await res.json();
+      if (json.error) throw new Error(json.error.message);
+      setProductMaterials(prev => ({ ...prev, [productId]: json.data || [] }));
+    } catch (error) {
+      toast.error("Failed to fetch materials for product");
+    } finally {
+      setLoadingMaterials(prev => ({ ...prev, [productId]: false }));
+    }
+  };
+
+  const toggleProductExpand = (productId: string) => {
+    setExpandedProducts(prev => {
+      const isExpanded = prev.includes(productId);
+      if (!isExpanded && !productMaterials[productId]) {
+        fetchMaterialsForProduct(productId);
+      }
+      return isExpanded ? prev.filter(id => id !== productId) : [...prev, productId];
+    });
   };
 
   useEffect(() => {
@@ -195,7 +216,7 @@ export default function ClientsPage() {
         toast.success("Client created");
         fetchClients();
         setIsDialogOpen(false);
-        setFormData({ name: "", email: "", phone: "", address: "" });
+        setFormData({ name: "", email: "", phone: "", address: "", customerSince: new Date().toISOString().split("T")[0] });
         handleSelectClient(data);
       }
     } catch (error) {
@@ -248,7 +269,7 @@ export default function ClientsPage() {
   const handleSelectClient = (client: any) => {
     setSelectedClient(client);
     setEditData({
-      name: client.name,
+      name: client.name, customerSince: client.createdAt ? new Date(client.createdAt).toISOString().split("T")[0] : "",
       email: client.email || "",
       phone: client.phone || "",
       address: client.address || ""
@@ -256,40 +277,76 @@ export default function ClientsPage() {
     fetchClientDetails(client);
   };
 
-  const handleAddMaterial = async (e: React.FormEvent) => {
+  const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedClient) return;
-
     try {
-      const res = await fetch(`/api/clients/${selectedClient.id}/materials`, {
+      const res = await fetch(`/api/v1/clients/${selectedClient.id}/products`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(materialForm),
+        body: JSON.stringify({ name: productForm.name, defaultRate: Number(productForm.defaultRate) }),
       });
       const data = await res.json();
+      if (data.error) toast.error("Failed to add product");
+      else {
+        toast.success("Product added");
+        setProductForm({ name: "", defaultRate: "" });
+        fetchClientDetails(selectedClient);
+      }
+    } catch (error) {
+      toast.error("Failed to add product");
+    }
+  };
 
+  const handleDeleteProduct = async (productId: string) => {
+    if (!selectedClient) return;
+    try {
+      const res = await fetch(`/api/v1/clients/products/${productId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.error) toast.error("Failed to delete product");
+      else {
+        toast.success("Product deleted");
+        fetchClientDetails(selectedClient);
+      }
+    } catch (error) {
+      toast.error("Failed to delete product");
+    }
+  };
+
+  const handleAddMaterial = async (e: React.FormEvent, productId: string) => {
+    e.preventDefault();
+    if (!selectedClient) return;
+    try {
+      const res = await fetch(`/api/v1/clients/${selectedClient.id}/products/${productId}/materials`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: materialForm.name, type: materialForm.type, defaultQty: materialForm.defaultQty || null }),
+      });
+      const data = await res.json();
       if (data.error) toast.error("Failed to add material");
       else {
         toast.success("Material added");
-        setMaterialForm({ name: "", type: "", default_rate: "" });
-        fetchClientDetails(selectedClient);
+        setMaterialForm({ productId: "", name: "", type: "", defaultQty: "" });
+        fetchMaterialsForProduct(productId);
       }
     } catch (error) {
       toast.error("Failed to add material");
     }
   };
 
-  const handleDeleteMaterial = async (id: string) => {
+  const handleDeleteMaterial = async (productId: string, materialId: string) => {
+    if (!selectedClient) return;
     try {
-      const res = await fetch(`/api/client-materials/${id}`, {
+      const res = await fetch(`/api/v1/clients/materials/${materialId}`, {
         method: "DELETE",
       });
       const data = await res.json();
-
       if (data.error) toast.error("Failed to delete material");
       else {
         toast.success("Material deleted");
-        fetchClientDetails(selectedClient);
+        fetchMaterialsForProduct(productId);
       }
     } catch (error) {
       toast.error("Failed to delete material");
@@ -311,15 +368,15 @@ export default function ClientsPage() {
         <div className="flex justify-between items-center gap-2">
           <h1 className="text-3xl font-bold tracking-tight">Clients</h1>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={exportToCSV} className="hidden sm:flex">
+            <GlassButton variant="outline" size="icon" onClick={exportToPDF} className="hidden sm:flex">
               <Download className="h-4 w-4" />
-            </Button>
+            </GlassButton>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               {isAdmin && (
                 <DialogTrigger asChild>
-                  <Button className="shadow-lg shadow-primary/20">
+                  <GlassButton className="shadow-lg shadow-primary/20">
                     <Plus className="mr-2 h-4 w-4" /> New Client
-                  </Button>
+                  </GlassButton>
                 </DialogTrigger>
               )}
               <DialogContent className="max-w-md p-0 overflow-hidden">
@@ -331,7 +388,7 @@ export default function ClientsPage() {
                     <form onSubmit={handleAddClient} className="space-y-4 pt-4">
                       <div className="space-y-2">
                         <Label htmlFor="name">Client Name *</Label>
-                        <Input
+                        <GlassInput
                           id="name"
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -342,7 +399,7 @@ export default function ClientsPage() {
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="email">Email</Label>
-                          <Input
+                          <GlassInput
                             id="email"
                             type="email"
                             value={formData.email}
@@ -352,7 +409,7 @@ export default function ClientsPage() {
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="phone">WhatsApp / Phone</Label>
-                          <Input
+                          <GlassInput
                             id="phone"
                             value={formData.phone}
                             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
@@ -362,7 +419,7 @@ export default function ClientsPage() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="address">Address</Label>
-                        <Input
+                        <GlassInput
                           id="address"
                           value={formData.address}
                           onChange={(e) => setFormData({ ...formData, address: e.target.value })}
@@ -370,7 +427,7 @@ export default function ClientsPage() {
                         />
                       </div>
                       <DialogFooter className="pt-4">
-                        <Button type="submit" className="w-full">Create Client Profile</Button>
+                        <GlassButton type="submit" className="w-full">Create Client Profile</GlassButton>
                       </DialogFooter>
                     </form>
                   </div>
@@ -382,7 +439,7 @@ export default function ClientsPage() {
 
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-500" />
-          <Input
+          <GlassInput
             placeholder="Search by name or email..."
             className="pl-8 bg-white dark:bg-zinc-900 shadow-sm"
             value={searchTerm}
@@ -398,10 +455,20 @@ export default function ClientsPage() {
               ))}
             </div>
           ) : filteredClients.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-40 text-center p-4">
-              <User className="h-8 w-8 text-zinc-300 mb-2" />
-              <p className="text-zinc-500">No clients found matching "{searchTerm}"</p>
-            </div>
+            searchTerm ? (
+              <div className="flex flex-col items-center justify-center h-40 text-center p-4">
+                <User className="h-8 w-8 text-zinc-300 mb-2" />
+                <p className="text-zinc-500">No clients found matching "{searchTerm}"</p>
+              </div>
+            ) : (
+              <EmptyState
+                icon="👤"
+                title="No clients yet"
+                description="Add your first client to start managing orders, products, and materials"
+                actionLabel="+ Add First Client"
+                onAction={handleAddNewClick}
+              />
+            )
           ) : (
             <div className="divide-y">
               {filteredClients.map((client) => (
@@ -417,9 +484,9 @@ export default function ClientsPage() {
                     <h3 className="font-bold text-lg leading-none">{client.name}</h3>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" className="h-10 w-10 opacity-0 group-hover:opacity-100 rounded-full">
+                        <GlassButton variant="ghost" size="icon" className="h-10 w-10 opacity-0 group-hover:opacity-100 rounded-full">
                           <MoreVertical className="h-5 w-5" />
-                        </Button>
+                        </GlassButton>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleSelectClient(client)}>
@@ -465,11 +532,11 @@ export default function ClientsPage() {
                 <User className="h-6 w-6 text-primary" />
                 {selectedClient.name}
               </h2>
-              <p className="text-zinc-500 text-sm">Customer since {new Date(selectedClient.created_at).toLocaleDateString()}</p>
+              <p className="text-zinc-500 text-sm">Customer since {new Date(selectedClient.createdAt || selectedClient.created_at).toLocaleDateString('en-IN')}</p>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => setSelectedClient(null)}>
+            <GlassButton variant="ghost" size="icon" onClick={() => setSelectedClient(null)}>
               <X className="h-5 w-5" />
-            </Button>
+            </GlassButton>
           </div>
 
           <Tabs defaultValue="profile" className="flex-1 flex flex-col overflow-hidden">
@@ -482,31 +549,31 @@ export default function ClientsPage() {
             <div className="flex-1 overflow-y-auto mt-4 pr-1">
               <TabsContent value="profile" className="m-0 space-y-6">
                 {!isAdmin && <ReadOnlyBanner feature="client management" />}
-                <Card>
-                  <CardHeader className="pb-3 border-b">
-                    <CardTitle className="text-lg">Contact Information</CardTitle>
-                    <CardDescription>Inline changes are saved when you click update</CardDescription>
-                  </CardHeader>
-                  <CardContent className="pt-6 space-y-4">
+                <GlassCard>
+                  <div className="p-4 border-b border-[var(--border-card)]">
+                    <h3 className="text-[17px] font-semibold text-[var(--label-primary)]">Contact Information</h3>
+                    <p className="text-[13px] text-[var(--label-secondary)] mt-1">Inline changes are saved when you click update</p>
+                  </div>
+                  <div className="p-4 pt-6 space-y-4">
                     <fieldset disabled={!isAdmin} className="space-y-4 border-none p-0 m-0 min-w-0">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label>Display Name</Label>
-                          <Input
+                          <GlassInput
                             value={editData.name}
                             onChange={(e) => setEditData({ ...editData, name: e.target.value })}
                           />
                         </div>
                         <div className="space-y-2">
                           <Label>Email Address</Label>
-                          <Input
+                          <GlassInput
                             value={editData.email}
                             onChange={(e) => setEditData({ ...editData, email: e.target.value })}
                           />
                         </div>
                         <div className="space-y-2">
                           <Label>Phone / WhatsApp</Label>
-                          <Input
+                          <GlassInput
                             value={editData.phone}
                             onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
                           />
@@ -514,23 +581,23 @@ export default function ClientsPage() {
                       </div>
                       <div className="space-y-2">
                         <Label>Business Address</Label>
-                        <Input
+                        <GlassInput
                           value={editData.address}
                           onChange={(e) => setEditData({ ...editData, address: e.target.value })}
                         />
                       </div>
                     </fieldset>
                     {isAdmin && (
-                      <Button onClick={handleUpdateClient} className="w-fit">
+                      <GlassButton onClick={handleUpdateClient} className="w-fit">
                         <Save className="mr-2 h-4 w-4" /> Save Changes
-                      </Button>
+                      </GlassButton>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </GlassCard>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <Card className="border-emerald-200 dark:border-emerald-900 bg-emerald-50/30 dark:bg-emerald-950/10">
-                    <CardContent className="pt-6">
+                  <GlassCard className="border-emerald-200 dark:border-emerald-900 bg-emerald-50/30 dark:bg-emerald-950/10">
+                    <div className="p-4" className="pt-6">
                       <div className="flex flex-col items-center text-center">
                         <div className="h-10 w-10 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center mb-2">
                           <Package className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
@@ -538,105 +605,131 @@ export default function ClientsPage() {
                         <p className="text-2xl font-bold">{clientOrders.length}</p>
                         <p className="text-zinc-500 text-xs uppercase tracking-wider font-bold">Total Orders</p>
                       </div>
-                    </CardContent>
-                  </Card>
-                  <Card className="border-blue-200 dark:border-blue-900 bg-blue-50/30 dark:bg-blue-950/10">
-                    <CardContent className="pt-6">
+                    </div>
+                  </GlassCard>
+                  <GlassCard className="border-blue-200 dark:border-blue-900 bg-blue-50/30 dark:bg-blue-950/10">
+                    <div className="p-4" className="pt-6">
                       <div className="flex flex-col items-center text-center">
                         <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center mb-2">
                           <History className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                         </div>
                         <p className="text-2xl font-bold">
-                          ₹{clientOrders.reduce((acc, o) => acc + Number(o.total_amount || 0), 0).toLocaleString()}
+                          ₹{clientOrders.reduce((acc, o) => acc + (Number(o.totalAmount || o.total_amount) || 0), 0).toLocaleString('en-IN')}
                         </p>
                         <p className="text-zinc-500 text-xs uppercase tracking-wider font-bold">Total Spent</p>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </GlassCard>
                 </div>
               </TabsContent>
 
               <TabsContent value="materials" className="m-0 space-y-6">
-                <Card>
-                  <CardHeader className="pb-3 border-b">
-                    <CardTitle className="text-lg">Add Specific Material/Product</CardTitle>
-                    <CardDescription>Define materials commonly ordered by this client</CardDescription>
-                  </CardHeader>
-                  <CardContent className="pt-6">
-                    {isAdmin ? (
-                      <form onSubmit={handleAddMaterial} className="flex flex-wrap gap-4">
-                        <div className="flex-1 min-w-[200px] space-y-2">
-                          <Label>Material Name</Label>
-                          <Input
-                            placeholder="e.g. Cotton 50kg bag"
-                            value={materialForm.name}
-                            onChange={(e) => setMaterialForm({ ...materialForm, name: e.target.value })}
+                {isAdmin && (
+                  <GlassCard>
+                    <h3 className="text-[17px] font-semibold mb-4 border-b border-[var(--border-card)] pb-4 text-[var(--label-primary)]">Add Client Product</h3>
+                    <div className="p-4">
+                      <form onSubmit={handleAddProduct} className="grid sm:grid-cols-3 gap-4 items-end">
+                        <div className="space-y-2 sm:col-span-1">
+                          <label className="text-[13px] font-medium text-[var(--label-secondary)] pl-1">Product Name</label>
+                          <GlassInput
+                            value={productForm.name}
+                            onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
+                            placeholder="e.g. Premium Widget"
                             required
                           />
                         </div>
-                        <div className="w-40 space-y-2">
-                          <Label>Type</Label>
-                          <Input
-                            placeholder="Raw / Finished"
-                            value={materialForm.type}
-                            onChange={(e) => setMaterialForm({ ...materialForm, type: e.target.value })}
-                          />
-                        </div>
-                        <div className="w-32 space-y-2">
-                          <Label>Default Rate</Label>
-                          <Input
+                        <div className="space-y-2 sm:col-span-1">
+                          <label className="text-[13px] font-medium text-[var(--label-secondary)] pl-1">Default Rate (₹)</label>
+                          <GlassInput
                             type="number"
+                            value={productForm.defaultRate}
+                            onChange={(e) => setProductForm({ ...productForm, defaultRate: e.target.value })}
+                            className="w-full"
                             placeholder="0.00"
-                            value={materialForm.default_rate}
-                            onChange={(e) => setMaterialForm({ ...materialForm, default_rate: e.target.value })}
+                            min="0"
+                            required
                           />
                         </div>
-                        <div className="flex gap-2 self-end">
-                          <Button type="submit">
-                            <Plus className="h-4 w-4 mr-2" /> Add
-                          </Button>
+                        <div className="sm:col-span-1">
+                          <GlassButton type="submit" variant="primary" className="w-full h-[40px]">
+                            <Plus className="h-4 w-4 mr-2" /> Add Product
+                          </GlassButton>
                         </div>
                       </form>
-                    ) : (
-                      <div className="text-center py-4 text-zinc-500 italic">
-                        Material management is restricted to administrators.
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                    </div>
+                  </GlassCard>
+                )}
 
-                <div className="grid gap-4">
-                  <h3 className="font-bold text-zinc-500 uppercase text-xs tracking-widest pl-1">Stored Materials</h3>
-                  {clientMaterials.length === 0 ? (
-                    <div className="text-center py-10 bg-zinc-100/50 dark:bg-zinc-900 rounded-xl border-2 border-dashed">
-                      <p className="text-zinc-500 text-sm">No materials stored for this client yet.</p>
+                <div className="space-y-4">
+                  {loadingDetails ? (
+                    <div className="text-center py-10 text-[var(--label-secondary)]"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></div>
+                  ) : clientProducts.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-40 text-center p-4 glass-section rounded-[16px]">
+                      <Package className="h-8 w-8 text-[var(--label-tertiary)] mx-auto mb-2 opacity-50" />
+                      <p className="text-[15px] text-[var(--label-secondary)]">No products mapped for this client.</p>
                     </div>
                   ) : (
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      {clientMaterials.map((mat) => (
-                        <Card key={mat.id} className="relative overflow-hidden group">
-                          <CardContent className="p-4 flex justify-between items-center">
-                            <div>
-                              <p className="font-bold">{mat.name}</p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <Badge variant="secondary" className="text-[10px] uppercase font-bold">{mat.type || 'Standard'}</Badge>
-                                <span className="text-sm font-medium text-primary">₹{mat.default_rate}/unit</span>
+                    clientProducts.map((product) => (
+                      <GlassCard key={product.id} className="overflow-hidden p-0 mb-4">
+                        <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-[var(--fill-quaternary)] transition-colors" onClick={() => toggleProductExpand(product.id)}>
+                          <div>
+                            <h4 className="font-bold text-[16px] text-[var(--label-primary)] select-none">{product.name}</h4>
+                            <p className="text-[13px] text-[var(--label-secondary)] select-none">Rate: <span className="font-semibold text-[var(--label-primary)]">₹{Number(product.defaultRate).toLocaleString()}</span></p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            {isAdmin && (
+                              <GlassButton variant="ghost" size="sm" className="text-[var(--ios-red)] hover:bg-[var(--ios-red)] hover:text-white" onClick={(e) => { e.stopPropagation(); handleDeleteProduct(product.id); }}>
+                                <Trash2 className="h-4 w-4" />
+                              </GlassButton>
+                            )}
+                            {expandedProducts.includes(product.id) ? <ChevronUp className="h-5 w-5 text-[var(--label-tertiary)]" /> : <ChevronDown className="h-5 w-5 text-[var(--label-tertiary)]" />}
+                          </div>
+                        </div>
+
+                        {expandedProducts.includes(product.id) && (
+                          <div className="overflow-hidden border-t border-[var(--border-card)]">
+                            <div className="p-4 bg-[var(--fill-quaternary)]/30 space-y-4">
+                              
+                              {isAdmin && (
+                                <form onSubmit={(e) => handleAddMaterial(e, product.id)} className="flex items-end gap-3 glass-section p-3 rounded-[12px]">
+                                  <div className="flex-1 space-y-1">
+                                    <label className="text-[11px] font-semibold text-[var(--label-secondary)] uppercase">New Material Name / Ref</label>
+                                    <GlassInput value={materialForm.productId === product.id ? materialForm.name : ""} onChange={(e) => setMaterialForm({ productId: product.id, name: e.target.value, type: materialForm.type, defaultQty: materialForm.defaultQty })} placeholder="e.g. Aluminium Sheet" className="h-9 text-[13px]" required />
+                                  </div>
+                                  <div className="w-1/4 space-y-1">
+                                    <label className="text-[11px] font-semibold text-[var(--label-secondary)] uppercase">Category</label>
+                                    <GlassInput value={materialForm.productId === product.id ? materialForm.type : ""} onChange={(e) => setMaterialForm({ ...materialForm, productId: product.id, type: e.target.value })} placeholder="Type" className="h-9 text-[13px]" />
+                                  </div>
+                                  <GlassButton type="submit" variant="primary" size="sm" className="h-9 px-4 whitespace-nowrap"><Plus className="h-3 w-3 mr-1" /> Add</GlassButton>
+                                </form>
+                              )}
+
+                              <div className="space-y-2">
+                                {loadingMaterials[product.id] ? (
+                                  <div className="py-4 text-center text-[var(--label-tertiary)]"><Loader2 className="h-4 w-4 animate-spin mx-auto" /></div>
+                                ) : !productMaterials[product.id] || productMaterials[product.id].length === 0 ? (
+                                  <div className="py-4 text-center text-[13px] text-[var(--label-secondary)] italic">No specific materials added to this product.</div>
+                                ) : (
+                                  productMaterials[product.id].map((mat: any) => (
+                                    <div key={mat.id} className="flex justify-between items-center p-3 rounded-[10px] bg-[var(--bg-card)] border border-[var(--border-card)] hover:border-white/20 transition-all">
+                                      <div>
+                                        <p className="font-semibold text-[14px] text-[var(--label-primary)] leading-tight">{mat.name}</p>
+                                        {mat.type && <p className="text-[11px] text-[var(--label-tertiary)] mt-0.5">{mat.type}</p>}
+                                      </div>
+                                      {isAdmin && (
+                                        <GlassButton variant="ghost" size="sm" className="h-7 w-7 !p-0 text-[var(--label-tertiary)] hover:text-[var(--ios-red)]" onClick={() => handleDeleteMaterial(product.id, mat.id)}>
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </GlassButton>
+                                      )}
+                                    </div>
+                                  ))
+                                )}
                               </div>
                             </div>
-                            {isAdmin && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-red-500 opacity-0 group-hover:opacity-100"
-                                onClick={() => handleDeleteMaterial(mat.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
+                          </div>
+                        )}
+                      </GlassCard>
+                    ))
                   )}
                 </div>
               </TabsContent>
@@ -664,12 +757,12 @@ export default function ClientsPage() {
                             <ShoppingCart className="h-5 w-5 text-zinc-500" />
                           </div>
                           <div>
-                            <p className="font-bold text-zinc-900 dark:text-zinc-100">{order.product_name}</p>
-                            <p className="text-xs text-zinc-500">{new Date(order.created_at).toLocaleDateString()}</p>
+                            <p className="font-bold text-zinc-900 dark:text-zinc-100">{order.productName || order.product_name || 'Unnamed Order'}</p>
+                            <p className="text-xs text-zinc-500">{order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}</p>
                           </div>
                         </div>
                         <div className="text-right flex flex-col items-end gap-1">
-                          <span className="font-bold text-primary">₹{Number(order.total_amount).toLocaleString()}</span>
+                          <span className="font-bold text-primary">₹{(Number(order.totalAmount || order.total_amount) || 0).toLocaleString('en-IN')}</span>
                           <Badge
                             variant="outline"
                             className={cn(
@@ -709,14 +802,14 @@ export default function ClientsPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex gap-2">
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpenConfirm(false)} className="flex-1">Cancel</Button>
-            <Button
+            <GlassButton variant="outline" onClick={() => setIsDeleteDialogOpenConfirm(false)} className="flex-1">Cancel</GlassButton>
+            <GlassButton
               variant="destructive"
               onClick={() => clientToDeleteId && handleDeleteClient(clientToDeleteId)}
               className="flex-1"
             >
               Delete
-            </Button>
+            </GlassButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

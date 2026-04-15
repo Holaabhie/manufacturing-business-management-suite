@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt';
 import { Otp } from '@/models/Otp';
 import { connectToDatabase } from '@/lib/mongodb';
+import { twilioLogger } from '@/infrastructure/logging/logger';
 
 // ─── Lazy Twilio Client ─────────────────────────────────────────
 // Only initialized when actually needed, and only if env vars are set.
@@ -13,7 +14,7 @@ function getTwilioClient() {
   const token = process.env.TWILIO_AUTH_TOKEN;
 
   if (!sid || !token) {
-    console.warn('[TwilioService] TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN not set. OTP will be logged to console only (dev mode).');
+    twilioLogger.warn('TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN not set. OTP will be logged only (dev mode).');
     return null;
   }
 
@@ -23,7 +24,7 @@ function getTwilioClient() {
     _twilioClient = twilio(sid, token);
     return _twilioClient;
   } catch (err) {
-    console.warn('[TwilioService] "twilio" package not installed. OTP will be logged to console only (dev mode).');
+    twilioLogger.warn('"twilio" package not installed. OTP will be logged only (dev mode).');
     return null;
   }
 }
@@ -108,7 +109,7 @@ export class TwilioService {
       const client = getTwilioClient();
 
       if (client && process.env.TWILIO_VERIFY_SERVICE_SID) {
-        // Production: use Twilio Verify
+        // Strategy 1: Twilio Verify service (WhatsApp → SMS fallback)
         try {
           await client.verify.v2.services(process.env.TWILIO_VERIFY_SERVICE_SID)
             .verifications
@@ -117,8 +118,7 @@ export class TwilioService {
               channel: 'whatsapp'
             });
         } catch (whatsappError) {
-          console.log('WhatsApp failed, falling back to SMS:', whatsappError);
-          // Fallback to SMS
+          twilioLogger.info('WhatsApp failed, falling back to SMS', { error: String(whatsappError) });
           await client.verify.v2.services(process.env.TWILIO_VERIFY_SERVICE_SID)
             .verifications
             .create({
@@ -126,18 +126,51 @@ export class TwilioService {
               channel: 'sms'
             });
         }
+      } else if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER) {
+        // Strategy 2: Direct SMS via Twilio Messages API
+        const messagesUrl = process.env.TWILIO_MESSAGES_API
+          || `https://api.twilio.com/2010-04-01/Accounts/${process.env.TWILIO_ACCOUNT_SID}/Messages.json`;
+
+        const authHeader = 'Basic ' + Buffer.from(
+          `${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`
+        ).toString('base64');
+
+        const smsBody = `[IND Manager] Your OTP is: ${otp}. Valid for 5 minutes. Do not share this code.`;
+
+        const response = await fetch(messagesUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': authHeader,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            To: formattedPhone,
+            From: process.env.TWILIO_PHONE_NUMBER,
+            Body: smsBody,
+          }).toString(),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          twilioLogger.error('Messages API error', { status: response.status, errorData });
+          throw new Error(`SMS delivery failed: ${(errorData as any)?.message || response.statusText}`);
+        }
+
+        const result = await response.json();
+        twilioLogger.info('SMS sent via Messages API', { sid: (result as any)?.sid });
       } else {
-        // Development fallback: log OTP to console
-        console.log(`\n══════════════════════════════════════════`);
-        console.log(`  📱 OTP for ${formattedPhone}: ${otp}`);
-        console.log(`  Purpose: ${purpose}`);
-        console.log(`  Expires: ${expiresAt.toLocaleTimeString()}`);
-        console.log(`══════════════════════════════════════════\n`);
+        // Strategy 3: Development fallback — log OTP
+        twilioLogger.info('Dev OTP generated', {
+          phone: formattedPhone,
+          otp,
+          purpose,
+          expiresAt: expiresAt.toISOString(),
+        });
       }
 
       return true;
     } catch (error) {
-      console.error('Error sending OTP:', error);
+      twilioLogger.error('Error sending OTP', { error: error instanceof Error ? error.message : String(error) });
       throw error;
     }
   }
@@ -185,7 +218,7 @@ export class TwilioService {
 
       return true;
     } catch (error) {
-      console.error('Error verifying OTP:', error);
+      twilioLogger.error('Error verifying OTP', { error: error instanceof Error ? error.message : String(error) });
       throw error;
     }
   }
@@ -218,9 +251,9 @@ export class TwilioService {
     try {
       await connectToDatabase();
       const result = await Otp.deleteMany({ expiresAt: { $lt: new Date() } });
-      console.log(`Cleaned up ${result.deletedCount} expired OTPs`);
+      twilioLogger.info('Cleaned up expired OTPs', { deletedCount: result.deletedCount });
     } catch (error) {
-      console.error('Error cleaning up expired OTPs:', error);
+      twilioLogger.error('Error cleaning up expired OTPs', { error: error instanceof Error ? error.message : String(error) });
     }
   }
 }

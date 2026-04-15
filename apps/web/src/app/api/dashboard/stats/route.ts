@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth-session";
+import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 
 export async function GET() {
@@ -10,7 +10,7 @@ export async function GET() {
     }
 
     const db = await getDb();
-    const userId = user._id.toString();
+    const userId = getDataOwnerId(user);
 
     const now = new Date();
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -27,7 +27,11 @@ export async function GET() {
       prevMonthRevenue,
       paymentStats,
       lowStockCount,
-      inventoryValue
+      inventoryValue,
+      pendingPayments,
+      ordersInProduction,
+      ordersReady,
+      todaysProduction
     ] = await Promise.all([
       // Total clients count
       db.collection("clients").countDocuments({ userId }),
@@ -90,7 +94,33 @@ export async function GET() {
             }
           }
         }
-      ]).toArray()
+      ]).toArray(),
+
+      // Pending payments (orders not paid)
+      db.collection("orders").countDocuments({
+        userId,
+        payment_status: { $ne: "paid" }
+      }),
+
+      // Orders in production (processing)
+      db.collection("orders").countDocuments({
+        userId,
+        status: "processing"
+      }),
+
+      // Orders ready for dispatch (completed)
+      db.collection("orders").countDocuments({
+        userId,
+        status: "completed"
+      }),
+
+      // Today's production (orders updated today)
+      db.collection("orders").countDocuments({
+        userId,
+        updatedAt: {
+          $gte: new Date(new Date().setHours(0, 0, 0, 0))
+        }
+      })
     ]);
 
     const totalRevenue = orderStats[0]?.total || 0;
@@ -114,6 +144,11 @@ export async function GET() {
       lowStockItems: lowStockCount,
       totalStockValue,
       revenueGrowth: Math.round(revenueGrowth * 10) / 10,
+      // New widget metrics
+      pendingPayments,
+      ordersInProduction,
+      ordersReady,
+      todaysProduction
     });
   } catch (error: any) {
     console.error("Error fetching dashboard stats:", error);

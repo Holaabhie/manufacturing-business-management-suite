@@ -1,34 +1,45 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth-session";
-import { ADMIN_PERMISSIONS } from "@/lib/permissions";
 
 export async function GET() {
-  const user = await getSessionUser();
-  if (!user) return NextResponse.json({ user: null }, { status: 200 });
+  try {
+    const user = await getSessionUser();
 
-  // Resolve effective permissions
-  const isAdmin = user.role === "Admin";
-  const permissions = isAdmin
-    ? ADMIN_PERMISSIONS
-    : (user as any).permissions ?? null;
+    if (!user) {
+      return NextResponse.json({ user: null });
+    }
 
-  return NextResponse.json({
-    user: {
-      id: user._id,
-      email: user.email,
-      role: user.role,
-      subscription_tier: user.subscription_tier,
-      full_name: user.fullName ?? (user as any).full_name ?? null,
-      phone_number: user.phone ?? (user as any).phone_number ?? null,
-      avatar_url: user.avatar_url ?? null,
-      notification_preferences: user.notification_preferences ?? null,
-      // ─── New RBAC fields ──────────────────────────────────────
-      organizationId: (user as any).organizationId ?? null,
-      employeeId: (user as any).employeeId ?? null,
-      department: (user as any).department ?? null,
-      status: (user as any).status ?? "active",
-      permissions,
-      firstLoginCompleted: (user as any).firstLoginCompleted ?? true,
-    },
-  });
+    return NextResponse.json({
+      user: {
+        id: user._id,
+        email: user.email,
+        fullName: user.fullName || user.full_name,
+        phone: user.phone || user.phone_number,
+        avatar_url: user.avatar_url,
+        role: user.role,
+        subscription_tier: user.subscription_tier,
+        subscription_status: user.subscription_status,
+        notification_preferences: user.notification_preferences,
+        company_details: user.company_details,
+        createdAt: user.createdAt,
+        // RBAC fields
+        organizationId: user.organizationId,
+        adminId: user.adminId, // Staff: the admin who owns data
+        employeeId: user.employeeId,
+        department: user.department,
+        permissions: user.permissions,
+        permissionTemplateId: user.permissionTemplateId,
+        status: user.status,
+        firstLoginCompleted: user.firstLoginCompleted,
+        company_setup_complete: (user as any).company_setup_complete,
+        otpDeliveryMethod: user.otpDeliveryMethod,
+      },
+    });
+  } catch (error: any) {
+    console.error("[me] Error:", error);
+    return NextResponse.json(
+      { error: "Failed to get user data" },
+      { status: 500 }
+    );
+  }
 }

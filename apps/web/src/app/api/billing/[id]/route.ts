@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
-import { getSessionUser } from "@/lib/auth-session";
+import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { ObjectId } from "mongodb";
 
 export async function GET(
@@ -21,7 +21,7 @@ export async function GET(
         const db = await getDb();
         const bill = await db.collection("bills").findOne({
             _id: new ObjectId(id),
-            userId: user._id.toString()
+            userId: getDataOwnerId(user)
         });
 
         if (!bill) {
@@ -93,7 +93,7 @@ export async function PUT(
         });
 
         const result = await db.collection("bills").updateOne(
-            { _id: new ObjectId(id), userId: user._id.toString() },
+            { _id: new ObjectId(id), userId: getDataOwnerId(user) },
             { $set: updateData }
         );
 
@@ -105,7 +105,7 @@ export async function PUT(
         if (body.status) {
             const bill = await db.collection("bills").findOne({ _id: new ObjectId(id) });
             await db.collection("activity").insertOne({
-                userId: user._id.toString(),
+                userId: getDataOwnerId(user),
                 type: "billing",
                 message: `Invoice ${bill?.billNumber} marked as ${body.status}`,
                 createdAt: new Date().toISOString(),
@@ -137,18 +137,18 @@ export async function DELETE(
         const db = await getDb();
         const bill = await db.collection("bills").findOne({
             _id: new ObjectId(id),
-            userId: user._id.toString()
+            userId: getDataOwnerId(user)
         });
 
         if (!bill) {
             return NextResponse.json({ error: "Bill not found" }, { status: 404 });
         }
 
-        await db.collection("bills").deleteOne({ _id: new ObjectId(id), userId: user._id.toString() });
+        await db.collection("bills").deleteOne({ _id: new ObjectId(id), userId: getDataOwnerId(user) });
 
         // Log activity
         await db.collection("activity").insertOne({
-            userId: user._id.toString(),
+            userId: getDataOwnerId(user),
             type: "billing",
             message: `Invoice ${bill.billNumber} deleted`,
             createdAt: new Date().toISOString(),

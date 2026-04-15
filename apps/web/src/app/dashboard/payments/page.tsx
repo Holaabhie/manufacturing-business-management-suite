@@ -1,39 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { AccessDenied } from "@/components/AccessDenied";
 import {
-  CreditCard,
   Search,
-  IndianRupee,
   TrendingUp,
   Clock,
   CheckCircle2,
   Plus,
   ArrowUpRight,
-  TrendingDown,
-  History,
   User,
   AlertCircle,
   MoreVertical,
   X,
-  FileText,
-  Filter,
   Calendar,
   Trash2
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { NumericInput } from "@/components/ui/numeric-input";
 import {
   Dialog,
   DialogContent,
@@ -43,228 +28,244 @@ import {
   DialogFooter,
   DialogDescription
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+
+// --- iOS Components ---
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select";
-import { toast } from "sonner";
-import { cn } from "@/lib/utils";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+  IOSButton,
+  IOSCard,
+  IOSCardHeader,
+  IOSCardContent,
+  IOSBadge,
+  IOSSearchBar,
+  IOSInput,
+  IOSSelect
+} from "@/components/ui/ios";
+import { StatWidget } from "@/components/ui/StatWidget";
+
+// Animations
+import { motion } from "framer-motion";
+import { staggerContainer, staggerItem } from "@/styles/animations";
+
+// React Query hooks — cached, optimistic
+import {
+  useOrders,
+  useClients,
+  usePayments,
+  useCreatePayment,
+  useDeletePayment,
+} from "@/lib/hooks/use-orders";
+import { useRole } from "@/lib/hooks/use-role";
+
+// ─── Types ──────────────────────────────────────────────
+interface Client { id: string; name: string; }
+interface Order {
+  id: string;
+  clientId: string;
+  productName: string;
+  quantity: number;
+  totalAmount: number;
+  paymentStatus: 'pending' | 'partial' | 'paid';
+  client?: Client;
+}
+interface Payment {
+  id: string;
+  amount: number;
+  paymentDate: string;
+  paymentMethod: string;
+  referenceId: string;
+  notes: string;
+  clientId: string | null;
+  orderId: string | null;
+  client?: { name: string };
+  order?: { productName: string };
+}
+
+// ─── Loading Skeleton ───────────────────────────────────
+function PaymentsSkeleton() {
+  return (
+    <div className="space-y-8 animate-in fade-in duration-300">
+      {/* Header skeleton */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <div className="h-[36px] w-[260px] rounded-[10px] bg-[var(--fill-tertiary)] shimmer" />
+          <div className="h-[18px] w-[400px] rounded-[8px] bg-[var(--fill-tertiary)] shimmer mt-2" />
+        </div>
+        <div className="h-[40px] w-[160px] rounded-[12px] bg-[var(--fill-tertiary)] shimmer" />
+      </div>
+
+      {/* KPI skeleton */}
+      <div className="kpi-panel">
+        <div className="kpi-panel__glow"></div>
+        <div className="kpi-grid !grid-cols-1 md:!grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="kpi-card flex flex-col justify-center min-h-[140px]">
+              <div className="flex items-center justify-between mb-4">
+                <div className="h-[48px] w-[48px] rounded-[14px] bg-[var(--fill-tertiary)] shimmer" />
+                <div className="h-[24px] w-[50px] rounded-full bg-[var(--fill-tertiary)] shimmer" />
+              </div>
+              <div className="h-[34px] w-[120px] rounded-[8px] bg-[var(--fill-tertiary)] shimmer mb-2" />
+              <div className="h-[16px] w-[90px] rounded-[6px] bg-[var(--fill-tertiary)] shimmer" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Tab + table skeleton */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="h-[44px] w-[320px] rounded-[12px] bg-[var(--fill-tertiary)] shimmer" />
+          <div className="h-[44px] flex-1 max-w-xs rounded-[12px] bg-[var(--fill-tertiary)] shimmer ml-auto" />
+        </div>
+        <div className="rounded-[16px] overflow-hidden border border-[var(--border-card)]">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-4 px-6 py-4 border-b border-[var(--border-card)]">
+              <div className="h-[40px] flex-1 rounded-[8px] bg-[var(--fill-tertiary)] shimmer" />
+              <div className="h-[20px] w-[100px] rounded-[6px] bg-[var(--fill-tertiary)] shimmer" />
+              <div className="h-[20px] w-[80px] rounded-[6px] bg-[var(--fill-tertiary)] shimmer" />
+              <div className="h-[20px] w-[100px] rounded-[6px] bg-[var(--fill-tertiary)] shimmer" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function PaymentsPage() {
-  const [clients, setClients] = useState<any[]>([]);
-  const [orders, setOrders] = useState<any[]>([]);
-  const [payments, setPayments] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  // ─── React Query: cached data ────────────────────────
+  const { data: clients = [], isLoading: clientsLoading } = useClients();
+  const { data: orders = [], isLoading: ordersLoading } = useOrders();
+  const { data: payments = [], isLoading: paymentsLoading } = usePayments();
+
+  // ─── React Query: mutations ────────────────────────
+  const createPayment = useCreatePayment();
+  const deletePayment = useDeletePayment();
+
+  // ─── Role ────────────────────────────────────────────
+  const { isStaff, loading: roleLoading } = useRole();
+
+  // ─── Local UI State ──────────────────────────────────
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpenConfirm, setIsDeleteDialogOpenConfirm] = useState(false);
   const [paymentToDeleteId, setPaymentToDeleteId] = useState<string | null>(null);
   const [viewType, setViewType] = useState<"receivables" | "history" | "clients">("receivables");
 
-  // Role-based access control
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [roleLoading, setRoleLoading] = useState(true);
-
-  // New Payment Form
   const [formData, setFormData] = useState({
-    client_id: "",
-    order_id: "",
+    clientId: "",
+    orderId: "",
     amount: "",
-    payment_method: "Cash",
-    payment_date: new Date().toISOString().split('T')[0],
-    reference_id: "",
-    remarks: ""
+    paymentMethod: "Cash",
+    paymentDate: new Date().toISOString().split('T')[0],
+    referenceId: "",
+    notes: ""
   });
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const [clientsRes, ordersRes, paymentsRes] = await Promise.all([
-        fetch("/api/clients").then(r => r.json()),
-        fetch("/api/orders").then(r => r.json()),
-        fetch("/api/payments").then(r => r.json()),
-      ]);
+  // ─── Derived data (memoized) ─────────────────────────
+  const loading = clientsLoading || ordersLoading || paymentsLoading;
 
-      setClients(clientsRes || []);
-      setOrders(ordersRes || []);
-      setPayments(paymentsRes || []);
-    } catch (error) {
-      toast.error("Failed to fetch data");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const totalRevenue = useMemo(
+    () => orders.reduce((acc: number, o: any) => acc + Number(o.totalAmount), 0),
+    [orders],
+  );
 
-  useEffect(() => {
-    fetchData();
-    // Fetch user role
-    fetch("/api/auth/me")
-      .then(r => r.json())
-      .then(data => setUserRole(data?.user?.role || null))
-      .finally(() => setRoleLoading(false));
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  const totalReceived = useMemo(
+    () => payments.reduce((acc: number, p: any) => acc + Number(p.amount), 0),
+    [payments],
+  );
 
-  const totalRevenue = orders.reduce((acc, o) => acc + Number(o.total_amount), 0);
-  const totalReceived = payments.reduce((acc, p) => acc + Number(p.amount), 0);
   const totalOutstanding = totalRevenue - totalReceived;
+
+  const filteredHistory = useMemo(
+    () =>
+      payments.filter((p: any) =>
+        p.client?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.order?.productName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.referenceId?.toLowerCase().includes(searchTerm.toLowerCase()),
+      ),
+    [payments, searchTerm],
+  );
+
+  const clientSummaries = useMemo(
+    () =>
+      clients
+        .map((client: any) => {
+          const clientOrders = orders.filter((o: any) => o.clientId === client.id);
+          const clientPayments = payments.filter((p: any) => p.clientId === client.id);
+          const billed = clientOrders.reduce((acc: number, o: any) => acc + Number(o.totalAmount), 0);
+          const received = clientPayments.reduce((acc: number, p: any) => acc + Number(p.amount), 0);
+          return { ...client, billed, received, outstanding: billed - received };
+        })
+        .filter((c: any) => c.name.toLowerCase().includes(searchTerm.toLowerCase())),
+    [clients, orders, payments, searchTerm],
+  );
+
+  // ─── Handlers ────────────────────────────────────────
+  const getClientOrders = (clientId: string) =>
+    orders.filter((o: any) => o.clientId === clientId && o.paymentStatus !== 'paid');
 
   const handleAddPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     const amountNum = parseFloat(formData.amount);
 
-    if (!formData.client_id || !amountNum || amountNum <= 0) {
+    if (!formData.clientId || !amountNum || amountNum <= 0) {
       return toast.error("Please select a client and enter a valid amount");
     }
 
-    try {
-      // Validation for order-specific payment
-      if (formData.order_id && formData.order_id !== "none") {
-        const selectedOrder = orders.find(o => o.id === formData.order_id);
-        if (!selectedOrder) return toast.error("Selected order not found");
+    // Validation for order-specific payment
+    if (formData.orderId && formData.orderId !== "none") {
+      const selectedOrder = orders.find((o: any) => o.id === formData.orderId);
+      if (!selectedOrder) return toast.error("Selected order not found");
 
-        const paidForOrder = payments
-          .filter(p => p.order_id === formData.order_id)
-          .reduce((acc, p) => acc + Number(p.amount), 0);
-        const remaining = Number(selectedOrder.total_amount) - paidForOrder;
+      const paidForOrder = payments
+        .filter((p: any) => p.orderId === formData.orderId)
+        .reduce((acc: number, p: any) => acc + Number(p.amount), 0);
+      const remaining = Number(selectedOrder.totalAmount) - paidForOrder;
 
-        if (amountNum > remaining + 0.01) {
-          return toast.error(`Amount exceeds remaining balance for this order (₹${remaining.toLocaleString()})`);
-        }
+      if (amountNum > remaining + 0.01) {
+        return toast.error(`Amount exceeds remaining balance for this order (₹${remaining.toLocaleString()})`);
       }
-
-      const res = await fetch("/api/payments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          client_id: formData.client_id,
-          order_id: formData.order_id && formData.order_id !== "none" ? formData.order_id : null,
-          amount: amountNum,
-          payment_method: formData.payment_method,
-          payment_date: formData.payment_date,
-          notes: formData.remarks,
-        }),
-      });
-      const data = await res.json();
-
-      if (data.error) {
-        return toast.error("Failed to record payment");
-      }
-
-      // Update order status if order_id was provided
-      if (formData.order_id && formData.order_id !== "none") {
-        const selectedOrder = orders.find(o => o.id === formData.order_id);
-        if (selectedOrder) {
-          const updatedTotalPaid = payments
-            .filter(p => p.order_id === formData.order_id)
-            .reduce((acc, p) => acc + Number(p.amount), 0) + amountNum;
-
-          let newStatus = 'pending';
-          if (updatedTotalPaid >= Number(selectedOrder.total_amount) - 0.01) newStatus = 'paid';
-          else if (updatedTotalPaid > 0) newStatus = 'partial';
-
-          await fetch(`/api/orders/${formData.order_id}/payment-status`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ payment_status: newStatus }),
-          });
-        }
-      }
-
-      toast.success("Payment recorded successfully");
-      setIsDialogOpen(false);
-      setFormData({
-        client_id: "",
-        order_id: "",
-        amount: "",
-        payment_method: "Cash",
-        payment_date: new Date().toISOString().split('T')[0],
-        reference_id: "",
-        remarks: ""
-      });
-      fetchData();
-    } catch (error) {
-      toast.error("Failed to record payment");
     }
-  };
 
-  const handleDeletePayment = async (paymentId: string) => {
-    const paymentToDelete = payments.find(p => p.id === paymentId);
-    if (!paymentToDelete) return;
-
-    try {
-      const res = await fetch(`/api/payments/${paymentId}`, {
-        method: "DELETE",
-      });
-      const data = await res.json();
-
-      if (data.error) {
-        return toast.error("Failed to delete payment");
-      }
-
-      // Update order status if it was linked to an order
-      if (paymentToDelete.order_id) {
-        const selectedOrder = orders.find(o => o.id === paymentToDelete.order_id);
-        if (selectedOrder) {
-          const remainingPayments = payments
-            .filter(p => p.order_id === paymentToDelete.order_id && p.id !== paymentId)
-            .reduce((acc, p) => acc + Number(p.amount), 0);
-
-          let newStatus = 'pending';
-          if (remainingPayments >= Number(selectedOrder.total_amount) - 0.01) newStatus = 'paid';
-          else if (remainingPayments > 0) newStatus = 'partial';
-
-          await fetch(`/api/orders/${paymentToDelete.order_id}/payment-status`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ payment_status: newStatus }),
+    // Use the React Query mutation — handles optimistic update + cache invalidation
+    createPayment.mutate(
+      {
+        client_id: formData.clientId,
+        order_id: formData.orderId && formData.orderId !== "none" ? formData.orderId : null,
+        amount: amountNum,
+        payment_method: formData.paymentMethod,
+        payment_date: formData.paymentDate,
+        reference_id: formData.referenceId,
+        notes: formData.notes,
+      },
+      {
+        onSuccess: () => {
+          setIsDialogOpen(false);
+          setFormData({
+            clientId: "",
+            orderId: "",
+            amount: "",
+            paymentMethod: "Cash",
+            paymentDate: new Date().toISOString().split('T')[0],
+            referenceId: "",
+            notes: "",
           });
-        }
-      }
-
-      toast.success("Payment deleted");
-      setIsDeleteDialogOpenConfirm(false);
-      setPaymentToDeleteId(null);
-      fetchData();
-    } catch (error) {
-      toast.error("Failed to delete payment");
-    }
+        },
+      },
+    );
   };
 
-  const getClientOrders = (clientId: string) => {
-    return orders.filter(o => o.client_id === clientId && o.payment_status !== 'paid');
+  const handleDeletePayment = (paymentId: string) => {
+    deletePayment.mutate(paymentId, {
+      onSettled: () => {
+        setIsDeleteDialogOpenConfirm(false);
+        setPaymentToDeleteId(null);
+      },
+    });
   };
 
-  const filteredHistory = payments.filter(p =>
-    p.clients?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.orders?.product_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.reference_id?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const clientSummaries = clients.map(client => {
-    const clientOrders = orders.filter(o => o.client_id === client.id);
-    const clientPayments = payments.filter(p => p.client_id === client.id);
-
-    const billed = clientOrders.reduce((acc, o) => acc + Number(o.total_amount), 0);
-    const received = clientPayments.reduce((acc, p) => acc + Number(p.amount), 0);
-    const outstanding = billed - received;
-
-    return {
-      ...client,
-      billed,
-      received,
-      outstanding
-    };
-  }).filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
-
-  // Access denied for Staff users
-  if (!roleLoading && userRole === "Staff") {
+  // ─── Access Control ──────────────────────────────────
+  if (!roleLoading && isStaff) {
     return (
       <AccessDenied
         title="Payments Access Restricted"
@@ -272,6 +273,14 @@ export default function PaymentsPage() {
       />
     );
   }
+
+  // ─── Loading Skeleton ────────────────────────────────
+  if (loading) {
+    return <PaymentsSkeleton />;
+  }
+
+  // ─── Mutation state ──────────────────────────────────
+  const isMutating = createPayment.isPending || deletePayment.isPending;
 
   return (
     <div className="space-y-8">
@@ -282,428 +291,435 @@ export default function PaymentsPage() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="shadow-lg shadow-emerald-500/20 bg-emerald-600 hover:bg-emerald-700">
+            <IOSButton variant="filled" className="px-5">
               <Plus className="mr-2 h-4 w-4" /> New Payment Entry
-            </Button>
+            </IOSButton>
           </DialogTrigger>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px]">
             <DialogHeader>
-              <DialogTitle>Record Payment</DialogTitle>
-              <DialogDescription>Link payments to clients or specific orders for accurate tracking.</DialogDescription>
+              <DialogTitle className="text-[20px] font-semibold text-[var(--label-primary)]">Record Payment</DialogTitle>
+              <DialogDescription className="text-[15px] text-[var(--label-secondary)]">
+                Link payments to clients or specific orders for accurate tracking.
+              </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleAddPayment} className="space-y-4 pt-4">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Client Name</Label>
-                  <Select
-                    value={formData.client_id}
-                    onValueChange={(v) => setFormData({ ...formData, client_id: v, order_id: "" })}
-                  >
-                    <SelectTrigger className="h-11">
-                      <SelectValue placeholder="Select Client" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients.map(c => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <label className="text-[13px] font-medium text-[var(--label-secondary)] pl-1">Client Name</label>
+                  <IOSSelect
+                    value={formData.clientId}
+                    onChange={(e: any) => setFormData({ ...formData, clientId: e.target.value, orderId: "" })}
+                    placeholder="Select Client"
+                    options={clients.map((c: any) => ({ label: c.name, value: c.id }))}
+                  />
                 </div>
 
-                {formData.client_id && (
+                {formData.clientId && (
                   <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
-                    <Label>Linked Order (Optional)</Label>
-                    <Select
-                      value={formData.order_id}
-                      onValueChange={(v) => {
-                        const selectedOrder = orders.find(o => o.id === v);
+                    <label className="text-[13px] font-medium text-[var(--label-secondary)] pl-1">Linked Order (Optional)</label>
+                    <IOSSelect
+                      value={formData.orderId || "none"}
+                      onChange={(e: any) => {
+                        const v = e.target.value;
+                        const selectedOrder = orders.find((o: any) => o.id === v);
                         const paidForOrder = payments
-                          .filter(p => p.order_id === v)
-                          .reduce((acc, p) => acc + Number(p.amount), 0);
-                        const remaining = selectedOrder ? Number(selectedOrder.total_amount) - paidForOrder : 0;
+                          .filter((p: any) => p.orderId === v)
+                          .reduce((acc: number, p: any) => acc + Number(p.amount), 0);
+                        const remaining = selectedOrder ? Number(selectedOrder.totalAmount) - paidForOrder : 0;
 
                         setFormData({
                           ...formData,
-                          order_id: v,
-                          amount: v ? remaining.toString() : formData.amount
+                          orderId: v === "none" ? "" : v,
+                          amount: v && v !== "none" ? remaining.toString() : formData.amount
                         });
                       }}
-                    >
-                      <SelectTrigger className="h-11">
-                        <SelectValue placeholder="General Payment (No specific order)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">General Payment</SelectItem>
-                        {getClientOrders(formData.client_id).map(o => (
-                          <SelectItem key={o.id} value={o.id}>
-                            {o.product_name} (Due: ₹{Number(Number(o.total_amount) - payments.filter(p => p.order_id === o.id).reduce((acc, p) => acc + Number(p.amount), 0)).toLocaleString()})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="General Payment (No specific order)"
+                      options={[
+                        { label: "General Payment", value: "none" },
+                        ...getClientOrders(formData.clientId).map((o: any) => ({
+                          label: `${o.productName} (Due: ₹${Number(Number(o.totalAmount) - payments.filter((p: any) => p.orderId === o.id).reduce((acc: number, p: any) => acc + Number(p.amount), 0)).toLocaleString()})`,
+                          value: o.id
+                        }))
+                      ]}
+                    />
                   </div>
                 )}
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Amount (₹)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      className="h-11 font-bold text-emerald-600"
+                    <label className="text-[13px] font-medium text-[var(--label-secondary)] pl-1">Amount (₹)</label>
+                    <NumericInput
                       value={formData.amount}
-                      onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                      onValueChange={(v) => setFormData({ ...formData, amount: v })}
+                      className="h-[44px] bg-[var(--fill-tertiary)] border-transparent rounded-[12px] font-semibold text-[17px] text-[var(--ios-green)] focus-visible:ring-[var(--ios-green)]"
+                      placeholder="0.00"
+                      prefix="₹"
+                      allowDecimal={true}
+                      min={0}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Mode</Label>
-                    <Select value={formData.payment_method} onValueChange={(v) => setFormData({ ...formData, payment_method: v })}>
-                      <SelectTrigger className="h-11">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Cash">Cash</SelectItem>
-                        <SelectItem value="UPI">UPI / Digital</SelectItem>
-                        <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
-                        <SelectItem value="Cheque">Cheque</SelectItem>
-                        <SelectItem value="Credit/Due">Credit / Due Adjustment</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <label className="text-[13px] font-medium text-[var(--label-secondary)] pl-1">Mode</label>
+                    <IOSSelect
+                      value={formData.paymentMethod}
+                      onChange={(e: any) => setFormData({ ...formData, paymentMethod: e.target.value })}
+                      options={[
+                        { label: "Cash", value: "Cash" },
+                        { label: "UPI / Digital", value: "UPI" },
+                        { label: "Bank Transfer", value: "Bank Transfer" },
+                        { label: "Cheque", value: "Cheque" },
+                        { label: "Credit / Adjustment", value: "Credit/Due" }
+                      ]}
+                    />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Date</Label>
-                    <Input
+                    <label className="text-[13px] font-medium text-[var(--label-secondary)] pl-1">Date</label>
+                    <IOSInput
                       type="date"
-                      className="h-11"
-                      value={formData.payment_date}
-                      onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}
+                      value={formData.paymentDate}
+                      onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Ref / Transaction ID</Label>
-                    <Input
+                    <label className="text-[13px] font-medium text-[var(--label-secondary)] pl-1">Ref / ID</label>
+                    <IOSInput
                       placeholder="TXN..."
-                      className="h-11"
-                      value={formData.reference_id}
-                      onChange={(e) => setFormData({ ...formData, reference_id: e.target.value })}
+                      value={formData.referenceId}
+                      onChange={(e) => setFormData({ ...formData, referenceId: e.target.value })}
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Remarks</Label>
-                  <Input
+                  <label className="text-[13px] font-medium text-[var(--label-secondary)] pl-1">Remarks</label>
+                  <IOSInput
                     placeholder="Note about the payment..."
-                    className="h-11"
-                    value={formData.remarks}
-                    onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   />
                 </div>
               </div>
-              <DialogFooter className="pt-4">
-                <Button type="submit" className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 font-bold">Post Entry</Button>
+              <DialogFooter className="pt-4 border-t border-[var(--border-card)]">
+                <IOSButton type="submit" variant="filled" className="w-full" disabled={isMutating}>
+                  {createPayment.isPending ? "Posting..." : "Post Entry"}
+                </IOSButton>
               </DialogFooter>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card className="border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/10 shadow-sm relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-            <TrendingUp className="h-24 w-24 -mr-8 -mt-8 rotate-12" />
-          </div>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-bold uppercase tracking-widest text-emerald-600">Total Collected</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black text-emerald-700">₹{totalReceived.toLocaleString()}</div>
-            <div className="flex items-center mt-2 text-xs font-bold text-emerald-600">
-              <CheckCircle2 className="h-3 w-3 mr-1" /> Verified Cashflow
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/10 shadow-sm relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-            <Clock className="h-24 w-24 -mr-8 -mt-8 -rotate-12" />
-          </div>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-bold uppercase tracking-widest text-amber-600">Outstanding Arrears</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black text-amber-700">₹{totalOutstanding.toLocaleString()}</div>
-            <div className="flex items-center mt-2 text-xs font-bold text-amber-600">
-              <AlertCircle className="h-3 w-3 mr-1" /> Active Receivables
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-zinc-200 bg-white dark:bg-zinc-900 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-bold uppercase tracking-widest text-zinc-500">Recovery Efficiency</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black text-zinc-900 dark:text-zinc-100">
-              {totalRevenue > 0 ? Math.round((totalReceived / totalRevenue) * 100) : 100}%
-            </div>
-            <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-2 rounded-full mt-4 overflow-hidden shadow-inner">
-              <div
-                className="bg-gradient-to-r from-emerald-500 to-emerald-400 h-full transition-all duration-1000"
-                style={{ width: `${totalRevenue > 0 ? (totalReceived / totalRevenue) * 100 : 100}%` }}
-              />
-            </div>
-          </CardContent>
-        </Card>
+      <div className="kpi-panel">
+        <div className="kpi-panel__glow"></div>
+        <div className="kpi-grid !grid-cols-1 md:!grid-cols-3">
+          <StatWidget
+            label="Total Collected"
+            value={totalReceived}
+            change={8}
+            icon={CheckCircle2}
+            color="green"
+            prefix="₹"
+            delay={0}
+          />
+          <StatWidget
+            label="Outstanding Arrears"
+            value={totalOutstanding}
+            change={0}
+            icon={Clock}
+            color="orange"
+            prefix="₹"
+            delay={1}
+          />
+          <StatWidget
+            label="Recovery Efficiency"
+            value={totalRevenue > 0 ? Math.round((totalReceived / totalRevenue) * 100) : 100}
+            change={5}
+            icon={TrendingUp}
+            color="purple"
+            suffix="%"
+            delay={2}
+          />
+        </div>
       </div>
 
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2 p-1 bg-zinc-100 dark:bg-zinc-900 rounded-lg w-full sm:w-auto">
-            <Button
-              variant={viewType === "receivables" ? "secondary" : "ghost"}
-              className={cn("flex-1 sm:flex-none font-bold", viewType === "receivables" && "bg-white dark:bg-zinc-800 shadow-sm")}
+          <div className="flex items-center p-1 bg-[var(--fill-tertiary)] rounded-[12px] w-full sm:w-auto h-[44px]">
+            <button
+              className={cn(
+                "flex-1 sm:flex-none h-full px-5 text-[15px] font-semibold transition-all rounded-[10px]",
+                viewType === "receivables" ? "bg-white dark:bg-[rgba(255,255,255,0.1)] text-[var(--label-primary)] shadow-[var(--shadow-sm)]" : "text-[var(--label-secondary)] hover:text-[var(--label-primary)]"
+              )}
               onClick={() => setViewType("receivables")}
             >
               Active Due
-            </Button>
-            <Button
-              variant={viewType === "clients" ? "secondary" : "ghost"}
-              className={cn("flex-1 sm:flex-none font-bold", viewType === "clients" && "bg-white dark:bg-zinc-800 shadow-sm")}
+            </button>
+            <button
+              className={cn(
+                "flex-1 sm:flex-none h-full px-5 text-[15px] font-semibold transition-all rounded-[10px]",
+                viewType === "clients" ? "bg-white dark:bg-[rgba(255,255,255,0.1)] text-[var(--label-primary)] shadow-[var(--shadow-sm)]" : "text-[var(--label-secondary)] hover:text-[var(--label-primary)]"
+              )}
               onClick={() => setViewType("clients")}
             >
               Client Summary
-            </Button>
-            <Button
-              variant={viewType === "history" ? "secondary" : "ghost"}
-              className={cn("flex-1 sm:flex-none font-bold", viewType === "history" && "bg-white dark:bg-zinc-800 shadow-sm")}
+            </button>
+            <button
+              className={cn(
+                "flex-1 sm:flex-none h-full px-5 text-[15px] font-semibold transition-all rounded-[10px]",
+                viewType === "history" ? "bg-white dark:bg-[rgba(255,255,255,0.1)] text-[var(--label-primary)] shadow-[var(--shadow-sm)]" : "text-[var(--label-secondary)] hover:text-[var(--label-primary)]"
+              )}
               onClick={() => setViewType("history")}
             >
               Full History
-            </Button>
+            </button>
           </div>
 
-          <div className="relative w-full sm:max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-            <Input
-              placeholder="Search financials..."
-              className="pl-10 h-10 border-zinc-200 dark:border-zinc-800 focus:ring-emerald-500"
+          <div className="w-full sm:max-w-xs">
+            <IOSSearchBar
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onSearch={setSearchTerm}
+              placeholder="Search financials..."
             />
           </div>
         </div>
 
         {viewType === "receivables" && (
-          <div className="rounded-2xl border bg-white dark:bg-zinc-950 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2">
-            <Table>
-              <TableHeader className="bg-zinc-50 dark:bg-zinc-900">
-                <TableRow>
-                  <TableHead className="font-black py-4 pl-6 uppercase text-[11px] tracking-wider text-zinc-500">Client / Order</TableHead>
-                  <TableHead className="font-black py-4 uppercase text-[11px] tracking-wider text-zinc-500">Total Billed</TableHead>
-                  <TableHead className="font-black py-4 uppercase text-[11px] tracking-wider text-zinc-500">Paid</TableHead>
-                  <TableHead className="font-black py-4 uppercase text-[11px] tracking-wider text-zinc-500 text-right">Outstanding</TableHead>
-                  <TableHead className="font-black py-4 uppercase text-[11px] tracking-wider text-zinc-500 text-center">Status</TableHead>
-                  <TableHead className="w-[100px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-20 text-zinc-400">Loading receivables...</TableCell></TableRow>
-                ) : orders.filter(o => o.payment_status !== 'paid').length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-24 text-emerald-500 font-bold bg-emerald-50/20">All orders fully settled! 🥳</TableCell></TableRow>
-                ) : orders.filter(o =>
-                  o.payment_status !== 'paid' && (o.clients?.name.toLowerCase().includes(searchTerm.toLowerCase()) || o.product_name.toLowerCase().includes(searchTerm.toLowerCase()))
-                ).map((order) => {
-                  const paid = payments.filter(p => p.order_id === order.id).reduce((acc, p) => acc + Number(p.amount), 0);
-                  const due = Number(order.total_amount) - paid;
-                  return (
-                    <TableRow key={order.id} className="group hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
-                      <TableCell className="pl-6 py-4">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-zinc-900 dark:text-zinc-100">{order.clients?.name}</span>
-                          <span className="text-xs text-zinc-500">{order.product_name}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-bold text-zinc-600">₹{Number(order.total_amount).toLocaleString()}</TableCell>
-                      <TableCell className="font-bold text-emerald-600">₹{paid.toLocaleString()}</TableCell>
-                      <TableCell className="text-right">
-                        <span className="font-black text-amber-600">₹{due.toLocaleString()}</span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge
-                          className={cn(
-                            "rounded-full text-[10px] font-black uppercase tracking-tighter px-3 h-5",
-                            order.payment_status === 'partial' ? "bg-blue-500 hover:bg-blue-600" : "bg-amber-500 hover:bg-amber-600"
-                          )}
-                        >
-                          {order.payment_status === 'partial' ? 'Partially Paid' : 'Pending'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right pr-4">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 rounded-full hover:bg-emerald-50 dark:hover:bg-emerald-950 text-emerald-600 opacity-0 group-hover:opacity-100"
-                          onClick={() => {
-                            setFormData({ ...formData, client_id: order.client_id, order_id: order.id, amount: due.toString() });
-                            setIsDialogOpen(true);
-                          }}
-                        >
-                          <ArrowUpRight className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+          <IOSCard className="overflow-hidden bg-white dark:bg-[var(--bg-card)]">
+            <div className="w-full overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="text-[11px] uppercase tracking-wider text-[var(--label-secondary)] bg-[var(--fill-quaternary)] border-b border-[var(--border-card)]">
+                  <tr>
+                    <th scope="col" className="px-6 py-4 font-semibold rounded-tl-[16px]">Client / Order</th>
+                    <th scope="col" className="px-6 py-4 font-semibold">Total Billed</th>
+                    <th scope="col" className="px-6 py-4 font-semibold">Paid</th>
+                    <th scope="col" className="px-6 py-4 font-semibold text-right">Outstanding</th>
+                    <th scope="col" className="px-6 py-4 font-semibold text-center">Status</th>
+                    <th scope="col" className="px-6 py-4 rounded-tr-[16px]"></th>
+                  </tr>
+                </thead>
+                <motion.tbody
+                  className="divide-y divide-[var(--border-card)]"
+                  variants={staggerContainer}
+                  initial="initial"
+                  animate="animate"
+                >
+                  {orders.filter((o: any) => o.paymentStatus !== 'paid').length === 0 ? (
+                    <tr><td colSpan={6} className="text-center py-24 text-[var(--ios-green)] font-semibold bg-[var(--ios-green)]/10">All orders fully settled! 🥳</td></tr>
+                  ) : orders.filter((o: any) =>
+                    o.paymentStatus !== 'paid' && (o.client?.name.toLowerCase().includes(searchTerm.toLowerCase()) || o.productName.toLowerCase().includes(searchTerm.toLowerCase()))
+                  ).map((order: any) => {
+                    const paid = payments.filter((p: any) => p.orderId === order.id).reduce((acc: number, p: any) => acc + Number(p.amount), 0);
+                    const due = Number(order.totalAmount) - paid;
+                    return (
+                      <motion.tr
+                        variants={staggerItem}
+                        key={order.id}
+                        className="group hover:bg-[var(--fill-quaternary)]/50 transition-colors"
+                      >
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-[15px] text-[var(--label-primary)]">{order.client?.name}</span>
+                            <span className="text-[13px] text-[var(--label-secondary)]">{order.productName}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 font-semibold text-[var(--label-secondary)]">₹{Number(order.totalAmount).toLocaleString()}</td>
+                        <td className="px-6 py-4 font-semibold text-[var(--ios-green)]">₹{paid.toLocaleString()}</td>
+                        <td className="px-6 py-4 text-right">
+                          <span className="font-bold text-[var(--ios-orange)]">₹{due.toLocaleString()}</span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <IOSBadge
+                            variant={order.paymentStatus === 'partial' ? 'tinted' : 'outline'}
+                            color={order.paymentStatus === 'partial' ? 'blue' : 'orange'}
+                            className="uppercase text-[10px] tracking-wider"
+                          >
+                            {order.paymentStatus === 'partial' ? 'Partially Paid' : 'Pending'}
+                          </IOSBadge>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <IOSButton
+                            variant="plain"
+                            className="h-8 w-8 !p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => {
+                              setFormData({ ...formData, clientId: order.clientId, orderId: order.id, amount: due.toString() });
+                              setIsDialogOpen(true);
+                            }}
+                          >
+                            <ArrowUpRight className="h-5 w-5 text-[var(--ios-green)]" />
+                          </IOSButton>
+                        </td>
+                      </motion.tr>
+                    );
+                  })}
+                </motion.tbody>
+              </table>
+            </div>
+          </IOSCard>
         )}
 
         {viewType === "clients" && (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-2">
-            {clientSummaries.map((summary) => (
-              <Card key={summary.id} className="hover:border-emerald-300 transition-colors shadow-sm">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base font-bold truncate">{summary.name}</CardTitle>
-                    <User className="h-4 w-4 text-zinc-400" />
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div className="text-zinc-500">Orders Billed</div>
-                    <div className="text-right font-bold">₹{summary.billed.toLocaleString()}</div>
-                    <div className="text-zinc-500">Payments Recv.</div>
-                    <div className="text-right font-bold text-emerald-600">₹{summary.received.toLocaleString()}</div>
-                  </div>
-                  <div className="pt-3 border-t flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] font-black uppercase text-zinc-400 block">Balance Status</span>
-                      <span className={cn(
-                        "font-black text-sm px-2 py-0.5 rounded-full",
-                        summary.outstanding > 0 ? "bg-amber-100 text-amber-700" : (summary.outstanding < 0 ? "bg-emerald-100 text-emerald-700" : "bg-zinc-100 text-zinc-700")
-                      )}>
-                        {summary.outstanding > 0 ? 'Due' : (summary.outstanding < 0 ? 'Advance' : 'Settled')}
-                      </span>
+          <motion.div
+            className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"
+            variants={staggerContainer}
+            initial="initial"
+            animate="animate"
+          >
+            {clientSummaries.map((summary: any) => (
+              <motion.div key={summary.id} variants={staggerItem}>
+                <IOSCard variant="elevated" className="h-full">
+                  <IOSCardHeader
+                    title={summary.name}
+                    className="[&_h3]:text-[17px] [&_h3]:font-semibold mb-2"
+                    action={<User className="h-5 w-5 text-[var(--label-tertiary)]" />}
+                  />
+                  <IOSCardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-2 text-[13px]">
+                      <div className="text-[var(--label-secondary)]">Orders Billed</div>
+                      <div className="text-right font-semibold text-[var(--label-primary)]">₹{summary.billed.toLocaleString()}</div>
+                      <div className="text-[var(--label-secondary)]">Payments Recv.</div>
+                      <div className="text-right font-semibold text-[var(--ios-green)]">₹{summary.received.toLocaleString()}</div>
                     </div>
-                    <div className="text-right">
-                      <span className="text-[10px] font-black uppercase text-zinc-400 block">
-                        {summary.outstanding >= 0 ? 'Outstanding' : 'Credit Balance'}
-                      </span>
-                      <span className={cn(
-                        "font-black text-lg",
-                        summary.outstanding > 0 ? "text-amber-600" : (summary.outstanding < 0 ? "text-emerald-600" : "text-zinc-600")
-                      )}>
-                        ₹{Math.abs(summary.outstanding).toLocaleString()}
-                      </span>
+                    <div className="pt-3 border-t border-[var(--border-card)] flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] font-semibold uppercase text-[var(--label-tertiary)] block tracking-wider mb-1">Status</span>
+                        <IOSBadge
+                          variant="tinted"
+                          color={summary.outstanding > 0 ? "orange" : (summary.outstanding < 0 ? "green" : "gray")}
+                          className="uppercase text-[10px] tracking-wider"
+                        >
+                          {summary.outstanding > 0 ? 'Due' : (summary.outstanding < 0 ? 'Advance' : 'Settled')}
+                        </IOSBadge>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] font-semibold uppercase text-[var(--label-tertiary)] block tracking-wider mb-0.5">
+                          {summary.outstanding >= 0 ? 'Outstanding' : 'Credit Balance'}
+                        </span>
+                        <span className={cn(
+                          "font-bold text-[20px] tracking-tight",
+                          summary.outstanding > 0 ? "text-[var(--ios-orange)]" : (summary.outstanding < 0 ? "text-[var(--ios-green)]" : "text-[var(--label-secondary)]")
+                        )}>
+                          ₹{Math.abs(summary.outstanding).toLocaleString()}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      className="flex-1 h-9 bg-zinc-50 dark:bg-zinc-900 border text-zinc-900 dark:text-zinc-100 font-bold text-xs"
-                      onClick={() => {
-                        setFormData({ ...formData, client_id: summary.id, order_id: "" });
-                        setIsDialogOpen(true);
-                      }}
-                    >
-                      Record Payment
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                    <div className="pt-2">
+                      <IOSButton
+                        variant="gray"
+                        className="w-full"
+                        onClick={() => {
+                          setFormData({ ...formData, clientId: summary.id, orderId: "" });
+                          setIsDialogOpen(true);
+                        }}
+                      >
+                        Record Payment
+                      </IOSButton>
+                    </div>
+                  </IOSCardContent>
+                </IOSCard>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
 
         {viewType === "history" && (
-          <div className="rounded-2xl border bg-white dark:bg-zinc-950 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2">
-            <Table>
-              <TableHeader className="bg-zinc-50 dark:bg-zinc-900">
-                <TableRow>
-                  <TableHead className="font-black py-4 pl-6 uppercase text-[11px] tracking-wider text-zinc-500">Date</TableHead>
-                  <TableHead className="font-black py-4 uppercase text-[11px] tracking-wider text-zinc-500">Client</TableHead>
-                  <TableHead className="font-black py-4 uppercase text-[11px] tracking-wider text-zinc-500">Mode</TableHead>
-                  <TableHead className="font-black py-4 uppercase text-[11px] tracking-wider text-zinc-500">Reference / Remark</TableHead>
-                  <TableHead className="font-black py-4 uppercase text-[11px] tracking-wider text-zinc-500 text-right">Amount</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-20 text-zinc-400">Loading history...</TableCell></TableRow>
-                ) : filteredHistory.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-20 text-zinc-400">No payment records found.</TableCell></TableRow>
-                ) : filteredHistory.map((p) => (
-                  <TableRow key={p.id} className="group hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
-                    <TableCell className="pl-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-3.5 w-3.5 text-zinc-400" />
-                        <span className="font-medium">{new Date(p.payment_date).toLocaleDateString()}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-zinc-900 dark:text-zinc-100">{p.clients?.name}</span>
-                        <span className="text-[10px] text-zinc-500">{p.orders?.product_name || 'General Payment'}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="rounded-full text-[10px] font-bold px-3 border-emerald-200 text-emerald-700 bg-emerald-50 dark:bg-emerald-950/20">
-                        {p.payment_method}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-mono text-[10px] text-zinc-600">{p.reference_id || '-'}</span>
-                        <span className="text-[10px] text-zinc-400 truncate max-w-[150px] italic">{p.remarks}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right flex items-center justify-end gap-2">
-                      <span className="font-black text-emerald-600">₹{Number(p.amount).toLocaleString()}</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 text-zinc-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => {
-                          setPaymentToDeleteId(p.id);
-                          setIsDeleteDialogOpenConfirm(true);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <IOSCard className="overflow-hidden bg-white dark:bg-[var(--bg-card)]">
+            <div className="w-full overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="text-[11px] uppercase tracking-wider text-[var(--label-secondary)] bg-[var(--fill-quaternary)] border-b border-[var(--border-card)]">
+                  <tr>
+                    <th scope="col" className="px-6 py-4 font-semibold rounded-tl-[16px]">Date</th>
+                    <th scope="col" className="px-6 py-4 font-semibold">Client</th>
+                    <th scope="col" className="px-6 py-4 font-semibold">Mode</th>
+                    <th scope="col" className="px-6 py-4 font-semibold">Reference / Remark</th>
+                    <th scope="col" className="px-6 py-4 font-semibold text-right">Amount</th>
+                  </tr>
+                </thead>
+                <motion.tbody
+                  className="divide-y divide-[var(--border-card)]"
+                  variants={staggerContainer}
+                  initial="initial"
+                  animate="animate"
+                >
+                  {filteredHistory.length === 0 ? (
+                    <tr><td colSpan={5} className="text-center py-20 text-[var(--label-secondary)]">No payment records found.</td></tr>
+                  ) : filteredHistory.map((p: any) => (
+                    <motion.tr
+                      variants={staggerItem}
+                      key={p.id}
+                      className="group hover:bg-[var(--fill-quaternary)]/50 transition-colors"
+                    >
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-[var(--label-tertiary)]" />
+                          <span className="font-medium text-[15px] text-[var(--label-primary)]">{new Date(p.paymentDate).toLocaleDateString()}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-[15px] text-[var(--label-primary)]">{p.client?.name}</span>
+                          <span className="text-[13px] text-[var(--label-secondary)]">{p.order?.productName || 'General Payment'}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <IOSBadge variant="tinted" color="green" className="font-semibold px-2 border-transparent">
+                          {p.paymentMethod}
+                        </IOSBadge>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col">
+                          <span className="font-mono text-[12px] text-[var(--label-secondary)] bg-[var(--fill-quaternary)] px-2 py-0.5 rounded w-fit">{p.referenceId || '-'}</span>
+                          <span className="text-[13px] text-[var(--label-tertiary)] truncate max-w-[150px] mt-1 pr-4">{p.notes}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-3">
+                          <span className="font-bold text-[17px] text-[var(--ios-green)] tracking-tight">₹{Number(p.amount).toLocaleString()}</span>
+                          <IOSButton
+                            variant="plain"
+                            className="h-8 w-8 !p-0 opacity-0 group-hover:opacity-100 text-[var(--label-tertiary)] hover:text-[var(--ios-red)]"
+                            onClick={() => {
+                              setPaymentToDeleteId(p.id);
+                              setIsDeleteDialogOpenConfirm(true);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </IOSButton>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </motion.tbody>
+              </table>
+            </div>
+          </IOSCard>
         )}
       </div>
 
       <Dialog open={isDeleteDialogOpenConfirm} onOpenChange={setIsDeleteDialogOpenConfirm}>
-        <DialogContent className="max-w-[350px]">
+        <DialogContent className="max-w-[350px] bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px]">
           <DialogHeader>
-            <DialogTitle>Delete Payment</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-[20px] font-semibold text-[var(--label-primary)]">Delete Payment</DialogTitle>
+            <DialogDescription className="text-[15px] text-[var(--label-secondary)]">
               Are you sure you want to delete this payment record? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex gap-2">
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpenConfirm(false)} className="flex-1">Cancel</Button>
-            <Button
+          <DialogFooter className="flex gap-2 pt-4 border-t border-[var(--border-card)]">
+            <IOSButton variant="gray" onClick={() => setIsDeleteDialogOpenConfirm(false)} className="flex-1">
+              Cancel
+            </IOSButton>
+            <IOSButton
               variant="destructive"
               onClick={() => paymentToDeleteId && handleDeletePayment(paymentToDeleteId)}
               className="flex-1"
+              disabled={deletePayment.isPending}
             >
-              Delete
-            </Button>
+              {deletePayment.isPending ? "Deleting..." : "Delete"}
+            </IOSButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

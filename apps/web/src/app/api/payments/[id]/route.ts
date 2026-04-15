@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth-session";
+import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
@@ -21,7 +21,7 @@ export async function DELETE(
     const db = await getDb();
     const result = await db.collection("payments").deleteOne({
       _id: new ObjectId(id),
-      userId: user._id.toString(),
+      userId: getDataOwnerId(user),
     });
 
     if (result.deletedCount === 0) {

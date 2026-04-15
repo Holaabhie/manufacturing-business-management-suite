@@ -1,0 +1,50 @@
+<% var body=` <div style="display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 80px);">
+    <div class="card" style="width:100%;max-width:420px;">
+        <div class="text-center mb-2">
+            <h1 style="font-size:1.5rem;font-weight:700;letter-spacing:-.02em;
+                 background:linear-gradient(135deg,#6366f1,#a78bfa);
+                 -webkit-background-clip:text;-webkit-text-fill-color:transparent;">
+                Sign In
+            </h1>
+            <p style="color:#8b8fa3;font-size:.875rem;margin-top:.4rem;">
+                Enter your credentials to access the portal
+            </p>
+        </div>
+
+        ${ typeof reason !== 'undefined' && reason === 'session_expired'
+        ? '<div class="alert alert-warning">Your session has expired. Please sign in again.</div>' : '' }
+        ${ typeof reason !== 'undefined' && reason === 'logged_out'
+        ? '<div class="alert alert-success">You have been logged out successfully.</div>' : '' }
+        ${ typeof error !== 'undefined' && error === 'invalid_credentials'
+        ? '<div class="alert alert-error">Invalid email or password. Please try again.</div>' : '' }
+        ${ typeof error !== 'undefined' && error === 'server_error'
+        ? '<div class="alert alert-error">An unexpected error occurred. Please try again.</div>' : '' }
+
+        <form action="/login" method="POST" id="login-form">
+            <input type="hidden" name="_csrf" value="${csrfToken}">
+
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" required placeholder="admin@test.com"
+                    autocomplete="email" />
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required placeholder="••••••••"
+                    autocomplete="current-password" />
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="login-btn" style="width:100%;margin-top:.5rem;">
+                Sign In
+            </button>
+        </form>
+
+        <p class="text-center mt-2" style="font-size:.8rem;color:#8b8fa3;">
+            Test credentials: <code style="color:#a78bfa;">admin@test.com</code> /
+            <code style="color:#a78bfa;">password123</code>
+        </p>
+    </div>
+    </div>
+    ` %>
+    <%- include('layout') %>

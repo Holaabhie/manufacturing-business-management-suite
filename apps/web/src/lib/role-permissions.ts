@@ -19,10 +19,18 @@ import {
     MODULE_ROUTE_MAP,
 } from "@/lib/permissions";
 
-export type UserRole = "Admin" | "Staff";
+export type UserRole = "Admin" | "Staff" | string;
+
+export function normalizeRole(role: string | null): UserRole | null {
+    if (!role) return null;
+    const lower = role.toLowerCase();
+    if (lower === "admin") return "Admin";
+    if (lower === "staff") return "Staff";
+    return role as UserRole;
+}
 
 // ─── Legacy Route-Based Permissions (kept for backward compat) ──
-export const ROLE_PERMISSIONS: Record<UserRole, {
+export const ROLE_PERMISSIONS: Record<string, {
     allowedRoutes: string[];
     hiddenSections: string[];
     readOnlyRoutes: string[];
@@ -38,12 +46,11 @@ export const ROLE_PERMISSIONS: Record<UserRole, {
             "/dashboard/orders",
             "/dashboard/production",
             "/dashboard/inventory",
-            "/dashboard/clients",
-            "/dashboard/assistant",
+            "/dashboard/purchasing",
             "/dashboard/profile",
         ],
-        hiddenSections: ["FINANCE"], // Hide these navigation groups
-        readOnlyRoutes: ["/dashboard/clients"], // Read-only access
+        hiddenSections: ["FINANCE", "INTELLIGENCE", "SYSTEM", "RELATIONSHIPS"], // Hide these navigation groups
+        readOnlyRoutes: [], // No read-only routes
     },
 };
 
@@ -52,10 +59,11 @@ export const ROLE_PERMISSIONS: Record<UserRole, {
  * Enhanced: If granular permissions are provided, uses those instead.
  */
 export function isRouteAllowed(
-    role: UserRole | null,
+    rawRole: UserRole | null,
     route: string,
     permissions?: PermissionMap | null
 ): boolean {
+    const role = normalizeRole(rawRole);
     if (!role) return false;
 
     // If granular permissions available, use them
@@ -77,10 +85,11 @@ export function isRouteAllowed(
  * where the user has no view access to any module in that section.
  */
 export function isSectionHidden(
-    role: UserRole | null,
+    rawRole: UserRole | null,
     section: string,
     permissions?: PermissionMap | null
 ): boolean {
+    const role = normalizeRole(rawRole);
     if (!role) return true;
     if (role === "Admin") return false;
 
@@ -111,10 +120,11 @@ export function isSectionHidden(
  * Enhanced: With granular permissions, checks if user has view but not edit.
  */
 export function isRouteReadOnly(
-    role: UserRole | null,
+    rawRole: UserRole | null,
     route: string,
     permissions?: PermissionMap | null
 ): boolean {
+    const role = normalizeRole(rawRole);
     if (!role) return true;
     if (role === "Admin") return false;
 
@@ -147,12 +157,13 @@ export function filterNavigationByRole(
         label: string;
         items: Array<{ name: string; href: string; icon: any; badge?: number }>;
     }>,
-    role: UserRole | null,
+    rawRole: UserRole | null,
     permissions?: PermissionMap | null
 ): Array<{
     label: string;
     items: Array<{ name: string; href: string; icon: any; badge?: number }>;
 }> {
+    const role = normalizeRole(rawRole);
     if (!role) return [];
 
     // Admin sees everything
@@ -175,9 +186,10 @@ export function filterNavigationByRole(
  */
 export function filterMobileNavByRole(
     mobileNavItems: Array<{ name: string; href: string; icon: any; isMore?: boolean }>,
-    role: UserRole | null,
+    rawRole: UserRole | null,
     permissions?: PermissionMap | null
 ): Array<{ name: string; href: string; icon: any; isMore?: boolean }> {
+    const role = normalizeRole(rawRole);
     if (!role) return [];
 
     if (role === "Admin") return mobileNavItems;

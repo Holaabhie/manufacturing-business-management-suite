@@ -34,6 +34,7 @@ export interface IUser extends Document {
 
   // First-time setup tracking
   firstLoginCompleted: boolean;
+  company_setup_complete: boolean;
   setupSteps: {
     passwordChanged: boolean;
     otpConfigured: boolean;
@@ -163,6 +164,10 @@ const UserSchema = new Schema<IUser>({
   firstLoginCompleted: {
     type: Boolean,
     default: true, // true for existing users, false for new staff
+  },
+  company_setup_complete: {
+    type: Boolean,
+    default: false,
   },
   setupSteps: {
     type: Object,

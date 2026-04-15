@@ -1,0 +1,56 @@
+<% var body=` <div>
+    <h1 style="font-size:1.6rem;font-weight:700;margin-bottom:.3rem;">
+        Welcome back, ${user.name}
+    </h1>
+    <p style="color:#8b8fa3;font-size:.9rem;margin-bottom:2rem;">
+        Here's an overview of your session.
+    </p>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.25rem;">
+        <!-- Card: User Info -->
+        <div class="card">
+            <p
+                style="font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:#8b8fa3;margin-bottom:.6rem;">
+                Account
+            </p>
+            <p style="font-size:1.1rem;font-weight:600;">${user.name}</p>
+            <p style="font-size:.85rem;color:#8b8fa3;">${user.email}</p>
+        </div>
+
+        <!-- Card: Session -->
+        <div class="card">
+            <p
+                style="font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:#8b8fa3;margin-bottom:.6rem;">
+                Session Started
+            </p>
+            <p style="font-size:1.1rem;font-weight:600;">
+                ${new Date(user.loginTime).toLocaleString()}
+            </p>
+            <p style="font-size:.85rem;color:#10b981;margin-top:.25rem;">● Active</p>
+        </div>
+
+        <!-- Card: Security -->
+        <div class="card">
+            <p
+                style="font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:#8b8fa3;margin-bottom:.6rem;">
+                Security
+            </p>
+            <p style="font-size:.9rem;">Session-bound CSRF ✔</p>
+            <p style="font-size:.9rem;">httpOnly cookie ✔</p>
+            <p style="font-size:.9rem;">sameSite: lax ✔</p>
+        </div>
+    </div>
+
+    <div class="card mt-2" style="margin-top:2rem;">
+        <h2 style="font-size:1.1rem;font-weight:600;margin-bottom:1rem;">Quick Actions</h2>
+        <div style="display:flex;gap:.75rem;flex-wrap:wrap;">
+            <a href="/settings" class="btn btn-ghost" id="goto-settings">⚙ Settings</a>
+            <form action="/logout" method="POST" style="display:inline;" id="dashboard-logout-form">
+                <input type="hidden" name="_csrf" value="${csrfToken}">
+                <button type="submit" class="btn btn-danger" id="dashboard-logout-btn">↪ Logout</button>
+            </form>
+        </div>
+    </div>
+    </div>
+    ` %>
+    <%- include('layout') %>

@@ -1,7 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -10,19 +10,29 @@
 !.yarn/releases
 !.yarn/versions
 
+# environment variables (NEVER commit secrets)
+.env
+.env.local
+.env.*.local
+
 # testing
 /coverage
 
 # next.js
-/.next/
+.next/
 /out/
 
 # production
 /build
+dist/
+
+# turbo
+.turbo/
 
 # misc
 .DS_Store
 *.pem
+Thumbs.db
 
 # debug
 npm-debug.log*
@@ -36,3 +46,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# IDE
+.vscode/
+.idea/
+
+# temp files
+remote.txt
+status.txt
+version_check.txt

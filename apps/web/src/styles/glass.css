@@ -1,0 +1,647 @@
+/* ============================================
+   GLASSMORPHISM DESIGN SYSTEM
+   Dark navy/black base — consistent across
+   every modal, dialog, drawer, sheet, popup,
+   dropdown, and overlay component.
+   ============================================ */
+
+/* ── Google Fonts: DM Sans + DM Mono ──── */
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
+
+:root {
+  /* ── Glass Surface ──────────────────── */
+  --glass-bg: linear-gradient(160deg, rgba(14, 22, 44, 0.97) 0%, rgba(8, 16, 36, 0.99) 100%);
+  --glass-bg-solid: rgba(14, 22, 44, 0.97);
+  --glass-surface: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(255, 255, 255, 0.10);
+  --glass-border-active: rgba(99, 210, 255, 0.45);
+  --glass-blur: blur(24px) saturate(180%);
+  --glass-shadow: 0 -8px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  --glass-input-bg: rgba(255, 255, 255, 0.06);
+
+  /* ── Overlay ────────────────────────── */
+  --glass-overlay-bg: rgba(0, 0, 0, 0.70);
+  --glass-overlay-blur: blur(8px);
+  --glass-overlay-z: 1000;
+  --glass-modal-z: 1001;
+
+  /* ── Glass Radii ────────────────────── */
+  --glass-radius-modal: 28px 28px 0 0;
+  --glass-radius-card: 20px;
+  --glass-radius-input: 14px;
+  --glass-radius-btn: 12px;
+
+  /* ── Accent Colors ──────────────────── */
+  --g-accent-blue: rgba(99, 210, 255, 0.9);
+  --g-accent-blue-glow: rgba(0, 150, 255, 0.4);
+  --g-accent-warn: rgba(255, 200, 80, 0.85);
+
+  /* ── Text Hierarchy ─────────────────── */
+  --g-text-primary: #ffffff;
+  --g-text-secondary: rgba(255, 255, 255, 0.45);
+  --g-text-label: rgba(255, 255, 255, 0.35);
+
+  /* ── Fonts ───────────────────────────── */
+  --font-glass: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-glass-mono: 'DM Mono', 'SF Mono', monospace;
+}
+
+/* ============================================
+   1 · BACKDROP OVERLAY
+   position: fixed, full viewport, z-index 1000
+   ============================================ */
+[data-slot="dialog-overlay"],
+[data-slot="sheet-overlay"],
+[data-slot="drawer-overlay"],
+[data-slot="alert-dialog-overlay"],
+.glass-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: var(--glass-overlay-z) !important;
+  background: var(--glass-overlay-bg) !important;
+  backdrop-filter: var(--glass-overlay-blur) !important;
+  -webkit-backdrop-filter: var(--glass-overlay-blur) !important;
+}
+
+/* ============================================
+   2 · MODAL / DIALOG / SHEET / DRAWER CONTAINER
+   z-index 1001, gradient bg ≥0.95 opacity,
+   glass effect via backdrop-filter only
+   ============================================ */
+[data-slot="dialog-content"],
+[data-slot="alert-dialog-content"],
+.glass-modal {
+  position: relative !important;
+  z-index: var(--glass-modal-z) !important;
+  background: var(--glass-bg) !important;
+  backdrop-filter: var(--glass-blur) !important;
+  -webkit-backdrop-filter: var(--glass-blur) !important;
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: var(--glass-shadow) !important;
+  color: var(--g-text-primary) !important;
+  font-family: var(--font-glass) !important;
+}
+
+/* Mobile: bottom-sheet (max-width 768px) */
+@media (max-width: 768px) {
+  [data-slot="dialog-content"],
+  [data-slot="alert-dialog-content"] {
+    position: fixed !important;
+    top: auto !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    transform: none !important;
+    max-width: 100vw !important;
+    width: 100vw !important;
+    max-height: 90dvh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    border-radius: 28px 28px 0 0 !important;
+  }
+}
+
+/* Desktop: centered card (min-width 769px) */
+@media (min-width: 769px) {
+  [data-slot="dialog-content"],
+  [data-slot="alert-dialog-content"] {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    border-radius: 20px !important;
+    width: 90% !important;
+  }
+
+  /* default max-width when no explicit Tailwind override */
+  [data-slot="dialog-content"]:not([class*="max-w-"]),
+  [data-slot="alert-dialog-content"]:not([class*="max-w-"]) {
+    max-width: 480px !important;
+  }
+}
+
+/* Legacy .glass-dialog alias  */
+.glass-dialog {
+  background: var(--glass-bg) !important;
+  backdrop-filter: var(--glass-blur) !important;
+  -webkit-backdrop-filter: var(--glass-blur) !important;
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: var(--glass-shadow) !important;
+  color: var(--g-text-primary) !important;
+  font-family: var(--font-glass) !important;
+}
+
+/* Sheet content */
+[data-slot="sheet-content"] {
+  z-index: var(--glass-modal-z) !important;
+  background: var(--glass-bg) !important;
+  backdrop-filter: var(--glass-blur) !important;
+  -webkit-backdrop-filter: var(--glass-blur) !important;
+  border-color: var(--glass-border) !important;
+  box-shadow: var(--glass-shadow) !important;
+  color: var(--g-text-primary) !important;
+  font-family: var(--font-glass) !important;
+}
+
+/* Drawer content */
+[data-slot="drawer-content"] {
+  z-index: var(--glass-modal-z) !important;
+  background: var(--glass-bg) !important;
+  backdrop-filter: var(--glass-blur) !important;
+  -webkit-backdrop-filter: var(--glass-blur) !important;
+  border-color: var(--glass-border) !important;
+  box-shadow: var(--glass-shadow) !important;
+  color: var(--g-text-primary) !important;
+  font-family: var(--font-glass) !important;
+  border-radius: 28px 28px 0 0 !important;
+}
+
+/* Drawer drag handle */
+[data-slot="drawer-content"] > div:first-child {
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* ============================================
+   3 · SECTION CARDS INSIDE MODALS
+   ============================================ */
+[data-slot="dialog-content"] .glass-section,
+[data-slot="sheet-content"] .glass-section,
+[data-slot="drawer-content"] .glass-section,
+[data-slot="alert-dialog-content"] .glass-section {
+  background: var(--glass-surface);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius-card);
+}
+
+/* ============================================
+   4 · TEXT INPUTS & SELECTS INSIDE GLASS 
+   ============================================ */
+[data-slot="dialog-content"] input[type="text"],
+[data-slot="dialog-content"] input[type="email"],
+[data-slot="dialog-content"] input[type="number"],
+[data-slot="dialog-content"] input[type="password"],
+[data-slot="dialog-content"] input[type="search"],
+[data-slot="dialog-content"] input[type="tel"],
+[data-slot="dialog-content"] input[type="url"],
+[data-slot="dialog-content"] input[type="date"],
+[data-slot="dialog-content"] textarea,
+[data-slot="dialog-content"] select,
+[data-slot="sheet-content"] input[type="text"],
+[data-slot="sheet-content"] input[type="email"],
+[data-slot="sheet-content"] input[type="number"],
+[data-slot="sheet-content"] input[type="password"],
+[data-slot="sheet-content"] input[type="search"],
+[data-slot="sheet-content"] input[type="tel"],
+[data-slot="sheet-content"] input[type="url"],
+[data-slot="sheet-content"] input[type="date"],
+[data-slot="sheet-content"] textarea,
+[data-slot="sheet-content"] select,
+[data-slot="drawer-content"] input[type="text"],
+[data-slot="drawer-content"] input[type="email"],
+[data-slot="drawer-content"] input[type="number"],
+[data-slot="drawer-content"] input[type="password"],
+[data-slot="drawer-content"] input[type="search"],
+[data-slot="drawer-content"] input[type="tel"],
+[data-slot="drawer-content"] input[type="url"],
+[data-slot="drawer-content"] input[type="date"],
+[data-slot="drawer-content"] textarea,
+[data-slot="drawer-content"] select,
+[data-slot="alert-dialog-content"] input,
+[data-slot="alert-dialog-content"] textarea,
+[data-slot="alert-dialog-content"] select,
+.glass-modal input,
+.glass-modal textarea,
+.glass-modal select {
+  background: var(--glass-input-bg) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1.5px solid var(--glass-border-active) !important;
+  border-radius: var(--glass-radius-input) !important;
+  color: var(--g-text-primary) !important;
+  box-shadow: 0 0 0 3px rgba(99, 210, 255, 0.10) !important;
+  font-family: var(--font-glass) !important;
+}
+
+[data-slot="dialog-content"] input:focus,
+[data-slot="dialog-content"] textarea:focus,
+[data-slot="dialog-content"] select:focus,
+[data-slot="sheet-content"] input:focus,
+[data-slot="sheet-content"] textarea:focus,
+[data-slot="sheet-content"] select:focus,
+[data-slot="drawer-content"] input:focus,
+[data-slot="drawer-content"] textarea:focus,
+[data-slot="drawer-content"] select:focus,
+[data-slot="alert-dialog-content"] input:focus,
+[data-slot="alert-dialog-content"] textarea:focus,
+[data-slot="alert-dialog-content"] select:focus,
+.glass-modal input:focus,
+.glass-modal textarea:focus,
+.glass-modal select:focus {
+  border-color: rgba(99, 210, 255, 0.8) !important;
+  box-shadow: 0 0 0 4px rgba(99, 210, 255, 0.15) !important;
+  outline: none !important;
+}
+
+/* Placeholder color */
+[data-slot="dialog-content"] input::placeholder,
+[data-slot="dialog-content"] textarea::placeholder,
+[data-slot="sheet-content"] input::placeholder,
+[data-slot="sheet-content"] textarea::placeholder,
+[data-slot="drawer-content"] input::placeholder,
+[data-slot="drawer-content"] textarea::placeholder,
+.glass-modal input::placeholder,
+.glass-modal textarea::placeholder {
+  color: var(--g-text-secondary) !important;
+}
+
+/* ============================================
+   5 · TOGGLE / TAB BUTTON GROUPS
+   ============================================ */
+.glass-toggle-group {
+  display: inline-flex;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border);
+  padding: 6px;
+  border-radius: 16px;
+  gap: 4px;
+}
+
+.glass-toggle-group .glass-toggle-active {
+  background: linear-gradient(135deg, rgba(99, 210, 255, 0.85), rgba(0, 180, 255, 0.7));
+  box-shadow: 0 4px 20px var(--g-accent-blue-glow);
+  border: 1px solid rgba(99, 210, 255, 0.4);
+  color: #fff;
+  font-weight: 600;
+}
+
+.glass-toggle-group .glass-toggle-inactive {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--g-text-secondary);
+}
+
+/* ============================================
+   6 · PRIMARY CTA BUTTONS
+   ============================================ */
+.glass-btn-primary {
+  background: linear-gradient(135deg, rgba(99, 210, 255, 0.9), rgba(0, 160, 255, 0.8), rgba(0, 100, 220, 0.85)) !important;
+  box-shadow: 0 8px 28px var(--g-accent-blue-glow), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+  border: none !important;
+  border-radius: var(--glass-radius-btn) !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+  font-family: var(--font-glass) !important;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.glass-btn-primary:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 639px) {
+  .glass-btn-primary {
+    width: 100% !important;
+  }
+}
+
+/* ============================================
+   7 · SECONDARY / GHOST BUTTONS
+   ============================================ */
+.glass-btn-secondary {
+  background: rgba(99, 210, 255, 0.08) !important;
+  border: 1px solid rgba(99, 210, 255, 0.3) !important;
+  color: rgba(99, 210, 255, 0.9) !important;
+  border-radius: var(--glass-radius-btn) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  font-family: var(--font-glass) !important;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.glass-btn-secondary:hover {
+  background: rgba(99, 210, 255, 0.15) !important;
+}
+
+/* ============================================
+   8 · DANGER / DESTRUCTIVE BUTTONS
+   ============================================ */
+.glass-btn-danger {
+  background: rgba(255, 80, 80, 0.08) !important;
+  border: 1px solid rgba(255, 80, 80, 0.25) !important;
+  color: rgba(255, 100, 100, 0.85) !important;
+  border-radius: var(--glass-radius-btn) !important;
+  font-family: var(--font-glass) !important;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.glass-btn-danger:hover {
+  background: rgba(255, 80, 80, 0.15) !important;
+}
+
+/* ============================================
+   9 · WARNING / INFO BOXES
+   ============================================ */
+.glass-warning {
+  background: rgba(255, 180, 0, 0.07) !important;
+  border: 1px solid rgba(255, 180, 0, 0.22) !important;
+  border-radius: var(--glass-radius-card) !important;
+  box-shadow: 0 4px 16px rgba(255, 140, 0, 0.10) !important;
+  color: var(--g-accent-warn) !important;
+  font-family: var(--font-glass) !important;
+}
+
+/* ============================================
+   10 · SECTION LABELS
+   ============================================ */
+.glass-label {
+  text-transform: uppercase !important;
+  font-size: 11px !important;
+  letter-spacing: 0.10em !important;
+  color: var(--g-text-label) !important;
+  font-weight: 600 !important;
+  font-family: var(--font-glass) !important;
+}
+
+/* ============================================
+   11 · DIVIDERS
+   ============================================ */
+.glass-divider {
+  height: 1px !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+  border: none !important;
+}
+
+/* Also apply to separators inside glass containers */
+[data-slot="dialog-content"] [data-slot*="separator"],
+[data-slot="sheet-content"] [data-slot*="separator"],
+[data-slot="drawer-content"] [data-slot*="separator"],
+[data-slot="command-separator"] {
+  background: rgba(255, 255, 255, 0.07) !important;
+  border: none !important;
+}
+
+/* ============================================
+   12 · CLOSE / X BUTTONS
+   ============================================ */
+[data-slot="dialog-close"],
+[data-slot="dialog-content"] > [data-slot="dialog-close"],
+[data-slot="sheet-content"] > button:last-of-type {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 10px !important;
+  width: 36px !important;
+  height: 36px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--g-text-primary) !important;
+  opacity: 1 !important;
+  transition: background 0.2s ease !important;
+}
+
+[data-slot="dialog-close"]:hover,
+[data-slot="dialog-content"] > [data-slot="dialog-close"]:hover,
+[data-slot="sheet-content"] > button:last-of-type:hover {
+  background: rgba(255, 80, 80, 0.2) !important;
+}
+
+/* ============================================
+   13 · DROPDOWN MENUS / POPOVER / CONTEXT MENU / SELECT
+   ============================================ */
+[data-slot="dropdown-menu-content"],
+[data-slot="dropdown-menu-sub-content"],
+[data-slot="context-menu-content"],
+[data-slot="context-menu-sub-content"],
+[data-slot="popover-content"],
+[data-slot="select-content"],
+[data-slot="command"] {
+  background: var(--glass-bg) !important;
+  backdrop-filter: var(--glass-blur) !important;
+  -webkit-backdrop-filter: var(--glass-blur) !important;
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: var(--glass-shadow) !important;
+  border-radius: var(--glass-radius-card) !important;
+  color: var(--g-text-primary) !important;
+  font-family: var(--font-glass) !important;
+  z-index: 2000 !important;
+}
+
+/* Dropdown / context menu items on hover */
+[data-slot="dropdown-menu-item"]:focus,
+[data-slot="dropdown-menu-item"]:hover,
+[data-slot="dropdown-menu-checkbox-item"]:focus,
+[data-slot="dropdown-menu-radio-item"]:focus,
+[data-slot="context-menu-item"]:focus,
+[data-slot="context-menu-item"]:hover,
+[data-slot="context-menu-checkbox-item"]:focus,
+[data-slot="context-menu-radio-item"]:focus,
+[data-slot="select-item"]:focus,
+[data-slot="command-item"][data-selected="true"] {
+  background: rgba(255, 255, 255, 0.10) !important;
+  color: var(--g-text-primary) !important;
+}
+
+/* Active / selected items */
+[data-slot="dropdown-menu-item"][data-state="checked"],
+[data-slot="dropdown-menu-checkbox-item"][data-state="checked"],
+[data-slot="dropdown-menu-radio-item"][data-state="checked"],
+[data-slot="select-item"][data-state="checked"],
+[data-slot="context-menu-item"][data-state="checked"],
+[data-slot="context-menu-checkbox-item"][data-state="checked"] {
+  color: var(--g-accent-blue) !important;
+  background: rgba(99, 210, 255, 0.10) !important;
+}
+
+/* Dropdown labels */
+[data-slot="dropdown-menu-label"],
+[data-slot="context-menu-label"],
+[data-slot="select-label"] {
+  color: var(--g-text-label) !important;
+  text-transform: uppercase;
+  font-size: 11px !important;
+  letter-spacing: 0.10em;
+  font-weight: 600 !important;
+  font-family: var(--font-glass) !important;
+}
+
+/* Dropdown separators */
+[data-slot="dropdown-menu-separator"],
+[data-slot="context-menu-separator"],
+[data-slot="select-separator"] {
+  background: rgba(255, 255, 255, 0.07) !important;
+  border: none !important;
+}
+
+/* Dropdown item text */
+[data-slot="dropdown-menu-item"],
+[data-slot="dropdown-menu-checkbox-item"],
+[data-slot="dropdown-menu-radio-item"],
+[data-slot="dropdown-menu-sub-trigger"],
+[data-slot="context-menu-item"],
+[data-slot="context-menu-checkbox-item"],
+[data-slot="context-menu-radio-item"],
+[data-slot="context-menu-sub-trigger"],
+[data-slot="select-item"] {
+  color: var(--g-text-primary) !important;
+  font-family: var(--font-glass) !important;
+  border-radius: 8px;
+}
+
+/* Destructive variant in dropdown */
+[data-slot="dropdown-menu-item"][data-variant="destructive"],
+[data-slot="context-menu-item"][data-variant="destructive"] {
+  color: rgba(255, 100, 100, 0.85) !important;
+}
+
+[data-slot="dropdown-menu-item"][data-variant="destructive"]:focus,
+[data-slot="dropdown-menu-item"][data-variant="destructive"]:hover,
+[data-slot="context-menu-item"][data-variant="destructive"]:focus,
+[data-slot="context-menu-item"][data-variant="destructive"]:hover {
+  background: rgba(255, 80, 80, 0.15) !important;
+  color: rgba(255, 100, 100, 1) !important;
+}
+
+/* Shortcut text */
+[data-slot="dropdown-menu-shortcut"],
+[data-slot="context-menu-shortcut"],
+[data-slot="command-shortcut"] {
+  color: var(--g-text-label) !important;
+}
+
+/* ============================================
+   14 · COMMAND PALETTE
+   ============================================ */
+[data-slot="command-input-wrapper"] {
+  border-color: rgba(255, 255, 255, 0.07) !important;
+}
+
+[data-slot="command-input"] {
+  color: var(--g-text-primary) !important;
+  font-family: var(--font-glass) !important;
+}
+
+[data-slot="command-input"]::placeholder {
+  color: var(--g-text-secondary) !important;
+}
+
+[data-slot="command-empty"] {
+  color: var(--g-text-secondary) !important;
+}
+
+[data-slot="command-group"] [cmdk-group-heading],
+[data-slot="command-group"] .text-muted-foreground {
+  color: var(--g-text-label) !important;
+}
+
+/* ============================================
+   TOOLTIP WITH GLASS
+   ============================================ */
+[data-slot="tooltip-content"] {
+  background: var(--glass-bg) !important;
+  color: var(--g-text-primary) !important;
+  border: 1px solid var(--glass-border) !important;
+  backdrop-filter: var(--glass-blur) !important;
+  -webkit-backdrop-filter: var(--glass-blur) !important;
+  font-family: var(--font-glass) !important;
+  box-shadow: var(--glass-shadow) !important;
+}
+
+[data-slot="tooltip-content"] .bg-primary,
+[data-slot="tooltip-content"] .fill-primary {
+  background: var(--glass-bg) !important;
+  fill: var(--glass-bg) !important;
+}
+
+/* ============================================
+   DIALOG / SHEET TITLES & DESCRIPTIONS
+   ============================================ */
+[data-slot="dialog-title"],
+[data-slot="sheet-title"],
+[data-slot="drawer-title"],
+[data-slot="alert-dialog-title"] {
+  color: var(--g-text-primary) !important;
+  font-family: var(--font-glass) !important;
+}
+
+[data-slot="dialog-description"],
+[data-slot="sheet-description"],
+[data-slot="drawer-description"],
+[data-slot="alert-dialog-description"] {
+  color: var(--g-text-secondary) !important;
+  font-family: var(--font-glass) !important;
+}
+
+/* ============================================
+   15 · SCROLLBARS INSIDE MODALS
+   ============================================ */
+[data-slot="dialog-content"]::-webkit-scrollbar,
+[data-slot="sheet-content"]::-webkit-scrollbar,
+[data-slot="drawer-content"]::-webkit-scrollbar,
+[data-slot="alert-dialog-content"]::-webkit-scrollbar,
+[data-slot="command-list"]::-webkit-scrollbar,
+.glass-modal::-webkit-scrollbar,
+[data-slot="dialog-content"] *::-webkit-scrollbar,
+[data-slot="sheet-content"] *::-webkit-scrollbar,
+[data-slot="drawer-content"] *::-webkit-scrollbar,
+[data-slot="alert-dialog-content"] *::-webkit-scrollbar,
+.glass-modal *::-webkit-scrollbar {
+  width: 4px;
+}
+
+[data-slot="dialog-content"]::-webkit-scrollbar-thumb,
+[data-slot="sheet-content"]::-webkit-scrollbar-thumb,
+[data-slot="drawer-content"]::-webkit-scrollbar-thumb,
+[data-slot="alert-dialog-content"]::-webkit-scrollbar-thumb,
+[data-slot="command-list"]::-webkit-scrollbar-thumb,
+.glass-modal::-webkit-scrollbar-thumb,
+[data-slot="dialog-content"] *::-webkit-scrollbar-thumb,
+[data-slot="sheet-content"] *::-webkit-scrollbar-thumb,
+[data-slot="drawer-content"] *::-webkit-scrollbar-thumb,
+[data-slot="alert-dialog-content"] *::-webkit-scrollbar-thumb,
+.glass-modal *::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+[data-slot="dialog-content"]::-webkit-scrollbar-track,
+[data-slot="sheet-content"]::-webkit-scrollbar-track,
+[data-slot="drawer-content"]::-webkit-scrollbar-track,
+[data-slot="alert-dialog-content"]::-webkit-scrollbar-track,
+[data-slot="command-list"]::-webkit-scrollbar-track,
+.glass-modal::-webkit-scrollbar-track,
+[data-slot="dialog-content"] *::-webkit-scrollbar-track,
+[data-slot="sheet-content"] *::-webkit-scrollbar-track,
+[data-slot="drawer-content"] *::-webkit-scrollbar-track,
+[data-slot="alert-dialog-content"] *::-webkit-scrollbar-track,
+.glass-modal *::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ============================================
+   NUMERIC / CURRENCY VALUES — DM Mono
+   ============================================ */
+.glass-mono,
+[data-slot="dialog-content"] .tabular-nums,
+[data-slot="sheet-content"] .tabular-nums,
+[data-slot="drawer-content"] .tabular-nums,
+.glass-modal .tabular-nums {
+  font-family: var(--font-glass-mono) !important;
+}
+
+/* ============================================
+   SELECT TRIGGER (inside glass context)
+   ============================================ */
+[data-slot="select-trigger"] {
+  font-family: var(--font-glass) !important;
+}

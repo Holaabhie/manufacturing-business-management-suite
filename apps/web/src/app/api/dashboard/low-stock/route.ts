@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth-session";
+import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 
 export async function GET() {
@@ -10,7 +10,7 @@ export async function GET() {
     }
 
     const db = await getDb();
-    const userId = user._id.toString();
+    const userId = getDataOwnerId(user);
 
     const lowStock = await db
       .collection("inventory")

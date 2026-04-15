@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
 import { requireAdmin } from "@/lib/require-role";
-import { ObjectId } from "mongodb";
+import { getDataOwnerId } from "@/lib/auth-session";
+import { withIdempotency } from "@/lib/with-idempotency";
 
 export async function GET() {
     try {
@@ -15,7 +16,7 @@ export async function GET() {
         const db = await getDb();
         const bills = await db
             .collection("bills")
-            .find({ userId: user._id.toString() })
+            .find({ userId: getDataOwnerId(user!) })
             .sort({ created_at: -1 })
             .toArray();
 
@@ -50,7 +51,15 @@ export async function GET() {
     }
 }
 
-export async function POST(request: NextRequest) {
+/**
+ * POST /api/billing — Create a new invoice
+ * 
+ * Protected by:
+ *   1. Role check (Admin only)
+ *   2. Idempotency key (prevents duplicate submissions)
+ *   3. Unique billNumber check (database-level safety net)
+ */
+export const POST = withIdempotency(async (request: NextRequest) => {
     try {
         // Admin-only: Staff cannot create bills
         const result = await requireAdmin();
@@ -62,8 +71,31 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         const db = await getDb();
 
+        // ── Layer 3: Safe-save — check for existing billNumber ──
+        if (body.billNumber) {
+            const existing = await db.collection("bills").findOne({
+                billNumber: body.billNumber,
+                userId: getDataOwnerId(user!),
+            });
+
+            if (existing) {
+                console.warn(
+                    `[billing] Duplicate billNumber blocked: ${body.billNumber} user=${user!._id}`
+                );
+                return NextResponse.json(
+                    {
+                        error: "Duplicate invoice number",
+                        message: `Invoice ${body.billNumber} already exists.`,
+                        code: "DUPLICATE_BILL_NUMBER",
+                        existingId: existing._id.toString(),
+                    },
+                    { status: 409 },
+                );
+            }
+        }
+
         const billData = {
-            userId: user._id.toString(),
+            userId: getDataOwnerId(user!),
             billNumber: body.billNumber,
             billDate: body.billDate,
             dueDate: body.dueDate,
@@ -91,7 +123,7 @@ export async function POST(request: NextRequest) {
 
         // Log activity
         await db.collection("activity").insertOne({
-            userId: user._id.toString(),
+            userId: getDataOwnerId(user!),
             type: "billing",
             message: `Invoice ${billData.billNumber} created for ${billData.clientName}`,
             createdAt: new Date().toISOString(),
@@ -101,8 +133,20 @@ export async function POST(request: NextRequest) {
             id: insertResult.insertedId.toString(),
             ...billData,
         });
-    } catch (error) {
+    } catch (error: any) {
+        // Handle MongoDB duplicate key error (unique index on billNumber)
+        if (error.code === 11000) {
+            return NextResponse.json(
+                {
+                    error: "Duplicate invoice",
+                    message: "An invoice with this number already exists.",
+                    code: "DUPLICATE_KEY",
+                },
+                { status: 409 },
+            );
+        }
+
         console.error("Error creating bill:", error);
         return NextResponse.json({ error: "Failed to create bill" }, { status: 500 });
     }
-}
+});

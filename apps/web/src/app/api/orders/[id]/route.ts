@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth-session";
+import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
@@ -22,7 +22,7 @@ export async function PUT(
     const db = await getDb();
 
     const result = await db.collection("orders").updateOne(
-      { _id: new ObjectId(id), userId: user._id.toString() },
+      { _id: new ObjectId(id), userId: getDataOwnerId(user) },
       {
         $set: {
           client_id: body.client_id,
@@ -67,7 +67,7 @@ export async function DELETE(
     const db = await getDb();
     const result = await db.collection("orders").deleteOne({
       _id: new ObjectId(id),
-      userId: user._id.toString(),
+      userId: getDataOwnerId(user),
     });
 
     if (result.deletedCount === 0) {

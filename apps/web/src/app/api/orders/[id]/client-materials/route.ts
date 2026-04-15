@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth-session";
+import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
@@ -21,7 +21,7 @@ export async function GET(
     const db = await getDb();
     const order = await db.collection("orders").findOne({
       _id: new ObjectId(id),
-      userId: user._id.toString(),
+      userId: getDataOwnerId(user),
     });
 
     if (!order) {
@@ -32,7 +32,7 @@ export async function GET(
       .collection("client_materials")
       .find({
         client_id: order.client_id,
-        userId: user._id.toString(),
+        userId: getDataOwnerId(user),
       })
       .toArray();
 

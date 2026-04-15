@@ -1,641 +1,458 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
-    Package,
-    Play,
-    Scale,
-    Hash,
-    FileText,
-    Save,
     Plus,
-    ChevronRight,
-    Boxes,
+    Search,
+    Cog,
     Activity,
     Clock,
     CheckCircle2,
-    AlertTriangle,
     TrendingUp,
-    ToggleLeft,
+    Pause,
+    Play,
+    AlertTriangle,
+    MoreVertical,
+    Trash2,
+    Eye,
+    Filter,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { useRole } from "@/lib/hooks/use-role";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from "@/components/ui/dialog";
+import type { Production, ProductionStatus } from "@/lib/production-types";
+import { IOSCard } from "@/components/ui/ios/IOSCard";
+import { IOSBadge } from "@/components/ui/ios/IOSBadge";
+import { IOSButton } from "@/components/ui/ios/IOSButton";
+import { StatWidget } from "@/components/ui/StatWidget";
+import { staggerContainer, staggerItem } from "@/styles/animations";
 
-// ─── Mock Data ──────────────────────────────────────────────────
-const mockMaterials = [
-    {
-        id: "mat-001",
-        name: "LV Plastic Bag",
-        units: 20000,
-        unit: "units",
-        available: true,
-        category: "Packaging",
-    },
-    {
-        id: "mat-002",
-        name: "Protein Powder",
-        units: 5000,
-        unit: "kg",
-        available: true,
-        category: "Raw Material",
-    },
-    {
-        id: "mat-003",
-        name: "Seal Labels",
-        units: 15000,
-        unit: "units",
-        available: false,
-        category: "Packaging",
-    },
-    {
-        id: "mat-004",
-        name: "Flavoring Agent",
-        units: 800,
-        unit: "liters",
-        available: true,
-        category: "Additive",
-    },
-];
-
-const productionStats = [
-    {
-        label: "Active Batches",
-        value: "12",
-        change: "+3 today",
-        icon: Activity,
-        color: "text-blue-400",
-        bgColor: "bg-blue-500/10",
-        borderColor: "border-blue-500/20",
-    },
-    {
-        label: "Completed Today",
-        value: "8",
-        change: "95% yield",
-        icon: CheckCircle2,
-        color: "text-emerald-400",
-        bgColor: "bg-emerald-500/10",
-        borderColor: "border-emerald-500/20",
-    },
-    {
-        label: "Pending QC",
-        value: "3",
-        change: "Avg 2.1h",
-        icon: Clock,
-        color: "text-amber-400",
-        bgColor: "bg-amber-500/10",
-        borderColor: "border-amber-500/20",
-    },
-    {
-        label: "Efficiency Rate",
-        value: "94.2%",
-        change: "+1.8%",
-        icon: TrendingUp,
-        color: "text-violet-400",
-        bgColor: "bg-violet-500/10",
-        borderColor: "border-violet-500/20",
-    },
-];
-
-// ─── Animation Variants ─────────────────────────────────────────
-const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-        opacity: 1,
-        transition: { staggerChildren: 0.08, delayChildren: 0.1 },
-    },
+// ─── Status Config ───────────────────────────────────────
+const statusConfig: Record<
+    ProductionStatus,
+    { label: string; color: "orange" | "blue" | "red" | "green"; icon: any }
+> = {
+    pending: { label: "Pending", color: "orange", icon: Clock },
+    running: { label: "Running", color: "blue", icon: Play },
+    paused: { label: "Paused", color: "red", icon: Pause },
+    completed: { label: "Completed", color: "green", icon: CheckCircle2 },
 };
 
-const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-        opacity: 1,
-        y: 0,
-        transition: { duration: 0.4, ease: "easeOut" },
-    },
-};
-
-// ─── Page Component ─────────────────────────────────────────────
+// ─── Production Page ─────────────────────────────────────
 export default function ProductionPage() {
-    const [materials, setMaterials] = useState(mockMaterials);
-    const [weightValue, setWeightValue] = useState("250");
-    const [weightUnit, setWeightUnit] = useState<"KG" | "g">("KG");
-    const [batchNumber, setBatchNumber] = useState("BN-2026-0042");
-    const [notes, setNotes] = useState("");
-    const [isStarting, setIsStarting] = useState(false);
+    const router = useRouter();
+    const { isAdmin } = useRole();
+    const [productions, setProductions] = useState<Production[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [statusFilter, setStatusFilter] = useState<string>("all");
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [productionToDelete, setProductionToDelete] = useState<string | null>(null);
 
-    const toggleAvailability = (id: string) => {
-        setMaterials((prev) =>
-            prev.map((m) => (m.id === id ? { ...m, available: !m.available } : m))
-        );
+    const fetchProductions = async () => {
+        try {
+            const res = await fetch("/api/v1/production");
+            const json = await res.json();
+            if (json.error) throw new Error(json.error.message);
+            setProductions(json.data || []);
+        } catch {
+            toast.error("Failed to fetch productions");
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleStartProduction = () => {
-        setIsStarting(true);
-        setTimeout(() => {
-            setIsStarting(false);
-            toast.success("Production order initiated successfully", {
-                description: `Batch ${batchNumber} is now in production.`,
-            });
-        }, 1500);
+    useEffect(() => {
+        fetchProductions();
+        const interval = setInterval(fetchProductions, 15000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const handleDelete = async (id: string) => {
+        try {
+            const res = await fetch(`/api/v1/production/${id}`, { method: "DELETE" });
+            const json = await res.json();
+            if (!res.ok || json.error) {
+                toast.error(json.error?.message || "Delete failed");
+            } else {
+                toast.success("Production deleted");
+                fetchProductions();
+            }
+        } catch {
+            toast.error("Delete failed");
+        } finally {
+            setDeleteDialogOpen(false);
+            setProductionToDelete(null);
+        }
     };
 
-    const handleSaveDetails = () => {
-        toast.success("Production details saved", {
-            description: "All changes have been recorded.",
-        });
+    // Computed stats
+    const stats = {
+        total: productions.length,
+        running: productions.filter((p) => p.status === "running").length,
+        pending: productions.filter((p) => p.status === "pending").length,
+        completed: productions.filter((p) => p.status === "completed").length,
+        paused: productions.filter((p) => p.status === "paused").length,
+        avgEfficiency:
+            productions.length > 0
+                ? Math.round(
+                    productions
+                        .filter((p) => p.expectedOutput > 0)
+                        .reduce((acc, p) => acc + (p.producedQuantity / p.expectedOutput) * 100, 0) /
+                    Math.max(productions.filter((p) => p.expectedOutput > 0).length, 1)
+                )
+                : 0,
+    };
+
+    // Filtering
+    const filtered = productions.filter((p) => {
+        const matchesSearch =
+            p.orderProductName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            p.batchNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            p.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            p.machineName?.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesStatus = statusFilter === "all" || p.status === statusFilter;
+        return matchesSearch && matchesStatus;
+    });
+
+    const kpiCards = [
+        {
+            label: "Active Runs",
+            value: String(stats.running),
+            subtitle: `${stats.paused} paused`,
+            icon: Activity,
+            colorClass: "blue" as const,
+        },
+        {
+            label: "Pending",
+            value: String(stats.pending),
+            subtitle: "Awaiting start",
+            icon: Clock,
+            colorClass: "orange" as const,
+        },
+        {
+            label: "Completed",
+            value: String(stats.completed),
+            subtitle: "All time",
+            icon: CheckCircle2,
+            colorClass: "green" as const,
+        },
+        {
+            label: "Avg. Efficiency",
+            value: `${stats.avgEfficiency}%`,
+            subtitle: "Across batches",
+            icon: TrendingUp,
+            colorClass: "purple" as const,
+        },
+    ];
+
+    const iconBgMap: Record<string, string> = {
+        blue: "bg-[rgba(0,122,255,0.1)] dark:bg-[rgba(10,132,255,0.15)]",
+        orange: "bg-[rgba(255,149,0,0.1)] dark:bg-[rgba(255,159,10,0.15)]",
+        green: "bg-[rgba(52,199,89,0.1)] dark:bg-[rgba(48,209,88,0.15)]",
+        purple: "bg-[rgba(175,82,222,0.1)] dark:bg-[rgba(191,90,242,0.15)]",
+    };
+
+    const iconColorMap: Record<string, string> = {
+        blue: "text-[var(--ios-blue)]",
+        orange: "text-[var(--ios-orange)]",
+        green: "text-[var(--ios-green)]",
+        purple: "text-[var(--ios-purple)]",
+    };
+
+    const progressColorMap: Record<string, string> = {
+        completed: "bg-[var(--ios-green)]",
+        paused: "bg-[var(--ios-orange)]",
+        running: "bg-[var(--ios-blue)]",
+        pending: "bg-[var(--ios-gray3)]",
     };
 
     return (
-        <motion.div
-            className="space-y-8"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-        >
-            {/* ─── Page Header ─────────────────────────────────────────── */}
-            <motion.div
-                variants={itemVariants}
-                className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
-            >
-                <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                        <span>Dashboard</span>
-                        <ChevronRight className="h-3.5 w-3.5" />
-                        <span className="text-foreground font-medium">Production</span>
-                    </div>
-                    <h1 className="text-3xl font-bold tracking-tight">
-                        Production Management
+        <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-6">
+            {/* ── Header ── */}
+            <motion.div variants={staggerItem} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h1 className="text-[34px] font-bold text-[var(--label-primary)] leading-[41px] tracking-[0.37px]">
+                        Production Floor
                     </h1>
-                    <p className="text-muted-foreground font-medium flex items-center gap-2">
-                        <Boxes className="h-4 w-4 text-indigo-400" />
-                        Manage production tasks, batches, and output tracking
+                    <p className="text-[15px] text-[var(--label-secondary)] mt-1 leading-[20px] flex items-center gap-2">
+                        <Cog className="h-4 w-4 text-[var(--ios-blue)]" />
+                        Track and manage active production runs
                     </p>
                 </div>
-                <Button
-                    size="lg"
-                    className="rounded-xl shadow-xl shadow-indigo-500/20 gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
-                    onClick={handleStartProduction}
-                    disabled={isStarting}
+                <IOSButton
+                    variant="filled"
+                    size="large"
+                    onClick={() => router.push("/dashboard/production/create")}
+                    icon={<Plus className="h-5 w-5" />}
+                    id="create-production-btn"
                 >
-                    <Plus className="h-5 w-5" />
-                    Create new production task
-                </Button>
+                    Create Production
+                </IOSButton>
             </motion.div>
 
-            {/* ─── Stats Row ───────────────────────────────────────────── */}
-            <motion.div
-                variants={itemVariants}
-                className="grid grid-cols-2 lg:grid-cols-4 gap-4"
-            >
-                {productionStats.map((stat) => (
-                    <div
-                        key={stat.label}
-                        className={cn(
-                            "relative overflow-hidden rounded-xl border p-4 transition-all duration-300 hover:scale-[1.02]",
-                            "bg-card dark:bg-slate-900 border-border dark:border-slate-800"
-                        )}
-                    >
-                        <div className="flex items-start justify-between">
-                            <div className="space-y-2">
-                                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                    {stat.label}
-                                </p>
-                                <p className="text-2xl font-black tracking-tight">
-                                    {stat.value}
-                                </p>
-                                <p className={cn("text-xs font-medium", stat.color)}>
-                                    {stat.change}
-                                </p>
-                            </div>
-                            <div
-                                className={cn(
-                                    "rounded-lg p-2.5 border",
-                                    stat.bgColor,
-                                    stat.borderColor
-                                )}
-                            >
-                                <stat.icon className={cn("h-5 w-5", stat.color)} />
-                            </div>
-                        </div>
-                        {/* Decorative gradient */}
-                        <div
-                            className={cn(
-                                "absolute -bottom-2 -right-2 w-20 h-20 rounded-full opacity-5 blur-2xl",
-                                stat.bgColor
-                            )}
+            {/* ── KPI Cards ── */}
+            <div className="kpi-panel">
+                <div className="kpi-panel__glow"></div>
+                <div className="kpi-grid">
+                    {kpiCards.map((stat, i) => (
+                        <StatWidget
+                            key={stat.label}
+                            label={stat.label}
+                            value={Number(stat.value.replace('%', ''))}
+                            change={0}
+                            icon={stat.icon}
+                            color={stat.colorClass}
+                            suffix={stat.value.includes('%') ? '%' : ''}
+                            delay={i}
                         />
-                    </div>
-                ))}
+                    ))}
+                </div>
+            </div>
+
+            {/* ── Filters ── */}
+            <motion.div variants={staggerItem} className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1 max-w-sm">
+                    <Search className="absolute left-[10px] top-1/2 -translate-y-1/2 h-[17px] w-[17px] text-[var(--label-tertiary)]" />
+                    <input
+                        placeholder="Search by product, batch, client..."
+                        className="w-full h-[36px] rounded-[10px] bg-[var(--fill-tertiary)] pl-[34px] pr-4 text-[15px] text-[var(--label-primary)] placeholder:text-[var(--label-tertiary)] outline-none border-none focus:ring-2 focus:ring-[var(--ios-blue)] transition-shadow"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        id="production-search"
+                    />
+                </div>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-[180px] h-[36px] rounded-[10px] bg-[var(--fill-tertiary)] border-none text-[15px]" id="status-filter">
+                        <div className="flex items-center gap-2">
+                            <Filter className="h-3.5 w-3.5 text-[var(--label-tertiary)]" />
+                            <SelectValue placeholder="Filter status" />
+                        </div>
+                    </SelectTrigger>
+                    <SelectContent className="rounded-[12px]">
+                        <SelectItem value="all" className="rounded-[8px]">All Status</SelectItem>
+                        <SelectItem value="pending" className="rounded-[8px]">Pending</SelectItem>
+                        <SelectItem value="running" className="rounded-[8px]">Running</SelectItem>
+                        <SelectItem value="paused" className="rounded-[8px]">Paused</SelectItem>
+                        <SelectItem value="completed" className="rounded-[8px]">Completed</SelectItem>
+                    </SelectContent>
+                </Select>
             </motion.div>
 
-            {/* ─── Production Grid ─────────────────────────────────────── */}
-            <motion.div variants={itemVariants}>
-                <div className="flex items-center gap-3 mb-5">
-                    <div className="rounded-lg bg-indigo-500/10 border border-indigo-500/20 p-2">
-                        <Boxes className="h-5 w-5 text-indigo-400" />
+            {/* ── Productions List ── */}
+            <motion.div variants={staggerItem}>
+                <IOSCard variant="elevated" padding="none" className="overflow-hidden">
+                    {/* Header Row */}
+                    <div className="hidden md:grid grid-cols-[1fr_120px_1fr_160px_120px_60px] gap-4 px-5 py-3 border-b border-[var(--border-card)]">
+                        {["Production", "Status", "Progress", "Machine / Operator", "Order", ""].map((h) => (
+                            <span key={h} className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--label-tertiary)]">{h}</span>
+                        ))}
                     </div>
-                    <div>
-                        <h2 className="text-xl font-bold tracking-tight">
-                            Production Management
-                        </h2>
-                        <p className="text-xs text-muted-foreground">
-                            Configure and manage active production parameters
-                        </p>
-                    </div>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                    {/* ── Card 1: Material Inventory ──────────────────────────── */}
-                    <motion.div
-                        variants={itemVariants}
-                        className={cn(
-                            "col-span-1 md:col-span-2 xl:col-span-1 rounded-xl border overflow-hidden",
-                            "bg-card dark:bg-slate-900 border-border dark:border-slate-800"
-                        )}
-                    >
-                        <div className="p-5 border-b border-border dark:border-slate-800">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-2">
-                                        <Package className="h-4 w-4 text-emerald-400" />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-semibold">Material Inventory</h3>
-                                        <p className="text-xs text-muted-foreground">
-                                            {materials.filter((m) => m.available).length} of{" "}
-                                            {materials.length} available
-                                        </p>
-                                    </div>
-                                </div>
-                                <Badge
-                                    variant="outline"
-                                    className="text-[10px] uppercase font-bold tracking-wider border-emerald-500/30 text-emerald-500"
-                                >
-                                    Live
-                                </Badge>
-                            </div>
-                        </div>
-                        <div className="divide-y divide-border dark:divide-slate-800">
-                            {materials.map((material) => (
-                                <div
-                                    key={material.id}
-                                    className={cn(
-                                        "flex items-center justify-between p-4 transition-colors",
-                                        "hover:bg-muted/50 dark:hover:bg-slate-800/50"
-                                    )}
-                                >
-                                    <div className="flex items-center gap-3 min-w-0">
-                                        <div
-                                            className={cn(
-                                                "w-2 h-2 rounded-full flex-shrink-0",
-                                                material.available ? "bg-emerald-400" : "bg-slate-500"
-                                            )}
-                                        />
-                                        <div className="min-w-0">
-                                            <p className="text-sm font-semibold truncate">
-                                                {material.name}
-                                            </p>
-                                            <div className="flex items-center gap-2 mt-0.5">
-                                                <span className="text-xs text-muted-foreground">
-                                                    {material.units.toLocaleString()} {material.unit}
-                                                </span>
-                                                <Badge
-                                                    variant="outline"
-                                                    className="text-[9px] h-4 px-1.5 font-bold uppercase"
-                                                >
-                                                    {material.category}
-                                                </Badge>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3 flex-shrink-0">
-                                        <span
-                                            className={cn(
-                                                "text-[10px] font-bold uppercase tracking-wider",
-                                                material.available
-                                                    ? "text-emerald-400"
-                                                    : "text-muted-foreground"
-                                            )}
-                                        >
-                                            {material.available ? "Available" : "Unavailable"}
-                                        </span>
-                                        <Switch
-                                            checked={material.available}
-                                            onCheckedChange={() => toggleAvailability(material.id)}
-                                            className="data-[state=checked]:bg-emerald-500"
-                                        />
-                                    </div>
+                    {/* Body */}
+                    {loading ? (
+                        <div className="p-5 space-y-4">
+                            {Array.from({ length: 4 }).map((_, i) => (
+                                <div key={i} className="flex gap-4 items-center">
+                                    <div className="h-14 flex-1 rounded-[10px] bg-[var(--fill-tertiary)] shimmer" />
+                                    <div className="h-14 w-24 rounded-[10px] bg-[var(--fill-tertiary)] shimmer" />
+                                    <div className="h-14 flex-1 rounded-[10px] bg-[var(--fill-tertiary)] shimmer" />
+                                    <div className="h-14 w-40 rounded-[10px] bg-[var(--fill-tertiary)] shimmer" />
+                                    <div className="h-14 w-28 rounded-[10px] bg-[var(--fill-tertiary)] shimmer" />
+                                    <div className="h-10 w-10 rounded-full bg-[var(--fill-tertiary)] shimmer" />
                                 </div>
                             ))}
                         </div>
-                    </motion.div>
-
-                    {/* ── Card 2: Production Order ────────────────────────────── */}
-                    <motion.div
-                        variants={itemVariants}
-                        className={cn(
-                            "rounded-xl border overflow-hidden flex flex-col",
-                            "bg-card dark:bg-slate-900 border-border dark:border-slate-800"
-                        )}
-                    >
-                        <div className="p-5 border-b border-border dark:border-slate-800">
-                            <div className="flex items-center gap-3">
-                                <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-2">
-                                    <Play className="h-4 w-4 text-blue-400" />
-                                </div>
-                                <div>
-                                    <h3 className="font-semibold">Production Order</h3>
-                                    <p className="text-xs text-muted-foreground">
-                                        Initiate a new production run
-                                    </p>
-                                </div>
+                    ) : filtered.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-16 text-center">
+                            <div className="w-[56px] h-[56px] rounded-[14px] bg-[var(--fill-tertiary)] flex items-center justify-center mb-4">
+                                <Cog className="h-6 w-6 text-[var(--label-tertiary)]" />
                             </div>
-                        </div>
-                        <div className="flex-1 p-5 flex flex-col">
-                            <div className="flex-1 space-y-4">
-                                <div className="rounded-xl bg-muted/50 dark:bg-slate-800/50 border border-border dark:border-slate-700 p-4">
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <Activity className="h-4 w-4 text-blue-400" />
-                                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                            Current Queue
-                                        </span>
-                                    </div>
-                                    <div className="space-y-2.5">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-sm font-medium">Pending</span>
-                                            <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20">
-                                                5 orders
-                                            </Badge>
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-sm font-medium">In Progress</span>
-                                            <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 hover:bg-blue-500/20">
-                                                3 orders
-                                            </Badge>
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-sm font-medium">QC Review</span>
-                                            <Badge className="bg-violet-500/10 text-violet-400 border-violet-500/20 hover:bg-violet-500/20">
-                                                2 orders
-                                            </Badge>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="rounded-xl border border-dashed border-border dark:border-slate-700 p-4 flex items-center gap-3">
-                                    <AlertTriangle className="h-4 w-4 text-amber-400 flex-shrink-0" />
-                                    <p className="text-xs text-muted-foreground">
-                                        Ensure all materials are available before starting a
-                                        production order.
-                                    </p>
-                                </div>
-                            </div>
-                            <Button
-                                className="w-full mt-5 h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm gap-2 shadow-lg shadow-indigo-500/20 transition-all duration-300 hover:shadow-indigo-500/30"
-                                onClick={handleStartProduction}
-                                disabled={isStarting}
-                            >
-                                {isStarting ? (
-                                    <>
-                                        <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                        Initiating...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Play className="h-4 w-4" />
-                                        Start Production Order
-                                    </>
-                                )}
-                            </Button>
-                        </div>
-                    </motion.div>
-
-                    {/* ── Card 3: Output Weight ──────────────────────────────── */}
-                    <motion.div
-                        variants={itemVariants}
-                        className={cn(
-                            "rounded-xl border overflow-hidden",
-                            "bg-card dark:bg-slate-900 border-border dark:border-slate-800"
-                        )}
-                    >
-                        <div className="p-5 border-b border-border dark:border-slate-800">
-                            <div className="flex items-center gap-3">
-                                <div className="rounded-lg bg-orange-500/10 border border-orange-500/20 p-2">
-                                    <Scale className="h-4 w-4 text-orange-400" />
-                                </div>
-                                <div>
-                                    <h3 className="font-semibold">Output Weight</h3>
-                                    <p className="text-xs text-muted-foreground">
-                                        Record production output weight
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="p-5 space-y-5">
-                            <div className="space-y-2">
-                                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                    Weight Value
-                                </Label>
-                                <div className="relative">
-                                    <Input
-                                        type="number"
-                                        value={weightValue}
-                                        onChange={(e) => setWeightValue(e.target.value)}
-                                        className="h-14 text-3xl font-black text-center bg-muted/50 dark:bg-slate-800/50 border-border dark:border-slate-700 rounded-xl pr-16"
-                                        placeholder="0"
-                                    />
-                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground">
-                                        {weightUnit}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                    Unit Toggle
-                                </Label>
-                                <div className="flex rounded-xl overflow-hidden border border-border dark:border-slate-700">
-                                    <button
-                                        className={cn(
-                                            "flex-1 py-3 text-sm font-bold uppercase tracking-wider transition-all duration-200",
-                                            weightUnit === "KG"
-                                                ? "bg-indigo-600 text-white shadow-lg"
-                                                : "bg-muted/50 dark:bg-slate-800/50 text-muted-foreground hover:text-foreground hover:bg-muted dark:hover:bg-slate-800"
-                                        )}
-                                        onClick={() => setWeightUnit("KG")}
-                                    >
-                                        KG
-                                    </button>
-                                    <button
-                                        className={cn(
-                                            "flex-1 py-3 text-sm font-bold uppercase tracking-wider transition-all duration-200",
-                                            weightUnit === "g"
-                                                ? "bg-indigo-600 text-white shadow-lg"
-                                                : "bg-muted/50 dark:bg-slate-800/50 text-muted-foreground hover:text-foreground hover:bg-muted dark:hover:bg-slate-800"
-                                        )}
-                                        onClick={() => setWeightUnit("g")}
-                                    >
-                                        g
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="rounded-xl bg-muted/50 dark:bg-slate-800/50 border border-border dark:border-slate-700 p-4">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-xs text-muted-foreground font-medium">
-                                        Converted
-                                    </span>
-                                    <span className="text-sm font-bold">
-                                        {weightUnit === "KG"
-                                            ? `${(parseFloat(weightValue || "0") * 1000).toLocaleString()} g`
-                                            : `${(parseFloat(weightValue || "0") / 1000).toFixed(2)} KG`}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </motion.div>
-
-                    {/* ── Card 4: Batch Number ───────────────────────────────── */}
-                    <motion.div
-                        variants={itemVariants}
-                        className={cn(
-                            "rounded-xl border overflow-hidden",
-                            "bg-card dark:bg-slate-900 border-border dark:border-slate-800"
-                        )}
-                    >
-                        <div className="p-5 border-b border-border dark:border-slate-800">
-                            <div className="flex items-center gap-3">
-                                <div className="rounded-lg bg-cyan-500/10 border border-cyan-500/20 p-2">
-                                    <Hash className="h-4 w-4 text-cyan-400" />
-                                </div>
-                                <div>
-                                    <h3 className="font-semibold">Batch Number</h3>
-                                    <p className="text-xs text-muted-foreground">
-                                        Assign a job/batch number
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="p-5 space-y-5">
-                            <div className="space-y-2">
-                                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                    Job Number
-                                </Label>
-                                <Input
-                                    value={batchNumber}
-                                    onChange={(e) => setBatchNumber(e.target.value)}
-                                    className="h-12 text-lg font-bold font-mono bg-muted/50 dark:bg-slate-800/50 border-border dark:border-slate-700 rounded-xl tracking-wider"
-                                    placeholder="BN-YYYY-XXXX"
-                                />
-                            </div>
-
-                            <div className="space-y-3">
-                                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                    Recent Batches
-                                </Label>
-                                <div className="space-y-2">
-                                    {[
-                                        {
-                                            id: "BN-2026-0041",
-                                            status: "Completed",
-                                            color: "text-emerald-400",
-                                        },
-                                        {
-                                            id: "BN-2026-0040",
-                                            status: "Completed",
-                                            color: "text-emerald-400",
-                                        },
-                                        {
-                                            id: "BN-2026-0039",
-                                            status: "QC Review",
-                                            color: "text-amber-400",
-                                        },
-                                    ].map((batch) => (
-                                        <div
-                                            key={batch.id}
-                                            className="flex items-center justify-between rounded-lg bg-muted/50 dark:bg-slate-800/50 border border-border dark:border-slate-700 px-3 py-2.5 cursor-pointer hover:bg-muted dark:hover:bg-slate-800 transition-colors"
-                                            onClick={() => setBatchNumber(batch.id)}
-                                        >
-                                            <span className="text-sm font-mono font-bold">
-                                                {batch.id}
-                                            </span>
-                                            <span
-                                                className={cn(
-                                                    "text-[10px] font-bold uppercase tracking-wider",
-                                                    batch.color
-                                                )}
-                                            >
-                                                {batch.status}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    </motion.div>
-
-                    {/* ── Card 5: Notes & Save (Footer) ─────────────────────── */}
-                    <motion.div
-                        variants={itemVariants}
-                        className={cn(
-                            "col-span-1 md:col-span-2 xl:col-span-1 rounded-xl border overflow-hidden flex flex-col",
-                            "bg-card dark:bg-slate-900 border-border dark:border-slate-800"
-                        )}
-                    >
-                        <div className="p-5 border-b border-border dark:border-slate-800">
-                            <div className="flex items-center gap-3">
-                                <div className="rounded-lg bg-pink-500/10 border border-pink-500/20 p-2">
-                                    <FileText className="h-4 w-4 text-pink-400" />
-                                </div>
-                                <div>
-                                    <h3 className="font-semibold">Production Notes</h3>
-                                    <p className="text-xs text-muted-foreground">
-                                        Add remarks or special instructions
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="flex-1 p-5 flex flex-col">
-                            <div className="flex-1 space-y-3">
-                                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                    Notes
-                                </Label>
-                                <textarea
-                                    value={notes}
-                                    onChange={(e) => setNotes(e.target.value)}
-                                    placeholder="Enter production notes, special instructions, or quality requirements..."
-                                    rows={5}
-                                    className={cn(
-                                        "flex w-full rounded-xl border px-4 py-3 text-sm shadow-xs transition-colors resize-none",
-                                        "bg-muted/50 dark:bg-slate-800/50 border-border dark:border-slate-700",
-                                        "placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:border-indigo-500/50",
-                                        "disabled:cursor-not-allowed disabled:opacity-50"
-                                    )}
-                                />
-                            </div>
-
-                            <div className="mt-5 space-y-3">
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                    <Clock className="h-3.5 w-3.5" />
-                                    <span>Last saved: Today at 3:42 PM</span>
-                                </div>
-                                <Button
-                                    className="w-full h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm gap-2 shadow-lg shadow-indigo-500/20 transition-all duration-300 hover:shadow-indigo-500/30"
-                                    onClick={handleSaveDetails}
+                            <h3 className="text-[17px] font-semibold text-[var(--label-primary)] mb-1">No productions found</h3>
+                            <p className="text-[13px] text-[var(--label-secondary)] mb-6 max-w-sm">
+                                {searchTerm || statusFilter !== "all"
+                                    ? "Try adjusting your filters to find what you're looking for."
+                                    : "Create your first production to start tracking runs."}
+                            </p>
+                            {!searchTerm && statusFilter === "all" && (
+                                <IOSButton
+                                    variant="filled"
+                                    size="medium"
+                                    onClick={() => router.push("/dashboard/production/create")}
+                                    icon={<Plus className="h-4 w-4" />}
                                 >
-                                    <Save className="h-4 w-4" />
-                                    Save Production Details
-                                </Button>
-                            </div>
+                                    Create First Production
+                                </IOSButton>
+                            )}
                         </div>
-                    </motion.div>
-                </div>
+                    ) : (
+                        <div className="divide-y divide-[var(--border-card)]">
+                            {filtered.map((production, index) => {
+                                const sc = statusConfig[production.status];
+
+                                return (
+                                    <motion.div
+                                        key={production.id}
+                                        initial={{ opacity: 0, y: 8 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: index * 0.03, duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                                        className="grid grid-cols-1 md:grid-cols-[1fr_120px_1fr_160px_120px_60px] gap-3 md:gap-4 px-5 py-4 hover:bg-[var(--fill-quaternary)] transition-colors cursor-pointer group"
+                                        onClick={() => router.push(`/dashboard/production/${production.id}`)}
+                                        id={`production-row-${production.id}`}
+                                    >
+                                        {/* Production Info */}
+                                        <div className="flex flex-col justify-center min-w-0">
+                                            <span className="text-[15px] font-semibold text-[var(--label-primary)] truncate leading-[20px]">
+                                                {production.orderProductName}
+                                            </span>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                <span className="text-[11px] font-mono text-[var(--label-tertiary)] uppercase">
+                                                    {production.batchNumber}
+                                                </span>
+                                                <span className="text-[var(--label-quaternary)] text-[10px]">•</span>
+                                                <span className="text-[11px] text-[var(--label-tertiary)]">
+                                                    {production.clientName}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* Status */}
+                                        <div className="flex items-center">
+                                            <IOSBadge color={sc.color} variant="tinted" dot size="medium">
+                                                {sc.label}
+                                            </IOSBadge>
+                                        </div>
+
+                                        {/* Progress */}
+                                        <div className="flex flex-col justify-center gap-1.5">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[13px] font-semibold text-[var(--label-primary)]">
+                                                    {production.producedQuantity} / {production.expectedOutput}
+                                                </span>
+                                                <span className="text-[11px] font-bold text-[var(--label-tertiary)]">
+                                                    {production.progressPercent}%
+                                                </span>
+                                            </div>
+                                            <div className="w-full h-[6px] bg-[var(--fill-quaternary)] rounded-full overflow-hidden">
+                                                <motion.div
+                                                    className={cn("h-full rounded-full", progressColorMap[production.status])}
+                                                    initial={{ width: 0 }}
+                                                    animate={{ width: `${production.progressPercent}%` }}
+                                                    transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                                                />
+                                            </div>
+                                            {production.rejectQuantity > 0 && (
+                                                <div className="flex items-center gap-1">
+                                                    <AlertTriangle className="h-2.5 w-2.5 text-[var(--ios-red)]" />
+                                                    <span className="text-[11px] font-semibold text-[var(--ios-red)]">
+                                                        {production.rejectQuantity} rejected
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Machine / Operator */}
+                                        <div className="flex flex-col justify-center min-w-0">
+                                            <span className="text-[13px] font-semibold text-[var(--label-primary)] truncate">
+                                                {production.machineName || "—"}
+                                            </span>
+                                            <span className="text-[11px] text-[var(--label-tertiary)] truncate">
+                                                {production.operatorName || "Unassigned"}
+                                            </span>
+                                        </div>
+
+                                        {/* Order */}
+                                        <div className="flex flex-col justify-center min-w-0">
+                                            <span className="text-[11px] font-mono text-[var(--label-tertiary)] uppercase truncate">
+                                                {production.orderId ? `#${production.orderId.slice(0, 8)}` : "—"}
+                                            </span>
+                                            <span className="text-[11px] text-[var(--label-tertiary)]">
+                                                {production.orderQuantity} units
+                                            </span>
+                                        </div>
+
+                                        {/* Actions */}
+                                        <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <motion.button
+                                                        whileTap={{ scale: 0.9 }}
+                                                        className="h-[36px] w-[36px] rounded-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-[var(--fill-tertiary)] transition-all cursor-pointer"
+                                                    >
+                                                        <MoreVertical className="h-[16px] w-[16px] text-[var(--label-secondary)]" />
+                                                    </motion.button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end" className="w-44 rounded-[12px]">
+                                                    <DropdownMenuItem
+                                                        className="rounded-[8px]"
+                                                        onClick={() => router.push(`/dashboard/production/${production.id}`)}
+                                                    >
+                                                        <Eye className="mr-2 h-4 w-4" /> View Details
+                                                    </DropdownMenuItem>
+                                                    {isAdmin && (
+                                                        <DropdownMenuItem
+                                                            className="text-[var(--ios-red)] focus:text-[var(--ios-red)] rounded-[8px]"
+                                                            onClick={() => {
+                                                                setProductionToDelete(production.id);
+                                                                setDeleteDialogOpen(true);
+                                                            }}
+                                                        >
+                                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
+                                    </motion.div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </IOSCard>
             </motion.div>
+
+            {/* ── Delete Dialog ── */}
+            <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <DialogContent className="max-w-[380px] rounded-[20px] border-[var(--border-card)]">
+                    <DialogHeader>
+                        <DialogTitle className="text-[20px] font-bold text-[var(--label-primary)]">Delete Production</DialogTitle>
+                        <DialogDescription className="text-[15px] text-[var(--label-secondary)]">
+                            Are you sure you want to delete this production record? This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="flex gap-2">
+                        <IOSButton variant="gray" size="large" onClick={() => setDeleteDialogOpen(false)} fullWidth>
+                            Cancel
+                        </IOSButton>
+                        <IOSButton variant="destructive" size="large" onClick={() => productionToDelete && handleDelete(productionToDelete)} fullWidth>
+                            Delete
+                        </IOSButton>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </motion.div>
     );
 }

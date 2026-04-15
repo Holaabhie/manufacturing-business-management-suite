@@ -1,0 +1,9 @@
+src/app/dashboard/clients/page.tsx(456,65): error TS1005: '}' expected.
+src/app/dashboard/clients/page.tsx(456,89): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/app/dashboard/clients/page.tsx(459,26): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+src/app/dashboard/clients/page.tsx(674,63): error TS1005: '}' expected.
+src/app/dashboard/clients/page.tsx(674,135): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/app/dashboard/clients/page.tsx(676,28): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+src/app/dashboard/clients/page.tsx(695,21): error TS17002: Expected corresponding JSX closing tag for 'GlassCardContent'.
+src/app/dashboard/clients/page.tsx(707,23): error TS17002: Expected corresponding JSX closing tag for 'GlassCardContent'.
+src/app/dashboard/clients/page.tsx(720,23): error TS17002: Expected corresponding JSX closing tag for 'GlassCardContent'.

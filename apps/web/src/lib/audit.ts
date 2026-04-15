@@ -6,6 +6,7 @@
  */
 
 import { connectToDatabase } from '@/lib/mongodb';
+import { logger } from '@/infrastructure/logging/logger';
 
 export interface AuditEntry {
     organizationId: string;
@@ -44,7 +45,7 @@ export async function logAudit(entry: AuditEntry): Promise<void> {
         });
     } catch (error) {
         // Audit logging should never break the main flow
-        console.error('[AuditLog] Failed to log entry:', error);
+        logger.error('[AuditLog] Failed to log entry', { error: error instanceof Error ? error.message : String(error) });
     }
 }
 

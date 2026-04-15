@@ -1,0 +1,1006 @@
+"use client";
+
+import { useEffect, useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import {
+    ChevronRight,
+    ChevronLeft,
+    Check,
+    ShoppingCart,
+    Settings,
+    Sliders,
+    Package,
+    Cog,
+    Search,
+    AlertCircle,
+    Calendar,
+    Clock,
+    User,
+    Cpu,
+    Plus,
+    X,
+    ArrowRight,
+    Loader2,
+    Filter,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { NumericInput } from "@/components/ui/numeric-input";
+
+import type { ShiftType } from "@/lib/production-types";
+
+// ─── Types ──────────────────────────────────────────────────────────
+interface Order {
+    id: string;
+    product_name: string;
+    productName?: string;
+    quantity: number;
+    delivery_date: string | null;
+    deliveryDate?: string | null;
+    status: string;
+    client_id: string;
+    clientId?: string;
+    clients?: { name: string } | null;
+    clientName?: string;
+    createdAt?: string;
+}
+
+interface InventoryItem {
+    id: string;
+    name: string;
+    quantity: number;
+    unit: string;
+}
+
+interface SelectedMaterial {
+    inventoryId: string;
+    name: string;
+    quantityUsed: number;
+    unit: string;
+    availableStock: number;
+}
+
+interface MachineData {
+    id: string;
+    machineName: string;
+    machineType: string;
+    capacity: string;
+    status: "active" | "inactive" | "maintenance";
+}
+
+interface OperatorData {
+    id: string;
+    fullName: string;
+    employeeId: string;
+    department: string;
+    designation: string;
+    status: string;
+}
+
+// ─── Step definitions ───────────────────────────────────────────────
+const steps = [
+    { id: 1, title: "Order Selection", icon: ShoppingCart, description: "Select a confirmed order" },
+    { id: 2, title: "Production Setup", icon: Settings, description: "Materials, machine & operator" },
+    { id: 3, title: "Configuration", icon: Sliders, description: "Output targets & schedule" },
+];
+
+// ─── Page Component ─────────────────────────────────────────────────
+export default function CreateProductionPage() {
+    const router = useRouter();
+    const [currentStep, setCurrentStep] = useState(1);
+    const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
+
+    // Data from API
+    const [orders, setOrders] = useState<Order[]>([]);
+    const [inventory, setInventory] = useState<InventoryItem[]>([]);
+    const [machines, setMachines] = useState<MachineData[]>([]);
+    const [operators, setOperators] = useState<OperatorData[]>([]);
+
+    // Step 1 — Order selection
+    const [selectedOrderId, setSelectedOrderId] = useState<string>("");
+    const [orderSearchTerm, setOrderSearchTerm] = useState("");
+    const [statusFilter, setStatusFilter] = useState<string>("all");
+
+    // Step 2 — Materials, machine, operator
+    const [selectedMaterials, setSelectedMaterials] = useState<SelectedMaterial[]>([]);
+    const [selectedMachineId, setSelectedMachineId] = useState("");
+    const [selectedOperatorId, setSelectedOperatorId] = useState("");
+
+    // Step 3 — Config
+    const [expectedOutput, setExpectedOutput] = useState("");
+    const [startTime, setStartTime] = useState("");
+    const [shift, setShift] = useState<ShiftType>("morning");
+    const [targetCompletion, setTargetCompletion] = useState("");
+    const [notes, setNotes] = useState("");
+
+    // ─── Fetch data ───────────────────────────────────────────
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const [ordersRes, inventoryRes, machinesRes, employeesRes] = await Promise.all([
+                    fetch("/api/v1/orders").then((r) => r.json()),
+                    fetch("/api/inventory").then((r) => r.json()),
+                    fetch("/api/machines").then((r) => r.json()),
+                    fetch("/api/employees").then((r) => r.json()).catch(() => ({ employees: [] })),
+                ]);
+                // v1 API wraps data in { success, data } envelope
+                const orderData = ordersRes?.data ?? (Array.isArray(ordersRes) ? ordersRes : []);
+                setOrders(Array.isArray(orderData) ? orderData : []);
+                setInventory(Array.isArray(inventoryRes) ? inventoryRes : []);
+                setMachines(Array.isArray(machinesRes) ? machinesRes : []);
+                // Employees API returns { employees: [...] }
+                const empList = Array.isArray(employeesRes?.employees)
+                    ? employeesRes.employees
+                    : Array.isArray(employeesRes) ? employeesRes : [];
+                setOperators(empList.filter((e: any) => e.status === "active"));
+            } catch {
+                toast.error("Failed to load data");
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
+
+    // Statuses eligible for production (case-insensitive)
+    const PRODUCTION_ELIGIBLE = new Set(["pending", "confirmed", "processing", "in_progress", "in progress"]);
+
+    const confirmedOrders = useMemo(
+        () =>
+            orders.filter(
+                (o) => PRODUCTION_ELIGIBLE.has(o.status?.toLowerCase?.() ?? "")
+            ),
+        [orders]
+    );
+
+    const filteredOrders = useMemo(
+        () => {
+            let list = confirmedOrders;
+            // Apply status filter
+            if (statusFilter !== "all") {
+                list = list.filter(
+                    (o) => o.status?.toLowerCase() === statusFilter
+                );
+            }
+            // Apply search
+            if (orderSearchTerm.trim()) {
+                const term = orderSearchTerm.toLowerCase();
+                list = list.filter(
+                    (o) =>
+                        (o.product_name ?? o.productName ?? "").toLowerCase().includes(term) ||
+                        (o.clients?.name ?? o.clientName ?? "").toLowerCase().includes(term)
+                );
+            }
+            return list;
+        },
+        [confirmedOrders, orderSearchTerm, statusFilter]
+    );
+
+    const selectedOrder = useMemo(
+        () => orders.find((o) => o.id === selectedOrderId),
+        [orders, selectedOrderId]
+    );
+
+    // Only active machines are selectable
+    const availableMachines = useMemo(
+        () => machines.filter((m) => m.status === "active"),
+        [machines]
+    );
+
+    const selectedMachine = machines.find((m) => m.id === selectedMachineId);
+    const selectedOperator = operators.find((o) => o.id === selectedOperatorId);
+
+    // ─── Material management ──────────────────────────────────
+    const addMaterial = () => {
+        setSelectedMaterials([
+            ...selectedMaterials,
+            { inventoryId: "", name: "", quantityUsed: 0, unit: "", availableStock: 0 },
+        ]);
+    };
+
+    const updateMaterial = (index: number, field: string, value: any) => {
+        const updated = [...selectedMaterials];
+        if (field === "inventoryId") {
+            const item = inventory.find((i) => i.id === value);
+            if (item) {
+                updated[index] = {
+                    inventoryId: value,
+                    name: item.name,
+                    quantityUsed: 0,
+                    unit: item.unit,
+                    availableStock: item.quantity,
+                };
+            }
+        } else {
+            (updated[index] as any)[field] = value;
+        }
+        setSelectedMaterials(updated);
+    };
+
+    const removeMaterial = (index: number) => {
+        setSelectedMaterials(selectedMaterials.filter((_, i) => i !== index));
+    };
+
+    // ─── Validation ───────────────────────────────────────────
+    const canProceed = (step: number): boolean => {
+        switch (step) {
+            case 1:
+                return !!selectedOrderId;
+            case 2:
+                return (
+                    selectedMaterials.length > 0 &&
+                    selectedMaterials.every((m) => m.inventoryId && m.quantityUsed > 0) &&
+                    !!selectedMachineId &&
+                    !!selectedOperatorId
+                );
+            case 3:
+                return (
+                    Number(expectedOutput) > 0 &&
+                    !!startTime &&
+                    !!targetCompletion
+                );
+            default:
+                return false;
+        }
+    };
+
+    // ─── Submit ───────────────────────────────────────────────
+    const handleSubmit = async () => {
+        if (!selectedOrder) return;
+        setSubmitting(true);
+
+        try {
+            const payload = {
+                orderId: selectedOrder.id,
+                orderProductName: selectedOrder.product_name ?? selectedOrder.productName ?? "",
+                orderQuantity: selectedOrder.quantity,
+                clientName: selectedOrder.clients?.name ?? selectedOrder.clientName ?? "—",
+                deliveryDate: selectedOrder.delivery_date ?? selectedOrder.deliveryDate ?? null,
+                materials: selectedMaterials,
+                machineId: selectedMachineId,
+                machineName: selectedMachine?.machineName || "",
+                operatorId: selectedOperatorId,
+                operatorName: selectedOperator?.fullName || "",
+                expectedOutput: Number(expectedOutput),
+                startTime,
+                shift,
+                targetCompletion,
+                notes,
+            };
+
+            const res = await fetch("/api/production", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+
+            const data = await res.json();
+            if (data.error) {
+                toast.error(data.error);
+                return;
+            }
+
+            toast.success("Production created successfully!", {
+                description: `Batch ${data.batchNumber} is ready.`,
+            });
+
+            router.push(`/dashboard/production/${data.id}`);
+        } catch {
+            toast.error("Failed to create production");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    // ─── Animation ────────────────────────────────────────────
+    const slideVariants = {
+        enter: (dir: number) => ({
+            x: dir > 0 ? 80 : -80,
+            opacity: 0,
+        }),
+        center: { x: 0, opacity: 1 },
+        exit: (dir: number) => ({
+            x: dir < 0 ? 80 : -80,
+            opacity: 0,
+        }),
+    };
+
+    const [slideDirection, setSlideDirection] = useState(0);
+
+    const goNext = () => {
+        if (currentStep < 3 && canProceed(currentStep)) {
+            setSlideDirection(1);
+            setCurrentStep(currentStep + 1);
+        }
+    };
+
+    const goBack = () => {
+        if (currentStep > 1) {
+            setSlideDirection(-1);
+            setCurrentStep(currentStep - 1);
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="space-y-6">
+                <Skeleton className="h-10 w-64" />
+                <div className="grid grid-cols-3 gap-4">
+                    {[1, 2, 3].map((i) => (
+                        <Skeleton key={i} className="h-20 rounded-xl" />
+                    ))}
+                </div>
+                <Skeleton className="h-[400px] rounded-xl" />
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-6 max-w-4xl mx-auto">
+            {/* ─── Breadcrumb ──────────────────────────────────────── */}
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <button
+                    onClick={() => router.push("/dashboard/production")}
+                    className="hover:text-foreground transition-colors"
+                >
+                    Production
+                </button>
+                <ChevronRight className="h-3.5 w-3.5" />
+                <span className="text-foreground font-medium">Create Production</span>
+            </div>
+
+            <h1 className="text-2xl font-bold tracking-tight">New Production Run</h1>
+
+            {/* ─── Step Indicator ──────────────────────────────────── */}
+            <div className="relative">
+                <div className="flex items-center justify-between">
+                    {steps.map((step, index) => {
+                        const isActive = currentStep === step.id;
+                        const isCompleted = currentStep > step.id;
+                        const StepIcon = step.icon;
+
+                        return (
+                            <div key={step.id} className="flex items-center flex-1">
+                                <div className="flex flex-col items-center flex-shrink-0 z-10">
+                                    <div
+                                        className={cn(
+                                            "w-10 h-10 rounded-xl flex items-center justify-center border-2 transition-all duration-300",
+                                            isCompleted
+                                                ? "bg-emerald-500 border-emerald-500 text-white"
+                                                : isActive
+                                                    ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-500/30"
+                                                    : "bg-card border-border text-muted-foreground"
+                                        )}
+                                    >
+                                        {isCompleted ? (
+                                            <Check className="h-4.5 w-4.5" />
+                                        ) : (
+                                            <StepIcon className="h-4.5 w-4.5" />
+                                        )}
+                                    </div>
+                                    <div className="mt-2 text-center">
+                                        <p
+                                            className={cn(
+                                                "text-xs font-bold",
+                                                isActive
+                                                    ? "text-foreground"
+                                                    : isCompleted
+                                                        ? "text-emerald-500"
+                                                        : "text-muted-foreground"
+                                            )}
+                                        >
+                                            {step.title}
+                                        </p>
+                                        <p className="text-[10px] text-muted-foreground hidden sm:block">
+                                            {step.description}
+                                        </p>
+                                    </div>
+                                </div>
+                                {index < steps.length - 1 && (
+                                    <div className="flex-1 mx-3 mt-[-24px]">
+                                        <div className="h-0.5 bg-border rounded-full overflow-hidden">
+                                            <div
+                                                className={cn(
+                                                    "h-full rounded-full transition-all duration-500",
+                                                    currentStep > step.id
+                                                        ? "w-full bg-emerald-500"
+                                                        : "w-0 bg-indigo-600"
+                                                )}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* ─── Step Content ────────────────────────────────────── */}
+            <div className="rounded-xl border bg-card dark:bg-slate-900 border-border dark:border-slate-800 overflow-hidden min-h-[420px]">
+                <AnimatePresence mode="wait" custom={slideDirection}>
+                    <motion.div
+                        key={currentStep}
+                        custom={slideDirection}
+                        variants={slideVariants}
+                        initial="enter"
+                        animate="center"
+                        exit="exit"
+                        transition={{ duration: 0.3, ease: "easeInOut" }}
+                        className="p-6"
+                    >
+                        {/* ═══ STEP 1: Order Selection ═══ */}
+                        {currentStep === 1 && (
+                            <div className="space-y-5">
+                                <div>
+                                    <h2 className="text-lg font-bold mb-1">Select Order</h2>
+                                    <p className="text-sm text-muted-foreground">
+                                        Choose a confirmed order to start production for.
+                                    </p>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                    <div className="relative flex-1 max-w-sm">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            placeholder="Search orders by product or client..."
+                                            className="pl-10 h-10"
+                                            value={orderSearchTerm}
+                                            onChange={(e) => setOrderSearchTerm(e.target.value)}
+                                            id="order-search"
+                                        />
+                                    </div>
+                                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                        <SelectTrigger className="h-10 w-[160px] bg-card" id="status-filter">
+                                            <Filter className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                                            <SelectValue placeholder="All Statuses" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">All Statuses</SelectItem>
+                                            <SelectItem value="pending">Pending</SelectItem>
+                                            <SelectItem value="confirmed">Confirmed</SelectItem>
+                                            <SelectItem value="processing">In Production</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {confirmedOrders.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                                        <AlertCircle className="h-8 w-8 text-muted-foreground mb-3" />
+                                        <h3 className="font-semibold mb-1">No confirmed orders</h3>
+                                        <p className="text-sm text-muted-foreground">
+                                            Create an order first, then come back to start production.
+                                        </p>
+                                    </div>
+                                ) : filteredOrders.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                                        <Search className="h-8 w-8 text-muted-foreground mb-3" />
+                                        <h3 className="font-semibold mb-1">No matching orders</h3>
+                                        <p className="text-sm text-muted-foreground">
+                                            Try adjusting your search or filter.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <ScrollArea className="h-[300px]">
+                                        <div className="space-y-2 pr-3">
+                                            {filteredOrders.map((order) => {
+                                                const isSelected = selectedOrderId === order.id;
+                                                const displayName = order.product_name ?? order.productName ?? "—";
+                                                const clientDisplayName = order.clients?.name ?? order.clientName ?? "—";
+                                                const deliveryDate = order.delivery_date ?? order.deliveryDate;
+                                                return (
+                                                    <button
+                                                        key={order.id}
+                                                        className={cn(
+                                                            "w-full text-left rounded-xl border p-4 transition-all duration-200",
+                                                            isSelected
+                                                                ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 ring-2 ring-indigo-500/20"
+                                                                : "border-border hover:border-indigo-300 dark:hover:border-indigo-800 hover:bg-muted/30"
+                                                        )}
+                                                        onClick={() => setSelectedOrderId(order.id)}
+                                                        id={`order-option-${order.id}`}
+                                                    >
+                                                        <div className="flex items-start justify-between">
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex items-center gap-2 mb-1">
+                                                                    <span className="font-bold text-sm">
+                                                                        {displayName}
+                                                                    </span>
+                                                                    <Badge
+                                                                        variant="outline"
+                                                                        className="text-[9px] font-bold uppercase"
+                                                                    >
+                                                                        {order.status}
+                                                                    </Badge>
+                                                                </div>
+                                                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                                                    <span className="flex items-center gap-1">
+                                                                        <User className="h-3 w-3" />
+                                                                        {clientDisplayName}
+                                                                    </span>
+                                                                    <span className="flex items-center gap-1">
+                                                                        <Package className="h-3 w-3" />
+                                                                        {order.quantity} units
+                                                                    </span>
+                                                                    {deliveryDate && (
+                                                                        <span className="flex items-center gap-1">
+                                                                            <Calendar className="h-3 w-3" />
+                                                                            {new Date(
+                                                                                deliveryDate
+                                                                            ).toLocaleDateString()}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            <div
+                                                                className={cn(
+                                                                    "w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ml-3 mt-0.5 transition-all",
+                                                                    isSelected
+                                                                        ? "border-indigo-500 bg-indigo-500"
+                                                                        : "border-border"
+                                                                )}
+                                                            >
+                                                                {isSelected && (
+                                                                    <Check className="h-3 w-3 text-white" />
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </ScrollArea>
+                                )}
+                            </div>
+                        )}
+
+                        {/* ═══ STEP 2: Production Setup ═══ */}
+                        {currentStep === 2 && (
+                            <div className="space-y-6">
+                                <div>
+                                    <h2 className="text-lg font-bold mb-1">Production Setup</h2>
+                                    <p className="text-sm text-muted-foreground">
+                                        Select raw materials, assign a machine, and assign an operator.
+                                    </p>
+                                </div>
+
+                                {/* Selected order summary */}
+                                {selectedOrder && (
+                                    <div className="rounded-lg bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 p-3 flex items-center gap-3">
+                                        <ShoppingCart className="h-4 w-4 text-indigo-500 flex-shrink-0" />
+                                        <div className="text-xs">
+                                            <span className="font-bold">
+                                                {selectedOrder.product_name ?? selectedOrder.productName}
+                                            </span>
+                                            <span className="text-muted-foreground mx-2">•</span>
+                                            <span className="text-muted-foreground">
+                                                {selectedOrder.quantity} units
+                                            </span>
+                                            <span className="text-muted-foreground mx-2">•</span>
+                                            <span className="text-muted-foreground">
+                                                {selectedOrder.clients?.name ?? selectedOrder.clientName ?? "—"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Raw Materials */}
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                            Raw Materials
+                                        </Label>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className="rounded-lg h-8 text-xs gap-1"
+                                            onClick={addMaterial}
+                                        >
+                                            <Plus className="h-3 w-3" />
+                                            Add Material
+                                        </Button>
+                                    </div>
+
+                                    {selectedMaterials.length === 0 ? (
+                                        <div className="rounded-xl border-2 border-dashed border-border py-8 text-center">
+                                            <Package className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
+                                            <p className="text-sm text-muted-foreground">
+                                                Add raw materials needed for this production
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {selectedMaterials.map((mat, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    className="flex gap-3 items-end rounded-lg border border-border p-3 bg-muted/20"
+                                                >
+                                                    <div className="flex-1 space-y-1">
+                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase">
+                                                            Material
+                                                        </Label>
+                                                        <Select
+                                                            value={mat.inventoryId}
+                                                            onValueChange={(v) =>
+                                                                updateMaterial(idx, "inventoryId", v)
+                                                            }
+                                                        >
+                                                            <SelectTrigger className="h-9 bg-card">
+                                                                <SelectValue placeholder="Select material..." />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {inventory.map((item) => (
+                                                                    <SelectItem
+                                                                        key={item.id}
+                                                                        value={item.id}
+                                                                        disabled={item.quantity <= 0}
+                                                                    >
+                                                                        {item.name} ({item.quantity} {item.unit}{" "}
+                                                                        available)
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                    <div className="w-32 space-y-1">
+                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase">
+                                                            Qty Used
+                                                        </Label>
+                                                        <NumericInput
+                                                            className="h-9 bg-card font-semibold"
+                                                            value={mat.quantityUsed || ""}
+                                                            onValueChange={(v) =>
+                                                                updateMaterial(
+                                                                    idx,
+                                                                    "quantityUsed",
+                                                                    Number(v) || 0
+                                                                )
+                                                            }
+                                                            placeholder="0"
+                                                            allowDecimal={true}
+                                                            min={0}
+                                                            max={mat.availableStock}
+                                                        />
+                                                    </div>
+                                                    {mat.availableStock > 0 && (
+                                                        <div className="text-[9px] text-muted-foreground pb-2 w-16">
+                                                            / {mat.availableStock} {mat.unit}
+                                                        </div>
+                                                    )}
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-9 w-9 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg flex-shrink-0"
+                                                        onClick={() => removeMaterial(idx)}
+                                                    >
+                                                        <X className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Machine Assignment — Dynamic from API */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                            <Cpu className="h-3.5 w-3.5" />
+                                            Assign Machine
+                                        </Label>
+                                        {machines.length === 0 ? (
+                                            <div className="rounded-xl border-2 border-dashed border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-4 text-center">
+                                                <AlertCircle className="h-5 w-5 mx-auto mb-2 text-amber-500" />
+                                                <p className="text-xs text-amber-700 dark:text-amber-400 font-semibold">
+                                                    No machines found
+                                                </p>
+                                                <p className="text-[10px] text-muted-foreground mt-1">
+                                                    Admin must add machines in Machine Management first.
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <Select
+                                                value={selectedMachineId}
+                                                onValueChange={setSelectedMachineId}
+                                            >
+                                                <SelectTrigger className="h-10 bg-card" id="machine-select">
+                                                    <SelectValue placeholder="Select machine..." />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {machines.map((m) => (
+                                                        <SelectItem
+                                                            key={m.id}
+                                                            value={m.id}
+                                                            disabled={m.status !== "active"}
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <div
+                                                                    className={cn(
+                                                                        "w-1.5 h-1.5 rounded-full",
+                                                                        m.status === "active"
+                                                                            ? "bg-emerald-400"
+                                                                            : m.status === "maintenance"
+                                                                                ? "bg-amber-400"
+                                                                                : "bg-red-400"
+                                                                    )}
+                                                                />
+                                                                {m.machineName}
+                                                                {m.machineType && (
+                                                                    <span className="text-[10px] text-muted-foreground">
+                                                                        ({m.machineType})
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                    </div>
+
+                                    {/* Operator Assignment — Dynamic from employees API */}
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                            <User className="h-3.5 w-3.5" />
+                                            Assign Operator
+                                        </Label>
+                                        {operators.length === 0 ? (
+                                            <div className="rounded-xl border-2 border-dashed border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-4 text-center">
+                                                <AlertCircle className="h-5 w-5 mx-auto mb-2 text-amber-500" />
+                                                <p className="text-xs text-amber-700 dark:text-amber-400 font-semibold">
+                                                    No staff found
+                                                </p>
+                                                <p className="text-[10px] text-muted-foreground mt-1">
+                                                    Admin must add staff members first.
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <Select
+                                                value={selectedOperatorId}
+                                                onValueChange={setSelectedOperatorId}
+                                            >
+                                                <SelectTrigger className="h-10 bg-card" id="operator-select">
+                                                    <SelectValue placeholder="Select operator..." />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {operators.map((op) => (
+                                                        <SelectItem
+                                                            key={op.id}
+                                                            value={op.id}
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                                                {op.fullName}
+                                                                {op.designation && (
+                                                                    <span className="text-[10px] text-muted-foreground">
+                                                                        ({op.designation})
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ═══ STEP 3: Production Configuration ═══ */}
+                        {currentStep === 3 && (
+                            <div className="space-y-6">
+                                <div>
+                                    <h2 className="text-lg font-bold mb-1">
+                                        Production Configuration
+                                    </h2>
+                                    <p className="text-sm text-muted-foreground">
+                                        Set targets, schedule, and shift details.
+                                    </p>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                            Expected Output (Units)
+                                        </Label>
+                                        <NumericInput
+                                            value={expectedOutput}
+                                            onValueChange={(v) => setExpectedOutput(v)}
+                                            placeholder={selectedOrder ? String(selectedOrder.quantity) : "0"}
+                                            className="h-12 text-xl font-black bg-card"
+                                            id="expected-output"
+                                            allowDecimal={false}
+                                            min={0}
+                                        />
+                                        {selectedOrder && (
+                                            <p className="text-[10px] text-muted-foreground">
+                                                Order requires {selectedOrder.quantity} units
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                            <Clock className="h-3.5 w-3.5" />
+                                            Start Time
+                                        </Label>
+                                        <Input
+                                            type="datetime-local"
+                                            value={startTime}
+                                            onChange={(e) => setStartTime(e.target.value)}
+                                            className="h-12 bg-card"
+                                            id="start-time"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                            Shift
+                                        </Label>
+                                        <Select
+                                            value={shift}
+                                            onValueChange={(v) => setShift(v as ShiftType)}
+                                        >
+                                            <SelectTrigger className="h-12 bg-card" id="shift-select">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="morning">
+                                                    Morning (6 AM — 2 PM)
+                                                </SelectItem>
+                                                <SelectItem value="afternoon">
+                                                    Afternoon (2 PM — 10 PM)
+                                                </SelectItem>
+                                                <SelectItem value="night">
+                                                    Night (10 PM — 6 AM)
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                            <Calendar className="h-3.5 w-3.5" />
+                                            Target Completion
+                                        </Label>
+                                        <Input
+                                            type="datetime-local"
+                                            value={targetCompletion}
+                                            onChange={(e) => setTargetCompletion(e.target.value)}
+                                            className="h-12 bg-card"
+                                            id="target-completion"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Notes */}
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                        Production Notes (Optional)
+                                    </Label>
+                                    <textarea
+                                        value={notes}
+                                        onChange={(e) => setNotes(e.target.value)}
+                                        placeholder="Special instructions, quality requirements, etc..."
+                                        rows={3}
+                                        className={cn(
+                                            "flex w-full rounded-xl border px-4 py-3 text-sm shadow-xs transition-colors resize-none",
+                                            "bg-card border-border",
+                                            "placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50"
+                                        )}
+                                    />
+                                </div>
+
+                                {/* Summary */}
+                                <div className="rounded-xl bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-800 p-4 space-y-3">
+                                    <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                                        Production Summary
+                                    </h3>
+                                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Product:</span>
+                                            <span className="font-semibold">
+                                                {selectedOrder?.product_name ?? selectedOrder?.productName ?? "—"}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Client:</span>
+                                            <span className="font-semibold">
+                                                {selectedOrder?.clients?.name ?? selectedOrder?.clientName ?? "—"}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Materials:</span>
+                                            <span className="font-semibold">
+                                                {selectedMaterials.length} items
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Machine:</span>
+                                            <span className="font-semibold">
+                                                {selectedMachine?.machineName || "—"}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Operator:</span>
+                                            <span className="font-semibold">
+                                                {selectedOperator?.fullName || "—"}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Target:</span>
+                                            <span className="font-semibold">
+                                                {expectedOutput || "—"} units
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </motion.div>
+                </AnimatePresence>
+            </div>
+
+            {/* ─── Navigation Footer ───────────────────────────────── */}
+            <div className="flex items-center justify-between">
+                <Button
+                    variant="outline"
+                    className="gap-2 rounded-xl"
+                    onClick={currentStep === 1 ? () => router.push("/dashboard/production") : goBack}
+                >
+                    <ChevronLeft className="h-4 w-4" />
+                    {currentStep === 1 ? "Cancel" : "Back"}
+                </Button>
+
+                {currentStep < 3 ? (
+                    <Button
+                        className="gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white"
+                        onClick={goNext}
+                        disabled={!canProceed(currentStep)}
+                        id="next-step-btn"
+                    >
+                        Continue
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
+                ) : (
+                    <Button
+                        className="gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20"
+                        onClick={handleSubmit}
+                        disabled={!canProceed(currentStep) || submitting}
+                        id="submit-production-btn"
+                    >
+                        {submitting ? (
+                            <>
+                                <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                Creating...
+                            </>
+                        ) : (
+                            <>
+                                Launch Production
+                                <ArrowRight className="h-4 w-4" />
+                            </>
+                        )}
+                    </Button>
+                )}
+            </div>
+        </div>
+    );
+}

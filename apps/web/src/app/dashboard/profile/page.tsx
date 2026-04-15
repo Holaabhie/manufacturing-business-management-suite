@@ -1,38 +1,30 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   User,
   Mail,
-  Shield,
   Key,
   LogOut,
   Camera,
-  Bell,
   Loader2,
   Phone,
   Briefcase,
-  AlertTriangle,
-  Lock,
-  Fingerprint,
-  Building2,
-  MapPin,
-  CreditCard,
-  Upload,
-  Save,
-  Landmark
+  UserPlus,
+  Users,
+  ArrowLeftRight,
+  Check
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  IOSCard,
+  IOSButton,
+  IOSBadge,
+  IOSInput
+} from "@/components/ui/ios";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -42,22 +34,6 @@ import {
   DialogTrigger,
   DialogFooter
 } from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
-import { ReadOnlyBanner } from "@/components/AccessDenied";
-
-interface CompanyDetails {
-  companyName: string;
-  address: string;
-  phone: string;
-  email: string;
-  logoUrl?: string;
-  gstin?: string;
-  pan?: string;
-  bankName?: string;
-  accountNo?: string;
-  ifsc?: string;
-  upiId?: string;
-}
 
 function ProfileContent() {
   const [user, setUser] = useState<any>(null);
@@ -66,52 +42,22 @@ function ProfileContent() {
   const [updating, setUpdating] = useState(false);
   const [uploading, setUploading] = useState(false);
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState<"profile" | "company" | "settings" | "notifications">("profile");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<"profile">("profile");
 
-  // Company details state
-  const [companyLoading, setCompanyLoading] = useState(false);
-  const [companySaving, setCompanySaving] = useState(false);
-  const [companyData, setCompanyData] = useState<CompanyDetails>({
-    companyName: "",
-    address: "",
-    phone: "",
-    email: "",
-    logoUrl: "",
-    gstin: "",
-    pan: "",
-    bankName: "",
-    accountNo: "",
-    ifsc: "",
-    upiId: "",
-  });
-
-  useEffect(() => {
-    const tab = searchParams.get("tab");
-    if (tab === "settings" || tab === "notifications" || tab === "company") {
-      setActiveTab(tab as any);
-    }
-  }, [searchParams]);
+  // Account management state
+  const [isAddAccountOpen, setIsAddAccountOpen] = useState(false);
+  const [isSwitchAccountOpen, setIsSwitchAccountOpen] = useState(false);
+  const [addAccountData, setAddAccountData] = useState({ email: "", password: "", role: "Staff" });
+  const [addingAccount, setAddingAccount] = useState(false);
+  const [switchingAccountId, setSwitchingAccountId] = useState<string | null>(null);
+  const [linkedAccounts, setLinkedAccounts] = useState<Array<{ id: string; email: string; role: string; fullName?: string; avatar_url?: string }>>([]);
 
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",
     phone_number: "",
     role: "Admin",
-  });
-
-  const isStaff = user?.role === "Staff";
-
-  const [passwordData, setPasswordData] = useState({
-    newPassword: "",
-    confirmPassword: "",
-  });
-
-  const [preferences, setPreferences] = useState({
-    stock_alerts: true,
-    order_alerts: true,
-    emailNotifications: true,
-    pushNotifications: false,
   });
 
   const fetchProfile = async () => {
@@ -129,7 +75,6 @@ function ProfileContent() {
           phone_number: data.phone_number || "",
           role: data.role || "Admin",
         });
-        setPreferences(data.notification_preferences || { stock_alerts: true, order_alerts: true, emailNotifications: true, pushNotifications: false });
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
@@ -138,47 +83,89 @@ function ProfileContent() {
     }
   };
 
-  const fetchCompanyDetails = async () => {
-    setCompanyLoading(true);
+  // Fetch linked accounts from API
+  const fetchLinkedAccounts = async () => {
     try {
-      const res = await fetch("/api/profile/company");
+      const res = await fetch("/api/auth/linked-accounts");
       const data = await res.json();
-      if (data.company) {
-        setCompanyData(data.company);
+      if (data.accounts) {
+        setLinkedAccounts(data.accounts);
       }
     } catch (error) {
-      console.error("Error fetching company details:", error);
+      console.error("Error fetching linked accounts:", error);
+    }
+  };
+
+  // Switch to a linked account
+  const handleSwitchAccount = async (targetUserId: string, targetEmail: string, targetRole: string) => {
+    setSwitchingAccountId(targetUserId);
+    try {
+      const res = await fetch("/api/auth/switch-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetUserId }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        toast.error(data.error || "Failed to switch account");
+        if (res.status === 401) {
+          // Session invalid — redirect to login
+          window.location.href = "/login";
+        }
+        return;
+      }
+
+      toast.success(`Switched to ${targetRole} Account (${targetEmail})`);
+      setIsSwitchAccountOpen(false);
+
+      // Full page reload to refresh all contexts (session, nav, role)
+      window.location.href = "/dashboard";
+    } catch (error) {
+      toast.error("Failed to switch account. Please try again.");
+      console.error("Switch account error:", error);
     } finally {
-      setCompanyLoading(false);
+      setSwitchingAccountId(null);
+    }
+  };
+
+  // Handle linking a new account
+  const handleLinkAccount = async () => {
+    setAddingAccount(true);
+    try {
+      const res = await fetch("/api/auth/linked-accounts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: addAccountData.email,
+          password: addAccountData.password,
+          loginType: addAccountData.role === "Staff" ? "staff" : "admin",
+          employeeId: addAccountData.role === "Staff" ? addAccountData.email : undefined,
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        toast.error(data.error || "Failed to link account");
+        return;
+      }
+
+      setLinkedAccounts((prev) => [...prev, data.account]);
+      toast.success(`Account ${data.account.email} linked successfully!`);
+      setAddAccountData({ email: "", password: "", role: "Staff" });
+      setIsAddAccountOpen(false);
+    } catch (error) {
+      toast.error("Failed to link account. Please try again.");
+      console.error("Link account error:", error);
+    } finally {
+      setAddingAccount(false);
     }
   };
 
   useEffect(() => {
     fetchProfile();
-    fetchCompanyDetails();
+    fetchLinkedAccounts();
   }, []);
-
-  const handleUpdatePreferences = async (newPrefs: Partial<typeof preferences>) => {
-    const updatedPrefs = { ...preferences, ...newPrefs };
-    setPreferences(updatedPrefs);
-
-    try {
-      const res = await fetch("/api/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notification_preferences: updatedPrefs }),
-      });
-      const data = await res.json();
-
-      if (data.error) {
-        toast.error("Failed to update preferences");
-      } else {
-        toast.success("Preferences updated");
-      }
-    } catch (error) {
-      toast.error("Failed to update preferences");
-    }
-  };
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -209,69 +196,6 @@ function ProfileContent() {
     }
   };
 
-  const handleUpdateCompany = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!companyData.companyName.trim()) {
-      toast.error("Company name is required");
-      return;
-    }
-
-    setCompanySaving(true);
-    try {
-      const res = await fetch("/api/profile/company", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(companyData),
-      });
-      const data = await res.json();
-
-      if (data.error) {
-        toast.error(data.error);
-      } else {
-        toast.success("Company details saved successfully!");
-        setCompanyData(data.company);
-      }
-    } catch (error: any) {
-      toast.error(error.message || "Failed to save company details");
-    } finally {
-      setCompanySaving(false);
-    }
-  };
-
-  const handleUpdatePassword = async () => {
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast.error("Passwords do not match");
-      return;
-    }
-
-    if (passwordData.newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters");
-      return;
-    }
-
-    setUpdating(true);
-    try {
-      const res = await fetch("/api/profile/password", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newPassword: passwordData.newPassword }),
-      });
-      const data = await res.json();
-
-      if (data.error) {
-        toast.error(data.error);
-      } else {
-        toast.success("Password updated successfully!");
-        setPasswordData({ newPassword: "", confirmPassword: "" });
-      }
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update password");
-    } finally {
-      setUpdating(false);
-    }
-  };
-
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     try {
       setUploading(true);
@@ -280,7 +204,6 @@ function ProfileContent() {
       }
 
       const file = e.target.files[0];
-      // Convert to base64 for now (can be improved with proper file storage later)
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64String = reader.result as string;
@@ -312,31 +235,6 @@ function ProfileContent() {
     }
   };
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    try {
-      if (!e.target.files || e.target.files.length === 0) {
-        throw new Error("You must select an image to upload.");
-      }
-
-      const file = e.target.files[0];
-      // Max size check (500KB for logo)
-      if (file.size > 500 * 1024) {
-        toast.error("Logo must be smaller than 500KB");
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64String = reader.result as string;
-        setCompanyData({ ...companyData, logoUrl: base64String });
-        toast.success("Logo uploaded - remember to save changes!");
-      };
-      reader.readAsDataURL(file);
-    } catch (error: any) {
-      toast.error(error.message);
-    }
-  };
-
   const handleLogout = async (allDevices = false) => {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
@@ -358,29 +256,29 @@ function ProfileContent() {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-4xl mx-auto space-y-8 pb-12"
+      className="max-w-4xl mx-auto space-y-6 sm:space-y-8 pb-12 px-4 sm:px-0"
     >
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">User Account</h1>
-        <p className="text-muted-foreground">Manage your profile, company details, and preferences.</p>
+      <div className="flex flex-col gap-1.5 pt-4 sm:pt-6">
+        <h1 className="text-[28px] sm:text-[34px] font-bold tracking-tight text-[var(--label-primary)]">Profile</h1>
+        <p className="text-[15px] sm:text-[17px] text-[var(--label-secondary)]">Manage your account and personal details.</p>
       </div>
 
-      <div className="grid gap-8 md:grid-cols-4">
+      <div className="grid gap-6 sm:gap-8 md:grid-cols-4">
         {/* Left Column - Navigation & Profile Preview */}
-        <div className="md:col-span-1 space-y-6">
-          <Card className="overflow-hidden border-none shadow-xl bg-card">
-            <div className="h-20 bg-gradient-to-r from-accent to-chart-1" />
-            <CardContent className="pt-0 -mt-10 text-center">
-              <div className="relative inline-block group">
-                <Avatar className="h-24 w-24 border-4 border-background shadow-lg group-hover:opacity-90 transition-all duration-300">
+        <div className="md:col-span-1 space-y-4 sm:space-y-6">
+          <IOSCard variant="elevated" className="overflow-hidden border-none p-0">
+            <div className="h-24 sm:h-20 bg-gradient-to-br from-[#007AFF]/20 to-[#5AC8FA]/20 dark:from-[#0A84FF]/20 dark:to-[#5AC8FA]/20" />
+            <div className="px-4 pb-5 pt-0 -mt-10 sm:-mt-12 text-center">
+              <div className="relative inline-block group mb-3">
+                <Avatar className="h-20 w-20 sm:h-24 sm:w-24 border-4 border-white dark:border-[#1C1C1E] shadow-[var(--shadow-sm)] group-hover:opacity-90 transition-all duration-300">
                   <AvatarImage src={profile?.avatar_url} />
-                  <AvatarFallback className="bg-accent text-accent-foreground text-3xl font-bold">
+                  <AvatarFallback className="bg-[var(--fill-tertiary)] text-[var(--label-primary)] text-3xl font-bold">
                     {formData.full_name?.substring(0, 1).toUpperCase() || user?.email?.substring(0, 1).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <label
                   htmlFor="avatar-upload"
-                  className="absolute bottom-0 right-0 p-2 bg-primary text-primary-foreground rounded-full shadow-lg cursor-pointer hover:scale-110 transition-transform flex items-center justify-center border-2 border-background"
+                  className="absolute bottom-0 right-0 p-2 bg-[#007AFF] text-white rounded-full shadow-[var(--shadow-sm)] cursor-pointer hover:scale-105 active:scale-95 transition-transform flex items-center justify-center border-2 border-white dark:border-[#1C1C1E] z-10"
                 >
                   {uploading ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
                 </label>
@@ -393,60 +291,39 @@ function ProfileContent() {
                   disabled={uploading}
                 />
               </div>
-              <div className="mt-4">
-                <h3 className="text-lg font-bold truncate px-2">{formData.full_name || "Admin User"}</h3>
-                <Badge variant="outline" className="mt-1 bg-accent/5 text-accent border-accent/20">
-                  {formData.role}
-                </Badge>
-                <p className="text-xs text-muted-foreground mt-2 truncate px-2">{user?.email}</p>
+              <div className="space-y-0.5">
+                <h3 className="text-[17px] font-semibold text-[var(--label-primary)] truncate px-2">{formData.full_name || "Admin User"}</h3>
+                <div className="pt-1">
+                  <IOSBadge variant="blue" className="bg-[#007AFF]/10 text-[#007AFF] dark:bg-[#0A84FF]/20 dark:text-[#5AC8FA]">
+                    {formData.role}
+                  </IOSBadge>
+                </div>
+                <p className="text-[13px] text-[var(--label-secondary)] pt-1 truncate px-2">{user?.email}</p>
               </div>
-            </CardContent>
-          </Card>
-
-          <div className="space-y-1">
-            <Button
-              variant={activeTab === "profile" ? "secondary" : "ghost"}
-              className="w-full justify-start gap-3 rounded-xl px-4 h-11"
-              onClick={() => setActiveTab("profile")}
-            >
-              <User size={18} className={activeTab === "profile" ? "text-accent" : "text-muted-foreground"} />
-              Profile details
-            </Button>
-            <Button
-              variant={activeTab === "company" ? "secondary" : "ghost"}
-              className="w-full justify-start gap-3 rounded-xl px-4 h-11"
-              onClick={() => setActiveTab("company")}
-            >
-              <Building2 size={18} className={activeTab === "company" ? "text-accent" : "text-muted-foreground"} />
-              Company Details
-            </Button>
-            <Button
-              variant={activeTab === "settings" ? "secondary" : "ghost"}
-              className="w-full justify-start gap-3 rounded-xl px-4 h-11"
-              onClick={() => setActiveTab("settings")}
-            >
-              <Shield size={18} className={activeTab === "settings" ? "text-accent" : "text-muted-foreground"} />
-              Security Settings
-            </Button>
-            <Button
-              variant={activeTab === "notifications" ? "secondary" : "ghost"}
-              className="w-full justify-start gap-3 rounded-xl px-4 h-11"
-              onClick={() => setActiveTab("notifications")}
-            >
-              <Bell size={18} className={activeTab === "notifications" ? "text-accent" : "text-muted-foreground"} />
-              Notifications
-            </Button>
-            <div className="pt-4 mt-4 border-t border-border">
-              <Button
-                variant="ghost"
-                className="w-full justify-start gap-3 rounded-xl px-4 h-11 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                onClick={() => handleLogout()}
-              >
-                <LogOut size={18} />
-                Sign Out
-              </Button>
             </div>
-          </div>
+          </IOSCard>
+
+          <IOSCard className="p-2 sm:p-2.5">
+            <div className="space-y-1">
+              <button
+                className={`w-full flex items-center gap-3 rounded-[12px] px-3.5 py-2.5 text-[15px] font-medium transition-colors ${activeTab === "profile" ? "bg-[var(--fill-tertiary)] text-[var(--label-primary)]" : "text-[var(--label-secondary)] hover:bg-[var(--fill-quaternary)]"}`}
+                onClick={() => setActiveTab("profile")}
+              >
+                <User size={18} className={activeTab === "profile" ? "text-[#007AFF]" : "opacity-70"} />
+                Profile details
+              </button>
+
+              <div className="pt-2 mt-2 border-t border-[var(--border-card)]">
+                <button
+                  className="w-full flex items-center gap-3 rounded-[12px] px-3.5 py-2.5 text-[15px] font-medium text-[#FF3B30] hover:bg-[#FF3B30]/10 transition-colors"
+                  onClick={() => handleLogout()}
+                >
+                  <LogOut size={18} />
+                  Sign Out
+                </button>
+              </div>
+            </div>
+          </IOSCard>
         </div>
 
         {/* Right Column - Content */}
@@ -460,520 +337,270 @@ function ProfileContent() {
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-6"
               >
-                <Card className="border-none shadow-md bg-card">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-xl">
-                      <User className="h-5 w-5 text-accent" />
-                      Personal Information
-                    </CardTitle>
-                    <CardDescription>Update your personal details and contact info.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <form onSubmit={handleUpdateProfile} className="space-y-6">
-                      <div className="grid gap-6 sm:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label htmlFor="full_name" className="text-sm font-medium">Full Name</Label>
-                          <div className="relative">
-                            <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              id="full_name"
-                              placeholder="e.g. John Doe"
-                              value={formData.full_name}
-                              onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                              className="pl-10 rounded-xl border-border focus-visible:ring-accent"
-                            />
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="email" className="text-sm font-medium">Email Address</Label>
-                          <div className="relative">
-                            <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              id="email"
-                              type="email"
-                              disabled
-                              value={formData.email}
-                              className="pl-10 rounded-xl border-border bg-muted/50 cursor-not-allowed"
-                            />
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="phone_number" className="text-sm font-medium">Phone Number</Label>
-                          <div className="relative">
-                            <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              id="phone_number"
-                              placeholder="+91 9876543210"
-                              value={formData.phone_number}
-                              onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
-                              className="pl-10 rounded-xl border-border focus-visible:ring-accent"
-                            />
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="role" className="text-sm font-medium">Role</Label>
-                          <div className="relative">
-                            <Briefcase className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <select
-                              id="role"
-                              value={formData.role}
-                              onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                              className="w-full h-10 pl-10 rounded-xl border border-border bg-background focus:ring-2 focus:ring-accent outline-none text-sm appearance-none"
-                            >
-                              <option value="Admin">Admin (Owner)</option>
-                              <option value="Staff">Staff</option>
-                            </select>
-                          </div>
+                <div className="flex flex-col gap-1.5 mb-6">
+                  <h2 className="text-[22px] font-semibold text-[var(--label-primary)]">Personal Information</h2>
+                  <p className="text-[15px] text-[var(--label-secondary)]">Update your personal details and contact info.</p>
+                </div>
+
+                <IOSCard className="p-1 sm:p-2">
+                  <form onSubmit={handleUpdateProfile} className="p-4 sm:p-5">
+                    <div className="grid gap-6 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <label htmlFor="full_name" className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">Full Name</label>
+                        <div className="relative">
+                          <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--label-tertiary)]" />
+                          <IOSInput
+                            id="full_name"
+                            placeholder="e.g. John Doe"
+                            value={formData.full_name}
+                            onChange={(e: any) => setFormData({ ...formData, full_name: e.target.value })}
+                            className="pl-11 h-[48px]"
+                          />
                         </div>
                       </div>
-                      <Button
+                      <div className="space-y-2">
+                        <label htmlFor="email" className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">Email Address</label>
+                        <div className="relative">
+                          <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--label-tertiary)]" />
+                          <IOSInput
+                            id="email"
+                            type="email"
+                            disabled
+                            value={formData.email}
+                            className="pl-11 h-[48px] bg-[var(--fill-quaternary)] opacity-60 cursor-not-allowed"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label htmlFor="phone_number" className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">Phone Number</label>
+                        <div className="relative">
+                          <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--label-tertiary)]" />
+                          <IOSInput
+                            id="phone_number"
+                            placeholder="+91 9876543210"
+                            value={formData.phone_number}
+                            onChange={(e: any) => setFormData({ ...formData, phone_number: e.target.value })}
+                            className="pl-11 h-[48px]"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label htmlFor="role" className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">Role</label>
+                        <div className="relative">
+                          <Briefcase className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--label-tertiary)] pointer-events-none" />
+                          <select
+                            id="role"
+                            value={formData.role}
+                            onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                            className="w-full h-[48px] pl-11 pr-4 rounded-[12px] bg-white dark:bg-[#1C1C1E] border border-[var(--border-card)] text-[17px] text-[var(--label-primary)] focus:ring-[3px] focus:ring-[#007AFF]/30 focus:border-[#007AFF] outline-none transition-all appearance-none"
+                          >
+                            <option value="Admin">Admin (Owner)</option>
+                            <option value="Staff">Staff</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-8 flex justify-end">
+                      <IOSButton
                         type="submit"
+                        variant="filled"
+                        color="blue"
                         disabled={updating}
-                        className="rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground font-bold px-8 h-11"
+                        className="px-8 text-[15px] font-semibold h-[44px]"
                       >
                         {updating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         Save Changes
-                      </Button>
-                    </form>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
+                      </IOSButton>
+                    </div>
+                  </form>
+                </IOSCard>
 
-            {activeTab === "company" && (
-              <motion.div
-                key="company"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-6"
-              >
-                {companyLoading ? (
-                  <div className="flex items-center justify-center py-20">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                  </div>
-                ) : (
-                  <form onSubmit={handleUpdateCompany} className="space-y-6">
-                    {isStaff && (
-                      <ReadOnlyBanner feature="company settings" />
-                    )}
-                    <fieldset disabled={isStaff} className="space-y-6 border-none p-0 m-0 min-w-0">
-                      {/* Basic Company Information */}
-                      <Card className="border-none shadow-md bg-card">
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2 text-xl">
-                            <Building2 className="h-5 w-5 text-accent" />
-                            Business Information
-                          </CardTitle>
-                          <CardDescription>Your company details used for invoices and bills.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                          {/* Logo Upload */}
-                          <div className="flex items-start gap-6">
-                            <div className="flex-shrink-0">
-                              <div className="relative w-24 h-24 rounded-xl border-2 border-dashed border-border bg-muted/30 flex items-center justify-center overflow-hidden group">
-                                {companyData.logoUrl ? (
-                                  <img
-                                    src={companyData.logoUrl}
-                                    alt="Company Logo"
-                                    className="w-full h-full object-contain"
-                                  />
-                                ) : (
-                                  <Building2 className="h-8 w-8 text-muted-foreground" />
-                                )}
-                                <label
-                                  htmlFor="logo-upload"
-                                  className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
-                                >
-                                  <Upload className="h-6 w-6 text-white" />
-                                </label>
-                                <input
-                                  type="file"
-                                  id="logo-upload"
-                                  accept="image/*"
-                                  className="hidden"
-                                  onChange={handleLogoUpload}
+                {/* ── Account Management Section ── */}
+                <div className="flex flex-col gap-1.5 mb-6 mt-8">
+                  <h2 className="text-[22px] font-semibold text-[var(--label-primary)]">Account Management</h2>
+                  <p className="text-[15px] text-[var(--label-secondary)]">Add or switch between linked accounts.</p>
+                </div>
+
+                <IOSCard className="p-1 sm:p-2">
+                  <div className="p-4 sm:p-5 flex flex-col gap-3">
+                    {/* Add Account */}
+                    <Dialog open={isAddAccountOpen} onOpenChange={setIsAddAccountOpen}>
+                      <DialogTrigger asChild>
+                        <div className="flex items-center justify-between p-4 rounded-[16px] bg-[var(--fill-quaternary)] border border-[var(--border-card)] hover:bg-[var(--fill-tertiary)] transition-all cursor-pointer group active:scale-[0.99]">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-[12px] bg-[#34C759]/10 flex items-center justify-center group-hover:scale-105 transition-transform">
+                              <UserPlus className="h-5 w-5 text-[#34C759]" />
+                            </div>
+                            <div>
+                              <p className="text-[15px] font-semibold text-[var(--label-primary)]">Add Account</p>
+                              <p className="text-[13px] text-[var(--label-secondary)] pt-0.5">Link a new account to switch between.</p>
+                            </div>
+                          </div>
+                          <IOSButton variant="gray" className="rounded-full px-4 text-[13px] font-semibold">Add</IOSButton>
+                        </div>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-md bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px] p-0 overflow-hidden">
+                        <div className="p-6">
+                          <DialogHeader>
+                            <DialogTitle className="text-[20px] font-semibold text-[var(--label-primary)]">Add Account</DialogTitle>
+                            <DialogDescription className="text-[14px] text-[var(--label-secondary)] mt-1.5">Link a new account to your profile for quick switching.</DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4 py-6">
+                            <div className="space-y-1.5">
+                              <label htmlFor="add-email" className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">Email Address</label>
+                              <div className="relative">
+                                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--label-tertiary)]" />
+                                <IOSInput
+                                  id="add-email"
+                                  type="email"
+                                  placeholder="newaccount@company.com"
+                                  value={addAccountData.email}
+                                  onChange={(e: any) => setAddAccountData({ ...addAccountData, email: e.target.value })}
+                                  className="pl-11 h-[44px]"
                                 />
                               </div>
-                              <p className="text-[10px] text-muted-foreground mt-2 text-center">Max 500KB</p>
                             </div>
-                            <div className="flex-1 grid gap-4 sm:grid-cols-2">
-                              <div className="space-y-2 sm:col-span-2">
-                                <Label htmlFor="companyName" className="text-sm font-medium">
-                                  Company Name <span className="text-destructive">*</span>
-                                </Label>
-                                <div className="relative">
-                                  <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                  <Input
-                                    id="companyName"
-                                    placeholder="Your Company Name Pvt. Ltd."
-                                    value={companyData.companyName}
-                                    onChange={(e) => setCompanyData({ ...companyData, companyName: e.target.value })}
-                                    className="pl-10 rounded-xl border-border focus-visible:ring-accent"
-                                    required
-                                  />
-                                </div>
+                            <div className="space-y-1.5">
+                              <label htmlFor="add-password" className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">Password</label>
+                              <div className="relative">
+                                <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--label-tertiary)]" />
+                                <IOSInput
+                                  id="add-password"
+                                  type="password"
+                                  placeholder="••••••••"
+                                  value={addAccountData.password}
+                                  onChange={(e: any) => setAddAccountData({ ...addAccountData, password: e.target.value })}
+                                  className="pl-11 h-[44px]"
+                                />
                               </div>
-                              <div className="space-y-2">
-                                <Label htmlFor="companyPhone" className="text-sm font-medium">Phone</Label>
-                                <div className="relative">
-                                  <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                  <Input
-                                    id="companyPhone"
-                                    placeholder="+91 22 1234 5678"
-                                    value={companyData.phone}
-                                    onChange={(e) => setCompanyData({ ...companyData, phone: e.target.value })}
-                                    className="pl-10 rounded-xl border-border focus-visible:ring-accent"
-                                  />
-                                </div>
-                              </div>
-                              <div className="space-y-2">
-                                <Label htmlFor="companyEmail" className="text-sm font-medium">Email</Label>
-                                <div className="relative">
-                                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                  <Input
-                                    id="companyEmail"
-                                    type="email"
-                                    placeholder="billing@yourcompany.com"
-                                    value={companyData.email}
-                                    onChange={(e) => setCompanyData({ ...companyData, email: e.target.value })}
-                                    className="pl-10 rounded-xl border-border focus-visible:ring-accent"
-                                  />
-                                </div>
+                            </div>
+                            <div className="space-y-1.5">
+                              <label htmlFor="add-role" className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">Role</label>
+                              <div className="relative">
+                                <Briefcase className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--label-tertiary)] pointer-events-none" />
+                                <select
+                                  id="add-role"
+                                  value={addAccountData.role}
+                                  onChange={(e) => setAddAccountData({ ...addAccountData, role: e.target.value })}
+                                  className="w-full h-[44px] pl-11 pr-4 rounded-[12px] bg-white dark:bg-[#1C1C1E] border border-[var(--border-card)] text-[15px] text-[var(--label-primary)] focus:ring-[3px] focus:ring-[#007AFF]/30 focus:border-[#007AFF] outline-none transition-all appearance-none"
+                                >
+                                  <option value="Admin">Admin</option>
+                                  <option value="Staff">Staff</option>
+                                </select>
                               </div>
                             </div>
                           </div>
-
-                          <div className="space-y-2">
-                            <Label htmlFor="companyAddress" className="text-sm font-medium">Address</Label>
-                            <div className="relative">
-                              <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                              <Textarea
-                                id="companyAddress"
-                                placeholder="123 Industrial Area, Sector 5&#10;Mumbai, Maharashtra - 400001"
-                                value={companyData.address}
-                                onChange={(e) => setCompanyData({ ...companyData, address: e.target.value })}
-                                className="pl-10 rounded-xl border-border focus-visible:ring-accent min-h-[80px] resize-none"
-                                rows={3}
-                              />
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Tax Details */}
-                      <Card className="border-none shadow-md bg-card">
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2 text-xl">
-                            <CreditCard className="h-5 w-5 text-chart-2" />
-                            Tax Information
-                          </CardTitle>
-                          <CardDescription>GST and PAN details for tax invoices.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="grid gap-6 sm:grid-cols-2">
-                            <div className="space-y-2">
-                              <Label htmlFor="gstin" className="text-sm font-medium">GSTIN</Label>
-                              <Input
-                                id="gstin"
-                                placeholder="27AABCU9603R1ZM"
-                                value={companyData.gstin}
-                                onChange={(e) => setCompanyData({ ...companyData, gstin: e.target.value.toUpperCase() })}
-                                className="rounded-xl border-border focus-visible:ring-accent font-mono"
-                                maxLength={15}
-                              />
-                              <p className="text-[10px] text-muted-foreground">15-character GST Identification Number</p>
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="pan" className="text-sm font-medium">PAN</Label>
-                              <Input
-                                id="pan"
-                                placeholder="AABCU9603R"
-                                value={companyData.pan}
-                                onChange={(e) => setCompanyData({ ...companyData, pan: e.target.value.toUpperCase() })}
-                                className="rounded-xl border-border focus-visible:ring-accent font-mono"
-                                maxLength={10}
-                              />
-                              <p className="text-[10px] text-muted-foreground">10-character PAN Card Number</p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Bank Details */}
-                      <Card className="border-none shadow-md bg-card">
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2 text-xl">
-                            <Landmark className="h-5 w-5 text-chart-3" />
-                            Bank Details
-                          </CardTitle>
-                          <CardDescription>Bank account for payment collection (shown on invoices).</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="grid gap-6 sm:grid-cols-2">
-                            <div className="space-y-2">
-                              <Label htmlFor="bankName" className="text-sm font-medium">Bank Name</Label>
-                              <Input
-                                id="bankName"
-                                placeholder="State Bank of India"
-                                value={companyData.bankName}
-                                onChange={(e) => setCompanyData({ ...companyData, bankName: e.target.value })}
-                                className="rounded-xl border-border focus-visible:ring-accent"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="accountNo" className="text-sm font-medium">Account Number</Label>
-                              <Input
-                                id="accountNo"
-                                placeholder="1234567890123456"
-                                value={companyData.accountNo}
-                                onChange={(e) => setCompanyData({ ...companyData, accountNo: e.target.value })}
-                                className="rounded-xl border-border focus-visible:ring-accent font-mono"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="ifsc" className="text-sm font-medium">IFSC Code</Label>
-                              <Input
-                                id="ifsc"
-                                placeholder="SBIN0001234"
-                                value={companyData.ifsc}
-                                onChange={(e) => setCompanyData({ ...companyData, ifsc: e.target.value.toUpperCase() })}
-                                className="rounded-xl border-border focus-visible:ring-accent font-mono"
-                                maxLength={11}
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="upiId" className="text-sm font-medium">UPI ID</Label>
-                              <Input
-                                id="upiId"
-                                placeholder="yourcompany@sbi"
-                                value={companyData.upiId}
-                                onChange={(e) => setCompanyData({ ...companyData, upiId: e.target.value })}
-                                className="rounded-xl border-border focus-visible:ring-accent"
-                              />
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Save Button */}
-
-                    </fieldset>
-
-                    {/* Save Button - Hidden for Staff */}
-                    {!isStaff && (
-                      <div className="flex justify-end">
-                        <Button
-                          type="submit"
-                          disabled={companySaving}
-                          className="rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground font-bold px-8 h-11"
-                        >
-                          {companySaving ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          ) : (
-                            <Save className="mr-2 h-4 w-4" />
-                          )}
-                          Save Company Details
-                        </Button>
-                      </div>
-                    )}
-                  </form>
-                )}
-              </motion.div>
-            )}
-
-            {activeTab === "settings" && (
-              <motion.div
-                key="settings"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-6"
-              >
-                <Card className="border-none shadow-md bg-card">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-xl">
-                      <Lock className="h-5 w-5 text-chart-3" />
-                      Security Settings
-                    </CardTitle>
-                    <CardDescription>Manage your password and session security.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="flex flex-col gap-4">
-                      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                        <DialogTrigger asChild>
-                          <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/30 border border-border/50 hover:bg-muted/50 transition-all cursor-pointer group">
-                            <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 rounded-xl bg-chart-3/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                <Key className="h-5 w-5 text-chart-3" />
-                              </div>
-                              <div>
-                                <p className="text-sm font-bold">Change Password</p>
-                                <p className="text-xs text-muted-foreground">Update your login credentials.</p>
-                              </div>
-                            </div>
-                            <Button variant="outline" size="sm" className="rounded-lg">Update</Button>
-                          </div>
-                        </DialogTrigger>
-                        <DialogContent className="rounded-2xl">
-                          <DialogHeader>
-                            <DialogTitle>Change Password</DialogTitle>
-                            <DialogDescription>Enter your new password below.</DialogDescription>
-                          </DialogHeader>
-                          <div className="space-y-4 py-4">
-                            <div className="space-y-2">
-                              <Label htmlFor="new-password">New Password</Label>
-                              <Input
-                                id="new-password"
-                                type="password"
-                                value={passwordData.newPassword}
-                                onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                                className="rounded-xl"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="confirm-password">Confirm New Password</Label>
-                              <Input
-                                id="confirm-password"
-                                type="password"
-                                value={passwordData.confirmPassword}
-                                onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                                className="rounded-xl"
-                              />
-                            </div>
-                          </div>
-                          <DialogFooter>
-                            <Button
-                              onClick={handleUpdatePassword}
-                              disabled={updating}
-                              className="rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground font-bold"
+                          <DialogFooter className="flex gap-2 pt-2 border-t border-[var(--border-card)] border-x-[-24px] mx-[-24px] px-6 pb-2">
+                            <IOSButton
+                              variant="filled"
+                              color="blue"
+                              disabled={addingAccount || !addAccountData.email || !addAccountData.password}
+                              onClick={handleLinkAccount}
+                              className="w-full text-[15px] font-semibold"
                             >
-                              {updating ? "Updating..." : "Update Password"}
-                            </Button>
+                              {addingAccount ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
+                              {addingAccount ? "Linking..." : "Link Account"}
+                            </IOSButton>
                           </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
 
-                      <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/30 border border-border/50 hover:bg-muted/50 transition-all">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                            <Fingerprint className="h-5 w-5 text-primary" />
+                    {/* Switch Account */}
+                    <Dialog open={isSwitchAccountOpen} onOpenChange={setIsSwitchAccountOpen}>
+                      <DialogTrigger asChild>
+                        <div className="flex items-center justify-between p-4 rounded-[16px] bg-[var(--fill-quaternary)] border border-[var(--border-card)] hover:bg-[var(--fill-tertiary)] transition-all cursor-pointer group active:scale-[0.99]">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-[12px] bg-[#5856D6]/10 flex items-center justify-center group-hover:scale-105 transition-transform">
+                              <ArrowLeftRight className="h-5 w-5 text-[#5856D6]" />
+                            </div>
+                            <div>
+                              <p className="text-[15px] font-semibold text-[var(--label-primary)]">Switch Account</p>
+                              <p className="text-[13px] text-[var(--label-secondary)] pt-0.5">Switch between your linked accounts.</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-sm font-bold">Two-Factor Authentication</p>
-                            <p className="text-xs text-muted-foreground text-balance">Extra security layer for your account.</p>
+                          <IOSButton variant="gray" className="rounded-full px-4 text-[13px] font-semibold">Switch</IOSButton>
+                        </div>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-md bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px] p-0 overflow-hidden">
+                        <div className="p-6">
+                          <DialogHeader>
+                            <DialogTitle className="text-[20px] font-semibold text-[var(--label-primary)]">Switch Account</DialogTitle>
+                            <DialogDescription className="text-[14px] text-[var(--label-secondary)] mt-1.5">Select an account to switch to.</DialogDescription>
+                          </DialogHeader>
+                          <div className="py-6 space-y-2">
+                            {/* Current account */}
+                            <div className="flex items-center justify-between p-3.5 rounded-[14px] bg-[#007AFF]/5 border border-[#007AFF]/20">
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-10 w-10">
+                                  <AvatarImage src={profile?.avatar_url} />
+                                  <AvatarFallback className="bg-[var(--fill-tertiary)] text-[var(--label-primary)] text-sm font-bold">
+                                    {formData.full_name?.substring(0, 1).toUpperCase() || user?.email?.substring(0, 1).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="text-[15px] font-semibold text-[var(--label-primary)]">{formData.full_name || user?.email?.split("@")[0]}</p>
+                                  <p className="text-[12px] text-[var(--label-secondary)]">{user?.email}</p>
+                                </div>
+                              </div>
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#34C759]/10 text-[#34C759]">
+                                <Check className="h-3 w-3" /> Active
+                              </span>
+                            </div>
+
+                            {/* Linked accounts */}
+                            {linkedAccounts.length === 0 ? (
+                              <div className="text-center py-8">
+                                <Users className="mx-auto h-10 w-10 text-[var(--label-tertiary)] mb-3" />
+                                <p className="text-[15px] font-medium text-[var(--label-secondary)]">No linked accounts yet</p>
+                                <p className="text-[13px] text-[var(--label-tertiary)] mt-1">Use "Add Account" to link additional accounts.</p>
+                              </div>
+                            ) : (
+                              linkedAccounts.map((account) => {
+                                const isSwitching = switchingAccountId === account.id;
+                                return (
+                                  <button
+                                    key={account.id}
+                                    disabled={switchingAccountId !== null}
+                                    onClick={() => handleSwitchAccount(account.id, account.email, account.role)}
+                                    className="w-full flex items-center justify-between p-3.5 rounded-[14px] bg-[var(--fill-quaternary)] border border-[var(--border-card)] hover:bg-[var(--fill-tertiary)] transition-all cursor-pointer active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <Avatar className="h-10 w-10">
+                                        {account.avatar_url ? (
+                                          <AvatarImage src={account.avatar_url} />
+                                        ) : null}
+                                        <AvatarFallback className="bg-gradient-to-br from-[#5856D6] to-[#AF52DE] text-white text-sm font-bold">
+                                          {account.email.substring(0, 1).toUpperCase()}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <div className="text-left">
+                                        <p className="text-[15px] font-semibold text-[var(--label-primary)]">{account.fullName || account.email}</p>
+                                        <p className="text-[12px] text-[var(--label-secondary)]">{account.email} · {account.role}</p>
+                                      </div>
+                                    </div>
+                                    {isSwitching ? (
+                                      <Loader2 className="h-4 w-4 text-[#007AFF] animate-spin" />
+                                    ) : (
+                                      <ArrowLeftRight className="h-4 w-4 text-[var(--label-tertiary)]" />
+                                    )}
+                                  </button>
+                                );
+                              })
+                            )}
                           </div>
                         </div>
-                        <Switch />
-                      </div>
-                    </div>
-                  </CardContent>
-                  <CardFooter className="pt-0">
-                    <Button
-                      variant="outline"
-                      className="w-full rounded-xl text-destructive hover:bg-destructive/5 border-destructive/20 h-11"
-                      onClick={() => handleLogout(true)}
-                    >
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Sign out from all devices
-                    </Button>
-                  </CardFooter>
-                </Card>
-
-                <Card className="border border-destructive/20 shadow-md bg-destructive/[0.02]">
-                  <CardHeader>
-                    <CardTitle className="text-xl text-destructive flex items-center gap-2">
-                      <AlertTriangle className="h-5 w-5" />
-                      Danger Zone
-                    </CardTitle>
-                    <CardDescription>Irreversible actions for your account.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Button variant="destructive" className="rounded-xl font-bold px-8 h-10">Delete Account</Button>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
-
-            {activeTab === "notifications" && (
-              <motion.div
-                key="notifications"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-6"
-              >
-                <Card className="border-none shadow-md bg-card">
-                  <CardHeader>
-                    <CardTitle className="text-xl flex items-center gap-2">
-                      <Bell className="h-5 w-5 text-accent" />
-                      System Alerts
-                    </CardTitle>
-                    <CardDescription>Choose critical alerts you want to track.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/30">
-                        <div className="space-y-1">
-                          <Label className="text-base font-bold">Stock Alerts</Label>
-                          <p className="text-xs text-muted-foreground">Receive low-stock and out-of-stock warnings.</p>
-                        </div>
-                        <Switch
-                          checked={preferences.stock_alerts}
-                          onCheckedChange={(checked) => handleUpdatePreferences({ stock_alerts: checked })}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/30">
-                        <div className="space-y-1">
-                          <Label className="text-base font-bold">Order Alerts</Label>
-                          <p className="text-xs text-muted-foreground">Get notified about new orders and completions.</p>
-                        </div>
-                        <Switch
-                          checked={preferences.order_alerts}
-                          onCheckedChange={(checked) => handleUpdatePreferences({ order_alerts: checked })}
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-none shadow-md bg-card">
-                  <CardHeader>
-                    <CardTitle className="text-xl flex items-center gap-2">
-                      <Mail className="h-5 w-5 text-chart-2" />
-                      Notification Channels
-                    </CardTitle>
-                    <CardDescription>Choose how you want to be delivered alerts.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between px-2">
-                      <div className="space-y-0.5">
-                        <Label className="text-sm font-medium">Email Notifications</Label>
-                        <p className="text-xs text-muted-foreground">Weekly digests and critical security alerts.</p>
-                      </div>
-                      <Switch
-                        checked={preferences.emailNotifications}
-                        onCheckedChange={(checked) => handleUpdatePreferences({ emailNotifications: checked })}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between px-2">
-                      <div className="space-y-0.5">
-                        <Label className="text-sm font-medium">Push Notifications</Label>
-                        <p className="text-xs text-muted-foreground">Browser alerts for real-time factory events.</p>
-                      </div>
-                      <Switch
-                        checked={preferences.pushNotifications}
-                        onCheckedChange={(checked) => handleUpdatePreferences({ pushNotifications: checked })}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </IOSCard>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
-      </div >
-    </motion.div >
+      </div>
+    </motion.div>
   );
 }
 

@@ -1,17 +1,15 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
     Send,
     Bot,
     User,
     Sparkles,
-    Loader2,
     Trash2,
     Copy,
     Check,
     RefreshCw,
-    Settings,
     Zap,
     MessageSquare,
     TrendingUp,
@@ -24,33 +22,36 @@ import {
     BarChart3,
     AlertCircle,
     ChevronRight,
-    ExternalLink
+    History,
+    Wifi,
+    WifiOff,
+    FileBarChart,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogFooter
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
+// --- iOS Components ---
+import {
+    IOSButton,
+    IOSCard,
+    IOSCardHeader,
+    IOSCardContent,
+    IOSBadge,
+} from "@/components/ui/ios";
+
+// ─── Types ───────────────────────────────────────────────────
 interface Message {
     id: string;
-    role: 'user' | 'assistant' | 'system';
+    role: "user" | "assistant";
     content: string;
-    timestamp: Date;
+    displayedContent?: string;
+    timestamp: string;
     isLoading?: boolean;
+    isTyping?: boolean;
+    isError?: boolean;
+    errorMessage?: string;
 }
 
 interface QuickAction {
@@ -60,371 +61,443 @@ interface QuickAction {
     category: string;
 }
 
+interface BusinessContext {
+    stats: Record<string, unknown>;
+    orders: unknown[];
+    payments: unknown[];
+    inventory: unknown[];
+    clients: unknown[];
+}
+
+// ─── Constants ───────────────────────────────────────────────
+const CHAT_STORAGE_KEY = "ind_manager_chat_history";
+const TYPING_SPEED_MS = 18;
+
+const WELCOME_MESSAGE: Message = {
+    id: "welcome",
+    role: "assistant",
+    content: `👋 Hello! I'm your **IND Manager AI Assistant**, powered by Google Gemini.
+
+I can help you with:
+• 📊 Business analytics & insights
+• 📦 Inventory management
+• 👥 Client information
+• 💰 Payment tracking
+• 📋 Order status
+• 🏭 Production overview
+
+**How can I help you today?**`,
+    timestamp: new Date().toISOString(),
+};
+
 const QUICK_ACTIONS: QuickAction[] = [
     {
         icon: <TrendingUp className="h-4 w-4" />,
         label: "Revenue Summary",
         prompt: "Give me a summary of my revenue for this month including total collected, pending, and growth trends.",
-        category: "Analytics"
+        category: "Analytics",
     },
     {
         icon: <Package className="h-4 w-4" />,
         label: "Low Stock Alert",
         prompt: "Which inventory items are running low and need to be restocked soon?",
-        category: "Inventory"
+        category: "Inventory",
     },
     {
         icon: <Users className="h-4 w-4" />,
         label: "Top Clients",
         prompt: "Who are my top 5 clients by order value this quarter?",
-        category: "Clients"
+        category: "Clients",
     },
     {
         icon: <IndianRupee className="h-4 w-4" />,
         label: "Outstanding Payments",
         prompt: "List all clients with outstanding payments and the amounts due.",
-        category: "Payments"
+        category: "Payments",
     },
     {
         icon: <FileText className="h-4 w-4" />,
         label: "Pending Orders",
         prompt: "What orders are currently pending and when are their delivery dates?",
-        category: "Orders"
+        category: "Orders",
     },
     {
         icon: <BarChart3 className="h-4 w-4" />,
         label: "Business Insights",
         prompt: "Analyze my business performance and suggest areas for improvement.",
-        category: "Analytics"
-    }
+        category: "Analytics",
+    },
 ];
 
-const SAMPLE_RESPONSES: Record<string, string> = {
-    "revenue": `📊 **Monthly Revenue Summary**
+// ─── Typing Dots Component ───────────────────────────────────
+function TypingDots() {
+    return (
+        <div className="flex items-center gap-1.5 py-2 px-1">
+            {[0, 1, 2].map((i) => (
+                <motion.div
+                    key={i}
+                    className="h-2 w-2 rounded-full bg-[var(--ios-purple)]"
+                    animate={{
+                        y: [0, -6, 0],
+                        opacity: [0.4, 1, 0.4],
+                    }}
+                    transition={{
+                        duration: 0.8,
+                        repeat: Infinity,
+                        delay: i * 0.15,
+                        ease: "easeInOut",
+                    }}
+                />
+            ))}
+        </div>
+    );
+}
 
-Based on your current data:
+// ─── Format Message Content ──────────────────────────────────
+function formatMessage(content: string): string {
+    return content
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
+        .replace(/`(.*?)`/g, '<code class="bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-[13px] font-mono">$1</code>')
+        .replace(/\n/g, '<br />');
+}
 
-• **Total Billed:** ₹2,45,000
-• **Collected:** ₹1,89,500 (77.3%)
-• **Outstanding:** ₹55,500
-
-**Trend Analysis:**
-- Revenue is up 12% compared to last month
-- Collection efficiency has improved by 5%
-- 3 clients have pending payments over 30 days
-
-**Recommendations:**
-1. Follow up with clients having overdue payments
-2. Consider offering early payment discounts
-3. Review pricing for high-demand products`,
-
-    "inventory": `📦 **Low Stock Alert**
-
-The following items need attention:
-
-| Item | Current Stock | Min Level | Status |
-|------|--------------|-----------|--------|
-| Polyester Yarn | 45 kg | 100 kg | 🔴 Critical |
-| Cotton Thread | 120 pcs | 150 pcs | 🟡 Low |
-| Dye Powder Blue | 8 kg | 20 kg | 🔴 Critical |
-
-**Action Required:**
-- Contact suppliers for Polyester Yarn immediately
-- Dye Powder Blue reorder suggested within 2 days
-- Cotton Thread can wait 1 week
-
-Would you like me to help draft a restock request for your suppliers?`,
-
-    "clients": `👥 **Top 5 Clients This Quarter**
-
-1. **Sharma Textiles** - ₹85,000
-   - 12 orders, 100% payment record
-   
-2. **Krishna Fabrics** - ₹67,500
-   - 8 orders, 2 pending payments
-   
-3. **Metro Industries** - ₹54,000
-   - 6 orders, excellent track record
-   
-4. **Sunrise Garments** - ₹48,500
-   - 10 orders, some delayed payments
-   
-5. **Quality Weavers** - ₹42,000
-   - 5 large orders, premium client
-
-**Insight:** Your top 5 clients contribute 68% of total revenue. Consider loyalty programs to retain them.`,
-
-    "payments": `💰 **Outstanding Payments Summary**
-
-**Total Outstanding:** ₹55,500
-
-| Client | Amount | Days Overdue |
-|--------|--------|--------------|
-| Krishna Fabrics | ₹22,000 | 15 days |
-| Sunrise Garments | ₹18,500 | 8 days |
-| New Age Textiles | ₹15,000 | 3 days |
-
-**Payment Health Score:** 77/100
-
-**Suggested Actions:**
-1. Send reminder to Krishna Fabrics (priority)
-2. Schedule call with Sunrise Garments
-3. New Age Textiles - standard reminder
-
-Would you like me to draft payment reminder messages?`,
-
-    "orders": `📋 **Pending Orders Overview**
-
-You have **8 active orders** worth ₹1,24,500
-
-**Priority Orders (Due This Week):**
-• Order #INV2401 - Sharma Textiles
-  Product: Cotton Fabric 200m
-  Due: Tomorrow ⚠️
-
-• Order #INV2402 - Metro Industries
-  Product: Polyester Blend 150m
-  Due: 3 days
-
-**Production Status:**
-- 3 orders in production
-- 2 orders awaiting materials
-- 3 orders scheduled
-
-**Alert:** Order #INV2401 requires immediate attention!`,
-
-    "insights": `🎯 **Business Performance Analysis**
-
-**Overall Health Score: 82/100** ⭐
-
-**Strengths:**
-✅ Strong client retention (85%)
-✅ Growing revenue trend (+12% MoM)
-✅ Diverse product portfolio
-
-**Areas for Improvement:**
-⚠️ Collection efficiency at 77% (target: 90%)
-⚠️ 3 inventory items frequently out of stock
-⚠️ Average delivery time could be reduced
-
-**Recommendations:**
-
-1. **Payment Terms Review**
-   - Implement milestone-based payments for large orders
-   - Estimated impact: +15% cash flow
-
-2. **Inventory Optimization**
-   - Set up automatic reorder points
-   - Expected reduction in stockouts: 60%
-
-3. **Client Communication**
-   - Use WhatsApp integration for order updates
-   - Projected satisfaction increase: 20%
-
-Would you like detailed action plans for any of these?`
-};
-
+// ─── Main Component ─────────────────────────────────────────
 export default function AIAssistantPage() {
-    const [messages, setMessages] = useState<Message[]>([
-        {
-            id: '1',
-            role: 'assistant',
-            content: `👋 Hello! I'm your **IND Manager AI Assistant**.
-
-I can help you with:
-• 📊 Business analytics and insights
-• 📦 Inventory management queries
-• 👥 Client information
-• 💰 Payment tracking
-• 📋 Order status updates
-• 📝 Generate reports and summaries
-
-**How can I assist you today?**`,
-            timestamp: new Date()
-        }
-    ]);
+    const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [copiedId, setCopiedId] = useState<string | null>(null);
-    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-    const [webhookUrl, setWebhookUrl] = useState("");
-    const [savedWebhookUrl, setSavedWebhookUrl] = useState("");
+    const [businessContext, setBusinessContext] = useState<BusinessContext | null>(null);
+    const [isContextLoaded, setIsContextLoaded] = useState(false);
+    const [historyLoaded, setHistoryLoaded] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
-    const inputRef = useRef<HTMLInputElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const typingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-    // Load saved webhook URL from localStorage
+    // ── Smart Reports State ──
+    const [viewMode, setViewMode] = useState<"chat" | "reports">("chat");
+    const [reportQuestion, setReportQuestion] = useState("");
+    const [reportLoading, setReportLoading] = useState(false);
+    const [reportHistory, setReportHistory] = useState<Array<{ question: string; response: any; timestamp: string }>>([]);
+
+    const REPORT_PROMPTS = [
+        { label: "Revenue Analysis", prompt: "Analyze my total revenue, top products by revenue, and month-over-month growth trends.", icon: "📊" },
+        { label: "Inventory Health", prompt: "Give me a full inventory health check — which items need restocking, total inventory value, and turnover rate.", icon: "📦" },
+        { label: "Profit Breakdown", prompt: "Break down my profit margins across all orders. What are my highest and lowest margin products?", icon: "💰" },
+        { label: "Client Insights", prompt: "Who are my most valuable clients? Show revenue per client and payment reliability.", icon: "👥" },
+        { label: "Cash Flow", prompt: "Analyze my cash flow — total collected vs outstanding, overdue payments, and collection rate.", icon: "🏦" },
+        { label: "Production Efficiency", prompt: "How efficient is my production? Show order completion rate, average delivery time, and bottlenecks.", icon: "🏭" },
+    ];
+
+    const sendReport = async (question: string) => {
+        if (!question.trim() || reportLoading) return;
+        setReportLoading(true);
+        try {
+            const res = await fetch("/api/v1/ai-reports", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    question: question.trim(),
+                    history: reportHistory.slice(-6).map((r) => ({
+                        role: "user",
+                        content: r.question,
+                    })),
+                }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                setReportHistory((prev) => [
+                    { question: question.trim(), response: data.response, timestamp: new Date().toISOString() },
+                    ...prev,
+                ]);
+                setReportQuestion("");
+            } else {
+                toast.error(data.error || "Failed to generate report");
+            }
+        } catch {
+            toast.error("Failed to generate report");
+        } finally {
+            setReportLoading(false);
+        }
+    };
+
+    // ─── Load Chat History ───────────────────────────────────
     useEffect(() => {
-        const saved = localStorage.getItem('n8n_webhook_url');
-        if (saved) {
-            setSavedWebhookUrl(saved);
-            setWebhookUrl(saved);
+        try {
+            const saved = localStorage.getItem(CHAT_STORAGE_KEY);
+            if (saved) {
+                const parsed = JSON.parse(saved) as Message[];
+                if (parsed.length > 0) {
+                    // Restore messages, clearing any in-progress states
+                    const restored = parsed.map((m) => ({
+                        ...m,
+                        isLoading: false,
+                        isTyping: false,
+                        displayedContent: m.content,
+                    }));
+                    setMessages(restored);
+                }
+            }
+        } catch {
+            // Corrupted storage, start fresh
+        }
+        setHistoryLoaded(true);
+    }, []);
+
+    // ─── Save Chat History ───────────────────────────────────
+    useEffect(() => {
+        if (!historyLoaded) return;
+        try {
+            const toSave = messages
+                .filter((m) => !m.isLoading)
+                .map(({ id, role, content, timestamp, isError, errorMessage }) => ({
+                    id,
+                    role,
+                    content,
+                    timestamp,
+                    isError,
+                    errorMessage,
+                }));
+            localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(toSave));
+        } catch {
+            // Storage full, silently fail
+        }
+    }, [messages, historyLoaded]);
+
+    // ─── Fetch Business Context ──────────────────────────────
+    useEffect(() => {
+        async function fetchContext() {
+            try {
+                const [statsRes, ordersRes, clientsRes, inventoryRes, paymentsRes] =
+                    await Promise.all([
+                        fetch("/api/dashboard/stats").then((r) => r.json()).catch(() => ({})),
+                        fetch("/api/orders").then((r) => r.json()).catch(() => []),
+                        fetch("/api/clients").then((r) => r.json()).catch(() => []),
+                        fetch("/api/inventory").then((r) => r.json()).catch(() => []),
+                        fetch("/api/payments").then((r) => r.json()).catch(() => []),
+                    ]);
+                setBusinessContext({
+                    stats: statsRes,
+                    orders: Array.isArray(ordersRes) ? ordersRes : ordersRes?.orders || [],
+                    payments: Array.isArray(paymentsRes) ? paymentsRes : paymentsRes?.payments || [],
+                    inventory: Array.isArray(inventoryRes) ? inventoryRes : inventoryRes?.items || [],
+                    clients: Array.isArray(clientsRes) ? clientsRes : clientsRes?.clients || [],
+                });
+                setIsContextLoaded(true);
+            } catch {
+                setIsContextLoaded(true); // proceed without context
+            }
+        }
+        fetchContext();
+    }, []);
+
+    // ─── Auto-scroll ─────────────────────────────────────────
+    const scrollToBottom = useCallback(() => {
+        if (scrollRef.current) {
+            const scrollContainer = scrollRef.current.querySelector("[data-radix-scroll-area-viewport]");
+            if (scrollContainer) {
+                scrollContainer.scrollTop = scrollContainer.scrollHeight;
+            }
         }
     }, []);
 
-    // Auto-scroll to bottom on new messages
     useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        scrollToBottom();
+    }, [messages, scrollToBottom]);
+
+    // ─── Typing Animation ────────────────────────────────────
+    const startTypingAnimation = useCallback(
+        (messageId: string, fullContent: string) => {
+            if (typingIntervalRef.current) {
+                clearInterval(typingIntervalRef.current);
+            }
+
+            let charIndex = 0;
+            setMessages((prev) =>
+                prev.map((m) =>
+                    m.id === messageId
+                        ? { ...m, isTyping: true, displayedContent: "" }
+                        : m
+                )
+            );
+
+            typingIntervalRef.current = setInterval(() => {
+                charIndex++;
+                if (charIndex >= fullContent.length) {
+                    if (typingIntervalRef.current) {
+                        clearInterval(typingIntervalRef.current);
+                        typingIntervalRef.current = null;
+                    }
+                    setMessages((prev) =>
+                        prev.map((m) =>
+                            m.id === messageId
+                                ? { ...m, isTyping: false, displayedContent: fullContent }
+                                : m
+                        )
+                    );
+                    return;
+                }
+                setMessages((prev) =>
+                    prev.map((m) =>
+                        m.id === messageId
+                            ? { ...m, displayedContent: fullContent.slice(0, charIndex) }
+                            : m
+                    )
+                );
+                scrollToBottom();
+            }, TYPING_SPEED_MS);
+        },
+        [scrollToBottom]
+    );
+
+    // ─── Cleanup interval on unmount ─────────────────────────
+    useEffect(() => {
+        return () => {
+            if (typingIntervalRef.current) {
+                clearInterval(typingIntervalRef.current);
+            }
+        };
+    }, []);
+
+    // ─── Auto-resize textarea ────────────────────────────────
+    useEffect(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = "auto";
+            textareaRef.current.style.height =
+                Math.min(textareaRef.current.scrollHeight, 120) + "px";
         }
-    }, [messages]);
+    }, [input]);
 
-    const saveWebhookUrl = () => {
-        localStorage.setItem('n8n_webhook_url', webhookUrl);
-        setSavedWebhookUrl(webhookUrl);
-        setIsSettingsOpen(false);
-        toast.success("n8n webhook URL saved successfully!");
-    };
-
+    // ─── Send Message ────────────────────────────────────────
     const sendMessage = async (content: string) => {
-        if (!content.trim()) return;
+        if (!content.trim() || isLoading) return;
 
         const userMessage: Message = {
             id: Date.now().toString(),
-            role: 'user',
+            role: "user",
             content: content.trim(),
-            timestamp: new Date()
+            displayedContent: content.trim(),
+            timestamp: new Date().toISOString(),
         };
 
-        setMessages(prev => [...prev, userMessage]);
+        const loadingId = (Date.now() + 1).toString();
+        const loadingMessage: Message = {
+            id: loadingId,
+            role: "assistant",
+            content: "",
+            timestamp: new Date().toISOString(),
+            isLoading: true,
+        };
+
+        setMessages((prev) => [...prev, userMessage, loadingMessage]);
         setInput("");
         setIsLoading(true);
 
-        // Add loading message
-        const loadingId = (Date.now() + 1).toString();
-        setMessages(prev => [...prev, {
-            id: loadingId,
-            role: 'assistant',
-            content: '',
-            timestamp: new Date(),
-            isLoading: true
-        }]);
+        // Reset textarea height
+        if (textareaRef.current) {
+            textareaRef.current.style.height = "auto";
+        }
 
         try {
-            let responseContent = '';
+            // Build history for API (exclude welcome, loading, error messages)
+            const history = messages
+                .filter((m) => m.id !== "welcome" && !m.isLoading && !m.isError)
+                .map((m) => ({ role: m.role, content: m.content }));
 
-            // Check if n8n webhook is configured
-            if (savedWebhookUrl) {
-                try {
-                    // Fetch business context data
-                    const [statsRes, ordersRes, clientsRes, inventoryRes, paymentsRes] = await Promise.all([
-                        fetch("/api/dashboard/stats").then(r => r.json()).catch(() => ({})),
-                        fetch("/api/orders").then(r => r.json()).catch(() => []),
-                        fetch("/api/clients").then(r => r.json()).catch(() => []),
-                        fetch("/api/inventory").then(r => r.json()).catch(() => []),
-                        fetch("/api/payments").then(r => r.json()).catch(() => [])
-                    ]);
+            const res = await fetch("/api/assistant/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    message: content.trim(),
+                    history: history.slice(-20), // Last 20 messages for context
+                    context: businessContext || {},
+                }),
+            });
 
-                    // Send to n8n webhook with business context
-                    const response = await fetch(savedWebhookUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            message: content,
-                            context: {
-                                stats: statsRes,
-                                recentOrders: ordersRes.slice(0, 10),
-                                clients: clientsRes,
-                                inventory: inventoryRes,
-                                recentPayments: paymentsRes.slice(0, 10)
-                            },
-                            timestamp: new Date().toISOString()
-                        })
-                    });
+            const data = await res.json();
 
-                    if (response.ok) {
-                        const data = await response.json();
-                        responseContent = data.response || data.message || data.output ||
-                            JSON.stringify(data, null, 2);
-                    } else {
-                        throw new Error('Webhook request failed');
-                    }
-                } catch (webhookError) {
-                    console.error("n8n webhook error:", webhookError);
-                    responseContent = `⚠️ **Connection Issue**
-
-I couldn't reach the n8n webhook. Please check:
-1. Your n8n workflow is active
-2. The webhook URL is correct
-3. Your network connection
-
-In the meantime, here's what I can tell you locally:
-
-${getLocalResponse(content)}`;
-                }
-            } else {
-                // Use local demo responses
-                responseContent = getLocalResponse(content);
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || "Failed to get response");
             }
 
-            // Remove loading message and add response
-            setMessages(prev => {
-                const filtered = prev.filter(m => m.id !== loadingId);
-                return [...filtered, {
-                    id: (Date.now() + 2).toString(),
-                    role: 'assistant',
-                    content: responseContent,
-                    timestamp: new Date()
-                }];
+            const responseId = (Date.now() + 2).toString();
+
+            // Replace loading with response
+            setMessages((prev) => {
+                const filtered = prev.filter((m) => m.id !== loadingId);
+                return [
+                    ...filtered,
+                    {
+                        id: responseId,
+                        role: "assistant" as const,
+                        content: data.response,
+                        displayedContent: "",
+                        timestamp: new Date().toISOString(),
+                        isTyping: true,
+                    },
+                ];
             });
-        } catch (error) {
-            console.error("Error sending message:", error);
-            setMessages(prev => {
-                const filtered = prev.filter(m => m.id !== loadingId);
-                return [...filtered, {
-                    id: (Date.now() + 2).toString(),
-                    role: 'assistant',
-                    content: "I apologize, but I encountered an error processing your request. Please try again.",
-                    timestamp: new Date()
-                }];
+
+            // Start typing animation
+            startTypingAnimation(responseId, data.response);
+        } catch (error: unknown) {
+            const errorMsg =
+                error instanceof Error ? error.message : "Something went wrong";
+            toast.error(errorMsg);
+
+            // Replace loading with error
+            setMessages((prev) => {
+                const filtered = prev.filter((m) => m.id !== loadingId);
+                return [
+                    ...filtered,
+                    {
+                        id: (Date.now() + 2).toString(),
+                        role: "assistant" as const,
+                        content: `⚠️ **Error:** ${errorMsg}`,
+                        displayedContent: `⚠️ **Error:** ${errorMsg}`,
+                        timestamp: new Date().toISOString(),
+                        isError: true,
+                        errorMessage: errorMsg,
+                    },
+                ];
             });
         } finally {
             setIsLoading(false);
         }
     };
 
-    const getLocalResponse = (query: string): string => {
-        const lowerQuery = query.toLowerCase();
+    // ─── Retry last message ──────────────────────────────────
+    const retryLastMessage = () => {
+        // Find the last user message
+        const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
+        if (!lastUserMsg) return;
 
-        if (lowerQuery.includes('revenue') || lowerQuery.includes('summary') || lowerQuery.includes('money')) {
-            return SAMPLE_RESPONSES['revenue'];
-        }
-        if (lowerQuery.includes('inventory') || lowerQuery.includes('stock') || lowerQuery.includes('restock')) {
-            return SAMPLE_RESPONSES['inventory'];
-        }
-        if (lowerQuery.includes('client') || lowerQuery.includes('customer') || lowerQuery.includes('top')) {
-            return SAMPLE_RESPONSES['clients'];
-        }
-        if (lowerQuery.includes('payment') || lowerQuery.includes('outstanding') || lowerQuery.includes('due')) {
-            return SAMPLE_RESPONSES['payments'];
-        }
-        if (lowerQuery.includes('order') || lowerQuery.includes('pending') || lowerQuery.includes('delivery')) {
-            return SAMPLE_RESPONSES['orders'];
-        }
-        if (lowerQuery.includes('insight') || lowerQuery.includes('analysis') || lowerQuery.includes('improve') || lowerQuery.includes('performance')) {
-            return SAMPLE_RESPONSES['insights'];
-        }
+        // Remove the error message
+        setMessages((prev) => {
+            const lastErr = [...prev].reverse().find((m) => m.isError);
+            if (lastErr) return prev.filter((m) => m.id !== lastErr.id);
+            return prev;
+        });
 
-        return `I understand you're asking about: "${query}"
+        // Also remove the last user message so sendMessage re-adds it
+        setMessages((prev) => prev.filter((m) => m.id !== lastUserMsg.id));
 
-To provide you with accurate, real-time data analysis, please configure the **n8n integration** by clicking the ⚙️ Settings button.
-
-**What I can help with:**
-• Revenue and payment summaries
-• Inventory status and alerts
-• Client analytics
-• Order tracking
-• Business insights
-
-Try one of the **Quick Actions** below, or ask me anything about your business!`;
+        // Re-send
+        setTimeout(() => sendMessage(lastUserMsg.content), 100);
     };
 
+    // ─── Handlers ────────────────────────────────────────────
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         sendMessage(input);
     };
 
-    const handleQuickAction = (prompt: string) => {
-        sendMessage(prompt);
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage(input);
+        }
     };
 
     const copyToClipboard = (text: string, id: string) => {
@@ -435,128 +508,214 @@ Try one of the **Quick Actions** below, or ask me anything about your business!`
     };
 
     const clearChat = () => {
-        setMessages([{
+        if (typingIntervalRef.current) {
+            clearInterval(typingIntervalRef.current);
+            typingIntervalRef.current = null;
+        }
+        const fresh: Message = {
+            ...WELCOME_MESSAGE,
             id: Date.now().toString(),
-            role: 'assistant',
-            content: `Chat cleared! 🧹
-
-How can I help you today?`,
-            timestamp: new Date()
-        }]);
+            timestamp: new Date().toISOString(),
+            displayedContent: WELCOME_MESSAGE.content,
+        };
+        setMessages([fresh]);
+        localStorage.removeItem(CHAT_STORAGE_KEY);
         toast.success("Chat history cleared");
     };
 
-    const formatMessage = (content: string) => {
-        // Simple markdown-like formatting
-        return content
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/`(.*?)`/g, '<code class="bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded text-sm">$1</code>')
-            .replace(/\n/g, '<br />');
-    };
-
+    // ─── Render ──────────────────────────────────────────────
     return (
         <div className="h-[calc(100vh-140px)] flex flex-col">
             {/* Header */}
-            <div className="flex justify-between items-start mb-6">
+            <div className="flex justify-between items-start mb-4 flex-shrink-0">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
+                    <h1 className="text-[28px] font-bold tracking-tight flex items-center gap-3 text-[var(--label-primary)]">
+                        <div className="h-10 w-10 rounded-[12px] bg-gradient-to-br from-[var(--ios-purple)] to-[var(--ios-indigo)] flex items-center justify-center shadow-lg shadow-[var(--ios-purple)]/30">
                             <Bot className="h-5 w-5 text-white" />
                         </div>
                         AI Assistant
                     </h1>
-                    <p className="text-zinc-500 mt-1 flex items-center gap-2">
-                        Powered by n8n integration
-                        {savedWebhookUrl ? (
-                            <Badge variant="outline" className="text-emerald-600 border-emerald-200 bg-emerald-50">
-                                <Zap className="h-3 w-3 mr-1" />
-                                Connected
-                            </Badge>
+                    <div className="text-[13px] text-[var(--label-secondary)] mt-1.5 flex items-center gap-2">
+                        {isContextLoaded ? (
+                            <IOSBadge variant="tinted" color="green" className="text-[10px] uppercase">
+                                <Wifi className="h-3 w-3 mr-1" />
+                                Ready
+                            </IOSBadge>
                         ) : (
-                            <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">
-                                <AlertCircle className="h-3 w-3 mr-1" />
-                                Demo Mode
-                            </Badge>
+                            <IOSBadge variant="tinted" color="orange" className="text-[10px] uppercase">
+                                <WifiOff className="h-3 w-3 mr-1" />
+                                Loading...
+                            </IOSBadge>
                         )}
-                    </p>
+                    </div>
+                    {/* Mode Toggle */}
+                    <div className="flex mt-2 gap-1 bg-[var(--fill-tertiary)] rounded-[10px] p-0.5 w-fit">
+                        <button
+                            onClick={() => setViewMode("chat")}
+                            className={cn(
+                                "px-3 py-1.5 rounded-[8px] text-[13px] font-medium transition-all duration-200 cursor-pointer flex items-center gap-1.5",
+                                viewMode === "chat"
+                                    ? "bg-[var(--bg-card)] text-[var(--label-primary)] shadow-sm"
+                                    : "text-[var(--label-secondary)] hover:text-[var(--label-primary)]"
+                            )}
+                        >
+                            <MessageSquare className="h-3.5 w-3.5" /> Chat
+                        </button>
+                        <button
+                            onClick={() => setViewMode("reports")}
+                            className={cn(
+                                "px-3 py-1.5 rounded-[8px] text-[13px] font-medium transition-all duration-200 cursor-pointer flex items-center gap-1.5",
+                                viewMode === "reports"
+                                    ? "bg-[var(--bg-card)] text-[var(--label-primary)] shadow-sm"
+                                    : "text-[var(--label-secondary)] hover:text-[var(--label-primary)]"
+                            )}
+                        >
+                            <FileBarChart className="h-3.5 w-3.5" /> Smart Reports
+                        </button>
+                    </div>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={clearChat}>
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Clear Chat
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setIsSettingsOpen(true)}>
-                        <Settings className="h-4 w-4 mr-2" />
-                        n8n Settings
-                    </Button>
+                    {viewMode === "chat" && (
+                        <>
+                            <IOSButton variant="gray" className="!py-1.5" onClick={clearChat}>
+                                <Trash2 className="h-4 w-4 mr-1.5 text-[var(--ios-red)]" />
+                                Clear Chat
+                            </IOSButton>
+                            {messages.length > 1 && (
+                                <IOSBadge variant="tinted" color="purple" className="text-[10px] uppercase self-center">
+                                    <History className="h-3 w-3 mr-1" />
+                                    {messages.filter((m) => m.id !== "welcome").length} msgs
+                                </IOSBadge>
+                            )}
+                        </>
+                    )}
                 </div>
             </div>
 
-            <div className="flex-1 flex gap-6 min-h-0">
+            {viewMode === "chat" && (
+            <div className="flex-1 flex gap-6 min-h-0 overflow-hidden">
                 {/* Chat Area */}
-                <Card className="flex-1 flex flex-col overflow-hidden border-2">
+                <IOSCard variant="elevated" className="flex-1 flex flex-col overflow-hidden border border-[var(--border-card)] p-0">
                     <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-                        <div className="space-y-4">
-                            <AnimatePresence>
+                        <div className="space-y-4 pb-4">
+                            <AnimatePresence mode="popLayout">
                                 {messages.map((message) => (
                                     <motion.div
                                         key={message.id}
-                                        initial={{ opacity: 0, y: 10 }}
+                                        initial={{ opacity: 0, y: 12 }}
                                         animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0 }}
+                                        exit={{ opacity: 0, y: -8 }}
+                                        transition={{ type: "spring", stiffness: 500, damping: 35 }}
                                         className={cn(
                                             "flex gap-3",
-                                            message.role === 'user' && "flex-row-reverse"
+                                            message.role === "user" && "flex-row-reverse"
                                         )}
                                     >
-                                        <div className={cn(
-                                            "h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0",
-                                            message.role === 'user'
-                                                ? "bg-primary text-primary-foreground"
-                                                : "bg-gradient-to-br from-violet-500 to-purple-600 text-white"
-                                        )}>
-                                            {message.role === 'user' ? (
+                                        {/* Avatar */}
+                                        <div
+                                            className={cn(
+                                                "h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm",
+                                                message.role === "user"
+                                                    ? "bg-[var(--ios-purple)] text-white"
+                                                    : "bg-gradient-to-br from-[var(--ios-purple)] to-[var(--ios-indigo)] text-white"
+                                            )}
+                                        >
+                                            {message.role === "user" ? (
                                                 <User className="h-4 w-4" />
                                             ) : (
                                                 <Bot className="h-4 w-4" />
                                             )}
                                         </div>
 
-                                        <div className={cn(
-                                            "max-w-[80%] rounded-2xl px-4 py-3 group relative",
-                                            message.role === 'user'
-                                                ? "bg-primary text-primary-foreground rounded-tr-sm"
-                                                : "bg-zinc-100 dark:bg-zinc-800 rounded-tl-sm"
-                                        )}>
+                                        {/* Bubble */}
+                                        <div
+                                            className={cn(
+                                                "max-w-[80%] rounded-[20px] px-4 py-3 group relative shadow-sm border border-transparent backdrop-blur-md",
+                                                message.role === "user"
+                                                    ? "bg-[var(--ios-purple)] text-white rounded-tr-[6px]"
+                                                    : message.isError
+                                                        ? "bg-red-50 dark:bg-red-950/30 text-[var(--label-primary)] border-red-200 dark:border-red-800/50 rounded-tl-[6px]"
+                                                        : "bg-[var(--fill-quaternary)] text-[var(--label-primary)] border-[var(--border-card)] rounded-tl-[6px] dark:bg-[var(--fill-tertiary)]"
+                                            )}
+                                        >
                                             {message.isLoading ? (
-                                                <div className="flex items-center gap-2 py-2">
-                                                    <Loader2 className="h-4 w-4 animate-spin text-violet-500" />
-                                                    <span className="text-sm text-zinc-500">Thinking...</span>
-                                                </div>
+                                                <TypingDots />
                                             ) : (
                                                 <>
                                                     <div
-                                                        className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert"
-                                                        dangerouslySetInnerHTML={{ __html: formatMessage(message.content) }}
+                                                        className={cn(
+                                                            "text-[15px] leading-relaxed whitespace-pre-wrap",
+                                                            message.role === "user"
+                                                                ? "text-white"
+                                                                : "text-[var(--label-primary)]"
+                                                        )}
+                                                        dangerouslySetInnerHTML={{
+                                                            __html: formatMessage(
+                                                                message.displayedContent ?? message.content
+                                                            ),
+                                                        }}
                                                     />
-                                                    {message.role === 'assistant' && !message.isLoading && (
+
+                                                    {/* Typing cursor */}
+                                                    {message.isTyping && (
+                                                        <motion.span
+                                                            className="inline-block w-[2px] h-[16px] bg-[var(--ios-purple)] ml-0.5 align-middle"
+                                                            animate={{ opacity: [1, 0] }}
+                                                            transition={{
+                                                                duration: 0.6,
+                                                                repeat: Infinity,
+                                                                repeatType: "reverse",
+                                                            }}
+                                                        />
+                                                    )}
+
+                                                    {/* Copy button */}
+                                                    {message.role === "assistant" &&
+                                                        !message.isLoading &&
+                                                        !message.isTyping && (
+                                                            <button
+                                                                onClick={() =>
+                                                                    copyToClipboard(message.content, message.id)
+                                                                }
+                                                                className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-2 bg-[var(--fill-tertiary)] shadow-sm rounded-full border border-[var(--border-card)]"
+                                                            >
+                                                                {copiedId === message.id ? (
+                                                                    <Check className="h-3 w-3 text-[var(--ios-green)]" />
+                                                                ) : (
+                                                                    <Copy className="h-3 w-3 text-[var(--label-secondary)]" />
+                                                                )}
+                                                            </button>
+                                                        )}
+
+                                                    {/* Error retry button */}
+                                                    {message.isError && (
                                                         <button
-                                                            onClick={() => copyToClipboard(message.content, message.id)}
-                                                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded"
+                                                            onClick={retryLastMessage}
+                                                            className="mt-2 flex items-center gap-1.5 text-[12px] text-[var(--ios-purple)] font-semibold hover:underline"
                                                         >
-                                                            {copiedId === message.id ? (
-                                                                <Check className="h-3 w-3 text-emerald-500" />
-                                                            ) : (
-                                                                <Copy className="h-3 w-3 text-zinc-400" />
-                                                            )}
+                                                            <RefreshCw className="h-3 w-3" />
+                                                            Retry
                                                         </button>
                                                     )}
                                                 </>
                                             )}
-                                            <span className="text-[10px] text-zinc-400 mt-2 block">
-                                                {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            </span>
+
+                                            {/* Timestamp */}
+                                            {!message.isLoading && (
+                                                <span
+                                                    className={cn(
+                                                        "text-[10px] mt-2 block",
+                                                        message.role === "user"
+                                                            ? "text-white/70"
+                                                            : "text-[var(--label-tertiary)]"
+                                                    )}
+                                                >
+                                                    {new Date(message.timestamp).toLocaleTimeString([], {
+                                                        hour: "2-digit",
+                                                        minute: "2-digit",
+                                                    })}
+                                                </span>
+                                            )}
                                         </div>
                                     </motion.div>
                                 ))}
@@ -565,178 +724,334 @@ How can I help you today?`,
                     </ScrollArea>
 
                     {/* Input Area */}
-                    <div className="p-4 border-t bg-zinc-50 dark:bg-zinc-900">
-                        <form onSubmit={handleSubmit} className="flex gap-2">
-                            <Input
-                                ref={inputRef}
+                    <div className="p-4 border-t border-[var(--border-card)] bg-[var(--fill-quaternary)]/50 backdrop-blur-xl flex-shrink-0">
+                        <form
+                            onSubmit={handleSubmit}
+                            className="flex gap-2 max-w-4xl mx-auto items-end relative"
+                        >
+                            <textarea
+                                ref={textareaRef}
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
+                                onKeyDown={handleKeyDown}
                                 placeholder="Ask me anything about your business..."
-                                className="flex-1 h-12 bg-white dark:bg-zinc-950 border-2 focus:border-violet-500"
-                                disabled={isLoading}
-                            />
-                            <Button
-                                type="submit"
-                                size="lg"
-                                disabled={isLoading || !input.trim()}
-                                className="h-12 px-6 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700"
-                            >
-                                {isLoading ? (
-                                    <Loader2 className="h-5 w-5 animate-spin" />
-                                ) : (
-                                    <Send className="h-5 w-5" />
+                                rows={1}
+                                className={cn(
+                                    "flex-1 resize-none rounded-[16px] border border-[var(--border-card)]",
+                                    "bg-white/80 dark:bg-black/50 shadow-sm pr-14 pl-4 py-3",
+                                    "text-[15px] text-[var(--label-primary)] placeholder:text-[var(--label-tertiary)]",
+                                    "focus:outline-none focus:ring-2 focus:ring-[var(--ios-purple)]/30 focus:border-[var(--ios-purple)]/50",
+                                    "transition-all duration-200",
+                                    "disabled:opacity-50"
                                 )}
-                            </Button>
+                                disabled={isLoading}
+                                style={{ maxHeight: 120 }}
+                            />
+                            <div className="absolute right-1.5 bottom-1.5">
+                                <button
+                                    type="submit"
+                                    disabled={isLoading || !input.trim()}
+                                    className={cn(
+                                        "h-9 w-9 rounded-full flex items-center justify-center",
+                                        "bg-[var(--ios-purple)] text-white shadow-md",
+                                        "hover:bg-[var(--ios-purple)]/90 active:scale-95",
+                                        "transition-all duration-150",
+                                        "disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100"
+                                    )}
+                                >
+                                    {isLoading ? (
+                                        <motion.div
+                                            animate={{ rotate: 360 }}
+                                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                        >
+                                            <Sparkles className="h-4 w-4" />
+                                        </motion.div>
+                                    ) : (
+                                        <Send className="h-4 w-4 -ml-0.5" />
+                                    )}
+                                </button>
+                            </div>
                         </form>
+                        <p className="text-center text-[10px] text-[var(--label-tertiary)] mt-2">
+                            Press <kbd className="px-1 py-0.5 bg-[var(--fill-tertiary)] rounded text-[9px] border border-[var(--border-card)]">Enter</kbd> to send · <kbd className="px-1 py-0.5 bg-[var(--fill-tertiary)] rounded text-[9px] border border-[var(--border-card)]">Shift+Enter</kbd> for new line
+                        </p>
                     </div>
-                </Card>
+                </IOSCard>
 
                 {/* Quick Actions Sidebar */}
-                <div className="w-80 flex-shrink-0 space-y-4">
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-sm font-bold flex items-center gap-2">
-                                <Sparkles className="h-4 w-4 text-violet-500" />
-                                Quick Actions
-                            </CardTitle>
-                            <CardDescription className="text-xs">
-                                Click to get instant insights
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
+                <div className="w-80 flex-shrink-0 space-y-4 hidden xl:block">
+                    <IOSCard variant="elevated">
+                        <IOSCardHeader
+                            title={
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                        <Sparkles className="h-4 w-4 text-[var(--ios-purple)]" />
+                                        Quick Actions
+                                    </div>
+                                    <p className="text-[13px] text-[var(--label-secondary)] font-normal">
+                                        Click to get instant insights
+                                    </p>
+                                </div>
+                            }
+                            className="[&_h3]:text-[15px] pb-2"
+                        />
+                        <IOSCardContent className="space-y-2 pb-4">
                             {QUICK_ACTIONS.map((action, idx) => (
                                 <button
                                     key={idx}
-                                    onClick={() => handleQuickAction(action.prompt)}
+                                    onClick={() => sendMessage(action.prompt)}
                                     disabled={isLoading}
-                                    className="w-full text-left p-3 rounded-xl border hover:border-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/20 transition-all group disabled:opacity-50"
+                                    className="w-full text-left p-3 rounded-[12px] border border-[var(--border-card)] hover:border-[var(--ios-purple)]/30 hover:bg-[var(--ios-purple)]/5 transition-all group disabled:opacity-50"
                                 >
                                     <div className="flex items-center gap-3">
-                                        <div className="h-8 w-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center group-hover:bg-violet-100 dark:group-hover:bg-violet-900/30 transition-colors">
+                                        <div className="h-8 w-8 rounded-[8px] bg-[var(--fill-tertiary)] flex items-center justify-center group-hover:bg-[var(--ios-purple)]/10 text-[var(--label-secondary)] group-hover:text-[var(--ios-purple)] transition-colors">
                                             {action.icon}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="font-medium text-sm">{action.label}</p>
-                                            <p className="text-[10px] text-zinc-400 uppercase tracking-wider">{action.category}</p>
+                                            <p className="font-semibold text-[13px] text-[var(--label-primary)]">
+                                                {action.label}
+                                            </p>
+                                            <p className="text-[10px] text-[var(--label-tertiary)] uppercase tracking-wider mt-0.5">
+                                                {action.category}
+                                            </p>
                                         </div>
-                                        <ChevronRight className="h-4 w-4 text-zinc-300 group-hover:text-violet-500 transition-colors" />
+                                        <ChevronRight className="h-4 w-4 text-[var(--label-tertiary)] group-hover:text-[var(--ios-purple)] transition-colors" />
                                     </div>
                                 </button>
                             ))}
-                        </CardContent>
-                    </Card>
+                        </IOSCardContent>
+                    </IOSCard>
 
-                    <Card className="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/20 dark:to-purple-950/20 border-violet-200">
-                        <CardContent className="pt-6">
+                    <IOSCard
+                        variant="elevated"
+                        className="!bg-gradient-to-br from-[var(--ios-purple)]/10 to-[var(--ios-indigo)]/5 border border-[var(--ios-purple)]/20"
+                    >
+                        <IOSCardContent className="pt-5 pb-5">
                             <div className="flex items-start gap-3">
-                                <Lightbulb className="h-5 w-5 text-violet-500 flex-shrink-0 mt-0.5" />
+                                <Lightbulb className="h-5 w-5 text-[var(--ios-purple)] flex-shrink-0 mt-0.5" />
                                 <div>
-                                    <h4 className="font-bold text-sm text-violet-700 dark:text-violet-300">Pro Tip</h4>
-                                    <p className="text-xs text-violet-600 dark:text-violet-400 mt-1">
-                                        Connect n8n to enable AI-powered insights with real-time data analysis using GPT-4, Claude, or any LLM of your choice.
+                                    <h4 className="font-semibold text-[13px] text-[var(--ios-purple)]">
+                                        Pro Tip
+                                    </h4>
+                                    <p className="text-[12px] text-[var(--label-secondary)] mt-1 leading-relaxed">
+                                        Your chat history is saved automatically. Ask follow-up questions to drill deeper into any topic!
                                     </p>
-                                    <a
-                                        href="https://n8n.io"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-1 text-xs text-violet-700 dark:text-violet-300 font-bold mt-2 hover:underline"
-                                    >
-                                        Learn about n8n
-                                        <ExternalLink className="h-3 w-3" />
-                                    </a>
                                 </div>
                             </div>
-                        </CardContent>
-                    </Card>
+                        </IOSCardContent>
+                    </IOSCard>
 
-                    <Card>
-                        <CardContent className="pt-6">
-                            <h4 className="font-bold text-sm flex items-center gap-2 mb-3">
-                                <HelpCircle className="h-4 w-4 text-zinc-400" />
+                    <IOSCard variant="elevated">
+                        <IOSCardContent className="pt-5 pb-5">
+                            <h4 className="font-semibold text-[13px] text-[var(--label-primary)] flex items-center gap-2 mb-3">
+                                <HelpCircle className="h-4 w-4 text-[var(--label-tertiary)]" />
                                 Example Questions
                             </h4>
-                            <ul className="space-y-2 text-xs text-zinc-500">
-                                <li className="flex items-start gap-2">
-                                    <MessageSquare className="h-3 w-3 mt-0.5 text-zinc-300" />
-                                    "What's my revenue this month?"
-                                </li>
-                                <li className="flex items-start gap-2">
-                                    <MessageSquare className="h-3 w-3 mt-0.5 text-zinc-300" />
-                                    "Which clients have overdue payments?"
-                                </li>
-                                <li className="flex items-start gap-2">
-                                    <MessageSquare className="h-3 w-3 mt-0.5 text-zinc-300" />
-                                    "Analyze my order trends"
-                                </li>
-                                <li className="flex items-start gap-2">
-                                    <MessageSquare className="h-3 w-3 mt-0.5 text-zinc-300" />
-                                    "Create a summary for this week"
-                                </li>
+                            <ul className="space-y-2.5 text-[12px] text-[var(--label-secondary)]">
+                                {[
+                                    "What's my revenue this month?",
+                                    "Which clients have overdue payments?",
+                                    "Analyze my order trends",
+                                    "What inventory needs restocking?",
+                                ].map((q, i) => (
+                                    <li key={i} className="flex items-start gap-2">
+                                        <MessageSquare className="h-3 w-3 mt-0.5 text-[var(--label-tertiary)]" />
+                                        <button
+                                            onClick={() => sendMessage(q)}
+                                            disabled={isLoading}
+                                            className="text-left hover:text-[var(--ios-purple)] transition-colors disabled:opacity-50"
+                                        >
+                                            &ldquo;{q}&rdquo;
+                                        </button>
+                                    </li>
+                                ))}
                             </ul>
-                        </CardContent>
-                    </Card>
+                        </IOSCardContent>
+                    </IOSCard>
                 </div>
             </div>
+            )}
 
-            {/* n8n Settings Dialog */}
-            <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-                <DialogContent className="max-w-lg">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <Zap className="h-5 w-5 text-violet-500" />
-                            n8n Integration Settings
-                        </DialogTitle>
-                        <DialogDescription>
-                            Connect your n8n workflow to enable AI-powered responses with your business data.
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="webhook">n8n Webhook URL</Label>
-                            <Input
-                                id="webhook"
-                                value={webhookUrl}
-                                onChange={(e) => setWebhookUrl(e.target.value)}
-                                placeholder="https://your-n8n-instance.com/webhook/xxx"
-                                className="font-mono text-sm"
-                            />
-                            <p className="text-xs text-zinc-500">
-                                Create a webhook trigger in n8n and paste the URL here. The assistant will send messages with business context to your workflow.
-                            </p>
+            {/* ══════════════════════════════════════════════════════
+                SMART REPORTS — Structured AI Analytics
+               ══════════════════════════════════════════════════════ */}
+            {viewMode === "reports" && (
+                <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.35 }}
+                    className="flex-1 overflow-y-auto space-y-5 ind-page"
+                >
+                    {/* Report Header */}
+                    <div className="ind-page-header" style={{ marginBottom: 0 }}>
+                        <div className="ind-label">
+                            <span className="ind-pulse-dot" style={{ background: "var(--ind-purple)" }} />
+                            AI-Powered Analytics
                         </div>
+                        <p className="ind-subtitle">Generate structured business reports with data-backed insights</p>
+                    </div>
 
-                        <div className="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-4 space-y-3">
-                            <h4 className="font-bold text-sm">Webhook Payload Structure:</h4>
-                            <pre className="text-xs bg-zinc-100 dark:bg-zinc-800 p-3 rounded overflow-x-auto">
-                                {`{
-  "message": "User's question",
-  "context": {
-    "stats": { ... },
-    "recentOrders": [ ... ],
-    "clients": [ ... ],
-    "inventory": [ ... ],
-    "recentPayments": [ ... ]
-  },
-  "timestamp": "2024-01-01T00:00:00Z"
-}`}
-                            </pre>
-                            <p className="text-xs text-zinc-500">
-                                Your n8n workflow should return a JSON object with a <code className="bg-zinc-200 dark:bg-zinc-700 px-1 rounded">response</code> field containing the AI's reply.
-                            </p>
+                    {/* Preset Prompts Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {REPORT_PROMPTS.map((rp, idx) => (
+                            <motion.button
+                                key={idx}
+                                whileHover={{ scale: 1.01, y: -2 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => sendReport(rp.prompt)}
+                                disabled={reportLoading}
+                                className="ind-card ind-card--interactive text-left disabled:opacity-50 cursor-pointer"
+                                style={{ padding: 16 }}
+                            >
+                                <span className="text-[20px] mb-2 block">{rp.icon}</span>
+                                <span className="text-[13px] font-semibold block" style={{ color: "var(--ind-text)" }}>{rp.label}</span>
+                                <span className="text-[11px] mt-1 block" style={{ color: "var(--ind-text-muted)" }}>{rp.prompt.substring(0, 50)}...</span>
+                            </motion.button>
+                        ))}
+                    </div>
+
+                    {/* Custom Question Input */}
+                    <div className="ind-card" style={{ padding: 16 }}>
+                        <p className="text-[12px] font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--ind-text-muted)" }}>
+                            Ask a Custom Question
+                        </p>
+                        <div className="flex gap-2">
+                            <input
+                                value={reportQuestion}
+                                onChange={(e) => setReportQuestion(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === "Enter") sendReport(reportQuestion); }}
+                                placeholder="e.g., What's my best performing product category?"
+                                className="flex-1 h-[40px] rounded-[10px] px-4 text-[14px] outline-none"
+                                style={{
+                                    background: "var(--ind-input-bg)",
+                                    border: "1px solid var(--ind-input-border)",
+                                    color: "var(--ind-text)",
+                                }}
+                                disabled={reportLoading}
+                            />
+                            <button
+                                onClick={() => sendReport(reportQuestion)}
+                                disabled={!reportQuestion.trim() || reportLoading}
+                                className="ind-btn ind-btn--primary ind-btn--pill disabled:opacity-50"
+                            >
+                                {reportLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                                Analyze
+                            </button>
                         </div>
                     </div>
 
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsSettingsOpen(false)}>
-                            Cancel
-                        </Button>
-                        <Button onClick={saveWebhookUrl} className="bg-violet-600 hover:bg-violet-700">
-                            Save Settings
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                    {/* Loading State */}
+                    {reportLoading && (
+                        <div className="ind-card ind-card--glow-purple" style={{ padding: 24 }}>
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="ind-chat-avatar">
+                                    <Sparkles className="h-4 w-4 text-white" />
+                                </div>
+                                <span className="text-[14px] font-semibold" style={{ color: "var(--ind-text)" }}>Analyzing your data...</span>
+                            </div>
+                            <div className="ind-bounce-dots">
+                                <span /><span /><span />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Report History */}
+                    {reportHistory.map((report, idx) => {
+                        const r = report.response;
+                        const colorMap: Record<string, string> = {
+                            green: "var(--ind-green)",
+                            blue: "var(--ind-blue)",
+                            orange: "var(--ind-orange)",
+                            red: "var(--ind-red)",
+                            purple: "var(--ind-purple)",
+                        };
+
+                        return (
+                            <motion.div
+                                key={idx}
+                                initial={{ opacity: 0, y: 16 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: idx * 0.05 }}
+                                className="space-y-3"
+                            >
+                                {/* User Question */}
+                                <div className="flex justify-end">
+                                    <div className="ind-chat-user">
+                                        {report.question}
+                                    </div>
+                                </div>
+
+                                {/* AI Response Card */}
+                                <div className="flex gap-3 items-start">
+                                    <div className="ind-chat-avatar flex-shrink-0">
+                                        <Sparkles className="h-4 w-4 text-white" />
+                                    </div>
+                                    <div className="ind-chat-ai flex-1">
+                                        {/* Summary */}
+                                        {r.summary && (
+                                            <p className="text-[15px] font-medium mb-4" style={{ color: "var(--ind-text)", lineHeight: 1.5 }}>
+                                                {r.summary}
+                                            </p>
+                                        )}
+
+                                        {/* Data Grid */}
+                                        {r.data && r.data.length > 0 && (
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+                                                {r.data.map((d: any, di: number) => (
+                                                    <div key={di} className="ind-stat-card" style={{ padding: 12 }}>
+                                                        <span className="ind-stat-card__label" style={{ fontSize: 10 }}>{d.label}</span>
+                                                        <span
+                                                            className="ind-stat-card__value ind-mono"
+                                                            style={{
+                                                                fontSize: 18,
+                                                                color: colorMap[d.color] || "var(--ind-text)",
+                                                            }}
+                                                        >
+                                                            {d.val}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Insight */}
+                                        {r.insight && (
+                                            <div className="ind-insight-box">
+                                                <div className="flex items-start gap-2">
+                                                    <Lightbulb className="h-4 w-4 flex-shrink-0 mt-0.5" style={{ color: "var(--ind-purple)" }} />
+                                                    <p className="text-[13px]" style={{ color: "var(--ind-text)", lineHeight: 1.6 }}>
+                                                        {r.insight}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Timestamp */}
+                                        <p className="text-[10px] mt-3" style={{ color: "var(--ind-text-muted)" }}>
+                                            {new Date(report.timestamp).toLocaleString("en-IN", {
+                                                day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"
+                                            })}
+                                        </p>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        );
+                    })}
+
+                    {/* Empty State */}
+                    {!reportLoading && reportHistory.length === 0 && (
+                        <div className="flex flex-col items-center justify-center py-12">
+                            <div className="ind-chat-avatar mb-3" style={{ width: 48, height: 48 }}>
+                                <FileBarChart className="h-5 w-5 text-white" />
+                            </div>
+                            <p className="text-[15px] font-medium" style={{ color: "var(--ind-text)" }}>No reports yet</p>
+                            <p className="text-[13px]" style={{ color: "var(--ind-text-muted)" }}>
+                                Click a preset above or ask a custom question
+                            </p>
+                        </div>
+                    )}
+                </motion.div>
+            )}
         </div>
     );
 }

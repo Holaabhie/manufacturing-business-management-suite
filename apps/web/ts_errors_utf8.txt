@@ -1,0 +1,18 @@
+﻿src/app/onboarding/page.tsx(121,9): error TS2657: JSX expressions must have one parent element.
+src/app/onboarding/page.tsx(134,41): error TS1127: Invalid character.
+src/app/onboarding/page.tsx(134,90): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/app/onboarding/page.tsx(134,91): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/app/onboarding/page.tsx(135,22): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+src/app/onboarding/page.tsx(138,25): error TS2657: JSX expressions must have one parent element.
+src/app/onboarding/page.tsx(139,45): error TS1127: Invalid character.
+src/app/onboarding/page.tsx(143,32): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/app/onboarding/page.tsx(143,33): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+src/app/onboarding/page.tsx(146,46): error TS1127: Invalid character.
+src/app/onboarding/page.tsx(146,46): error TS1005: ')' expected.
+src/app/onboarding/page.tsx(146,160): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/app/onboarding/page.tsx(146,161): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+src/app/onboarding/page.tsx(148,31): error TS17002: Expected corresponding JSX closing tag for 'div'.
+src/app/onboarding/page.tsx(150,23): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/app/onboarding/page.tsx(442,13): error TS1005: ')' expected.
+src/app/onboarding/page.tsx(443,9): error TS1109: Expression expected.
+src/app/onboarding/page.tsx(444,5): error TS1109: Expression expected.

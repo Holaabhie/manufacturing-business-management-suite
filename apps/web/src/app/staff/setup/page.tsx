@@ -121,8 +121,15 @@ export default function StaffSetupPage() {
             const res = await fetch("/api/auth/complete-setup", {
                 method: "POST",
                 headers: { "content-type": "application/json" },
-                body: JSON.stringify({ termsAccepted: true }),
+                body: JSON.stringify({
+                    termsAccepted: true,
+                    fullName: fullName.trim() || undefined,
+                    phoneNumber: phoneNumber.trim() || undefined,
+                    otpMethod,
+                }),
             });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(json?.error || "Failed to complete setup");
             toast.success("Setup complete! Welcome to IND Manager.");
             router.push("/dashboard");
         } catch (error: any) {

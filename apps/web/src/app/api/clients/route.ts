@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth-session";
+import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
@@ -13,7 +13,7 @@ export async function GET() {
     const db = await getDb();
     const clients = await db
       .collection("clients")
-      .find({ userId: user._id.toString() })
+      .find({ userId: getDataOwnerId(user) })
       .sort({ name: 1 })
       .toArray();
 
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     const db = await getDb();
 
     const result = await db.collection("clients").insertOne({
-      userId: user._id.toString(),
+      userId: getDataOwnerId(user),
       name: body.name,
       email: body.email || "",
       phone: body.phone || "",

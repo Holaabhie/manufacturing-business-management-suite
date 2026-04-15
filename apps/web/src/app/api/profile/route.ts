@@ -59,3 +59,34 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+// PATCH - Lightweight update for flags like onboarding_complete
+export async function PATCH(request: Request) {
+  try {
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const db = await getDb();
+
+    const updateData: any = {
+      updatedAt: new Date(),
+    };
+
+    if (body.onboarding_complete !== undefined) {
+      updateData.onboarding_complete = Boolean(body.onboarding_complete);
+    }
+
+    await db.collection("users").updateOne(
+      { _id: user._id },
+      { $set: updateData }
+    );
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error("Error patching profile:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

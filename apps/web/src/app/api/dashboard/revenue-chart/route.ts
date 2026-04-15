@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth-session";
+import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 
 export async function GET(request: Request) {
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     const range = searchParams.get("range") || "daily";
 
     const db = await getDb();
-    const userId = user._id.toString();
+    const userId = getDataOwnerId(user);
 
     const orders = await db.collection("orders").find({ userId }).toArray();
 

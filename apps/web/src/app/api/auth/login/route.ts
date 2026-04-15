@@ -3,9 +3,19 @@ import bcrypt from "bcrypt";
 import { getDb } from "@/lib/mongodb";
 import { createSession, type UserDoc } from "@/lib/auth-session";
 import { logAuthEvent, getClientIp } from "@/lib/audit";
+import { checkRateLimit, getRateLimitKey, rateLimitResponse } from "@/lib/rate-limit";
+import { checkPasswordOrError } from "@/lib/password-policy";
+import { detectSuspiciousLogin } from "@/lib/suspicious-login";
 
 export async function POST(req: Request) {
   try {
+    // ─── Rate Limiting ──────────────────────────────────────────
+    const rateLimitKey = getRateLimitKey(req, "login");
+    const rateCheck = checkRateLimit(rateLimitKey, "login");
+    if (rateCheck.limited) {
+      return rateLimitResponse(rateCheck.retryAfterMs);
+    }
+
     const body = await req.json().catch(() => null);
     const email = String(body?.email ?? "").trim().toLowerCase();
     const password = String(body?.password ?? "");
@@ -40,17 +50,24 @@ export async function POST(req: Request) {
 
     // ─── Find User ──────────────────────────────────────────────
     if (loginType === "staff") {
-      user = await db.collection<UserDoc>("users").findOne({
+      user = (await db.collection<UserDoc>("users").findOne({
         employeeId: employeeId,
         role: "Staff",
-      }) as UserDoc | null;
+      })) as UserDoc | null;
     } else {
-      user = await db.collection<UserDoc>("users").findOne({ email }) as UserDoc | null;
+      user = (await db
+        .collection<UserDoc>("users")
+        .findOne({ email })) as UserDoc | null;
     }
 
     if (!user) {
       return NextResponse.json(
-        { error: loginType === "staff" ? "Invalid employee ID or password" : "Invalid email or password" },
+        {
+          error:
+            loginType === "staff"
+              ? "Invalid employee ID or password"
+              : "Invalid email or password",
+        },
         { status: 401 }
       );
     }
@@ -58,13 +75,19 @@ export async function POST(req: Request) {
     // ─── Account Status Check ───────────────────────────────────
     if (user.status === "inactive") {
       return NextResponse.json(
-        { error: "Your account has been deactivated. Contact your administrator." },
+        {
+          error:
+            "Your account has been deactivated. Contact your administrator.",
+        },
         { status: 403 }
       );
     }
     if (user.status === "suspended") {
       return NextResponse.json(
-        { error: "Your account has been suspended. Contact your administrator." },
+        {
+          error:
+            "Your account has been suspended. Contact your administrator.",
+        },
         { status: 403 }
       );
     }
@@ -79,7 +102,7 @@ export async function POST(req: Request) {
       logAuthEvent({
         organizationId: user.organizationId || "",
         userId: user._id,
-        userName: user.full_name || user.email,
+        userName: user.fullName || user.full_name || user.email,
         userRole: user.role,
         action: "Login attempt on locked account",
         actionType: "security",
@@ -104,7 +127,7 @@ export async function POST(req: Request) {
     if (!ok) {
       // Increment failed attempts
       const failedAttempts = (user.failedLoginAttempts || 0) + 1;
-      const maxAttempts = user.role === "Admin" ? 5 : 5;
+      const maxAttempts = 5;
       const lockoutMinutes = user.role === "Admin" ? 15 : 30;
 
       const updateFields: Record<string, any> = {
@@ -126,16 +149,17 @@ export async function POST(req: Request) {
       logAuthEvent({
         organizationId: user.organizationId || "",
         userId: user._id,
-        userName: user.full_name || user.email,
+        userName: user.fullName || user.full_name || user.email,
         userRole: user.role,
         action: `Failed login attempt (${failedAttempts}/${maxAttempts})`,
         actionType: "security",
         ipAddress,
         userAgent,
         severity: failedAttempts >= maxAttempts ? "critical" : "warning",
-        details: failedAttempts >= maxAttempts
-          ? `Account locked for ${lockoutMinutes} minutes`
-          : undefined,
+        details:
+          failedAttempts >= maxAttempts
+            ? `Account locked for ${lockoutMinutes} minutes`
+            : undefined,
       });
 
       if (failedAttempts >= maxAttempts) {
@@ -150,7 +174,10 @@ export async function POST(req: Request) {
 
       return NextResponse.json(
         {
-          error: loginType === "staff" ? "Invalid employee ID or password" : "Invalid email or password",
+          error:
+            loginType === "staff"
+              ? "Invalid employee ID or password"
+              : "Invalid email or password",
           attemptsRemaining: maxAttempts - failedAttempts,
         },
         { status: 401 }
@@ -170,7 +197,7 @@ export async function POST(req: Request) {
             logAuthEvent({
               organizationId: user.organizationId,
               userId: user._id,
-              userName: user.full_name || user.email,
+              userName: user.fullName || user.full_name || user.email,
               userRole: "Admin",
               action: "Invalid master key during login",
               actionType: "security",
@@ -226,6 +253,28 @@ export async function POST(req: Request) {
       }
     }
 
+    // ─── Suspicious Login Detection ────────────────────────────
+    const suspiciousResult = await detectSuspiciousLogin({
+      userId: user._id,
+      userName: user.fullName || user.full_name || user.email,
+      userRole: user.role,
+      organizationId: user.organizationId || "",
+      ipAddress,
+      userAgent,
+      email: user.email,
+    });
+
+    if (suspiciousResult.action === "block") {
+      return NextResponse.json(
+        {
+          error: "Login blocked due to unusual activity. Please verify your identity or contact support.",
+          suspicious: true,
+          reasons: suspiciousResult.reasons,
+        },
+        { status: 403 }
+      );
+    }
+
     // ─── Successful Login ───────────────────────────────────────
     // Reset failed attempts
     await db.collection<UserDoc>("users").updateOne(
@@ -246,13 +295,14 @@ export async function POST(req: Request) {
       role: user.role,
       ipAddress,
       userAgent,
+      provider: "credentials",
     });
 
     // Log successful login
     logAuthEvent({
       organizationId: user.organizationId || "",
       userId: user._id,
-      userName: user.full_name || user.email,
+      userName: user.fullName || user.full_name || user.email,
       userRole: user.role,
       action: "Logged in successfully",
       actionType: "login",
@@ -268,6 +318,7 @@ export async function POST(req: Request) {
       role: user.role,
     });
   } catch (e: any) {
+    console.error("[login] Error:", e);
     return NextResponse.json(
       { error: e?.message ?? "Login failed" },
       { status: 500 }

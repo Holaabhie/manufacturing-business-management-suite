@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/require-role";
+import { getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
@@ -16,7 +17,7 @@ export async function GET() {
     const payments = await db
       .collection("payments")
       .aggregate([
-        { $match: { userId: user._id.toString() } },
+        { $match: { userId: getDataOwnerId(user!) } },
         { $sort: { createdAt: -1 } },
         // Convert string IDs to ObjectIds for proper lookup
         {
@@ -104,7 +105,7 @@ export async function POST(request: Request) {
     const db = await getDb();
 
     const result = await db.collection("payments").insertOne({
-      userId: user._id.toString(),
+      userId: getDataOwnerId(user!),
       amount: Number(body.amount),
       payment_date: body.payment_date ? new Date(body.payment_date) : new Date(),
       payment_method: body.payment_method || "cash",

@@ -1,0 +1,22 @@
+{
+    "name": "Manufacturing OS",
+    "short_name": "MFG OS",
+    "description": "Intelligent business management platform for manufacturing operations",
+    "start_url": "/dashboard",
+    "display": "standalone",
+    "orientation": "portrait-primary",
+    "theme_color": "#007AFF",
+    "background_color": "#F2F2F7",
+    "categories": [
+        "business",
+        "productivity"
+    ],
+    "icons": [
+        {
+            "src": "/next.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any"
+        }
+    ]
+}

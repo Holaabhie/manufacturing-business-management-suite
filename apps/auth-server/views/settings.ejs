@@ -1,0 +1,36 @@
+<% var body=` <div>
+    <h1 style="font-size:1.6rem;font-weight:700;margin-bottom:.3rem;">Settings</h1>
+    <p style="color:#8b8fa3;font-size:.9rem;margin-bottom:2rem;">
+        Manage your account preferences.
+    </p>
+
+    ${ typeof success !== 'undefined' && success
+    ? '<div class="alert alert-success">Your settings have been saved successfully.</div>' : '' }
+
+    <div class="card">
+        <h2 style="font-size:1.1rem;font-weight:600;margin-bottom:1.25rem;">Display Name</h2>
+
+        <form action="/settings" method="POST" id="settings-form">
+            <input type="hidden" name="_csrf" value="${csrfToken}">
+
+            <div class="form-group">
+                <label for="displayName">Your Name</label>
+                <input type="text" id="displayName" name="displayName" value="${user.name}" required
+                    placeholder="Enter your display name" />
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="save-settings-btn">
+                Save Changes
+            </button>
+        </form>
+    </div>
+
+    <div class="card" style="margin-top:1.5rem;">
+        <h2 style="font-size:1.1rem;font-weight:600;margin-bottom:.75rem;">Session Info</h2>
+        <p style="font-size:.85rem;color:#8b8fa3;">Email: <strong style="color:#e4e6ee;">${user.email}</strong></p>
+        <p style="font-size:.85rem;color:#8b8fa3;">Logged in: <strong style="color:#e4e6ee;">${new
+                Date(user.loginTime).toLocaleString()}</strong></p>
+    </div>
+    </div>
+    ` %>
+    <%- include('layout') %>

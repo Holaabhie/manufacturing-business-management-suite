@@ -1,0 +1,447 @@
+npm verbose cli C:\Program Files\nodejs\node.exe C:\Users\HP\AppData\Roaming\npm\node_modules\npm\bin\npm-cli.js
+npm info using npm@11.3.0
+npm info using node@v23.11.0
+npm verbose title npm install @tanstack/react-query
+npm verbose argv "install" "@tanstack/react-query" "--workspace" "@repo/web" "--legacy-peer-deps" "--loglevel" "verbose"
+npm verbose logfile logs-max:10 dir:C:\Users\HP\AppData\Local\npm-cache\_logs\2026-03-12T13_27_32_832Z-
+npm verbose logfile C:\Users\HP\AppData\Local\npm-cache\_logs\2026-03-12T13_27_32_832Z-debug-0.log
+npm verbose shrinkwrap failed to load node_modules/.package-lock.json out of date, updated: node_modules
+npm http cache https://registry.npmjs.org/@tanstack%2freact-query 34ms (cache hit)
+npm http cache https://registry.npmjs.org/@tanstack%2fquery-core 20ms (cache hit)
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: '@jest/console@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: '@jest/core@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: '@jest/diff-sequences@30.0.1',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: '@jest/environment@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: '@jest/expect@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: '@jest/expect-utils@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: '@jest/fake-timers@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: '@jest/get-type@30.1.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: '@jest/globals@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: '@jest/pattern@30.0.1',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: '@jest/reporters@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: '@jest/schemas@30.0.5',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: '@jest/snapshot-utils@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: '@jest/source-map@30.0.1',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: '@jest/test-result@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: '@jest/test-sequencer@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: '@jest/transform@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: '@jest/types@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'babel-jest@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'babel-plugin-jest-hoist@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'babel-preset-jest@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'expect@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'jest@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'jest-changed-files@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'jest-circus@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'jest-cli@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'jest-config@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'jest-diff@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'jest-docblock@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'jest-each@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'jest-environment-node@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'jest-haste-map@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'jest-leak-detector@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'jest-matcher-utils@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'jest-message-util@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'jest-mock@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'jest-regex-util@30.0.1',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'jest-resolve@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'jest-resolve-dependencies@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'jest-runner@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'jest-runtime@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'jest-snapshot@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'jest-util@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'jest-validate@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'jest-watcher@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'jest-worker@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'pretty-format@30.2.0',
+npm warn EBADENGINE   required: { node: '^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0' },
+npm warn EBADENGINE   current: { node: 'v23.11.0', npm: '11.3.0' }
+npm warn EBADENGINE }
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@tailwindcss\oxide-wasm32-wasi
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\lightningcss-win32-arm64-msvc
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\lightningcss-linux-x64-musl
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\lightningcss-linux-x64-gnu
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\lightningcss-linux-arm64-musl
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\lightningcss-linux-arm64-gnu
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\lightningcss-linux-arm-gnueabihf
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\lightningcss-freebsd-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\lightningcss-darwin-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\lightningcss-darwin-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\lightningcss-android-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\fsevents
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@unrs\resolver-binding-win32-ia32-msvc
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@unrs\resolver-binding-win32-arm64-msvc
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@unrs\resolver-binding-wasm32-wasi
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@unrs\resolver-binding-linux-x64-musl
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@unrs\resolver-binding-linux-x64-gnu
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@unrs\resolver-binding-linux-s390x-gnu
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@unrs\resolver-binding-linux-riscv64-musl
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@unrs\resolver-binding-linux-riscv64-gnu
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@unrs\resolver-binding-linux-ppc64-gnu
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@unrs\resolver-binding-linux-arm64-musl
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@unrs\resolver-binding-linux-arm64-gnu
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@unrs\resolver-binding-linux-arm-musleabihf
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@unrs\resolver-binding-linux-arm-gnueabihf
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@unrs\resolver-binding-freebsd-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@unrs\resolver-binding-darwin-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@unrs\resolver-binding-darwin-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@unrs\resolver-binding-android-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@unrs\resolver-binding-android-arm-eabi
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@tailwindcss\oxide-win32-arm64-msvc
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@tailwindcss\oxide-linux-x64-musl
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@tailwindcss\oxide-linux-x64-gnu
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@tailwindcss\oxide-linux-arm64-musl
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@tailwindcss\oxide-linux-arm64-gnu
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@tailwindcss\oxide-linux-arm-gnueabihf
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@tailwindcss\oxide-freebsd-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@tailwindcss\oxide-darwin-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@tailwindcss\oxide-darwin-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@tailwindcss\oxide-android-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@rollup\rollup-win32-ia32-msvc
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@rollup\rollup-win32-arm64-msvc
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@rollup\rollup-openharmony-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@rollup\rollup-openbsd-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@rollup\rollup-linux-x64-musl
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@rollup\rollup-linux-x64-gnu
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@rollup\rollup-linux-s390x-gnu
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@rollup\rollup-linux-riscv64-musl
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@rollup\rollup-linux-riscv64-gnu
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@rollup\rollup-linux-ppc64-musl
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@rollup\rollup-linux-ppc64-gnu
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@rollup\rollup-linux-loong64-musl
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@rollup\rollup-linux-loong64-gnu
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@rollup\rollup-linux-arm64-musl
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@rollup\rollup-linux-arm64-gnu
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@rollup\rollup-linux-arm-musleabihf
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@rollup\rollup-linux-arm-gnueabihf
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@rollup\rollup-freebsd-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@rollup\rollup-freebsd-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@rollup\rollup-darwin-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@rollup\rollup-darwin-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@rollup\rollup-android-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@rollup\rollup-android-arm-eabi
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@next\swc-win32-arm64-msvc
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@next\swc-linux-x64-musl
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@next\swc-linux-x64-gnu
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@next\swc-linux-arm64-musl
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@next\swc-linux-arm64-gnu
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@next\swc-darwin-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@next\swc-darwin-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@libsql\linux-x64-musl
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@libsql\linux-x64-gnu
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@libsql\linux-arm64-musl
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@libsql\linux-arm64-gnu
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@libsql\linux-arm-musleabihf
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@libsql\linux-arm-gnueabihf
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@libsql\darwin-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@libsql\darwin-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@img\sharp-win32-ia32
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@img\sharp-win32-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@img\sharp-wasm32
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@img\sharp-linuxmusl-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@img\sharp-linuxmusl-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@img\sharp-linux-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@img\sharp-linux-s390x
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@img\sharp-linux-riscv64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@img\sharp-linux-ppc64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@img\sharp-linux-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@img\sharp-linux-arm
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@img\sharp-libvips-linuxmusl-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@img\sharp-libvips-linuxmusl-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@img\sharp-libvips-linux-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@img\sharp-libvips-linux-s390x
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@img\sharp-libvips-linux-riscv64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@img\sharp-libvips-linux-ppc64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@img\sharp-libvips-linux-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@img\sharp-libvips-linux-arm
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@img\sharp-libvips-darwin-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@img\sharp-libvips-darwin-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@img\sharp-darwin-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@img\sharp-darwin-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild\win32-ia32
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild\win32-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild\sunos-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild\openharmony-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild\openbsd-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild\openbsd-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild\netbsd-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild\netbsd-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild\linux-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild\linux-s390x
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild\linux-riscv64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild\linux-ppc64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild\linux-mips64el
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild\linux-loong64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild\linux-ia32
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild\linux-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild\linux-arm
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild\freebsd-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild\freebsd-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild\darwin-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild\darwin-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild\android-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild\android-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild\android-arm
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild\aix-ppc64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild-kit\core-utils\node_modules\@esbuild\win32-ia32
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild-kit\core-utils\node_modules\@esbuild\win32-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild-kit\core-utils\node_modules\@esbuild\sunos-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild-kit\core-utils\node_modules\@esbuild\openbsd-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild-kit\core-utils\node_modules\@esbuild\netbsd-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild-kit\core-utils\node_modules\@esbuild\linux-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild-kit\core-utils\node_modules\@esbuild\linux-s390x
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild-kit\core-utils\node_modules\@esbuild\linux-riscv64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild-kit\core-utils\node_modules\@esbuild\linux-ppc64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild-kit\core-utils\node_modules\@esbuild\linux-mips64el
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild-kit\core-utils\node_modules\@esbuild\linux-loong64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild-kit\core-utils\node_modules\@esbuild\linux-ia32
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild-kit\core-utils\node_modules\@esbuild\linux-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild-kit\core-utils\node_modules\@esbuild\linux-arm
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild-kit\core-utils\node_modules\@esbuild\freebsd-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild-kit\core-utils\node_modules\@esbuild\freebsd-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild-kit\core-utils\node_modules\@esbuild\darwin-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild-kit\core-utils\node_modules\@esbuild\darwin-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild-kit\core-utils\node_modules\@esbuild\android-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild-kit\core-utils\node_modules\@esbuild\android-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\@esbuild-kit\core-utils\node_modules\@esbuild\android-arm
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\vite\node_modules\@esbuild\win32-ia32
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\vite\node_modules\@esbuild\win32-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\vite\node_modules\@esbuild\sunos-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\vite\node_modules\@esbuild\openharmony-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\vite\node_modules\@esbuild\openbsd-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\vite\node_modules\@esbuild\openbsd-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\vite\node_modules\@esbuild\netbsd-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\vite\node_modules\@esbuild\netbsd-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\vite\node_modules\@esbuild\linux-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\vite\node_modules\@esbuild\linux-s390x
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\vite\node_modules\@esbuild\linux-riscv64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\vite\node_modules\@esbuild\linux-ppc64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\vite\node_modules\@esbuild\linux-mips64el
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\vite\node_modules\@esbuild\linux-loong64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\vite\node_modules\@esbuild\linux-ia32
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\vite\node_modules\@esbuild\linux-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\vite\node_modules\@esbuild\linux-arm
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\vite\node_modules\@esbuild\freebsd-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\vite\node_modules\@esbuild\freebsd-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\vite\node_modules\@esbuild\darwin-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\vite\node_modules\@esbuild\darwin-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\vite\node_modules\@esbuild\android-x64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\vite\node_modules\@esbuild\android-arm64
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\vite\node_modules\@esbuild\android-arm
+npm verbose reify failed optional dependency C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\node_modules\vite\node_modules\@esbuild\aix-ppc64
+npm http cache @tanstack/query-core@https://registry.npmjs.org/@tanstack/query-core/-/query-core-5.90.20.tgz 0ms (cache hit)
+npm http cache @tanstack/react-query@https://registry.npmjs.org/@tanstack/react-query/-/react-query-5.90.21.tgz 0ms (cache hit)
+npm info run @repo/web@0.1.0 prepare apps/web husky
+npm info run @repo/web@0.1.0 prepare { code: 1, signal: null }
+npm http fetch POST 200 https://registry.npmjs.org/-/npm/v1/security/advisories/bulk 1802ms
+npm verbose stack Error: command failed
+npm verbose stack     at promiseSpawn (C:\Users\HP\AppData\Roaming\npm\node_modules\npm\node_modules\@npmcli\promise-spawn\lib\index.js:22:22)
+npm verbose stack     at spawnWithShell (C:\Users\HP\AppData\Roaming\npm\node_modules\npm\node_modules\@npmcli\promise-spawn\lib\index.js:124:10)
+npm verbose stack     at promiseSpawn (C:\Users\HP\AppData\Roaming\npm\node_modules\npm\node_modules\@npmcli\promise-spawn\lib\index.js:12:12)
+npm verbose stack     at runScriptPkg (C:\Users\HP\AppData\Roaming\npm\node_modules\npm\node_modules\@npmcli\run-script\lib\run-script-pkg.js:79:13)
+npm verbose stack     at runScript (C:\Users\HP\AppData\Roaming\npm\node_modules\npm\node_modules\@npmcli\run-script\lib\run-script.js:9:12)
+npm verbose stack     at C:\Users\HP\AppData\Roaming\npm\node_modules\npm\node_modules\@npmcli\arborist\lib\arborist\rebuild.js:331:17
+npm verbose stack     at run (C:\Users\HP\AppData\Roaming\npm\node_modules\npm\node_modules\promise-call-limit\dist\commonjs\index.js:67:22)
+npm verbose stack     at C:\Users\HP\AppData\Roaming\npm\node_modules\npm\node_modules\promise-call-limit\dist\commonjs\index.js:84:9
+npm verbose stack     at new Promise (<anonymous>)
+npm verbose stack     at callLimit (C:\Users\HP\AppData\Roaming\npm\node_modules\npm\node_modules\promise-call-limit\dist\commonjs\index.js:35:69)
+npm verbose pkgid @repo/web@0.1.0
+npm error code 1
+npm error path C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite\apps\web
+npm error command failed
+npm error command C:\WINDOWS\system32\cmd.exe /d /s /c husky
+npm error 'husky' is not recognized as an internal or external command,
+npm error operable program or batch file.
+npm verbose cwd C:\Users\HP\OneDrive\Desktop\manufacturing-business-management-suite
+npm verbose os Windows_NT 10.0.26200
+npm verbose node v23.11.0
+npm verbose npm  v11.3.0
+npm verbose exit 1
+npm verbose code 1
+npm error A complete log of this run can be found in: C:\Users\HP\AppData\Local\npm-cache\_logs\2026-03-12T13_27_32_832Z-debug-0.log

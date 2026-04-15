@@ -1,14 +1,58 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { Inter, Outfit, DM_Mono } from "next/font/google";
 import "./globals.css";
+import "@/styles/glass.css";
 import VisualEditsMessenger from "../visual-edits/VisualEditsMessenger";
 import ErrorReporter from "@/components/ErrorReporter";
 import Script from "next/script";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider } from "@/components/AuthProvider";
+import { QueryProvider } from "@/components/QueryProvider";
+import { FeatureGateProvider } from "@/components/FeatureGateProvider";
+import { LocaleProvider } from "@/components/LocaleProvider";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const outfit = Outfit({
+  subsets: ["latin"],
+  variable: "--font-outfit",
+  display: "swap",
+  weight: ["300", "400", "500", "600", "700", "800"],
+});
+
+const dmMono = DM_Mono({
+  subsets: ["latin"],
+  variable: "--font-dm-mono",
+  display: "swap",
+  weight: ["400", "500"],
+});
 
 export const metadata: Metadata = {
-  title: "IND Manager - Enterprise Business Suite",
-  description: "Intelligent business management platform for manufacturing operations",
+  title: "IND Manager — Business Management Suite",
+  description: "AI-powered manufacturing and business management for Indian SMEs. Track orders, inventory, analytics, and clients.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "IND Manager",
+  },
+  icons: {
+    icon: "/icons/icon-192.png",
+    apple: "/icons/icon-192.png",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: "#007AFF",
 };
 
 export default function RootLayout({
@@ -17,8 +61,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="antialiased">
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${outfit.variable} ${dmMono.variable}`}>
+      <body className={`${inter.className} antialiased`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -42,7 +86,15 @@ export default function RootLayout({
             data-debug="true"
             data-custom-data='{"appName": "YourApp", "version": "1.0.0", "greeting": "hi"}'
           />
-          {children}
+          <LocaleProvider>
+            <AuthProvider>
+              <QueryProvider>
+                <FeatureGateProvider>
+                  {children}
+                </FeatureGateProvider>
+              </QueryProvider>
+            </AuthProvider>
+          </LocaleProvider>
           <VisualEditsMessenger />
           <Toaster />
         </ThemeProvider>
