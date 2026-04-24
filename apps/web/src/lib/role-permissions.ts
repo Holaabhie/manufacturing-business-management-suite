@@ -43,10 +43,13 @@ export const ROLE_PERMISSIONS: Record<string, {
     Staff: {
         allowedRoutes: [
             "/dashboard",
+            "/dashboard/dashboard",
             "/dashboard/orders",
             "/dashboard/production",
+            "/dashboard/machines",
             "/dashboard/inventory",
             "/dashboard/purchasing",
+            "/dashboard/folio",
             "/dashboard/profile",
         ],
         hiddenSections: ["FINANCE", "INTELLIGENCE", "SYSTEM", "RELATIONSHIPS"], // Hide these navigation groups

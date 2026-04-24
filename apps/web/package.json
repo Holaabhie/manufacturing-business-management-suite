@@ -87,6 +87,7 @@
     "jspdf": "^4.1.0",
     "jspdf-autotable": "^5.0.7",
     "libphonenumber-js": "^1.12.36",
+    "lottie-react": "^2.4.1",
     "lucide-react": "^0.552.0",
     "magic-string": "^0.30.21",
     "mini-svg-data-uri": "^1.4.4",

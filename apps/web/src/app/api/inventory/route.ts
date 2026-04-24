@@ -24,8 +24,13 @@ export async function GET() {
       min_stock_level: item.min_stock_level,
       supplier_whatsapp: item.supplier_whatsapp,
       purchase_cost_per_unit: item.purchase_cost_per_unit,
+      hsn_code: item.hsn_code ?? "",
+      tax_rate: item.tax_rate ?? 18,
+      track_inventory: item.track_inventory ?? true,
+      item_type: item.item_type || "Goods",
       createdAt: item.createdAt,
       created_at: item.createdAt,
+      updatedAt: item.updatedAt,
     }));
 
     return NextResponse.json(formatted);
@@ -53,6 +58,10 @@ export async function POST(request: Request) {
       min_stock_level: Number(body.min_stock_level) || 10,
       supplier_whatsapp: body.supplier_whatsapp || "",
       purchase_cost_per_unit: Number(body.purchase_cost_per_unit) || 0,
+      hsn_code: body.hsn_code || "",
+      tax_rate: Number(body.tax_rate) || 18,
+      track_inventory: body.track_inventory ?? true,
+      item_type: body.item_type || "Goods",
       createdAt: new Date(),
       updatedAt: new Date(),
     });

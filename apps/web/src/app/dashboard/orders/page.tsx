@@ -620,7 +620,7 @@ function OrdersContent() {
       variants={staggerContainer}
       initial="initial"
       animate="animate"
-      className="space-y-6"
+      className="space-y-6 overflow-x-hidden"
     >
       {/* ── Header ── */}
       <motion.div
@@ -1291,7 +1291,7 @@ function OrdersContent() {
               <IOSCard
                 variant="elevated"
                 padding="none"
-                className="overflow-hidden glass-premium !rounded-[20px]"
+                className="hidden md:block overflow-hidden glass-premium !rounded-[20px]"
               >
               <Table>
                 <TableHeader>
@@ -1615,6 +1615,73 @@ function OrdersContent() {
                 </TableBody>
               </Table>
             </IOSCard>
+
+            {/* Mobile Order Cards — visible only below md (768px) */}
+            <div className="block md:hidden px-3 py-2 space-y-3">
+              {ordersLoading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="bg-[#1a1f2e] rounded-xl px-4 py-3 border-l-4 border-gray-600">
+                    <div className="h-4 w-32 rounded bg-[var(--fill-tertiary)] shimmer" />
+                    <div className="h-4 w-full rounded bg-[var(--fill-tertiary)] shimmer mt-2" />
+                    <div className="h-3 w-24 rounded bg-[var(--fill-tertiary)] shimmer mt-2" />
+                    <div className="h-3 w-20 rounded bg-[var(--fill-tertiary)] shimmer mt-2" />
+                  </div>
+                ))
+              ) : filteredOrders.length === 0 ? (
+                <div className="py-16 text-center">
+                  <Factory className="h-10 w-10 mx-auto mb-3 text-gray-500" />
+                  <p className="text-gray-400 text-sm">No active orders</p>
+                </div>
+              ) : filteredOrders.map((order: any) => {
+                const status = order.status ?? 'pending';
+                const borderColor = status === 'processing' ? 'border-yellow-500'
+                  : status === 'completed' ? 'border-green-500'
+                  : status === 'cancelled' ? 'border-red-500'
+                  : 'border-gray-500';
+                const badgeBg = status === 'processing' ? 'bg-yellow-500/20 text-yellow-400'
+                  : status === 'completed' ? 'bg-green-500/20 text-green-400'
+                  : status === 'cancelled' ? 'bg-red-500/20 text-red-400'
+                  : 'bg-gray-500/20 text-gray-400';
+                const paymentStatus = order.paymentStatus ?? 'pending';
+                const payBadge = (paymentStatus === 'paid' || paymentStatus === 'Paid')
+                  ? 'bg-green-500/20 text-green-400'
+                  : 'bg-yellow-500/20 text-yellow-400';
+                return (
+                  <div
+                    key={order.id}
+                    className={cn("bg-[#1a1f2e] rounded-xl px-4 py-3 border-l-4", borderColor)}
+                    onClick={() => openEditDialog(order)}
+                  >
+                    {/* Row 1: Product name + Status badge */}
+                    <div className="flex justify-between items-center">
+                      <span className="text-white text-sm font-bold truncate max-w-[60%]">{order.productName ?? order.product_name ?? '—'}</span>
+                      <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", badgeBg)}>
+                        {getStatusLabel(status)}
+                      </span>
+                    </div>
+                    {/* Row 2: Client + Quantity */}
+                    <div className="flex justify-between items-center mt-1">
+                      <span className="text-gray-400 text-xs truncate mr-2">{order.client?.name ?? order.clients?.name ?? '—'}</span>
+                      <span className="text-gray-300 text-xs whitespace-nowrap">{order.quantity ?? 0} {order.unit ?? 'kg'}</span>
+                    </div>
+                    {/* Row 3: Amount + Payment status */}
+                    <div className="flex justify-between items-center mt-1">
+                      <span className="text-blue-400 text-sm font-bold">₹{Number(order.totalAmount ?? order.total_amount ?? 0).toLocaleString('en-IN')}</span>
+                      <span className={cn("text-xs px-2 py-0.5 rounded-full font-semibold", payBadge)}>
+                        {paymentStatus === 'paid' || paymentStatus === 'Paid' ? 'PAID' : 'PENDING'}
+                      </span>
+                    </div>
+                    {/* Row 4: Dates */}
+                    <div className="flex justify-between mt-1">
+                      <span className="text-gray-500 text-xs">Created: {order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}</span>
+                      {order.deliveryDate && (
+                        <span className="text-gray-500 text-xs">Due: {new Date(order.deliveryDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </motion.div>
         </motion.div>
       )}

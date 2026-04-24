@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth-session";
+import { isDbUnavailableError } from "@/lib/mongodb";
 
 export async function GET() {
   try {
@@ -37,6 +38,12 @@ export async function GET() {
     });
   } catch (error: any) {
     console.error("[me] Error:", error);
+    if (isDbUnavailableError(error)) {
+      return NextResponse.json(
+        { error: "Service temporarily unavailable", user: null, success: false },
+        { status: 503 }
+      );
+    }
     return NextResponse.json(
       { error: "Failed to get user data" },
       { status: 500 }

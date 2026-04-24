@@ -250,15 +250,15 @@
   --ios-gray5: #E5E5EA;
   --ios-gray6: #F2F2F7;
 
-  /* ── Backgrounds (Rich layered blue-gray — premium enterprise tone) ─── */
-  --background: #f0f4f8;
-  --foreground: #0A0F1E;
+  /* ── Backgrounds (Premium warm-gray layered system) ─── */
+  --background: #F0F2F5;
+  --foreground: #0F1623;
 
-  /* ── Card & Popover (bright white for max contrast on colored bg) ───── */
+  /* ── Card & Popover (white, elevated off gray bg) ───── */
   --card: #FFFFFF;
-  --card-foreground: #0A0F1E;
+  --card-foreground: #0F1623;
   --popover: #FFFFFF;
-  --popover-foreground: #0A0F1E;
+  --popover-foreground: #0F1623;
 
   /* ── Primary — iOS Blue ─────────────────────── */
   --primary: #0066D6;
@@ -266,11 +266,11 @@
 
   /* ── Secondary ──────────────────────────────── */
   --secondary: #E5E5EA;
-  --secondary-foreground: #111111;
+  --secondary-foreground: #0F1623;
 
   /* ── Muted ──────────────────────────────────── */
   --muted: #E5E5EA;
-  --muted-foreground: #555555;
+  --muted-foreground: #6B7280;
 
   /* ── Accent — iOS Blue ──────────────────────── */
   --accent: #007AFF;
@@ -285,9 +285,9 @@
   --info: #5AC8FA;
   --info-foreground: #FFFFFF;
 
-  /* ── Borders & Inputs (stronger for visibility) ── */
-  --border: rgba(60, 60, 67, 0.36);
-  --input: rgba(120, 120, 128, 0.32);
+  /* ── Borders & Inputs (refined for layered system) ── */
+  --border: #E4E7EC;
+  --input: #D1D5DB;
   --ring: #0066D6;
 
   /* ── Chart Colors ───────────────────────────── */
@@ -309,8 +309,8 @@
   --sidebar-muted: rgba(120, 120, 128, 0.10);
 
   /* ── iOS Label Hierarchy (WCAG AA compliant) ── */
-  --label-primary: #0A0F1E;
-  --label-secondary: #3D4A6B;
+  --label-primary: #0F1623;
+  --label-secondary: #374151;
   --label-tertiary: #6B7280;
   --label-quaternary: #9CA3AF;
 
@@ -324,10 +324,10 @@
   --separator: rgba(60, 60, 67, 0.42);
   --separator-opaque: #BBBBC1;
 
-  /* ── Design Tokens (premium minimalist) ────── */
-  --bg-page: #f0f4f8;
+  /* ── Design Tokens (premium warm-gray layered) ────── */
+  --bg-page: #F0F2F5;
   --bg-card: #FFFFFF;
-  --bg-input: #EDF1F7;
+  --bg-input: #F3F4F6;
   --bg-hover-light: rgba(0, 102, 214, 0.10);
 
   --color-primary-brand: #0066D6;
@@ -335,16 +335,16 @@
   --color-primary-light: rgba(0, 102, 214, 0.12);
   --color-primary-glow: rgba(0, 102, 214, 0.30);
 
-  --text-heading: #0A0F1E;
-  --text-body: #1E2A40;
-  --text-secondary: #3D4A6B;
+  --text-heading: #0F1623;
+  --text-body: #0F1623;
+  --text-secondary: #374151;
   --text-muted: #6B7280;
-  --text-sidebar: #3D4A6B;
+  --text-sidebar: #374151;
   --text-sidebar-active: #0066D6;
 
-  --border-card: rgba(60, 60, 67, 0.36);
-  --border-input: rgba(60, 60, 67, 0.38);
-  --border-divider: rgba(60, 60, 67, 0.28);
+  --border-card: #E4E7EC;
+  --border-input: #D1D5DB;
+  --border-divider: #E4E7EC;
 
   --accent-teal: #5AC8FA;
   --accent-emerald: #34C759;
@@ -370,14 +370,14 @@
   --stitch-glow-violet: 0 0 0 1px rgba(123, 0, 255, 0.2), 0 4px 20px rgba(123, 0, 255, 0.22);
   --stitch-card-border: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(123, 0, 255, 0.1) 50%, rgba(0, 122, 255, 0.12) 100%);
 
-  /* ── Premium Shadows (stronger depth) ─────────── */
-  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.08);
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.03);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(0, 0, 0, 0.05);
-  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.2);
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 2px 10px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.05);
-  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.1), 0 8px 30px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  /* ── Premium Shadows (layered depth for warm-gray system) ─── */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.10), 0 1px 4px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.16);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.10), 0 8px 30px rgba(0, 0, 0, 0.10);
   --shadow-colored: 0 4px 14px rgba(0, 122, 255, 0.25);
 
   /* ── 8pt Grid Spacing ───────────────────────── */
@@ -531,6 +531,192 @@
 }
 
 /* ============================================
+   LIGHT MODE — Premium Warm-Gray Component Overrides
+   Cards, navbars, bottom nav, buttons, tabs
+   All selectors scoped to :not(.dark) to avoid
+   bleeding into dark mode.
+   Using !important to override Tailwind utilities.
+   ============================================ */
+
+/* ── Body / Page background ──────────────────── */
+html:not(.dark) body {
+  background-color: #F0F2F5 !important;
+  background-image: none !important;
+}
+
+html:not(.dark) .min-h-screen,
+html:not(.dark) [class*="bg-[#F0F2F5]"],
+html:not(.dark) [class*="bg-[#f0f4f8]"],
+html:not(.dark) [class*="bg-[#f1f5f9]"] {
+  background-color: #F0F2F5 !important;
+}
+
+/* ── Card / Surface elevation ────────────────── */
+html:not(.dark) .ds-card,
+html:not(.dark) .ds-card-glass,
+html:not(.dark) .ds-stat-card,
+html:not(.dark) .enterprise-card,
+html:not(.dark) .glass-premium,
+html:not(.dark) .glass-card,
+html:not(.dark) .ind-card,
+html:not(.dark) .ind-stat-card {
+  background: #FFFFFF !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* ── Header / Navbar ─────────────────────────── */
+html:not(.dark) .glass-header {
+  background: #FFFFFF !important;
+  border-bottom: 1px solid #E4E7EC !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* ── Sidebar glass — light mode solid white ──── */
+html:not(.dark) .glass {
+  background: #FFFFFF !important;
+  border-color: #E4E7EC !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* ── Secondary / Outline Buttons (light mode) ── */
+html:not(.dark) .ds-btn-secondary {
+  background: #F9FAFB;
+  color: #374151;
+  border: 1.5px solid #D1D5DB;
+}
+
+html:not(.dark) .ds-btn-secondary:hover {
+  background: #F3F4F6;
+  border-color: #9CA3AF;
+}
+
+html:not(.dark) .ind-btn--ghost {
+  background: #F9FAFB;
+  color: #374151;
+  border: 1.5px solid #D1D5DB;
+}
+
+html:not(.dark) .ind-btn--ghost:hover {
+  background: #F3F4F6;
+  color: #0F1623;
+  border-color: #9CA3AF;
+}
+
+/* ── Tab Pills / Toggle Pills (light mode) ───── */
+html:not(.dark) .toggle-pill-group {
+  background: #F3F4F6;
+  border: 1px solid #E4E7EC;
+}
+
+html:not(.dark) .toggle-pill {
+  color: #6B7280;
+  background: transparent;
+}
+
+html:not(.dark) .toggle-pill:hover:not(.active) {
+  background: #E5E7EB;
+  color: #374151;
+}
+
+html:not(.dark) .toggle-pill.active {
+  background: #FFFFFF;
+  color: #3B82F6;
+  border: 1.5px solid #3B82F6;
+  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.15);
+}
+
+/* IND Pill Tabs — light mode */
+html:not(.dark) .ind-pill-tabs {
+  background: #F3F4F6;
+  border: 1px solid #E4E7EC;
+}
+
+/* ── Bottom Nav Shadow Fix (Light Mode) ─── */
+html:not(.dark) .glass-header {
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* ── Card Shadow Strength (Light Mode) ─── */
+html:not(.dark) .ds-card,
+html:not(.dark) .enterprise-card,
+html:not(.dark) .glass-card,
+html:not(.dark) .ind-card {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1), 0 1px 4px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* ── Stat Card Shadow (Light Mode) ─── */
+html:not(.dark) .ds-stat-card,
+html:not(.dark) .ind-stat-card {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* ── Button Shadow (Light Mode) ─── */
+html:not(.dark) .ds-btn-primary {
+  box-shadow: 0 4px 14px rgba(0, 102, 214, 0.3) !important;
+}
+
+/* ── Bottom Nav Container Shadow (Light Mode Override) ─── */
+html:not(.dark) [class*="shadow-"][class*="bottom-0"] {
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.1) !important;
+}
+
+html:not(.dark) .ind-pill-tab {
+  color: #6B7280;
+}
+
+html:not(.dark) .ind-pill-tab:hover:not(.active) {
+  color: #374151;
+  background: #E5E7EB;
+}
+
+html:not(.dark) .ind-pill-tab.active {
+  background: #FFFFFF;
+  color: #3B82F6;
+  border: 1.5px solid #3B82F6;
+  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.15);
+}
+
+/* ── Glass Card — light mode ─────────────────── */
+html:not(.dark) .glass-card {
+  background: #FFFFFF;
+  border: 1px solid #E4E7EC;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+/* ── Text Colors (light mode explicit) ───────── */
+html:not(.dark) .ds-stat-label,
+html:not(.dark) .ds-overline {
+  color: #6B7280;
+}
+
+/* ============================================
+   SELECT / DROPDOWN DARK-MODE FIX
+   Ensures native <select> option lists are
+   readable on dark backgrounds (all browsers).
+   ============================================ */
+.dark select {
+  color-scheme: dark;
+  background-color: #1e2a3a;
+  color: #ffffff;
+}
+
+.dark select option {
+  background-color: #1e2a3a;
+  color: #ffffff;
+}
+
+.dark select option:checked {
+  background-color: #0A84FF;
+  color: #ffffff;
+}
+
+.dark select option:hover {
+  background-color: #253a52;
+}
+
+/* ============================================
    BASE STYLES
    ============================================ */
 @layer base {
@@ -545,13 +731,8 @@
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    /* Premium layered background mesh — gives depth without flat color */
-    background-color: #f0f4f8;
-    background-image:
-      radial-gradient(ellipse 80% 50% at 20% -10%, rgba(0, 102, 214, 0.07) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 40% at 85% 90%, rgba(88, 86, 214, 0.06) 0%, transparent 55%),
-      radial-gradient(ellipse 45% 30% at 50% 50%, rgba(0, 122, 255, 0.03) 0%, transparent 70%);
-    background-attachment: fixed;
+    /* Premium warm-gray background — clean, non-white */
+    background-color: #F0F2F5;
   }
 
   html {

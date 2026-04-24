@@ -56,7 +56,7 @@ export interface CreateProductionDTO {
     orderProductName: string;
     orderQuantity: number;
     clientName: string;
-    deliveryDate?: string;
+    deliveryDate?: string | null;
     batchNumber?: string;
     materials?: ProductionMaterial[];
     machineId?: string;

@@ -15,7 +15,7 @@ export const createInventoryItemSchema = z.object({
         .max(200, "Name must be 200 characters or less")
         .trim(),
     quantity: z
-        .number({ coerce: true })
+        .coerce.number()
         .min(0, "Quantity cannot be negative")
         .default(0),
     unit: z
@@ -25,7 +25,7 @@ export const createInventoryItemSchema = z.object({
         .trim()
         .default("kg"),
     minStockLevel: z
-        .number({ coerce: true })
+        .coerce.number()
         .min(0, "Minimum stock level cannot be negative")
         .default(10),
     supplierWhatsapp: z
@@ -35,7 +35,7 @@ export const createInventoryItemSchema = z.object({
         .optional()
         .default(""),
     purchaseCostPerUnit: z
-        .number({ coerce: true })
+        .coerce.number()
         .min(0, "Cost cannot be negative")
         .default(0),
 });
@@ -44,7 +44,7 @@ export const updateInventoryItemSchema = createInventoryItemSchema.partial();
 
 export const deductStockSchema = z.object({
     quantity: z
-        .number({ coerce: true })
+        .coerce.number()
         .positive("Deduction quantity must be positive"),
     reason: z
         .string()

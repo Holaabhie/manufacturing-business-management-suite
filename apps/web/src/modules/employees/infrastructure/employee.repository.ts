@@ -96,7 +96,7 @@ export class MongoEmployeeRepository implements IEmployeeRepository {
         let permissions: PermissionMap;
         const template = data.permissionTemplate || "operations";
         if (data.customPermissions) {
-            permissions = data.customPermissions;
+            permissions = data.customPermissions as unknown as PermissionMap;
         } else if (DEFAULT_TEMPLATES[template]) {
             permissions = DEFAULT_TEMPLATES[template].permissions;
         } else {
@@ -231,10 +231,11 @@ export class MongoEmployeeRepository implements IEmployeeRepository {
     async getNextEmployeeNumber(adminId: string): Promise<number> {
         const col = await this.collection();
         const lastEmployee = await col
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             .find({
-                $or: [{ adminId }, { _id: adminId }],
+                $or: [{ adminId }, { _id: adminId as any }],
                 employeeId: { $regex: /^EMP-\d+$/ },
-            })
+            } as any)
             .sort({ employeeId: -1 })
             .limit(1)
             .toArray();

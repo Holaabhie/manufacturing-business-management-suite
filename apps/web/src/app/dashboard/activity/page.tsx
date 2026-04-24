@@ -57,10 +57,10 @@ export default function ActivityLogPage() {
     const fetchActivities = async () => {
       setLoading(true);
       try {
-        const url = filter === "all" 
-          ? "/api/dashboard/activity?limit=50" 
+        const url = filter === "all"
+          ? "/api/dashboard/activity?limit=50"
           : `/api/dashboard/activity?limit=50&type=${filter}`;
-          
+
         const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
@@ -112,7 +112,7 @@ export default function ActivityLogPage() {
   }
 
   return (
-    <motion.div 
+    <motion.div
       variants={staggerContainer}
       initial="initial"
       animate="animate"
@@ -163,7 +163,7 @@ export default function ActivityLogPage() {
                 {activities.map((activity, index) => {
                   const Icon = activityIcons[activity.type] || Activity;
                   const colorClass = activityColors[activity.type] || activityColors.production;
-                  
+
                   return (
                     <motion.div
                       key={`${activity.type}-${activity.entityId}-${index}`}
@@ -174,12 +174,12 @@ export default function ActivityLogPage() {
                     >
                       <Link href={activity.href || "#"} className="block group">
                         <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 border-b border-[var(--border-divider)] group-hover:bg-[var(--fill-quaternary)] transition-colors">
-                          
+
                           <div className="flex items-center gap-4 flex-1 min-w-0">
                             <div className={cn("w-10 h-10 rounded-[10px] flex items-center justify-center flex-shrink-0", colorClass)}>
                               <Icon className="h-[20px] w-[20px]" />
                             </div>
-                            
+
                             <div className="flex-1 min-w-0">
                               <p className="text-[15px] font-medium text-[var(--label-primary)] truncate">
                                 {activity.title}
@@ -191,7 +191,7 @@ export default function ActivityLogPage() {
                               )}
                             </div>
                           </div>
-                          
+
                           <div className="flex items-center justify-between sm:justify-end gap-6 sm:w-[200px] flex-shrink-0 ml-14 sm:ml-0">
                             {activity.amount !== null && (
                               <p className="text-[15px] font-medium text-[var(--label-primary)]">
@@ -210,7 +210,7 @@ export default function ActivityLogPage() {
                               <ChevronRight className="h-4 w-4 text-[var(--label-quaternary)] group-hover:text-[var(--label-secondary)] transition-colors" />
                             </div>
                           </div>
-                          
+
                         </div>
                       </Link>
                     </motion.div>

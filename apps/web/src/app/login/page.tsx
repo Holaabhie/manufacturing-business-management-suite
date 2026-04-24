@@ -156,6 +156,9 @@ export default function LoginPage() {
         toast.error(json.error || "Account temporarily locked");
         return;
       }
+      if (res.status === 503) {
+        throw new Error("Service temporarily unavailable. Please try again in a moment.");
+      }
       if (!res.ok) {
         if (json.attemptsRemaining !== undefined) setAttemptsRemaining(json.attemptsRemaining);
         throw new Error(json?.error || "Login failed");
@@ -192,6 +195,9 @@ export default function LoginPage() {
         setLockedMinutes(json.remainingMinutes || 30);
         toast.error(json.error || "Account temporarily locked");
         return;
+      }
+      if (res.status === 503) {
+        throw new Error("Service temporarily unavailable. Please try again in a moment.");
       }
       if (!res.ok) {
         if (json.attemptsRemaining !== undefined) setAttemptsRemaining(json.attemptsRemaining);

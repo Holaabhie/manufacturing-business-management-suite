@@ -25,9 +25,7 @@ export const updateMachineSchema = z.object({
     capacity: z.string().max(200).trim().optional(),
     status: z
         .enum(["active", "inactive", "maintenance"], {
-            errorMap: () => ({
-                message: "Invalid status. Must be active, inactive, or maintenance",
-            }),
+            error: "Invalid status. Must be active, inactive, or maintenance",
         })
         .optional(),
 });

@@ -116,14 +116,20 @@ export default function CreateProductionPage() {
     const [orderSearchTerm, setOrderSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("all");
 
-    // Step 2 — Materials, machine, operator
+    // Step 2 — Materials, machines, operators
     const [selectedMaterials, setSelectedMaterials] = useState<SelectedMaterial[]>([]);
-    const [selectedMachineId, setSelectedMachineId] = useState("");
-    const [selectedOperatorId, setSelectedOperatorId] = useState("");
+    const [assignedMachines, setAssignedMachines] = useState<{ id: number; machineId: string; machineName: string }[]>([{ id: Date.now(), machineId: '', machineName: '' }]);
+    const [assignedOperators, setAssignedOperators] = useState<{ id: number; operatorId: string; operatorName: string }[]>([{ id: Date.now(), operatorId: '', operatorName: '' }]);
 
     // Step 3 — Config
     const [expectedOutput, setExpectedOutput] = useState("");
-    const [startTime, setStartTime] = useState("");
+    // Auto-fill Start Time with current datetime (user can clear/change it)
+    const [startTime, setStartTime] = useState(() => {
+        const now = new Date();
+        // Format as YYYY-MM-DDTHH:MM for datetime-local input
+        const pad = (n: number) => String(n).padStart(2, '0');
+        return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    });
     const [shift, setShift] = useState<ShiftType>("morning");
     const [targetCompletion, setTargetCompletion] = useState("");
     const [notes, setNotes] = useState("");
@@ -202,8 +208,21 @@ export default function CreateProductionPage() {
         [machines]
     );
 
-    const selectedMachine = machines.find((m) => m.id === selectedMachineId);
-    const selectedOperator = operators.find((o) => o.id === selectedOperatorId);
+    // Machine list helpers
+    const addMachineRow = () => setAssignedMachines(prev => [...prev, { id: Date.now(), machineId: '', machineName: '' }]);
+    const removeMachineRow = (id: number) => setAssignedMachines(prev => prev.filter(m => m.id !== id));
+    const updateMachineRow = (id: number, machineId: string) => {
+        const found = machines.find(m => m.id === machineId);
+        setAssignedMachines(prev => prev.map(row => row.id === id ? { ...row, machineId, machineName: found?.machineName || '' } : row));
+    };
+
+    // Operator list helpers
+    const addOperatorRow = () => setAssignedOperators(prev => [...prev, { id: Date.now(), operatorId: '', operatorName: '' }]);
+    const removeOperatorRow = (id: number) => setAssignedOperators(prev => prev.filter(o => o.id !== id));
+    const updateOperatorRow = (id: number, operatorId: string) => {
+        const found = operators.find(o => o.id === operatorId);
+        setAssignedOperators(prev => prev.map(row => row.id === id ? { ...row, operatorId, operatorName: found?.fullName || '' } : row));
+    };
 
     // ─── Material management ──────────────────────────────────
     const addMaterial = () => {
@@ -245,14 +264,14 @@ export default function CreateProductionPage() {
                 return (
                     selectedMaterials.length > 0 &&
                     selectedMaterials.every((m) => m.inventoryId && m.quantityUsed > 0) &&
-                    !!selectedMachineId &&
-                    !!selectedOperatorId
+                    assignedMachines.length > 0 &&
+                    assignedMachines.every(m => !!m.machineId) &&
+                    assignedOperators.length > 0 &&
+                    assignedOperators.every(o => !!o.operatorId)
                 );
             case 3:
                 return (
-                    Number(expectedOutput) > 0 &&
-                    !!startTime &&
-                    !!targetCompletion
+                    Number(expectedOutput) > 0
                 );
             default:
                 return false;
@@ -272,14 +291,18 @@ export default function CreateProductionPage() {
                 clientName: selectedOrder.clients?.name ?? selectedOrder.clientName ?? "—",
                 deliveryDate: selectedOrder.delivery_date ?? selectedOrder.deliveryDate ?? null,
                 materials: selectedMaterials,
-                machineId: selectedMachineId,
-                machineName: selectedMachine?.machineName || "",
-                operatorId: selectedOperatorId,
-                operatorName: selectedOperator?.fullName || "",
+                machineId: assignedMachines[0]?.machineId || "",
+                machineName: assignedMachines[0]?.machineName || "",
+                machineIds: assignedMachines.map(m => m.machineId),
+                machineNames: assignedMachines.map(m => m.machineName),
+                operatorId: assignedOperators[0]?.operatorId || "",
+                operatorName: assignedOperators[0]?.operatorName || "",
+                operatorIds: assignedOperators.map(o => o.operatorId),
+                operatorNames: assignedOperators.map(o => o.operatorName),
                 expectedOutput: Number(expectedOutput),
-                startTime,
+                startTime: startTime || null,
                 shift,
-                targetCompletion,
+                targetCompletion: targetCompletion || null,
                 notes,
             };
 
@@ -629,12 +652,9 @@ export default function CreateProductionPage() {
                                             {selectedMaterials.map((mat, idx) => (
                                                 <div
                                                     key={idx}
-                                                    className="flex gap-3 items-end rounded-lg border border-border p-3 bg-muted/20"
+                                                    className="flex items-center gap-2 rounded-lg border border-border p-3 bg-muted/20"
                                                 >
-                                                    <div className="flex-1 space-y-1">
-                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase">
-                                                            Material
-                                                        </Label>
+                                                    <div className="flex-1 min-w-0">
                                                         <Select
                                                             value={mat.inventoryId}
                                                             onValueChange={(v) =>
@@ -651,19 +671,15 @@ export default function CreateProductionPage() {
                                                                         value={item.id}
                                                                         disabled={item.quantity <= 0}
                                                                     >
-                                                                        {item.name} ({item.quantity} {item.unit}{" "}
-                                                                        available)
+                                                                        {item.name}
                                                                     </SelectItem>
                                                                 ))}
                                                             </SelectContent>
                                                         </Select>
                                                     </div>
-                                                    <div className="w-32 space-y-1">
-                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase">
-                                                            Qty Used
-                                                        </Label>
+                                                    <div className="w-[72px] flex-shrink-0">
                                                         <NumericInput
-                                                            className="h-9 bg-card font-semibold"
+                                                            className="h-9 bg-card font-semibold text-center rounded-lg"
                                                             value={mat.quantityUsed || ""}
                                                             onValueChange={(v) =>
                                                                 updateMaterial(
@@ -678,10 +694,10 @@ export default function CreateProductionPage() {
                                                             max={mat.availableStock}
                                                         />
                                                     </div>
-                                                    {mat.availableStock > 0 && (
-                                                        <div className="text-[9px] text-muted-foreground pb-2 w-16">
-                                                            / {mat.availableStock} {mat.unit}
-                                                        </div>
+                                                    {mat.unit && (
+                                                        <span className="text-[10px] text-muted-foreground flex-shrink-0 w-8 text-right">
+                                                            {mat.unit}
+                                                        </span>
                                                     )}
                                                     <Button
                                                         type="button"
@@ -698,108 +714,128 @@ export default function CreateProductionPage() {
                                     )}
                                 </div>
 
-                                {/* Machine Assignment — Dynamic from API */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
+                                {/* Machines Assignment */}
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
                                         <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                                             <Cpu className="h-3.5 w-3.5" />
-                                            Assign Machine
+                                            Assign Machines
                                         </Label>
-                                        {machines.length === 0 ? (
-                                            <div className="rounded-xl border-2 border-dashed border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-4 text-center">
-                                                <AlertCircle className="h-5 w-5 mx-auto mb-2 text-amber-500" />
-                                                <p className="text-xs text-amber-700 dark:text-amber-400 font-semibold">
-                                                    No machines found
-                                                </p>
-                                                <p className="text-[10px] text-muted-foreground mt-1">
-                                                    Admin must add machines in Machine Management first.
-                                                </p>
-                                            </div>
-                                        ) : (
-                                            <Select
-                                                value={selectedMachineId}
-                                                onValueChange={setSelectedMachineId}
-                                            >
-                                                <SelectTrigger className="h-10 bg-card" id="machine-select">
-                                                    <SelectValue placeholder="Select machine..." />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {machines.map((m) => (
-                                                        <SelectItem
-                                                            key={m.id}
-                                                            value={m.id}
-                                                            disabled={m.status !== "active"}
-                                                        >
-                                                            <div className="flex items-center gap-2">
-                                                                <div
-                                                                    className={cn(
-                                                                        "w-1.5 h-1.5 rounded-full",
-                                                                        m.status === "active"
-                                                                            ? "bg-emerald-400"
-                                                                            : m.status === "maintenance"
-                                                                                ? "bg-amber-400"
-                                                                                : "bg-red-400"
-                                                                    )}
-                                                                />
-                                                                {m.machineName}
-                                                                {m.machineType && (
-                                                                    <span className="text-[10px] text-muted-foreground">
-                                                                        ({m.machineType})
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        )}
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className="rounded-lg h-8 text-xs gap-1"
+                                            onClick={addMachineRow}
+                                        >
+                                            <Plus className="h-3 w-3" />
+                                            Add Machine
+                                        </Button>
                                     </div>
+                                    {machines.length === 0 ? (
+                                        <div className="rounded-xl border-2 border-dashed border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-4 text-center">
+                                            <AlertCircle className="h-5 w-5 mx-auto mb-2 text-amber-500" />
+                                            <p className="text-xs text-amber-700 dark:text-amber-400 font-semibold">No machines found</p>
+                                            <p className="text-[10px] text-muted-foreground mt-1">Admin must add machines in Machine Management first.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {assignedMachines.map((row) => (
+                                                <div key={row.id} className="flex items-center gap-2 rounded-lg border border-border p-3 bg-muted/20">
+                                                    <div className="flex-1 min-w-0">
+                                                        <Select value={row.machineId} onValueChange={(v) => updateMachineRow(row.id, v)}>
+                                                            <SelectTrigger className="h-9 bg-card" id={`machine-select-${row.id}`}>
+                                                                <SelectValue placeholder="Select machine..." />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {machines.map((m) => (
+                                                                    <SelectItem key={m.id} value={m.id} disabled={m.status !== "active"}>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <div className={cn("w-1.5 h-1.5 rounded-full", m.status === "active" ? "bg-emerald-400" : m.status === "maintenance" ? "bg-amber-400" : "bg-red-400")} />
+                                                                            {m.machineName}
+                                                                            {m.machineType && <span className="text-[10px] text-muted-foreground">({m.machineType})</span>}
+                                                                        </div>
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-9 w-9 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg flex-shrink-0"
+                                                        onClick={() => removeMachineRow(row.id)}
+                                                        disabled={assignedMachines.length <= 1}
+                                                    >
+                                                        <X className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
 
-                                    {/* Operator Assignment — Dynamic from employees API */}
-                                    <div className="space-y-2">
+                                {/* Operators Assignment */}
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
                                         <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                                             <User className="h-3.5 w-3.5" />
-                                            Assign Operator
+                                            Assign Operators
                                         </Label>
-                                        {operators.length === 0 ? (
-                                            <div className="rounded-xl border-2 border-dashed border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-4 text-center">
-                                                <AlertCircle className="h-5 w-5 mx-auto mb-2 text-amber-500" />
-                                                <p className="text-xs text-amber-700 dark:text-amber-400 font-semibold">
-                                                    No staff found
-                                                </p>
-                                                <p className="text-[10px] text-muted-foreground mt-1">
-                                                    Admin must add staff members first.
-                                                </p>
-                                            </div>
-                                        ) : (
-                                            <Select
-                                                value={selectedOperatorId}
-                                                onValueChange={setSelectedOperatorId}
-                                            >
-                                                <SelectTrigger className="h-10 bg-card" id="operator-select">
-                                                    <SelectValue placeholder="Select operator..." />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {operators.map((op) => (
-                                                        <SelectItem
-                                                            key={op.id}
-                                                            value={op.id}
-                                                        >
-                                                            <div className="flex items-center gap-2">
-                                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                                                                {op.fullName}
-                                                                {op.designation && (
-                                                                    <span className="text-[10px] text-muted-foreground">
-                                                                        ({op.designation})
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        )}
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className="rounded-lg h-8 text-xs gap-1"
+                                            onClick={addOperatorRow}
+                                        >
+                                            <Plus className="h-3 w-3" />
+                                            Add Operator
+                                        </Button>
                                     </div>
+                                    {operators.length === 0 ? (
+                                        <div className="rounded-xl border-2 border-dashed border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-4 text-center">
+                                            <AlertCircle className="h-5 w-5 mx-auto mb-2 text-amber-500" />
+                                            <p className="text-xs text-amber-700 dark:text-amber-400 font-semibold">No staff found</p>
+                                            <p className="text-[10px] text-muted-foreground mt-1">Admin must add staff members first.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {assignedOperators.map((row) => (
+                                                <div key={row.id} className="flex items-center gap-2 rounded-lg border border-border p-3 bg-muted/20">
+                                                    <div className="flex-1 min-w-0">
+                                                        <Select value={row.operatorId} onValueChange={(v) => updateOperatorRow(row.id, v)}>
+                                                            <SelectTrigger className="h-9 bg-card" id={`operator-select-${row.id}`}>
+                                                                <SelectValue placeholder="Select operator..." />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {operators.map((op) => (
+                                                                    <SelectItem key={op.id} value={op.id}>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                                                            {op.fullName}
+                                                                            {op.designation && <span className="text-[10px] text-muted-foreground">({op.designation})</span>}
+                                                                        </div>
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-9 w-9 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg flex-shrink-0"
+                                                        onClick={() => removeOperatorRow(row.id)}
+                                                        disabled={assignedOperators.length <= 1}
+                                                    >
+                                                        <X className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -914,40 +950,40 @@ export default function CreateProductionPage() {
                                     <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
                                         Production Summary
                                     </h3>
-                                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                                        <div className="flex justify-between">
-                                            <span className="text-muted-foreground">Product:</span>
-                                            <span className="font-semibold">
+                                    <div className="flex flex-col gap-2 text-sm">
+                                        <div className="flex justify-between items-start gap-2">
+                                            <span className="text-muted-foreground whitespace-nowrap">Product: </span>
+                                            <span className="font-semibold text-right flex-1" style={{ overflowWrap: 'break-word' }}>
                                                 {selectedOrder?.product_name ?? selectedOrder?.productName ?? "—"}
                                             </span>
                                         </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-muted-foreground">Client:</span>
-                                            <span className="font-semibold">
+                                        <div className="flex justify-between items-start gap-2">
+                                            <span className="text-muted-foreground whitespace-nowrap">Client: </span>
+                                            <span className="font-semibold text-right flex-1" style={{ overflowWrap: 'break-word' }}>
                                                 {selectedOrder?.clients?.name ?? selectedOrder?.clientName ?? "—"}
                                             </span>
                                         </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-muted-foreground">Materials:</span>
-                                            <span className="font-semibold">
+                                        <div className="flex justify-between items-start gap-2">
+                                            <span className="text-muted-foreground whitespace-nowrap">Materials: </span>
+                                            <span className="font-semibold text-right flex-1">
                                                 {selectedMaterials.length} items
                                             </span>
                                         </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-muted-foreground">Machine:</span>
-                                            <span className="font-semibold">
-                                                {selectedMachine?.machineName || "—"}
+                                        <div className="flex justify-between items-start gap-2">
+                                            <span className="text-muted-foreground whitespace-nowrap">Machines: </span>
+                                            <span className="font-semibold text-right flex-1" style={{ overflowWrap: 'break-word' }}>
+                                                {assignedMachines.filter(m => m.machineName).map(m => m.machineName).join(', ') || "—"}
                                             </span>
                                         </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-muted-foreground">Operator:</span>
-                                            <span className="font-semibold">
-                                                {selectedOperator?.fullName || "—"}
+                                        <div className="flex justify-between items-start gap-2">
+                                            <span className="text-muted-foreground whitespace-nowrap">Operators: </span>
+                                            <span className="font-semibold text-right flex-1" style={{ overflowWrap: 'break-word' }}>
+                                                {assignedOperators.filter(o => o.operatorName).map(o => o.operatorName).join(', ') || "—"}
                                             </span>
                                         </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-muted-foreground">Target:</span>
-                                            <span className="font-semibold">
+                                        <div className="flex justify-between items-start gap-2">
+                                            <span className="text-muted-foreground whitespace-nowrap">Target: </span>
+                                            <span className="font-semibold text-right flex-1">
                                                 {expectedOutput || "—"} units
                                             </span>
                                         </div>

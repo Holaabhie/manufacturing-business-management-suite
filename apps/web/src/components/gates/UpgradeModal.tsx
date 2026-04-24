@@ -92,13 +92,15 @@ export function UpgradeModal({
           border: '1px solid rgba(255, 255, 255, 0.10)',
           boxShadow: '0 -8px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
           fontFamily: 'var(--font-glass)',
-          overflowY: 'auto',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
-        {/* Close button */}
+        {/* Close button — always visible, never scrolls */}
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 z-10 transition-colors"
+          className="absolute right-4 top-4 z-10 transition-colors flex-shrink-0"
           style={{
             background: 'rgba(255,255,255,0.06)',
             border: '1px solid var(--glass-border)',
@@ -119,173 +121,176 @@ export function UpgradeModal({
           </svg>
         </button>
 
-        {/* Header */}
-        <div
-          className="px-8 py-8 text-center"
-          style={{
-            background: 'linear-gradient(135deg, rgba(99,210,255,0.15), rgba(0,100,220,0.12))',
-            borderBottom: '1px solid var(--glass-border)',
-            borderRadius: '20px 20px 0 0',
-          }}
-        >
-          <h2 className="text-2xl font-bold" style={{ color: 'var(--g-text-primary)', fontFamily: 'var(--font-glass)' }}>
-            🚀 Upgrade to Pro
-          </h2>
-          <p className="mt-2 text-sm" style={{ color: 'var(--g-text-secondary)' }}>
-            Unlock all features and supercharge your business
-          </p>
-        </div>
-
-        {/* Plan Cards */}
-        <div className="p-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-            {/* Monthly Plan */}
-            <button
-              onClick={() => setSelectedPlan('pro_monthly')}
-              className="relative p-5 text-left transition-all"
-              style={{
-                background: selectedPlan === 'pro_monthly'
-                  ? 'rgba(99,210,255,0.10)'
-                  : 'var(--glass-surface)',
-                border: selectedPlan === 'pro_monthly'
-                  ? '2px solid rgba(99,210,255,0.5)'
-                  : '1px solid var(--glass-border)',
-                borderRadius: 'var(--glass-radius-card)',
-              }}
-            >
-              <div className="text-sm font-medium" style={{ color: 'var(--g-text-secondary)' }}>
-                Monthly
-              </div>
-              <div className="mt-2 flex items-baseline gap-1">
-                <span className="text-3xl font-bold" style={{ color: 'var(--g-text-primary)', fontFamily: 'var(--font-glass-mono)' }}>
-                  {formatPrice(PLANS.pro_monthly.price)}
-                </span>
-                <span className="text-sm" style={{ color: 'var(--g-text-secondary)' }}>/mo</span>
-              </div>
-              <div className="mt-1 text-xs" style={{ color: 'var(--g-text-secondary)' }}>
-                Billed monthly
-              </div>
-              {selectedPlan === 'pro_monthly' && (
-                <div className="absolute right-3 top-3">
-                  <div className="flex h-5 w-5 items-center justify-center rounded-full" style={{ background: 'var(--g-accent-blue)' }}>
-                    <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                    </svg>
-                  </div>
-                </div>
-              )}
-            </button>
-
-            {/* Yearly Plan */}
-            <button
-              onClick={() => setSelectedPlan('pro_yearly')}
-              className="relative p-5 text-left transition-all"
-              style={{
-                background: selectedPlan === 'pro_yearly'
-                  ? 'rgba(99,210,255,0.10)'
-                  : 'var(--glass-surface)',
-                border: selectedPlan === 'pro_yearly'
-                  ? '2px solid rgba(99,210,255,0.5)'
-                  : '1px solid var(--glass-border)',
-                borderRadius: 'var(--glass-radius-card)',
-              }}
-            >
-              {/* Popular badge */}
-              <div className="absolute -top-2.5 right-3">
-                <span className="rounded-full px-3 py-0.5 text-[10px] font-bold text-white shadow-sm"
-                  style={{ background: 'linear-gradient(135deg, rgba(255,200,80,0.9), rgba(255,140,0,0.9))' }}>
-                  ⭐ POPULAR
-                </span>
-              </div>
-
-              <div className="text-sm font-medium" style={{ color: 'var(--g-text-secondary)' }}>
-                Yearly
-              </div>
-              <div className="mt-2 flex items-baseline gap-1">
-                <span className="text-3xl font-bold" style={{ color: 'var(--g-text-primary)', fontFamily: 'var(--font-glass-mono)' }}>
-                  {formatPrice(monthlyEquivalent)}
-                </span>
-                <span className="text-sm" style={{ color: 'var(--g-text-secondary)' }}>/mo</span>
-              </div>
-              <div className="mt-1 flex items-center gap-2">
-                <span className="text-xs" style={{ color: 'var(--g-text-secondary)' }}>
-                  Billed as {formatPrice(PLANS.pro_yearly.price)}/yr
-                </span>
-                <span className="rounded-full px-2 py-0.5 text-[10px] font-bold"
-                  style={{ background: 'rgba(48,209,88,0.15)', color: 'rgba(48,209,88,0.9)' }}>
-                  Save {formatPrice(yearlySavings)}
-                </span>
-              </div>
-              {selectedPlan === 'pro_yearly' && (
-                <div className="absolute right-3 top-6">
-                  <div className="flex h-5 w-5 items-center justify-center rounded-full" style={{ background: 'var(--g-accent-blue)' }}>
-                    <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                    </svg>
-                  </div>
-                </div>
-              )}
-            </button>
-          </div>
-
-          {/* Pro Features List */}
-          <div className="glass-section p-5 mb-6"
+        {/* Scrollable content area */}
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+          {/* Header */}
+          <div
+            className="px-8 py-8 text-center"
             style={{
-              background: 'var(--glass-surface)',
-              border: '1px solid var(--glass-border)',
-              borderRadius: 'var(--glass-radius-card)',
+              background: 'linear-gradient(135deg, rgba(99,210,255,0.15), rgba(0,100,220,0.12))',
+              borderBottom: '1px solid var(--glass-border)',
+              borderRadius: '20px 20px 0 0',
             }}
           >
-            <h3 className="glass-label mb-3">
-              Everything in Pro includes:
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {PLANS.pro_monthly.features.map((feature) => (
-                <div key={feature} className="flex items-center gap-2 text-sm" style={{ color: 'var(--g-text-secondary)' }}>
-                  <span style={{ color: 'rgba(48,209,88,0.9)' }} className="text-xs">✓</span>
-                  {feature}
-                </div>
-              ))}
-            </div>
+            <h2 className="text-2xl font-bold" style={{ color: 'var(--g-text-primary)', fontFamily: 'var(--font-glass)' }}>
+              🚀 Upgrade to Pro
+            </h2>
+            <p className="mt-2 text-sm" style={{ color: 'var(--g-text-secondary)' }}>
+              Unlock all features and supercharge your business
+            </p>
           </div>
 
-          {/* Error */}
-          {error && (
-            <div className="glass-warning mb-4 px-4 py-3"
+          {/* Plan Cards */}
+          <div className="p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              {/* Monthly Plan */}
+              <button
+                onClick={() => setSelectedPlan('pro_monthly')}
+                className="relative p-5 text-left transition-all"
+                style={{
+                  background: selectedPlan === 'pro_monthly'
+                    ? 'rgba(99,210,255,0.10)'
+                    : 'var(--glass-surface)',
+                  border: selectedPlan === 'pro_monthly'
+                    ? '2px solid rgba(99,210,255,0.5)'
+                    : '1px solid var(--glass-border)',
+                  borderRadius: 'var(--glass-radius-card)',
+                }}
+              >
+                <div className="text-sm font-medium" style={{ color: 'var(--g-text-secondary)' }}>
+                  Monthly
+                </div>
+                <div className="mt-2 flex items-baseline gap-1">
+                  <span className="text-3xl font-bold" style={{ color: 'var(--g-text-primary)', fontFamily: 'var(--font-glass-mono)' }}>
+                    {formatPrice(PLANS.pro_monthly.price)}
+                  </span>
+                  <span className="text-sm" style={{ color: 'var(--g-text-secondary)' }}>/mo</span>
+                </div>
+                <div className="mt-1 text-xs" style={{ color: 'var(--g-text-secondary)' }}>
+                  Billed monthly
+                </div>
+                {selectedPlan === 'pro_monthly' && (
+                  <div className="absolute right-3 top-3">
+                    <div className="flex h-5 w-5 items-center justify-center rounded-full" style={{ background: 'var(--g-accent-blue)' }}>
+                      <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                      </svg>
+                    </div>
+                  </div>
+                )}
+              </button>
+
+              {/* Yearly Plan */}
+              <button
+                onClick={() => setSelectedPlan('pro_yearly')}
+                className="relative p-5 text-left transition-all"
+                style={{
+                  background: selectedPlan === 'pro_yearly'
+                    ? 'rgba(99,210,255,0.10)'
+                    : 'var(--glass-surface)',
+                  border: selectedPlan === 'pro_yearly'
+                    ? '2px solid rgba(99,210,255,0.5)'
+                    : '1px solid var(--glass-border)',
+                  borderRadius: 'var(--glass-radius-card)',
+                }}
+              >
+                {/* Popular badge */}
+                <div className="absolute -top-2.5 right-3">
+                  <span className="rounded-full px-3 py-0.5 text-[10px] font-bold text-white shadow-sm"
+                    style={{ background: 'linear-gradient(135deg, rgba(255,200,80,0.9), rgba(255,140,0,0.9))' }}>
+                    ⭐ POPULAR
+                  </span>
+                </div>
+
+                <div className="text-sm font-medium" style={{ color: 'var(--g-text-secondary)' }}>
+                  Yearly
+                </div>
+                <div className="mt-2 flex items-baseline gap-1">
+                  <span className="text-3xl font-bold" style={{ color: 'var(--g-text-primary)', fontFamily: 'var(--font-glass-mono)' }}>
+                    {formatPrice(monthlyEquivalent)}
+                  </span>
+                  <span className="text-sm" style={{ color: 'var(--g-text-secondary)' }}>/mo</span>
+                </div>
+                <div className="mt-1 flex items-center gap-2">
+                  <span className="text-xs" style={{ color: 'var(--g-text-secondary)' }}>
+                    Billed as {formatPrice(PLANS.pro_yearly.price)}/yr
+                  </span>
+                  <span className="rounded-full px-2 py-0.5 text-[10px] font-bold"
+                    style={{ background: 'rgba(48,209,88,0.15)', color: 'rgba(48,209,88,0.9)' }}>
+                    Save {formatPrice(yearlySavings)}
+                  </span>
+                </div>
+                {selectedPlan === 'pro_yearly' && (
+                  <div className="absolute right-3 top-6">
+                    <div className="flex h-5 w-5 items-center justify-center rounded-full" style={{ background: 'var(--g-accent-blue)' }}>
+                      <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                      </svg>
+                    </div>
+                  </div>
+                )}
+              </button>
+            </div>
+
+            {/* Pro Features List */}
+            <div className="glass-section p-5 mb-6"
               style={{
-                background: 'rgba(255,80,80,0.08)',
-                border: '1px solid rgba(255,80,80,0.25)',
+                background: 'var(--glass-surface)',
+                border: '1px solid var(--glass-border)',
                 borderRadius: 'var(--glass-radius-card)',
               }}
             >
-              <p className="text-sm" style={{ color: 'rgba(255,100,100,0.85)' }}>{error}</p>
+              <h3 className="glass-label mb-3">
+                Everything in Pro includes:
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {PLANS.pro_monthly.features.map((feature) => (
+                  <div key={feature} className="flex items-center gap-2 text-sm" style={{ color: 'var(--g-text-secondary)' }}>
+                    <span style={{ color: 'rgba(48,209,88,0.9)' }} className="text-xs">✓</span>
+                    {feature}
+                  </div>
+                ))}
+              </div>
             </div>
-          )}
 
-          {/* CTA */}
-          <button
-            onClick={handleUpgrade}
-            disabled={isProcessing}
-            className="glass-btn-primary w-full py-3.5 text-sm font-bold transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isProcessing ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                Processing...
-              </span>
-            ) : (
-              `✨ Upgrade to Pro — ${formatPrice(PLANS[selectedPlan].price)}${
-                selectedPlan === 'pro_yearly' ? '/year' : '/month'
-              }`
+            {/* Error */}
+            {error && (
+              <div className="glass-warning mb-4 px-4 py-3"
+                style={{
+                  background: 'rgba(255,80,80,0.08)',
+                  border: '1px solid rgba(255,80,80,0.25)',
+                  borderRadius: 'var(--glass-radius-card)',
+                }}
+              >
+                <p className="text-sm" style={{ color: 'rgba(255,100,100,0.85)' }}>{error}</p>
+              </div>
             )}
-          </button>
 
-          <p className="mt-3 text-center text-xs" style={{ color: 'var(--g-text-label)' }}>
-            Secure payment via Razorpay • Cancel anytime
-          </p>
+            {/* CTA */}
+            <button
+              onClick={handleUpgrade}
+              disabled={isProcessing}
+              className="glass-btn-primary w-full py-3.5 text-sm font-bold transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isProcessing ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Processing...
+                </span>
+              ) : (
+                `✨ Upgrade to Pro — ${formatPrice(PLANS[selectedPlan].price)}${
+                  selectedPlan === 'pro_yearly' ? '/year' : '/month'
+                }`
+              )}
+            </button>
+
+            <p className="mt-3 text-center text-xs" style={{ color: 'var(--g-text-label)' }}>
+              Secure payment via Razorpay • Cancel anytime
+            </p>
+          </div>
         </div>
       </div>
 

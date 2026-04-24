@@ -27,6 +27,10 @@ export async function PUT(
           min_stock_level: Number(body.min_stock_level) || 10,
           supplier_whatsapp: body.supplier_whatsapp || "",
           purchase_cost_per_unit: Number(body.purchase_cost_per_unit) || 0,
+          hsn_code: body.hsn_code || "",
+          tax_rate: Number(body.tax_rate) || 18,
+          track_inventory: body.track_inventory ?? true,
+          item_type: body.item_type || "Goods",
           updatedAt: new Date(),
         },
       }

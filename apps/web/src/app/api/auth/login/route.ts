@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
-import { getDb } from "@/lib/mongodb";
+import { getDb, isDbUnavailableError } from "@/lib/mongodb";
 import { createSession, type UserDoc } from "@/lib/auth-session";
 import { logAuthEvent, getClientIp } from "@/lib/audit";
 import { checkRateLimit, getRateLimitKey, rateLimitResponse } from "@/lib/rate-limit";
@@ -319,6 +319,12 @@ export async function POST(req: Request) {
     });
   } catch (e: any) {
     console.error("[login] Error:", e);
+    if (isDbUnavailableError(e)) {
+      return NextResponse.json(
+        { error: "Service temporarily unavailable. Please try again in a moment.", success: false },
+        { status: 503 }
+      );
+    }
     return NextResponse.json(
       { error: e?.message ?? "Login failed" },
       { status: 500 }

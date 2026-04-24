@@ -25,16 +25,16 @@ export const updateVendorSchema = createVendorSchema.partial();
 export const purchaseOrderItemSchema = z.object({
     inventoryItemId: z.string().min(1, "Material is required"),
     materialName: z.string().min(1, "Material name is required"),
-    quantity: z.number({ coerce: true }).positive("Quantity must be positive"),
+    quantity: z.coerce.number().positive("Quantity must be positive"),
     unit: z.string().min(1, "Unit is required"),
-    unitPrice: z.number({ coerce: true }).min(0, "Price cannot be negative"),
+    unitPrice: z.coerce.number().min(0, "Price cannot be negative"),
 });
 
 export const createPurchaseOrderSchema = z.object({
     vendorId: z.string().min(1, "Vendor is required"),
     vendorName: z.string().min(1, "Vendor name is required"),
     items: z.array(purchaseOrderItemSchema).min(1, "At least one item is required"),
-    taxPercent: z.number({ coerce: true }).min(0).max(100).default(18),
+    taxPercent: z.coerce.number().min(0).max(100).default(18),
     notes: z.string().max(2000).optional().default(""),
 });
 

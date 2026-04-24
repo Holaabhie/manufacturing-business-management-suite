@@ -71,11 +71,15 @@ function SheetContent({
         )}
         {...props}
       >
-        {children}
-        <SheetPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
+        {/* Close button — always visible, never scrolls */}
+        <SheetPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-4 right-4 z-10 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
           <XIcon className="size-4" />
           <span className="sr-only">Close</span>
         </SheetPrimitive.Close>
+        {/* Scrollable content area */}
+        <div className="flex-1 overflow-y-auto min-h-0">
+          {children}
+        </div>
       </SheetPrimitive.Content>
     </SheetPortal>
   )

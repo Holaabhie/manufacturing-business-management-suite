@@ -74,15 +74,21 @@ export function FeatureProvider({
     try {
       const res = await fetch('/api/features');
       if (!res.ok) {
-        throw new Error(`Failed to fetch features: ${res.status}`);
+        // Non-ok response — log for debugging but don't throw.
+        // Fall back to empty flags so the page (especially login) still renders.
+        console.warn(`Feature flags API returned ${res.status}, using empty flags as fallback.`);
+        setFlags((prev) => (prev.length ? prev : []));
+        setError(null);
+        return;
       }
       const data = await res.json();
       setFlags(data.features || []);
       setError(null);
     } catch (err) {
-      console.error('Failed to load feature flags:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load features');
-      // Don't clear existing flags on error (stale is better than nothing)
+      // Network failure or other unexpected error — log quietly and fallback.
+      console.warn('Feature flags unavailable, using empty flags as fallback:', err);
+      setFlags((prev) => (prev.length ? prev : []));
+      setError(null);
     } finally {
       setIsLoading(false);
     }

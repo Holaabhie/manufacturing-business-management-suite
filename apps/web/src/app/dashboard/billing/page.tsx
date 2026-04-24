@@ -145,6 +145,9 @@ export default function BillingPage() {
     const [mounted, setMounted] = useState(false);
     const [pdfGenerating, setPdfGenerating] = useState(false);
     const printRef = useRef<HTMLDivElement>(null);
+    const [clientDropdownOpen, setClientDropdownOpen] = useState(false);
+    const [clientSearch, setClientSearch] = useState("");
+    const clientDropdownRef = useRef<HTMLDivElement>(null);
 
     // Role-based access control
     const [userRole, setUserRole] = useState<string | null>(null);
@@ -230,6 +233,19 @@ export default function BillingPage() {
         fetchCompanyInfo();
         fetchUserRole();
     }, []);
+
+    // Close client dropdown on outside click
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (clientDropdownRef.current && !clientDropdownRef.current.contains(e.target as Node)) {
+                setClientDropdownOpen(false);
+            }
+        };
+        if (clientDropdownOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => document.removeEventListener('mousedown', handleClickOutside);
+        }
+    }, [clientDropdownOpen]);
 
     // Invoice number is generated server-side (sequential: INV/YYYY-MM/XXXX)
     // Client sends a placeholder that the server overrides
@@ -606,7 +622,7 @@ export default function BillingPage() {
     }
 
     return (
-        <div className="space-y-8 bg-[var(--bg-page)] min-h-screen p-6 rounded-3xl">
+        <div className="space-y-8 bg-[var(--bg-page)] min-h-screen p-6 rounded-3xl overflow-x-hidden">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
@@ -680,12 +696,74 @@ export default function BillingPage() {
                                                 <User className="h-4 w-4 text-[var(--label-tertiary)]" />
                                                 Bill To (Client)
                                             </label>
-                                            <IOSSelect
-                                                value={formData.client_id}
-                                                onChange={(e: any) => setFormData({ ...formData, client_id: e.target.value })}
-                                                placeholder="Select client..."
-                                                options={clients.map(c => ({ label: c.name, value: c.id }))}
-                                            />
+                                            <div className="relative" ref={clientDropdownRef}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { setClientDropdownOpen(!clientDropdownOpen); setClientSearch(""); }}
+                                                    className={cn(
+                                                        'w-full h-[44px] rounded-[10px] text-left flex items-center',
+                                                        'bg-[var(--fill-tertiary)] dark:bg-[var(--fill-quaternary)]',
+                                                        'text-[15px]',
+                                                        'outline-none border-none',
+                                                        'pl-4 pr-10',
+                                                        'transition-shadow duration-200 cursor-pointer',
+                                                        clientDropdownOpen && 'ring-2 ring-[var(--ios-blue)]',
+                                                    )}
+                                                >
+                                                    {formData.client_id
+                                                        ? <span className="text-[var(--label-primary)] truncate">{clients.find(c => c.id === formData.client_id)?.name || 'Select client...'}</span>
+                                                        : <span className="text-[var(--label-tertiary)]">Select client...</span>
+                                                    }
+                                                </button>
+                                                <ChevronDown
+                                                    size={20}
+                                                    className={cn(
+                                                        "absolute right-3 top-[22px] -translate-y-1/2 text-[var(--label-tertiary)] pointer-events-none transition-transform duration-200",
+                                                        clientDropdownOpen && "rotate-180"
+                                                    )}
+                                                />
+                                                {clientDropdownOpen && (
+                                                    <div className="absolute z-50 mt-1 w-full rounded-[12px] bg-[var(--bg-card)] border border-[var(--border-card)] shadow-[var(--shadow-lg)] overflow-hidden">
+                                                        <div className="p-2 border-b border-[var(--border-card)]">
+                                                            <input
+                                                                type="text"
+                                                                placeholder="Search clients..."
+                                                                value={clientSearch}
+                                                                onChange={(e) => setClientSearch(e.target.value)}
+                                                                className="w-full h-[36px] rounded-[8px] bg-[var(--fill-quaternary)] text-[14px] text-[var(--label-primary)] placeholder:text-[var(--label-tertiary)] outline-none border-none px-3"
+                                                                autoFocus
+                                                            />
+                                                        </div>
+                                                        <div className="max-h-[200px] overflow-y-auto">
+                                                            {clients
+                                                                .filter(c => c.name?.toLowerCase().includes(clientSearch.toLowerCase()))
+                                                                .map(c => (
+                                                                    <button
+                                                                        key={c.id}
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setFormData({ ...formData, client_id: c.id });
+                                                                            setClientDropdownOpen(false);
+                                                                            setClientSearch("");
+                                                                        }}
+                                                                        className={cn(
+                                                                            "w-full text-left px-4 py-2.5 text-[15px] transition-colors duration-150",
+                                                                            formData.client_id === c.id
+                                                                                ? "bg-[var(--ios-blue)]/20 text-[var(--ios-blue)] font-medium"
+                                                                                : "text-[var(--label-primary)] hover:bg-[var(--ios-blue)]/10"
+                                                                        )}
+                                                                    >
+                                                                        {c.name}
+                                                                    </button>
+                                                                ))
+                                                            }
+                                                            {clients.filter(c => c.name?.toLowerCase().includes(clientSearch.toLowerCase())).length === 0 && (
+                                                                <div className="px-4 py-3 text-[13px] text-[var(--label-tertiary)] text-center">No clients found</div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
 
                                         <div className="space-y-2">
@@ -787,8 +865,9 @@ export default function BillingPage() {
                                         ) : (
                                             <div className="space-y-3">
                                                 {formData.items.map((item, index) => (
-                                                    <div key={item.id} className="grid grid-cols-12 gap-2 p-3 bg-[var(--bg-card)] rounded-lg border border-[var(--border-card)] items-end">
-                                                        <div className="col-span-4 space-y-1">
+                                                    <div key={item.id} className="p-3 bg-[var(--bg-card)] rounded-xl border border-[var(--border-card)] space-y-3">
+                                                        {/* Description — full width */}
+                                                        <div className="space-y-1">
                                                             <label className="text-[10px] uppercase text-[var(--label-secondary)] pl-1">Description</label>
                                                             <IOSInput
                                                                 placeholder="Product/Service name"
@@ -797,75 +876,86 @@ export default function BillingPage() {
                                                                 className="h-9"
                                                             />
                                                         </div>
-                                                        <div className="col-span-1 space-y-1">
-                                                            <label className="text-[10px] uppercase text-[var(--label-secondary)] pl-1">HSN</label>
-                                                            <IOSInput
-                                                                placeholder="Code"
-                                                                value={item.hsnCode}
-                                                                onChange={(e: any) => updateItem(item.id, 'hsnCode', e.target.value)}
-                                                                className="h-9"
-                                                            />
-                                                        </div>
-                                                        <div className="col-span-1 space-y-1">
-                                                            <label className="text-[10px] uppercase text-[var(--label-secondary)] pl-1">Qty</label>
-                                                            <NumericInput
-                                                                value={item.quantity || ""}
-                                                                onValueChange={(v: string) => updateItem(item.id, 'quantity', parseNumericValue(v))}
-                                                                className="h-9 bg-[var(--fill-quaternary)] border-none text-[15px]"
-                                                                placeholder="0"
-                                                                allowDecimal={true}
-                                                                min={0}
-                                                            />
-                                                        </div>
-                                                        <div className="col-span-1 space-y-1">
-                                                            <label className="text-[10px] uppercase text-[var(--label-secondary)] pl-1">Unit</label>
-                                                            <IOSInput
-                                                                placeholder="pcs"
-                                                                value={item.unit}
-                                                                onChange={(e: any) => updateItem(item.id, 'unit', e.target.value)}
-                                                                className="h-9"
-                                                            />
-                                                        </div>
-                                                        <div className="col-span-2 space-y-1">
-                                                            <label className="text-[10px] uppercase text-[var(--label-secondary)] pl-1">Rate (₹)</label>
-                                                            <NumericInput
-                                                                value={item.rate || ""}
-                                                                onValueChange={(v: string) => updateItem(item.id, 'rate', parseNumericValue(v))}
-                                                                className="h-9 bg-[var(--fill-quaternary)] border-none text-[15px]"
-                                                                placeholder="0.00"
-                                                                allowDecimal={true}
-                                                                min={0}
-                                                            />
-                                                        </div>
-                                                        <div className="col-span-1 space-y-1">
-                                                            <label className="text-[10px] uppercase text-[var(--label-secondary)] pl-1">GST %</label>
-                                                            <IOSSelect
-                                                                value={item.gstRate.toString()}
-                                                                onChange={(e: any) => updateItem(item.id, 'gstRate', parseInt(e.target.value))}
-                                                                options={[
-                                                                    { label: "0%", value: "0" },
-                                                                    { label: "5%", value: "5" },
-                                                                    { label: "12%", value: "12" },
-                                                                    { label: "18%", value: "18" },
-                                                                    { label: "28%", value: "28" }
-                                                                ]}
-                                                            />
-                                                        </div>
-                                                        <div className="col-span-1 space-y-1">
-                                                            <label className="text-[10px] uppercase text-[var(--label-secondary)] pl-1">Amount</label>
-                                                            <div className="h-9 px-3 bg-[var(--fill-tertiary)] rounded-[10px] flex items-center font-bold text-[var(--ios-green)] text-[15px]">
-                                                                ₹{item.amount.toLocaleString('en-IN')}
+
+                                                        {/* HSN + QTY + Unit */}
+                                                        <div className="grid grid-cols-3 gap-2">
+                                                            <div className="space-y-1">
+                                                                <label className="text-[10px] uppercase text-[var(--label-secondary)] pl-1">HSN</label>
+                                                                <IOSInput
+                                                                    placeholder="Code"
+                                                                    value={item.hsnCode}
+                                                                    onChange={(e: any) => updateItem(item.id, 'hsnCode', e.target.value)}
+                                                                    className="h-9"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <label className="text-[10px] uppercase text-[var(--label-secondary)] pl-1">QTY</label>
+                                                                <NumericInput
+                                                                    value={item.quantity || ""}
+                                                                    onValueChange={(v: string) => updateItem(item.id, 'quantity', parseNumericValue(v))}
+                                                                    className="h-9 bg-[var(--fill-quaternary)] border-none text-[15px]"
+                                                                    placeholder="0"
+                                                                    allowDecimal={true}
+                                                                    min={0}
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <label className="text-[10px] uppercase text-[var(--label-secondary)] pl-1">Unit</label>
+                                                                <IOSInput
+                                                                    placeholder="pcs"
+                                                                    value={item.unit}
+                                                                    onChange={(e: any) => updateItem(item.id, 'unit', e.target.value)}
+                                                                    className="h-9"
+                                                                />
                                                             </div>
                                                         </div>
-                                                        <div className="col-span-1 flex items-end justify-center">
+
+                                                        {/* Rate (₹) + GST % */}
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            <div className="space-y-1">
+                                                                <label className="text-[10px] uppercase text-[var(--label-secondary)] pl-1">Rate (₹)</label>
+                                                                <NumericInput
+                                                                    value={item.rate || ""}
+                                                                    onValueChange={(v: string) => updateItem(item.id, 'rate', parseNumericValue(v))}
+                                                                    className="h-9 bg-[var(--fill-quaternary)] border-none text-[15px]"
+                                                                    placeholder="0.00"
+                                                                    allowDecimal={true}
+                                                                    min={0}
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <label className="text-[10px] uppercase text-[var(--label-secondary)] pl-1">GST %</label>
+                                                                <IOSSelect
+                                                                    value={item.gstRate.toString()}
+                                                                    onChange={(e: any) => updateItem(item.id, 'gstRate', parseInt(e.target.value))}
+                                                                    options={[
+                                                                        { label: "0%", value: "0" },
+                                                                        { label: "5%", value: "5" },
+                                                                        { label: "12%", value: "12" },
+                                                                        { label: "18%", value: "18" },
+                                                                        { label: "28%", value: "28" }
+                                                                    ]}
+                                                                />
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Delete (left) + Amount (right) */}
+                                                        <div className="flex items-center justify-between pt-2 border-t border-[var(--border-card)]">
                                                             <IOSButton
                                                                 type="button"
                                                                 variant="destructive"
-                                                                className="h-9 w-9 !p-0"
+                                                                className="h-8 !px-3 !py-0 text-[12px]"
                                                                 onClick={() => removeItem(item.id)}
                                                             >
-                                                                <X className="h-4 w-4" />
+                                                                <X className="h-3.5 w-3.5 mr-1" />
+                                                                Remove
                                                             </IOSButton>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="text-[11px] uppercase text-[var(--label-tertiary)] font-medium">Amount</span>
+                                                                <span className="text-[17px] font-bold text-[var(--ios-green)]">
+                                                                    ₹{item.amount.toLocaleString('en-IN')}
+                                                                </span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 ))}
@@ -988,8 +1078,8 @@ export default function BillingPage() {
                 className="max-w-sm"
             />
 
-            {/* Bills Table */}
-            <div className="rounded-2xl border bg-[var(--bg-card)] shadow-[var(--shadow-card)] overflow-hidden border-[var(--border-card)]">
+            {/* Bills Table — Desktop only */}
+            <div className="hidden md:block rounded-2xl border bg-[var(--bg-card)] shadow-[var(--shadow-card)] overflow-hidden border-[var(--border-card)]">
                 <Table>
                     <TableHeader className="bg-[var(--fill-quaternary)] border-b border-[var(--border-card)]">
                         <TableRow className="hover:bg-transparent">
@@ -1108,40 +1198,96 @@ export default function BillingPage() {
                 </Table>
             </div>
 
+            {/* Mobile Invoice Cards — visible only below md (768px) */}
+            <div className="block md:hidden px-3 py-2 space-y-3">
+                {loading ? (
+                    Array.from({ length: 4 }).map((_, i) => (
+                        <div key={i} className="bg-[#1a1f2e] rounded-xl px-4 py-3 border-l-4 border-gray-600">
+                            <Skeleton className="h-4 w-24 rounded" />
+                            <Skeleton className="h-5 w-full rounded mt-2" />
+                            <Skeleton className="h-3 w-32 rounded mt-2" />
+                        </div>
+                    ))
+                ) : filteredBills.length === 0 ? (
+                    <div className="py-16 text-center">
+                        <FileText className="h-10 w-10 mx-auto mb-3 text-gray-500" />
+                        <p className="text-gray-400 text-sm">No invoices found. Create your first invoice to get started.</p>
+                    </div>
+                ) : filteredBills.map((bill) => (
+                    <div
+                        key={bill.id}
+                        className={cn(
+                            "bg-[#1a1f2e] rounded-xl px-4 py-3 border-l-4",
+                            bill.status === 'paid' ? 'border-green-500'
+                                : bill.status === 'sent' ? 'border-blue-500'
+                                : bill.status === 'overdue' ? 'border-red-500'
+                                : 'border-gray-500'
+                        )}
+                        onClick={() => { setSelectedBill(bill); setIsPreviewOpen(true); }}
+                    >
+                        {/* Row 1: Invoice number + Status badge */}
+                        <div className="flex justify-between items-center">
+                            <span className="text-blue-400 text-xs font-mono">{bill.billNumber}</span>
+                            <span className={cn(
+                                "rounded-full px-2 py-0.5 text-xs font-semibold",
+                                bill.status === 'paid' ? 'bg-green-500/20 text-green-400'
+                                    : bill.status === 'sent' ? 'bg-blue-500/20 text-blue-400'
+                                    : bill.status === 'overdue' ? 'bg-red-500/20 text-red-400'
+                                    : 'bg-gray-500/20 text-gray-400'
+                            )}>
+                                {bill.status.toUpperCase()}
+                            </span>
+                        </div>
+                        {/* Row 2: Client name + Amount */}
+                        <div className="flex justify-between items-center mt-1">
+                            <span className="text-white text-sm font-semibold truncate mr-2">{bill.clientName}</span>
+                            <span className="text-white text-sm font-bold whitespace-nowrap">₹{bill.totalAmount.toLocaleString('en-IN')}</span>
+                        </div>
+                        {/* Row 3: Dates */}
+                        <div className="flex justify-between mt-1">
+                            <span className="text-gray-400 text-xs">{new Date(bill.billDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                            <span className="text-gray-400 text-xs">Due: {new Date(bill.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
             {/* Preview Dialog */}
             <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-                <DialogContent className="max-w-3xl max-h-[95vh] p-0 bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px]">
-                    <ScrollArea className="max-h-[85vh]">
+                <DialogContent className="w-full max-w-3xl max-h-[90vh] p-0 overflow-x-hidden overflow-y-auto bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px] md:rounded-[24px]">
+                    <ScrollArea className="max-h-[80vh]">
                         {selectedBill && (
-                            <div className="p-8 pb-12" ref={printRef}>
+                            <div className="p-4 md:p-8 pb-8 md:pb-12 overflow-x-hidden" ref={printRef}>
                                 {/* Invoice Header */}
-                                <div className="text-center border-b border-[var(--border-card)] pb-6 mb-6">
-                                    <h1 className="text-[24px] font-bold tracking-tight text-[var(--ios-green)]">{companyInfo?.companyName || "Your Company Name"}</h1>
-                                    <p className="text-[13px] text-[var(--label-secondary)] mt-1">{companyInfo?.address?.replace('\n', ', ') || "Company Address"}</p>
-                                    <p className="text-[12px] text-[var(--label-tertiary)] mt-1">Phone: {companyInfo?.phone || "N/A"} | Email: {companyInfo?.email || "N/A"}</p>
-                                    <p className="text-[12px] text-[var(--label-tertiary)]">GSTIN: {companyInfo?.gstin || "N/A"} | PAN: {companyInfo?.pan || "N/A"}</p>
+                                <div className="text-center border-b border-[var(--border-card)] pb-4 md:pb-6 mb-4 md:mb-6">
+                                    <h1 className="text-lg md:text-[24px] font-bold tracking-tight text-[var(--ios-green)] break-words">{companyInfo?.companyName || "Your Company Name"}</h1>
+                                    <p className="text-[12px] md:text-[13px] text-[var(--label-secondary)] mt-1 break-words">{companyInfo?.address?.replace('\n', ', ') || "Company Address"}</p>
+                                    <p className="text-[11px] md:text-[12px] text-[var(--label-tertiary)] mt-1 break-words">Phone: {companyInfo?.phone || "N/A"} | Email: {companyInfo?.email || "N/A"}</p>
+                                    <p className="text-[11px] md:text-[12px] text-[var(--label-tertiary)] break-words">GSTIN: {companyInfo?.gstin || "N/A"} | PAN: {companyInfo?.pan || "N/A"}</p>
                                 </div>
 
-                                <div className="bg-[var(--ios-green)] text-white text-center py-2 font-bold text-lg mb-6 rounded">
+                                <div className="bg-[var(--ios-green)] w-full text-center py-3 text-white font-bold text-lg tracking-widest rounded mb-4 md:mb-6">
                                     TAX INVOICE
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-8 mb-6">
-                                    <div>
+                                {/* Bill To + Invoice Info — stacked on mobile, side by side on desktop */}
+                                <div className="flex flex-col md:grid md:grid-cols-2 gap-4 md:gap-8 mb-4 md:mb-6">
+                                    <div className="min-w-0">
                                         <h3 className="font-bold text-sm text-[var(--label-secondary)] mb-2">BILL TO:</h3>
-                                        <p className="font-bold text-lg text-[var(--label-primary)]">{selectedBill.clientName}</p>
-                                        {selectedBill.clientAddress && <p className="text-sm text-[var(--label-secondary)]">{selectedBill.clientAddress}</p>}
-                                        {selectedBill.clientGSTIN && <p className="text-sm text-[var(--label-secondary)]">GSTIN: {selectedBill.clientGSTIN}</p>}
+                                        <p className="font-bold text-base md:text-lg text-[var(--label-primary)] break-words">{selectedBill.clientName}</p>
+                                        {selectedBill.clientAddress && <p className="text-sm text-[var(--label-secondary)] break-words">{selectedBill.clientAddress}</p>}
+                                        {selectedBill.clientGSTIN && <p className="text-sm text-[var(--label-secondary)] break-words">GSTIN: {selectedBill.clientGSTIN}</p>}
                                         {selectedBill.clientPhone && <p className="text-sm text-[var(--label-secondary)]">Phone: {selectedBill.clientPhone}</p>}
                                     </div>
-                                    <div className="text-right">
-                                        <p className="text-sm"><span className="text-[var(--label-secondary)]">Invoice No:</span> <span className="font-bold">{selectedBill.billNumber}</span></p>
+                                    <div className="min-w-0 md:text-right">
+                                        <p className="text-sm break-words"><span className="text-[var(--label-secondary)]">Invoice No:</span> <span className="font-bold">{selectedBill.billNumber}</span></p>
                                         <p className="text-sm"><span className="text-[var(--label-secondary)]">Date:</span> {new Date(selectedBill.billDate).toLocaleDateString('en-IN')}</p>
                                         <p className="text-sm"><span className="text-[var(--label-secondary)]">Due Date:</span> {new Date(selectedBill.dueDate).toLocaleDateString('en-IN')}</p>
                                     </div>
                                 </div>
 
-                                <table className="w-full mb-6">
+                                {/* Items Table — Desktop only */}
+                                <table className="hidden md:table w-full mb-6">
                                     <thead>
                                         <tr className="bg-[var(--fill-tertiary)]">
                                             <th className="text-left p-2 text-xs font-bold">S.No</th>
@@ -1168,8 +1314,28 @@ export default function BillingPage() {
                                     </tbody>
                                 </table>
 
-                                <div className="flex justify-end mb-6">
-                                    <div className="w-64 space-y-1">
+                                {/* Items Cards — Mobile only */}
+                                <div className="block md:hidden mb-4 space-y-2">
+                                    {selectedBill.items.map((item, idx) => (
+                                        <div key={item.id} className="bg-white/5 rounded-lg px-3 py-2">
+                                            <div className="flex justify-between items-start">
+                                                <span className="text-sm font-bold text-[var(--label-primary)] break-words min-w-0 flex-1 mr-2">{item.description}</span>
+                                                <span className="text-sm font-bold text-[var(--label-primary)] whitespace-nowrap">₹{item.amount.toLocaleString('en-IN')}</span>
+                                            </div>
+                                            {item.hsnCode && (
+                                                <p className="text-xs text-gray-400 mt-0.5">HSN: {item.hsnCode}</p>
+                                            )}
+                                            <div className="flex items-center justify-between mt-1">
+                                                <span className="text-xs text-gray-400">{item.quantity} {item.unit} × ₹{item.rate.toLocaleString('en-IN')}</span>
+                                                <span className="text-xs text-gray-400 bg-white/10 rounded px-1.5 py-0.5">{item.gstRate}% GST</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Totals — responsive */}
+                                <div className="flex justify-end mb-4 md:mb-6">
+                                    <div className="w-full md:w-64 space-y-1">
                                         <div className="flex justify-between text-sm">
                                             <span className="text-[var(--label-secondary)]">Subtotal</span>
                                             <span className="font-bold">₹{selectedBill.subtotal.toLocaleString('en-IN')}</span>
@@ -1191,32 +1357,33 @@ export default function BillingPage() {
                                                 </div>
                                             </>
                                         )}
-                                        <div className="flex justify-between text-lg pt-2 border-t mt-2">
-                                            <span className="font-bold">Total</span>
+                                        <div className="flex justify-between text-base md:text-lg font-bold text-green-400 border-t border-white/20 pt-2 mt-1">
+                                            <span>Total</span>
                                             <span className="font-black text-[var(--ios-green)]">₹{selectedBill.totalAmount.toLocaleString('en-IN')}</span>
                                         </div>
                                     </div>
                                 </div>
 
-                                <p className="text-sm italic text-[var(--label-secondary)] mb-6">
+                                <p className="text-xs md:text-sm italic text-[var(--label-secondary)] mb-4 md:mb-6 break-words">
                                     Amount in words: <span className="font-medium">{selectedBill.amountInWords}</span>
                                 </p>
 
-                                <div className="grid grid-cols-2 gap-8 text-xs text-[var(--label-secondary)] border-t border-[var(--border-card)] pt-4">
-                                    <div>
+                                {/* Bank Details + Terms — stacked on mobile */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 text-xs text-[var(--label-secondary)] border-t border-[var(--border-card)] pt-4">
+                                    <div className="min-w-0">
                                         <h4 className="font-bold text-[var(--label-primary)] mb-1">Bank Details:</h4>
-                                        <p>Bank: {companyInfo?.bankName || "N/A"}</p>
-                                        <p>A/C No: {companyInfo?.accountNo || "N/A"}</p>
+                                        <p className="break-words">Bank: {companyInfo?.bankName || "N/A"}</p>
+                                        <p className="break-words">A/C No: {companyInfo?.accountNo || "N/A"}</p>
                                         <p>IFSC: {companyInfo?.ifsc || "N/A"}</p>
-                                        <p>UPI: {companyInfo?.upiId || "N/A"}</p>
+                                        <p className="break-words">UPI: {companyInfo?.upiId || "N/A"}</p>
                                     </div>
-                                    <div>
+                                    <div className="min-w-0">
                                         <h4 className="font-bold text-[var(--label-primary)] mb-1">Terms & Conditions:</h4>
-                                        <pre className="whitespace-pre-wrap font-sans">{selectedBill.terms}</pre>
+                                        <pre className="whitespace-pre-wrap font-sans break-words">{selectedBill.terms}</pre>
                                     </div>
                                 </div>
 
-                                <div className="text-right mt-8 pt-8">
+                                <div className="text-right mt-6 md:mt-8 pt-6 md:pt-8">
                                     <div className="inline-block text-center">
                                         <div className="border-t border-zinc-300 pt-2 px-8">
                                             <p className="text-xs text-zinc-500">Authorized Signatory</p>
@@ -1224,13 +1391,13 @@ export default function BillingPage() {
                                     </div>
                                 </div>
 
-                                <p className="text-center text-xs text-[var(--label-tertiary)] mt-8">
+                                <p className="text-center text-xs text-[var(--label-tertiary)] mt-6 md:mt-8">
                                     This is a computer generated invoice.
                                 </p>
                             </div>
                         )}
                     </ScrollArea>
-                    <div className="p-4 border-t border-[var(--border-card)] flex justify-end gap-2 bg-[var(--fill-quaternary)]/50 rounded-b-[24px]">
+                    <div className="p-3 md:p-4 border-t border-[var(--border-card)] flex flex-wrap justify-end gap-2 bg-[var(--fill-quaternary)]/50 rounded-b-[24px]">
                         <IOSButton variant="gray" onClick={() => setIsPreviewOpen(false)}>
                             Close
                         </IOSButton>
@@ -1238,11 +1405,11 @@ export default function BillingPage() {
                             <>
                                 <IOSButton variant="tinted" color="green" onClick={() => generatePDF(selectedBill, 'print')} disabled={pdfGenerating}>
                                     {pdfGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4" />}
-                                    {pdfGenerating ? "Generating..." : "Print Invoice"}
+                                    {pdfGenerating ? "Generating..." : "Print"}
                                 </IOSButton>
                                 <IOSButton variant="filled" onClick={() => generatePDF(selectedBill, 'download')} disabled={pdfGenerating}>
                                     {pdfGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                                    {pdfGenerating ? "Generating..." : "Download PDF"}
+                                    {pdfGenerating ? "Generating..." : "Download"}
                                 </IOSButton>
                             </>
                         )}

@@ -10,9 +10,30 @@ import { withAuth, type AuthenticatedUser } from "@/shared/middleware/with-auth"
 import { withRateLimit } from "@/shared/middleware/rate-limiter";
 import { envelope } from "@/shared/types/api";
 import { getInventoryService } from "@/modules/inventory";
+import type { InventoryItem } from "@/modules/inventory";
 import { getDataOwnerId } from "@/lib/auth-session";
 
 type RouteContext = { params: Promise<{ id: string }> };
+
+// ─── Response Mapper: Domain Entity → Frontend snake_case format ──
+function toApiResponse(item: InventoryItem) {
+    return {
+        id: item.id,
+        userId: item.userId,
+        name: item.name,
+        quantity: item.quantity,
+        unit: item.unit,
+        min_stock_level: item.minStockLevel,
+        supplier_whatsapp: item.supplierWhatsapp,
+        purchase_cost_per_unit: item.purchaseCostPerUnit,
+        hsn_code: item.hsn_code ?? "",
+        tax_rate: item.tax_rate ?? 18,
+        track_inventory: item.track_inventory ?? true,
+        item_type: item.item_type || "Goods",
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+    };
+}
 
 // ─── GET /api/v1/inventory/[id] ─────────────────────────────────
 export const GET = withRateLimit(
@@ -21,7 +42,7 @@ export const GET = withRateLimit(
             const { id } = await context!.params;
             const service = getInventoryService();
             const item = await service.findById(id, getDataOwnerId(user));
-            return envelope.ok(item);
+            return envelope.ok(toApiResponse(item));
         }),
     ),
     { tier: "read" },
@@ -49,7 +70,7 @@ export const PUT = withRateLimit(
 
             const service = getInventoryService();
             const updated = await service.update(id, getDataOwnerId(user), input);
-            return envelope.ok(updated);
+            return envelope.ok(toApiResponse(updated));
         }),
     ),
     { tier: "write" },
@@ -67,3 +88,4 @@ export const DELETE = withRateLimit(
     ),
     { tier: "write" },
 );
+

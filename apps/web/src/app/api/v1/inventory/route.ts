@@ -19,7 +19,30 @@ import { withAuth, type AuthenticatedUser } from "@/shared/middleware/with-auth"
 import { withRateLimit } from "@/shared/middleware/rate-limiter";
 import { envelope } from "@/shared/types/api";
 import { getInventoryService } from "@/modules/inventory";
+import type { InventoryItem } from "@/modules/inventory";
 import { getDataOwnerId } from "@/lib/auth-session";
+
+// ─── Response Mapper: Domain Entity → Frontend snake_case format ──
+// The frontend expects snake_case fields (purchase_cost_per_unit, min_stock_level, etc.)
+// but the domain entity uses camelCase. This mapper bridges the gap.
+function toApiResponse(item: InventoryItem) {
+    return {
+        id: item.id,
+        userId: item.userId,
+        name: item.name,
+        quantity: item.quantity,
+        unit: item.unit,
+        min_stock_level: item.minStockLevel,
+        supplier_whatsapp: item.supplierWhatsapp,
+        purchase_cost_per_unit: item.purchaseCostPerUnit,
+        hsn_code: item.hsn_code ?? "",
+        tax_rate: item.tax_rate ?? 18,
+        track_inventory: item.track_inventory ?? true,
+        item_type: item.item_type || "Goods",
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+    };
+}
 
 // ─── GET /api/v1/inventory ──────────────────────────────────────
 // Middleware: rate-limit (read tier) → error handling → auth
@@ -28,7 +51,7 @@ export const GET = withRateLimit(
         withAuth(async (_request: NextRequest, user: AuthenticatedUser) => {
             const service = getInventoryService();
             const items = await service.findAll(getDataOwnerId(user));
-            return envelope.ok(items);
+            return envelope.ok(items.map(toApiResponse));
         }),
     ),
     { tier: "read" },
@@ -57,7 +80,7 @@ export const POST = withRateLimit(
             const service = getInventoryService();
             const item = await service.create(getDataOwnerId(user), input);
 
-            return envelope.created(item);
+            return envelope.created(toApiResponse(item));
         }),
     ),
     { tier: "write" },

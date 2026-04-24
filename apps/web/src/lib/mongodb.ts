@@ -8,7 +8,9 @@ if (!uri) {
   console.error(
     "\n" +
     "╔══════════════════════════════════════════════════════════╗\n" +
-    "║  ❌  MONGODB_URI environment variable is not set        ║\n" +
+    "║  ⚠️  MONGODB_URI environment variable is not set        ║\n" +
+    "║                                                        ║\n" +
+    "║  Using fallback: mongodb://localhost:27017              ║\n" +
     "║                                                        ║\n" +
     "║  To fix:                                               ║\n" +
     "║  1. Copy .env.local.example to .env.local              ║\n" +
@@ -16,15 +18,28 @@ if (!uri) {
     "║  3. Restart the dev server                             ║\n" +
     "╚══════════════════════════════════════════════════════════╝\n"
   );
-  throw new Error(
-    "Missing MONGODB_URI — copy .env.local.example to .env.local and configure it."
-  );
+}
+
+const resolvedUri = uri || "mongodb://localhost:27017";
+
+// ─── Typed error for DB unavailability ─────────────────────────
+export class DbUnavailableError extends Error {
+  constructor(message: string, public readonly cause?: unknown) {
+    super(message);
+    this.name = "DbUnavailableError";
+  }
+}
+
+/** Type-guard route handlers can use to detect DB connection issues */
+export function isDbUnavailableError(err: unknown): err is DbUnavailableError {
+  return err instanceof DbUnavailableError;
 }
 
 declare global {
   // eslint-disable-next-line no-var
   var __mongoClientPromise: Promise<MongoClient> | undefined;
-  var mongoose: {
+  // eslint-disable-next-line no-var
+  var __mongooseCache: {
     conn: typeof mongoose | null;
     promise: Promise<typeof mongoose> | null;
   };
@@ -32,19 +47,19 @@ declare global {
 
 // ─── MongoClient (for raw driver queries via getDb()) ──────────
 const clientOptions: MongoClientOptions = {
-  connectTimeoutMS: 10_000,
+  connectTimeoutMS: 5_000,
   socketTimeoutMS: 45_000,
-  serverSelectionTimeoutMS: 10_000,
+  serverSelectionTimeoutMS: 5_000,
   maxPoolSize: 10,
   retryWrites: true,
   retryReads: true,
 };
 
-const client = new MongoClient(uri, clientOptions);
+const client = new MongoClient(resolvedUri, clientOptions);
 
 async function connectWithRetry(
-  maxAttempts = 3,
-  delayMs = 1000
+  maxAttempts = 2,
+  delayMs = 500
 ): Promise<MongoClient> {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -62,7 +77,7 @@ async function connectWithRetry(
         );
         throw err;
       }
-      // Exponential backoff: 1s → 2s → 4s
+      // Exponential backoff: 500ms → 1s
       const wait = delayMs * Math.pow(2, attempt - 1);
       await new Promise((r) => setTimeout(r, wait));
     }
@@ -70,15 +85,29 @@ async function connectWithRetry(
   throw new Error("Unreachable");
 }
 
-export const mongoClientPromise: Promise<MongoClient> =
-  global.__mongoClientPromise ??
-  (global.__mongoClientPromise = connectWithRetry());
+/**
+ * Returns a promise that resolves to a connected MongoClient.
+ * If the previous connection attempt failed, the cached promise is cleared
+ * so the next call will retry instead of returning the stale rejection.
+ */
+function getClientPromise(): Promise<MongoClient> {
+  if (!global.__mongoClientPromise) {
+    global.__mongoClientPromise = connectWithRetry().catch((err) => {
+      // Clear the cached promise so subsequent requests retry
+      global.__mongoClientPromise = undefined;
+      throw err;
+    });
+  }
+  return global.__mongoClientPromise;
+}
+
+export const mongoClientPromise: Promise<MongoClient> = getClientPromise();
 
 // ─── Mongoose (for models / schemas) ───────────────────────────
-let cached = global.mongoose;
+let cached = global.__mongooseCache;
 
 if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null };
+  cached = global.__mongooseCache = { conn: null, promise: null };
 }
 
 export async function connectToDatabase() {
@@ -89,15 +118,15 @@ export async function connectToDatabase() {
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
-      connectTimeoutMS: 10_000,
+      connectTimeoutMS: 5_000,
       socketTimeoutMS: 45_000,
-      serverSelectionTimeoutMS: 10_000,
+      serverSelectionTimeoutMS: 5_000,
     };
 
-    cached.promise = mongoose.connect(uri!, opts).then(() => {
+    cached.promise = mongoose.connect(resolvedUri!, opts).then(() => {
       console.log("✅ Mongoose connected successfully");
-      return mongoose as typeof mongoose;
-    }) as Promise<typeof mongoose>;
+      return mongoose;
+    });
   }
 
   try {
@@ -113,11 +142,17 @@ export async function connectToDatabase() {
 
 // ─── getDb() — primary API for route handlers ──────────────────
 export async function getDb() {
-  const connectedClient = await mongoClientPromise;
-  const dbName = process.env.MONGODB_DB ?? "ind_manager";
-  return connectedClient.db(dbName);
+  try {
+    const connectedClient = await getClientPromise();
+    const dbName = process.env.MONGODB_DB ?? "ind_manager";
+    return connectedClient.db(dbName);
+  } catch (err) {
+    throw new DbUnavailableError(
+      "Database is unavailable. Check your MongoDB connection.",
+      err
+    );
+  }
 }
 
 // Export clientPromise for NextAuth adapter
 export default mongoClientPromise;
-

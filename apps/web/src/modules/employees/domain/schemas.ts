@@ -21,7 +21,7 @@ export const createEmployeeSchema = z.object({
     department: z.string().max(100).trim().optional().default("General"),
     designation: z.string().max(100).trim().optional().default(""),
     permissionTemplate: z.string().optional().default("operations"),
-    customPermissions: z.record(z.record(z.boolean())).optional(),
+    customPermissions: z.record(z.string(), z.record(z.string(), z.boolean())).optional(),
 });
 
 export const updateEmployeeProfileSchema = z.object({
@@ -40,7 +40,7 @@ export const employeeActionSchema = z.discriminatedUnion("action", [
     z.object({
         action: z.literal("update_permissions"),
         templateId: z.string().optional(),
-        permissions: z.record(z.record(z.boolean())).optional(),
+        permissions: z.record(z.string(), z.record(z.string(), z.boolean())).optional(),
     }),
     z.object({
         action: z.literal("update_profile"),

@@ -74,7 +74,7 @@ export interface CreateEmployeeDTO {
     department?: string;
     designation?: string;
     permissionTemplate?: string;
-    customPermissions?: PermissionMap;
+    customPermissions?: PermissionMap | Record<string, Record<string, boolean>>;
 }
 
 export interface UpdateEmployeeProfileDTO {

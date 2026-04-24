@@ -4,7 +4,6 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import {
     Send,
     Bot,
-    User,
     Sparkles,
     Trash2,
     Copy,
@@ -23,7 +22,6 @@ import {
     AlertCircle,
     ChevronRight,
     History,
-    Wifi,
     WifiOff,
     FileBarChart,
 } from "lucide-react";
@@ -34,11 +32,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 // --- iOS Components ---
 import {
-    IOSButton,
     IOSCard,
     IOSCardHeader,
     IOSCardContent,
-    IOSBadge,
 } from "@/components/ui/ios";
 
 // ─── Types ───────────────────────────────────────────────────
@@ -526,37 +522,62 @@ export default function AIAssistantPage() {
     // ─── Render ──────────────────────────────────────────────
     return (
         <div className="h-[calc(100vh-140px)] flex flex-col">
-            {/* Header */}
-            <div className="flex justify-between items-start mb-4 flex-shrink-0">
-                <div>
-                    <h1 className="text-[28px] font-bold tracking-tight flex items-center gap-3 text-[var(--label-primary)]">
-                        <div className="h-10 w-10 rounded-[12px] bg-gradient-to-br from-[var(--ios-purple)] to-[var(--ios-indigo)] flex items-center justify-center shadow-lg shadow-[var(--ios-purple)]/30">
-                            <Bot className="h-5 w-5 text-white" />
+            {/* ── Premium Gradient Header ── */}
+            <div
+                className="flex justify-between items-start mb-4 flex-shrink-0 rounded-2xl px-5 py-4 relative overflow-hidden"
+                style={{
+                    background: "linear-gradient(135deg, #1a1f3e 0%, #0f1623 100%)",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                }}
+            >
+                {/* Subtle animated glow behind icon */}
+                <div className="absolute top-3 left-5 w-20 h-20 rounded-full opacity-40 blur-2xl animate-pulse" style={{ background: "radial-gradient(circle, rgba(168,85,247,0.5) 0%, transparent 70%)" }} />
+
+                <div className="relative z-10">
+                    <h1 className="text-[28px] font-bold tracking-tight flex items-center gap-3 text-white">
+                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow-lg" style={{ boxShadow: "0 8px 24px rgba(168,85,247,0.3)" }}>
+                            <Bot className="h-7 w-7 text-white" />
                         </div>
-                        AI Assistant
+                        <div>
+                            <span>AI Assistant</span>
+                            {/* Powered by Gemini pill */}
+                            <div className="flex items-center gap-2 mt-1.5">
+                                <span
+                                    className="text-xs font-medium px-3 py-1 rounded-full"
+                                    style={{
+                                        background: "rgba(34,197,94,0.15)",
+                                        color: "#4ade80",
+                                        border: "1px solid rgba(34,197,94,0.30)",
+                                    }}
+                                >
+                                    Powered by Google Gemini
+                                </span>
+                                {isContextLoaded ? (
+                                    <span className="flex items-center gap-1.5 text-[11px] font-medium text-green-400">
+                                        <span className="relative flex h-2 w-2">
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400" />
+                                        </span>
+                                        READY
+                                    </span>
+                                ) : (
+                                    <span className="flex items-center gap-1.5 text-[11px] font-medium text-orange-400">
+                                        <WifiOff className="h-3 w-3" />
+                                        Loading…
+                                    </span>
+                                )}
+                            </div>
+                        </div>
                     </h1>
-                    <div className="text-[13px] text-[var(--label-secondary)] mt-1.5 flex items-center gap-2">
-                        {isContextLoaded ? (
-                            <IOSBadge variant="tinted" color="green" className="text-[10px] uppercase">
-                                <Wifi className="h-3 w-3 mr-1" />
-                                Ready
-                            </IOSBadge>
-                        ) : (
-                            <IOSBadge variant="tinted" color="orange" className="text-[10px] uppercase">
-                                <WifiOff className="h-3 w-3 mr-1" />
-                                Loading...
-                            </IOSBadge>
-                        )}
-                    </div>
                     {/* Mode Toggle */}
-                    <div className="flex mt-2 gap-1 bg-[var(--fill-tertiary)] rounded-[10px] p-0.5 w-fit">
+                    <div className="flex mt-3 gap-1 rounded-[10px] p-0.5 w-fit" style={{ background: "rgba(255,255,255,0.06)" }}>
                         <button
                             onClick={() => setViewMode("chat")}
                             className={cn(
                                 "px-3 py-1.5 rounded-[8px] text-[13px] font-medium transition-all duration-200 cursor-pointer flex items-center gap-1.5",
                                 viewMode === "chat"
-                                    ? "bg-[var(--bg-card)] text-[var(--label-primary)] shadow-sm"
-                                    : "text-[var(--label-secondary)] hover:text-[var(--label-primary)]"
+                                    ? "bg-white/10 text-white shadow-sm"
+                                    : "text-white/50 hover:text-white/80"
                             )}
                         >
                             <MessageSquare className="h-3.5 w-3.5" /> Chat
@@ -566,26 +587,33 @@ export default function AIAssistantPage() {
                             className={cn(
                                 "px-3 py-1.5 rounded-[8px] text-[13px] font-medium transition-all duration-200 cursor-pointer flex items-center gap-1.5",
                                 viewMode === "reports"
-                                    ? "bg-[var(--bg-card)] text-[var(--label-primary)] shadow-sm"
-                                    : "text-[var(--label-secondary)] hover:text-[var(--label-primary)]"
+                                    ? "bg-white/10 text-white shadow-sm"
+                                    : "text-white/50 hover:text-white/80"
                             )}
                         >
                             <FileBarChart className="h-3.5 w-3.5" /> Smart Reports
                         </button>
                     </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 relative z-10">
                     {viewMode === "chat" && (
                         <>
-                            <IOSButton variant="gray" className="!py-1.5" onClick={clearChat}>
-                                <Trash2 className="h-4 w-4 mr-1.5 text-[var(--ios-red)]" />
-                                Clear Chat
-                            </IOSButton>
+                            <button
+                                onClick={clearChat}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors cursor-pointer"
+                                style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}
+                            >
+                                <Trash2 className="h-4 w-4 text-red-400" />
+                                Clear
+                            </button>
                             {messages.length > 1 && (
-                                <IOSBadge variant="tinted" color="purple" className="text-[10px] uppercase self-center">
-                                    <History className="h-3 w-3 mr-1" />
+                                <span
+                                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium uppercase self-center"
+                                    style={{ background: "rgba(168,85,247,0.15)", color: "#c084fc" }}
+                                >
+                                    <History className="h-3 w-3" />
                                     {messages.filter((m) => m.id !== "welcome").length} msgs
-                                </IOSBadge>
+                                </span>
                             )}
                         </>
                     )}
@@ -611,32 +639,36 @@ export default function AIAssistantPage() {
                                             message.role === "user" && "flex-row-reverse"
                                         )}
                                     >
-                                        {/* Avatar */}
-                                        <div
-                                            className={cn(
-                                                "h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm",
-                                                message.role === "user"
-                                                    ? "bg-[var(--ios-purple)] text-white"
-                                                    : "bg-gradient-to-br from-[var(--ios-purple)] to-[var(--ios-indigo)] text-white"
-                                            )}
-                                        >
-                                            {message.role === "user" ? (
-                                                <User className="h-4 w-4" />
-                                            ) : (
-                                                <Bot className="h-4 w-4" />
-                                            )}
-                                        </div>
+                                        {/* Avatar — only for AI */}
+                                        {message.role === "assistant" && (
+                                            <div
+                                                className="h-8 w-8 rounded-[10px] flex items-center justify-center flex-shrink-0"
+                                                style={{
+                                                    background: "linear-gradient(135deg, #a855f7 0%, #6366f1 100%)",
+                                                    boxShadow: "0 2px 8px rgba(168,85,247,0.3)",
+                                                }}
+                                            >
+                                                <Bot className="h-4 w-4 text-white" />
+                                            </div>
+                                        )}
 
                                         {/* Bubble */}
                                         <div
                                             className={cn(
-                                                "max-w-[80%] rounded-[20px] px-4 py-3 group relative shadow-sm border border-transparent backdrop-blur-md",
+                                                "max-w-[80%] px-4 py-3 group relative shadow-md",
                                                 message.role === "user"
-                                                    ? "bg-[var(--ios-purple)] text-white rounded-tr-[6px]"
+                                                    ? "rounded-2xl rounded-tr-sm text-white"
                                                     : message.isError
-                                                        ? "bg-red-50 dark:bg-red-950/30 text-[var(--label-primary)] border-red-200 dark:border-red-800/50 rounded-tl-[6px]"
-                                                        : "bg-[var(--fill-quaternary)] text-[var(--label-primary)] border-[var(--border-card)] rounded-tl-[6px] dark:bg-[var(--fill-tertiary)]"
+                                                        ? "rounded-2xl rounded-tl-sm border border-red-800/50"
+                                                        : "rounded-2xl rounded-tl-sm border border-white/5"
                                             )}
+                                            style={
+                                                message.role === "user"
+                                                    ? { background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)" }
+                                                    : message.isError
+                                                        ? { background: "linear-gradient(135deg, rgba(127,29,29,0.3) 0%, rgba(30,20,38,0.5) 100%)" }
+                                                        : { background: "linear-gradient(135deg, #1e2d4a 0%, #1a2038 100%)" }
+                                            }
                                         >
                                             {message.isLoading ? (
                                                 <TypingDots />
@@ -723,57 +755,64 @@ export default function AIAssistantPage() {
                         </div>
                     </ScrollArea>
 
-                    {/* Input Area */}
-                    <div className="p-4 border-t border-[var(--border-card)] bg-[var(--fill-quaternary)]/50 backdrop-blur-xl flex-shrink-0">
+                    {/* Input Area — Dark Premium Bar */}
+                    <div className="p-4 flex-shrink-0" style={{ background: "linear-gradient(180deg, rgba(15,22,35,0) 0%, rgba(15,22,35,0.8) 100%)" }}>
                         <form
                             onSubmit={handleSubmit}
-                            className="flex gap-2 max-w-4xl mx-auto items-end relative"
+                            className="flex gap-3 max-w-4xl mx-auto items-end relative"
                         >
-                            <textarea
-                                ref={textareaRef}
-                                value={input}
-                                onChange={(e) => setInput(e.target.value)}
-                                onKeyDown={handleKeyDown}
-                                placeholder="Ask me anything about your business..."
-                                rows={1}
-                                className={cn(
-                                    "flex-1 resize-none rounded-[16px] border border-[var(--border-card)]",
-                                    "bg-white/80 dark:bg-black/50 shadow-sm pr-14 pl-4 py-3",
-                                    "text-[15px] text-[var(--label-primary)] placeholder:text-[var(--label-tertiary)]",
-                                    "focus:outline-none focus:ring-2 focus:ring-[var(--ios-purple)]/30 focus:border-[var(--ios-purple)]/50",
-                                    "transition-all duration-200",
-                                    "disabled:opacity-50"
-                                )}
-                                disabled={isLoading}
-                                style={{ maxHeight: 120 }}
-                            />
-                            <div className="absolute right-1.5 bottom-1.5">
-                                <button
-                                    type="submit"
-                                    disabled={isLoading || !input.trim()}
+                            <div
+                                className="flex-1 flex items-end rounded-2xl px-4 py-3"
+                                style={{
+                                    background: "#1a1f2e",
+                                    border: "1px solid rgba(255,255,255,0.10)",
+                                }}
+                            >
+                                <textarea
+                                    ref={textareaRef}
+                                    value={input}
+                                    onChange={(e) => setInput(e.target.value)}
+                                    onKeyDown={handleKeyDown}
+                                    placeholder="Ask me anything about your business..."
+                                    rows={1}
                                     className={cn(
-                                        "h-9 w-9 rounded-full flex items-center justify-center",
-                                        "bg-[var(--ios-purple)] text-white shadow-md",
-                                        "hover:bg-[var(--ios-purple)]/90 active:scale-95",
-                                        "transition-all duration-150",
-                                        "disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100"
+                                        "flex-1 resize-none bg-transparent text-[15px] text-white placeholder:text-white/30",
+                                        "focus:outline-none",
+                                        "transition-all duration-200",
+                                        "disabled:opacity-50"
                                     )}
-                                >
-                                    {isLoading ? (
-                                        <motion.div
-                                            animate={{ rotate: 360 }}
-                                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                                        >
-                                            <Sparkles className="h-4 w-4" />
-                                        </motion.div>
-                                    ) : (
-                                        <Send className="h-4 w-4 -ml-0.5" />
-                                    )}
-                                </button>
+                                    disabled={isLoading}
+                                    style={{ maxHeight: 120 }}
+                                />
                             </div>
+                            <button
+                                type="submit"
+                                disabled={isLoading || !input.trim()}
+                                className={cn(
+                                    "w-10 h-10 rounded-xl flex items-center justify-center text-white",
+                                    "hover:opacity-90 active:scale-95",
+                                    "transition-all duration-150",
+                                    "disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100"
+                                )}
+                                style={{
+                                    background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                                    boxShadow: "0 4px 14px rgba(59,130,246,0.35)",
+                                }}
+                            >
+                                {isLoading ? (
+                                    <motion.div
+                                        animate={{ rotate: 360 }}
+                                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                    >
+                                        <Sparkles className="h-4 w-4" />
+                                    </motion.div>
+                                ) : (
+                                    <Send className="h-4 w-4" />
+                                )}
+                            </button>
                         </form>
-                        <p className="text-center text-[10px] text-[var(--label-tertiary)] mt-2">
-                            Press <kbd className="px-1 py-0.5 bg-[var(--fill-tertiary)] rounded text-[9px] border border-[var(--border-card)]">Enter</kbd> to send · <kbd className="px-1 py-0.5 bg-[var(--fill-tertiary)] rounded text-[9px] border border-[var(--border-card)]">Shift+Enter</kbd> for new line
+                        <p className="text-center text-[10px] text-white/25 mt-2">
+                            Press <kbd className="px-1 py-0.5 bg-white/5 rounded text-[9px] border border-white/10">Enter</kbd> to send · <kbd className="px-1 py-0.5 bg-white/5 rounded text-[9px] border border-white/10">Shift+Enter</kbd> for new line
                         </p>
                     </div>
                 </IOSCard>

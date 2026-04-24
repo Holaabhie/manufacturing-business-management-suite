@@ -8,7 +8,7 @@
  */
 
 import { NextResponse, type NextRequest } from 'next/server';
-import { getDb } from '@/lib/mongodb';
+import { getDb, isDbUnavailableError } from '@/lib/mongodb';
 import { requireAdmin } from '@/lib/require-role';
 import { invalidateFeatureCache } from '@/lib/features/feature-gate';
 
@@ -32,11 +32,10 @@ export async function GET() {
 
     return NextResponse.json({ features });
   } catch (error) {
+    // Log for observability but return a safe fallback so the client
+    // (especially the login page) always renders without errors.
     console.error('Failed to fetch feature flags:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch feature flags' },
-      { status: 500 }
-    );
+    return NextResponse.json({ features: [] });
   }
 }
 
@@ -90,6 +89,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ feature }, { status: 201 });
   } catch (error) {
     console.error('Failed to create feature flag:', error);
+    if (isDbUnavailableError(error)) {
+      return NextResponse.json(
+        { error: 'Service temporarily unavailable', success: false },
+        { status: 503 }
+      );
+    }
     return NextResponse.json(
       { error: 'Failed to create feature flag' },
       { status: 500 }
@@ -144,6 +149,12 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Failed to update feature flag:', error);
+    if (isDbUnavailableError(error)) {
+      return NextResponse.json(
+        { error: 'Service temporarily unavailable', success: false },
+        { status: 503 }
+      );
+    }
     return NextResponse.json(
       { error: 'Failed to update feature flag' },
       { status: 500 }
@@ -187,6 +198,12 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Failed to delete feature flag:', error);
+    if (isDbUnavailableError(error)) {
+      return NextResponse.json(
+        { error: 'Service temporarily unavailable', success: false },
+        { status: 503 }
+      );
+    }
     return NextResponse.json(
       { error: 'Failed to delete feature flag' },
       { status: 500 }

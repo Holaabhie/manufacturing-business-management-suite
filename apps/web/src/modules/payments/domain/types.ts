@@ -28,12 +28,12 @@ export interface Payment {
 
 export interface CreatePaymentDTO {
     amount: number;
-    payment_date?: string;
+    payment_date?: string | null;
     payment_method?: string;
     notes?: string;
     reference_id?: string;
-    client_id?: string;
-    order_id?: string;
+    client_id?: string | null;
+    order_id?: string | null;
 }
 
 export interface IPaymentRepository {

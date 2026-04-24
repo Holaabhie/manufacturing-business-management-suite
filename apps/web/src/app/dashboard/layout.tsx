@@ -32,7 +32,9 @@ import {
   Shield,
   Truck,
   Briefcase,
+  Download,
 } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -52,6 +54,7 @@ import { IOSToastContainer } from "@/components/ui/ios/IOSToast";
 import {
   filterNavigationByRole,
   filterMobileNavByRole,
+  isRouteAllowed,
   type UserRole,
 } from "@/lib/role-permissions";
 import { useTranslations } from "next-intl";
@@ -151,6 +154,7 @@ export default function DashboardLayout({
   const tNav = useTranslations("nav");
   const { modules: enabledModules } = useModules();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -245,7 +249,7 @@ export default function DashboardLayout({
   // ─── Loading Splash ────────────────────────────────────
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-[#f1f5f9] dark:bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-[#F0F2F5] dark:bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <motion.div
             className="w-12 h-12 rounded-[14px] flex items-center justify-center"
@@ -272,7 +276,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-[#f0f4f8] dark:bg-[var(--bg-page)] selection:bg-[var(--ios-blue)]/10 selection:text-[var(--ios-blue)]">
+    <div className="min-h-screen bg-[#F0F2F5] dark:bg-[var(--bg-page)] selection:bg-[var(--ios-blue)]/10 selection:text-[var(--ios-blue)]">
       {/* ════════════ DESKTOP SIDEBAR (Glassmorphism) ════════════ */}
       <motion.aside
         initial={false}
@@ -460,7 +464,7 @@ export default function DashboardLayout({
           "md:pl-[240px]",
           isCollapsed && "md:pl-[72px]"
         )}
-        style={{ backgroundColor: theme === 'light' ? '#f0f4f8' : undefined }}
+        style={{ backgroundColor: theme === 'light' ? '#F0F2F5' : undefined }}
       >
         {/* ── Glassmorphic Header ── */}
         <header
@@ -632,71 +636,72 @@ export default function DashboardLayout({
           </div>
         </header>
 
-        {/* Mobile Menu Overlay */}
-        <AnimatePresence>
-          {isMobileMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              className="md:hidden fixed inset-x-0 top-[60px] z-40 glass max-h-[70vh] overflow-y-auto rounded-b-[16px] shadow-[var(--shadow-xl)]"
-            >
-              <nav className="p-4 space-y-4">
-                {filterNavigationByRole(navigationGroups, role).map((group) => ({
-                  ...group,
-                  items: group.items.filter((item) => {
-                    const moduleKey = NAV_MODULE_MAP[item.nameKey];
-                    if (!moduleKey) return true;
-                    return enabledModules[moduleKey];
-                  }),
-                })).filter((group) => group.items.length > 0).map((group) => (
-                  <div key={group.label}>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--label-tertiary)] px-2 mb-2">
-                      {tSidebar(group.labelKey as any)}
-                    </p>
-                    <div className="space-y-0.5">
-                      {group.items.map((item) => {
-                        const isActive =
-                          item.href === "/dashboard"
-                            ? pathname === "/dashboard"
-                            : pathname.startsWith(item.href);
-                        return (
-                          <Link
-                            key={item.name}
-                            href={item.href}
-                            onClick={() => setIsMobileMenuOpen(false)}
-                            className={cn(
-                              "flex items-center h-[44px] px-3 rounded-[10px] transition-all duration-200",
-                              isActive
-                                ? "bg-[var(--ios-blue)] text-white"
-                                : "text-[var(--label-primary)] hover:bg-[var(--fill-quaternary)]"
-                            )}
-                          >
-                            <item.icon className="mr-3 h-[20px] w-[20px]" />
-                            <span className="font-medium text-[17px]">{tNav(item.nameKey as any)}</span>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-                <div className="pt-4 border-t border-[var(--border-card)]">
-                  <button
-                    className="w-full flex items-center h-[44px] px-3 rounded-[10px] text-[var(--ios-red)] hover:bg-[rgba(255,59,48,0.08)] transition-colors cursor-pointer"
-                    onClick={handleLogout}
-                  >
-                    <LogOut className="mr-3 h-[20px] w-[20px]" />
-                    <span className="font-medium text-[17px]">{tCommon("logout")}</span>
-                  </button>
-                </div>
-              </nav>
-            </motion.div>
+        {/* ════════════ MORE BOTTOM SHEET (Mobile) ════════════ */}
+        {isMoreSheetOpen && (
+          <div
+            className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+            onClick={() => setIsMoreSheetOpen(false)}
+          />
+        )}
+        <div
+          className={cn(
+            "md:hidden fixed bottom-0 left-0 right-0 z-[60] bg-white dark:bg-[#0f1623] rounded-t-2xl pb-8 pt-2 transition-transform duration-300 ease-out shadow-[0_-4px_30px_rgba(0,0,0,0.08)] dark:shadow-none border-t border-[#E4E7EC] dark:border-transparent",
+            isMoreSheetOpen ? "translate-y-0" : "translate-y-full"
           )}
-        </AnimatePresence>
+        >
+          {/* Drag Handle */}
+          <div className="w-10 h-1 bg-gray-300 dark:bg-white/20 rounded-full mx-auto mb-4 mt-2" />
+
+          {/* Title */}
+          <p className="text-gray-400 dark:text-white/50 text-xs font-semibold tracking-widest uppercase text-center mb-3">
+            More Options
+          </p>
+
+          {/* 3-Column Grid — All pages missing from the bottom bar, filtered by role */}
+          <div className="grid grid-cols-3 gap-3 px-4 max-h-[60vh] overflow-y-auto">
+            {(() => {
+              // Items hidden from Staff role users (Admin sees all)
+              const STAFF_HIDDEN_ITEMS = ["Analytics", "Billing", "Payments", "Tally Export", "Upgrade"];
+
+              return [
+                { name: "Machines", icon: Cpu, href: "/dashboard/machines" },
+                { name: "Purchasing", icon: Truck, href: "/dashboard/purchasing" },
+                { name: "Billing", icon: FileText, href: "/dashboard/billing" },
+                { name: "Payments", icon: CreditCard, href: "/dashboard/payments" },
+                { name: "Clients", icon: Users, href: "/dashboard/clients" },
+                { name: "Analytics", icon: BarChart3, href: "/dashboard/analytics" },
+                { name: "Notifications", icon: Bell, href: "/dashboard/notifications" },
+                { name: "Folio", icon: Briefcase, href: "/dashboard/folio" },
+                { name: "Users", icon: UserCog, href: "/dashboard/users" },
+                { name: "Upgrade", icon: Crown, href: "/dashboard/upgrade" },
+                { name: "Tally Export", icon: Download, href: "/dashboard/billing" },
+                { name: "Settings", icon: Settings, href: "/dashboard/settings" },
+              ]
+              .filter((item) => {
+                // Role-based name filter: hide specific items for Staff
+                if (role === "Staff" && STAFF_HIDDEN_ITEMS.includes(item.name)) return false;
+                // Route-based permission filter
+                return isRouteAllowed(role, item.href);
+              })
+              .map((item) => (
+                <button
+                  key={item.name}
+                  className="bg-gray-100 dark:bg-[#1a1f2e] rounded-xl p-4 flex flex-col items-center gap-2 w-full active:scale-95 transition-transform"
+                  onClick={() => {
+                    router.push(item.href);
+                    setIsMoreSheetOpen(false);
+                  }}
+                >
+                  <item.icon className="text-blue-500 dark:text-blue-400 w-6 h-6" />
+                  <span className="text-gray-800 dark:text-white text-xs font-medium text-center">{item.name}</span>
+                </button>
+              ));
+            })()}
+          </div>
+        </div>
 
         {/* Main Content */}
-        <main className="flex-1 p-4 md:p-6 lg:p-8" style={{ backgroundColor: theme === 'light' ? '#f0f4f8' : undefined }}>
+        <main className="flex-1 p-4 md:p-6 lg:p-8" style={{ backgroundColor: theme === 'light' ? '#F0F2F5' : undefined }}>
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -708,11 +713,11 @@ export default function DashboardLayout({
         </main>
       </div>
 
-      {/* ════════════ MOBILE BOTTOM NAVIGATION (iOS Tab Bar) ════════════ */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 glass-header">
+      {/* ════════════ MOBILE BOTTOM NAVIGATION (Glossy 3D Icons) ════════════ */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 glass-header border-t border-[#E4E7EC] dark:border-white/10 max-w-[369px] mx-auto">
         <nav
-          className="flex items-center justify-around h-[56px] px-1"
-          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+          className="flex items-center justify-around px-1 pt-2 pb-1"
+          style={{ paddingBottom: "max(env(safe-area-inset-bottom), 6px)" }}
         >
           {filterMobileNavByRole(mobileNavItems, role).filter((item) => {
             const moduleKey = NAV_MODULE_MAP[item.nameKey];
@@ -724,15 +729,42 @@ export default function DashboardLayout({
                 ? pathname === "/dashboard"
                 : pathname.startsWith(item.href);
 
+            const IconComponent = item.icon;
+
+            const iconContainerStyle: React.CSSProperties = isActive
+              ? {
+                  background: "linear-gradient(145deg, #60A5FA 0%, #2563EB 60%, #1D4ED8 100%)",
+                  boxShadow: "0 4px 12px rgba(37,99,235,0.45), inset 0 1px 0 rgba(255,255,255,0.35)",
+                  borderRadius: "12px",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  transition: "transform 0.15s ease, box-shadow 0.15s ease",
+                  filter: "drop-shadow(0 0 8px rgba(59,130,246,0.6))",
+                }
+              : {
+                  background: "linear-gradient(145deg, #374151 0%, #1F2937 100%)",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)",
+                  borderRadius: "12px",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  transition: "transform 0.15s ease, box-shadow 0.15s ease",
+                };
+
             if (item.isMore) {
               return (
                 <button
                   key={item.name}
-                  onClick={() => setIsMobileMenuOpen(true)}
-                  className="flex flex-col items-center justify-center min-w-[56px] py-2 px-1 text-[var(--ios-gray)] transition-colors cursor-pointer gap-1"
+                  onClick={() => setIsMoreSheetOpen((prev) => !prev)}
+                  className="flex flex-col items-center justify-center gap-1 cursor-pointer"
+                  style={{ WebkitTapHighlightColor: "transparent" }}
                 >
-                  <item.icon className="w-[20px] h-[20px]" />
-                  <span className="text-[9px] font-semibold whitespace-nowrap tracking-[0.2px]">{item.nameKey === "more" ? tCommon("more") : tNav(item.nameKey as any)}</span>
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center active:scale-[0.92]"
+                    style={iconContainerStyle}
+                  >
+                    <IconComponent size={18} color="white" strokeWidth={2} />
+                  </div>
+                  <span className="text-[10px] font-medium text-gray-500">
+                    {item.nameKey === "more" ? tCommon("more") : tNav(item.nameKey as any)}
+                  </span>
                 </button>
               );
             }
@@ -741,21 +773,19 @@ export default function DashboardLayout({
               <Link
                 key={item.name}
                 href={item.href}
-                className={cn(
-                  "flex flex-col items-center justify-center min-w-[56px] py-2 px-1 transition-all duration-200 gap-1",
-                  isActive ? "text-[#a78bfa]" : "text-[var(--ios-gray)]"
-                )}
+                className="flex flex-col items-center justify-center gap-1"
+                style={{ WebkitTapHighlightColor: "transparent" }}
               >
-                <div className={cn(
-                  "flex items-center justify-center transition-all duration-200",
-                  isActive ? "bg-[rgba(167,139,250,0.15)] rounded-[10px] px-3 py-1" : ""
-                )}>
-                  <item.icon className="w-[20px] h-[20px]" />
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center active:scale-[0.92]"
+                  style={iconContainerStyle}
+                >
+                  <IconComponent size={18} color="white" strokeWidth={2} />
                 </div>
                 <span
                   className={cn(
-                    "text-[9px] whitespace-nowrap tracking-[0.2px]",
-                    isActive ? "font-bold" : "font-semibold"
+                    "text-[10px] font-medium",
+                    isActive ? "text-blue-400" : "text-gray-500"
                   )}
                 >
                   {item.nameKey === "more" ? tCommon("more") : tNav(item.nameKey as any)}

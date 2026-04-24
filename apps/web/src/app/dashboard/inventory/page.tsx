@@ -211,6 +211,13 @@ export default function InventoryPage() {
     }
   }, [viewMode, forecastData, fetchForecast]);
 
+  // Force staff users back to stock view
+  useEffect(() => {
+    if (!isAdmin && viewMode === "forecast") {
+      setViewMode("table");
+    }
+  }, [isAdmin, viewMode]);
+
   const totalPurchasingCost = items.reduce(
     (acc, item) => {
       const baseCost = Number(item.purchase_cost_per_unit || 0);
@@ -349,7 +356,7 @@ export default function InventoryPage() {
   }
 
   return (
-    <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-6">
+    <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-6 overflow-x-hidden">
       {/* ── Header ── */}
       <motion.div variants={staggerItem} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -372,24 +379,26 @@ export default function InventoryPage() {
             >
               <Package className="h-3.5 w-3.5" /> Stock
             </button>
-            <button
-              onClick={() => setViewMode("forecast")}
-              className={cn(
-                "px-3 py-1.5 rounded-[8px] text-[13px] font-medium transition-all duration-200 cursor-pointer flex items-center gap-1.5",
-                viewMode === "forecast"
-                  ? "bg-[var(--bg-card)] text-[var(--label-primary)] shadow-sm"
-                  : "text-[var(--label-secondary)] hover:text-[var(--label-primary)]"
-              )}
-            >
-              <Activity className="h-3.5 w-3.5" /> Forecast
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setViewMode("forecast")}
+                className={cn(
+                  "px-3 py-1.5 rounded-[8px] text-[13px] font-medium transition-all duration-200 cursor-pointer flex items-center gap-1.5",
+                  viewMode === "forecast"
+                    ? "bg-[var(--bg-card)] text-[var(--label-primary)] shadow-sm"
+                    : "text-[var(--label-secondary)] hover:text-[var(--label-primary)]"
+                )}
+              >
+                <Activity className="h-3.5 w-3.5" /> Forecast
+              </button>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
           {/* PDF Export */}
           <button
             onClick={exportToPDF}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/15 bg-[rgba(255,255,255,0.08)] hover:bg-white/15 text-white text-xs font-medium cursor-pointer transition-all duration-150"
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/15 bg-gray-100 dark:bg-[rgba(255,255,255,0.08)] hover:bg-gray-200 dark:hover:bg-white/15 text-gray-700 dark:text-white text-xs font-medium cursor-pointer transition-all duration-150"
             title="Print PDF"
           >
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
@@ -401,7 +410,7 @@ export default function InventoryPage() {
           {/* Excel Export */}
           <button
             onClick={exportToXLSX}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/15 bg-[rgba(255,255,255,0.08)] hover:bg-white/15 text-white text-xs font-medium cursor-pointer transition-all duration-150"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/15 bg-gray-100 dark:bg-[rgba(255,255,255,0.08)] hover:bg-gray-200 dark:hover:bg-white/15 text-gray-700 dark:text-white text-xs font-medium cursor-pointer transition-all duration-150"
             title="Excel Export"
           >
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
@@ -469,7 +478,7 @@ export default function InventoryPage() {
 
           {/* Table */}
           <motion.div variants={staggerItem}>
-            <IOSCard variant="elevated" padding="none" className="overflow-hidden glass-premium !rounded-[20px]">
+            <IOSCard variant="elevated" padding="none" className="hidden md:block overflow-hidden glass-premium !rounded-[20px]">
               <Table>
                 <TableHeader>
                   <TableRow className="glass-table-header hover:bg-transparent border-b border-white/[0.07] dark:border-white/[0.07]">
@@ -608,6 +617,52 @@ export default function InventoryPage() {
                 </TableBody>
               </Table>
             </IOSCard>
+
+            {/* Mobile Inventory Cards — visible only below md (768px) */}
+            <div className="block md:hidden px-3 py-2 space-y-3">
+              {loading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="bg-gray-100 dark:bg-[#1a1f2e] rounded-xl px-4 py-3 border-l-4 border-gray-300 dark:border-gray-600">
+                    <Skeleton className="h-4 w-32 rounded" />
+                    <Skeleton className="h-4 w-full rounded mt-2" />
+                    <Skeleton className="h-3 w-24 rounded mt-2" />
+                  </div>
+                ))
+              ) : filteredItems.length === 0 ? (
+                <div className="py-16 text-center">
+                  <Package className="h-10 w-10 mx-auto mb-3 text-gray-500" />
+                  <p className="text-gray-400 text-sm">{searchTerm ? "No materials found" : "No materials added yet"}</p>
+                </div>
+              ) : filteredItems.map((item) => {
+                const isLowStock = item.quantity <= item.min_stock_level;
+                return (
+                  <div
+                    key={item.id}
+                    className={cn(
+                      "bg-gray-50 dark:bg-[#1a1f2e] rounded-xl px-4 py-3 border-l-4",
+                      isLowStock ? 'border-red-500' : 'border-green-500'
+                    )}
+                    onClick={() => openEditDialog(item)}
+                  >
+                    {/* Row 1: Material name + Unit badge */}
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-900 dark:text-white text-sm font-bold truncate mr-2">{item.name}</span>
+                      <span className="bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-gray-300 text-xs px-2 py-0.5 rounded-full whitespace-nowrap">{item.unit}</span>
+                    </div>
+                    {/* Row 2: Stock level + Min stock */}
+                    <div className="flex justify-between items-center mt-1">
+                      <span className={cn("text-sm font-semibold", isLowStock ? "text-red-500 dark:text-red-400" : "text-blue-600 dark:text-blue-400")}>Stock: {item.quantity}</span>
+                      <span className="text-gray-500 dark:text-gray-400 text-xs">Min: {item.min_stock_level}</span>
+                    </div>
+                    {/* Row 3: Supplier + Cost */}
+                    <div className="flex justify-between mt-1">
+                      <span className="text-gray-500 dark:text-gray-400 text-xs truncate mr-2">{item.supplier_whatsapp || "No supplier"}</span>
+                      <span className="text-gray-600 dark:text-gray-300 text-xs whitespace-nowrap">₹{Number(item.purchase_cost_per_unit || 0).toLocaleString('en-IN')} + {item.tax_rate || 0}% TAX</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </motion.div>
         </>
       )}
