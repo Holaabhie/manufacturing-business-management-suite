@@ -33,6 +33,14 @@ const legacyOrderItemSchema = z.object({
     quantity_deducted: z.coerce.number().positive("Quantity must be positive"),
 });
 
+// ─── Order Material Item (materials step in creation wizard) ─────
+const orderMaterialSchema = z.object({
+    inventoryItemId: z.string().min(1),
+    itemName: z.string(),
+    quantityRequired: z.coerce.number().positive(),
+    unit: z.string(),
+});
+
 // Accept either format in order_items
 const orderItemSchema = z.union([salesOrderItemSchema, legacyOrderItemSchema]);
 
@@ -72,8 +80,21 @@ export const createOrderSchema = z.object({
     material_source: z.enum(['own', 'client']).default('own').optional(),
     rate: z.coerce.number().optional(),
     total_amount: z.coerce.number().optional(),
+    material_cost: z.coerce.number().default(0).optional(),
+    labour_cost: z.coerce.number().default(0).optional(),
+    overhead_cost: z.coerce.number().default(0).optional(),
+    machinery_cost: z.coerce.number().default(0).optional(),
     status: z.string().optional(),
     payment_status: z.string().optional(),
+    // Materials selected in wizard Step 3
+    materials: z.array(orderMaterialSchema).default([]).optional(),
+    // Profit estimates from wizard
+    estimated_material_cost: z.coerce.number().optional(),
+    estimated_gross_profit: z.coerce.number().optional(),
+    estimated_margin: z.coerce.number().optional(),
+    // Priority & Notes
+    priority: z.enum(['low', 'normal', 'high', 'urgent']).default('normal').optional(),
+    notes: z.string().max(500).optional(),
 });
 
 export const updateOrderSchema = createOrderSchema.partial();

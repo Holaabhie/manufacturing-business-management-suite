@@ -54,15 +54,15 @@ export function IOSListSection({
     return (
         <div className={cn('', className)} {...props}>
             {title && (
-                <h3 className="text-[13px] font-normal text-[var(--label-secondary)] uppercase tracking-wide px-4 mb-1.5 leading-[18px]">
+                <h3 className="text-[13px] font-normal text-[var(--muted-foreground)] uppercase tracking-wide px-4 mb-1.5 leading-[18px]">
                     {title}
                 </h3>
             )}
-            <div className="bg-[var(--bg-card)] rounded-[10px] border border-[var(--border-card)] overflow-hidden divide-y divide-[rgba(60,60,67,0.08)] dark:divide-[rgba(84,84,88,0.2)]">
+            <div className="bg-[var(--card)] rounded-[10px] border border-[var(--border)] overflow-hidden divide-y divide-[rgba(60,60,67,0.08)] dark:divide-[rgba(84,84,88,0.2)]">
                 {children}
             </div>
             {footer && (
-                <p className="text-[13px] text-[var(--label-secondary)] px-4 mt-1.5 leading-[18px]">
+                <p className="text-[13px] text-[var(--muted-foreground)] px-4 mt-1.5 leading-[18px]">
                     {footer}
                 </p>
             )}
@@ -126,21 +126,21 @@ export function IOSListItem({
                     className={cn(
                         'text-[17px] leading-[22px] block truncate',
                         destructive
-                            ? 'text-[var(--ios-red)]'
-                            : 'text-[var(--label-primary)]'
+                            ? 'text-[var(--destructive)]'
+                            : 'text-[var(--foreground)]'
                     )}
                 >
                     {title}
                 </span>
                 {subtitle && (
-                    <span className="text-[13px] text-[var(--label-secondary)] leading-[18px] block truncate">
+                    <span className="text-[13px] text-[var(--muted-foreground)] leading-[18px] block truncate">
                         {subtitle}
                     </span>
                 )}
             </div>
 
             {value && (
-                <span className="text-[17px] text-[var(--label-secondary)] flex-shrink-0">
+                <span className="text-[17px] text-[var(--muted-foreground)] flex-shrink-0">
                     {value}
                 </span>
             )}
@@ -152,7 +152,7 @@ export function IOSListItem({
             {chevron && (
                 <ChevronRight
                     size={20}
-                    className="text-[var(--label-quaternary)] flex-shrink-0"
+                    className="text-[var(--muted-foreground)] flex-shrink-0"
                 />
             )}
         </Comp>

@@ -80,6 +80,7 @@ export interface ISalesOrder extends Document {
 
     // Metadata
     notes?: string;
+    priority?: 'low' | 'normal' | 'high' | 'urgent';
     terms_conditions?: string;
     internal_notes?: string;
     attachment_urls?: string[];
@@ -166,6 +167,7 @@ const SalesOrderSchema = new Schema<ISalesOrder>({
     order_status: { type: String, enum: ['Draft', 'Confirmed', 'In Progress', 'Completed', 'Cancelled', 'On Hold'], default: 'Draft', index: true },
 
     notes: String,
+    priority: { type: String, enum: ['low', 'normal', 'high', 'urgent'], default: 'normal' },
     terms_conditions: String,
     internal_notes: String,
     attachment_urls: [String],

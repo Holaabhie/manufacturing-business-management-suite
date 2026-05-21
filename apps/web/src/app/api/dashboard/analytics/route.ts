@@ -206,11 +206,11 @@ export async function GET(request: Request) {
         // ─── Format order status distribution ────────────────
         const totalOrdersInRange = orderStatusCounts.reduce((sum: number, s: any) => sum + s.count, 0);
         const statusColorMap: Record<string, string> = {
-            completed: "var(--ios-green)",
-            in_progress: "var(--ios-blue)",
-            processing: "var(--ios-blue)",
-            pending: "var(--ios-orange)",
-            cancelled: "var(--ios-red)",
+            completed: "#16A34A",
+            in_progress: "#2563EB",
+            processing: "#2563EB",
+            pending: "#F59E0B",
+            cancelled: "#DC2626",
         };
         const statusNameMap: Record<string, string> = {
             completed: "Completed",
@@ -224,7 +224,7 @@ export async function GET(request: Request) {
         const mergedStatus: Record<string, { value: number; color: string; name: string }> = {};
         orderStatusCounts.forEach((s: any) => {
             const name = statusNameMap[s._id] || s._id || "Other";
-            const color = statusColorMap[s._id] || "var(--ios-gray)";
+            const color = statusColorMap[s._id] || "#6B7280";
             if (mergedStatus[name]) {
                 mergedStatus[name].value += s.count;
             } else {

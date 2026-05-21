@@ -262,8 +262,15 @@ export function useUpdateOrderStatus() {
             }
             toast.error(_err.message || "Failed to update order status");
         },
-        onSuccess: (_data: any, vars: { id: string; status: string }) => {
+        onSuccess: (_data: unknown, vars: { id: string; status: string }) => {
             toast.success(`Order status updated to ${STATUS_LABELS[vars.status] || vars.status}`);
+            // Show warning toast if materials had insufficient stock during deduction
+            const data = _data as Record<string, unknown>;
+            if (Array.isArray(data?.warnings) && data.warnings.length > 0) {
+                setTimeout(() => {
+                    toast.warning("⚠️ Some materials had insufficient stock. Check inventory.");
+                }, 500);
+            }
         },
         onSettled: () => {
             // Refresh orders + cross-module data (dashboard stats, inventory)

@@ -3,6 +3,7 @@ import { getDb } from "@/lib/mongodb";
 import { requireAdmin } from "@/lib/require-role";
 import { getDataOwnerId } from "@/lib/auth-session";
 import { withIdempotency } from "@/lib/with-idempotency";
+import { triggerNotification } from "@/lib/notifications/dispatcher";
 
 export async function GET() {
     try {
@@ -128,6 +129,17 @@ export const POST = withIdempotency(async (request: NextRequest) => {
             message: `Invoice ${billData.billNumber} created for ${billData.clientName}`,
             createdAt: new Date().toISOString(),
         });
+
+        // ── Trigger notification for invoice generated ──
+        triggerNotification({
+            eventType: "invoice_generated",
+            payload: {
+                invoiceId: insertResult.insertedId.toString(),
+                clientName: billData.clientName,
+                amount: billData.totalAmount,
+            },
+            triggeredBy: getDataOwnerId(user!),
+        }).catch(() => {}); // fire-and-forget
 
         return NextResponse.json({
             id: insertResult.insertedId.toString(),

@@ -15,9 +15,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
       authorization: {
         params: {
-          prompt: "consent",
-          access_type: "offline",
-          response_type: "code",
+          prompt: "select_account",
         },
       },
       profile(profile) {
@@ -148,6 +146,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     signIn: "/login",
     error: "/login?error=oauth",
   },
+  useSecureCookies: process.env.NODE_ENV === "production" && !process.env.NEXTAUTH_URL?.startsWith("http://localhost"),
   secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
   session: {
     strategy: "jwt",

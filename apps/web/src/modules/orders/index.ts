@@ -1,4 +1,4 @@
-export type { Order, OrderStatus, PaymentStatus, CreateOrderDTO, UpdateOrderDTO, OrderItem, LegacyDeductionItem, IOrderRepository } from "./domain/types";
+export type { Order, OrderStatus, PaymentStatus, CreateOrderDTO, UpdateOrderDTO, OrderItem, OrderMaterial, LegacyDeductionItem, IOrderRepository } from "./domain/types";
 export { createOrderSchema, updateOrderSchema } from "./domain/schemas";
 export { OrderService } from "./application/order.service";
 export { MongoOrderRepository, getOrderRepository } from "./infrastructure/order.repository";

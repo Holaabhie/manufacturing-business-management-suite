@@ -3,7 +3,7 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { getDb } from "@/lib/mongodb";
 import { requireAdmin } from "@/lib/require-role";
-import { DEFAULT_TEMPLATES, type PermissionMap } from "@/lib/permissions";
+import { ROLE_PRESETS, type FlatPermissionMap as PermissionMap } from "@/lib/permissions";
 import { logAudit, getClientIp } from "@/lib/audit";
 
 // ─── Generate unique Employee ID ─────────────────────────────────
@@ -135,14 +135,15 @@ export async function POST(request: Request) {
         const userId = crypto.randomUUID();
         const now = new Date();
 
-        // ─── Resolve permissions from template ───────────
+        // ─── Resolve permissions from role preset ──────────
         let permissions: PermissionMap;
+        const templateKey = permissionTemplate as keyof typeof ROLE_PRESETS;
         if (body.customPermissions) {
             permissions = body.customPermissions;
-        } else if (DEFAULT_TEMPLATES[permissionTemplate]) {
-            permissions = DEFAULT_TEMPLATES[permissionTemplate].permissions;
+        } else if (ROLE_PRESETS[templateKey]) {
+            permissions = ROLE_PRESETS[templateKey].permissions;
         } else {
-            permissions = DEFAULT_TEMPLATES["operations"].permissions;
+            permissions = ROLE_PRESETS.Staff.permissions;
         }
 
         // ─── Create User Document ────────────────────────

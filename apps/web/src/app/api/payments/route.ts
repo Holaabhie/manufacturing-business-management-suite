@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/require-role";
 import { getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { triggerNotification } from "@/lib/notifications/dispatcher";
 
 export async function GET() {
   try {
@@ -116,6 +117,43 @@ export async function POST(request: Request) {
     });
 
     const payment = await db.collection("payments").findOne({ _id: result.insertedId });
+
+    // ── Trigger notification for payment received ──
+    let clientName = "Unknown Client";
+    if (body.client_id) {
+      try {
+        const client = await db.collection("clients").findOne({ _id: new ObjectId(body.client_id) });
+        if (client) clientName = client.name || clientName;
+      } catch { /* client lookup failed */ }
+    }
+
+    // Calculate outstanding amount if order exists
+    let outstandingAmount = 0;
+    let dueDate = "";
+    if (body.order_id) {
+      try {
+        const order = await db.collection("orders").findOne({ _id: new ObjectId(body.order_id) });
+        if (order) {
+          const totalPayments = await db.collection("payments").aggregate([
+            { $match: { order_id: body.order_id, userId: getDataOwnerId(user!) } },
+            { $group: { _id: null, total: { $sum: "$amount" } } },
+          ]).toArray();
+          const paid = totalPayments[0]?.total || 0;
+          outstandingAmount = Math.max(0, Number(order.total_amount || 0) - paid);
+          dueDate = order.delivery_date || "";
+        }
+      } catch { /* order lookup failed */ }
+    }
+
+    triggerNotification({
+      eventType: "payment_reminder",
+      payload: {
+        clientName,
+        outstandingAmount,
+        dueDate,
+      },
+      triggeredBy: getDataOwnerId(user!),
+    }).catch(() => {}); // fire-and-forget
 
     return NextResponse.json({
       id: payment!._id.toString(),

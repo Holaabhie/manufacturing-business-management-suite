@@ -1,0 +1,202 @@
+﻿src/app/api/employees/route.ts(54,25): error TS18048: 'admin' is possibly 'undefined'.
+src/app/api/employees/route.ts(103,25): error TS18048: 'admin' is possibly 'undefined'.
+src/app/api/employees/route.ts(154,32): error TS18048: 'admin' is possibly 'undefined'.
+src/app/api/employees/route.ts(184,23): error TS18048: 'admin' is possibly 'undefined'.
+src/app/api/employees/route.ts(184,41): error TS18048: 'admin' is possibly 'undefined'.
+src/app/api/employees/route.ts(184,60): error TS18048: 'admin' is possibly 'undefined'.
+src/app/api/invoice/generate-pdf/route.ts(108,33): error TS2345: Argument of type 'Uint8Array<ArrayBufferLike>' is not assignable to parameter of type 'BodyInit | null | undefined'.
+  Type 'Uint8Array<ArrayBufferLike>' is missing the following properties from type 'URLSearchParams': size, append, delete, get, and 2 more.
+src/app/api/profile/password/route.ts(24,9): error TS2322: Type 'string' is not assignable to type 'Condition<ObjectId> | undefined'.
+src/app/api/profile/route.ts(52,9): error TS2322: Type 'string' is not assignable to type 'Condition<ObjectId> | undefined'.
+src/app/api/profile/route.ts(83,9): error TS2322: Type 'string' is not assignable to type 'Condition<ObjectId> | undefined'.
+src/app/api/setup/route.ts(183,9): error TS2322: Type 'string' is not assignable to type 'Condition<ObjectId> | undefined'.
+src/app/api/stripe/cancel-subscription/route.ts(18,60): error TS2769: No overload matches this call.
+  Overload 1 of 6, '(filter: Filter<Document>): Promise<WithId<Document> | null>', gave the following error.
+    Type 'string' is not assignable to type 'Condition<ObjectId> | undefined'.
+  Overload 2 of 6, '(filter: Filter<Document>): Promise<Document | null>', gave the following error.
+    Type 'string' is not assignable to type 'Condition<ObjectId> | undefined'.
+  Overload 3 of 6, '(filter: Filter<Document>, options?: (Omit<FindOneOptions, "timeoutMode"> & Abortable) | undefined): Promise<Document | null>', gave the following error.
+    Type 'string' is not assignable to type 'Condition<ObjectId> | undefined'.
+src/app/api/stripe/cancel-subscription/route.ts(28,11): error TS2322: Type 'string' is not assignable to type 'Condition<ObjectId> | undefined'.
+src/app/api/stripe/cancel-subscription/route.ts(45,11): error TS2322: Type 'string' is not assignable to type 'Condition<ObjectId> | undefined'.
+src/app/api/stripe/create-subscription/route.ts(25,60): error TS2769: No overload matches this call.
+  Overload 1 of 6, '(filter: Filter<Document>): Promise<WithId<Document> | null>', gave the following error.
+    Type 'string' is not assignable to type 'Condition<ObjectId> | undefined'.
+  Overload 2 of 6, '(filter: Filter<Document>): Promise<Document | null>', gave the following error.
+    Type 'string' is not assignable to type 'Condition<ObjectId> | undefined'.
+  Overload 3 of 6, '(filter: Filter<Document>, options?: (Omit<FindOneOptions, "timeoutMode"> & Abortable) | undefined): Promise<Document | null>', gave the following error.
+    Type 'string' is not assignable to type 'Condition<ObjectId> | undefined'.
+src/app/api/stripe/create-subscription/route.ts(44,11): error TS2322: Type 'string' is not assignable to type 'Condition<ObjectId> | undefined'.
+src/app/api/stripe/subscription/route.ts(16,60): error TS2769: No overload matches this call.
+  Overload 1 of 6, '(filter: Filter<Document>): Promise<WithId<Document> | null>', gave the following error.
+    Type 'string' is not assignable to type 'Condition<ObjectId> | undefined'.
+  Overload 2 of 6, '(filter: Filter<Document>): Promise<Document | null>', gave the following error.
+    Type 'string' is not assignable to type 'Condition<ObjectId> | undefined'.
+  Overload 3 of 6, '(filter: Filter<Document>, options?: (Omit<FindOneOptions, "timeoutMode"> & Abortable) | undefined): Promise<Document | null>', gave the following error.
+    Type 'string' is not assignable to type 'Condition<ObjectId> | undefined'.
+src/app/api/users/[id]/route.ts(29,13): error TS18048: 'result.user' is possibly 'undefined'.
+src/app/api/v1/company/setup/route.ts(114,70): error TS2339: Property 'errors' does not exist on type 'ZodError<unknown>'.
+src/app/api/v1/payments/record/route.ts(273,34): error TS2339: Property 'order_status' does not exist on type '{ order_id: any; order_number: any; order_total: any; total_paid: any; total_tds: number; balance_due: any; payment_status: any; payment_percentage: number; is_overdue: any; }'.
+src/app/api/v1/payments/record/route.ts(313,65): error TS2339: Property 'errors' does not exist on type 'ZodError<unknown>'.
+src/app/dashboard/analytics/page.tsx(315,71): error TS7006: Parameter 'o' implicitly has an 'any' type.
+src/app/dashboard/analytics/page.tsx(324,53): error TS7006: Parameter 'o' implicitly has an 'any' type.
+src/app/dashboard/assistant/page.tsx(785,29): error TS2322: Type 'Element' is not assignable to type 'string'.
+src/app/dashboard/billing/page.tsx(986,17): error TS2322: Type '{ value: string; onChange: Dispatch<SetStateAction<string>>; placeholder: string; className: string; }' is not assignable to type 'IntrinsicAttributes & IOSSearchBarProps & RefAttributes<HTMLInputElement>'.
+  Property 'onChange' does not exist on type 'IntrinsicAttributes & IOSSearchBarProps & RefAttributes<HTMLInputElement>'.
+src/app/dashboard/clients/page.tsx(371,26): error TS2322: Type '"outline"' is not assignable to type '"primary" | "secondary" | "ghost" | "danger" | undefined'.
+src/app/dashboard/clients/page.tsx(371,44): error TS2322: Type '"icon"' is not assignable to type '"sm" | "md" | "lg" | undefined'.
+src/app/dashboard/clients/page.tsx(487,54): error TS2322: Type '"icon"' is not assignable to type '"sm" | "md" | "lg" | undefined'.
+src/app/dashboard/clients/page.tsx(537,42): error TS2322: Type '"icon"' is not assignable to type '"sm" | "md" | "lg" | undefined'.
+src/app/dashboard/clients/page.tsx(600,42): error TS17001: JSX elements cannot have multiple attributes with the same name.
+src/app/dashboard/clients/page.tsx(611,42): error TS17001: JSX elements cannot have multiple attributes with the same name.
+src/app/dashboard/clients/page.tsx(805,26): error TS2322: Type '"outline"' is not assignable to type '"primary" | "secondary" | "ghost" | "danger" | undefined'.
+src/app/dashboard/clients/page.tsx(807,15): error TS2322: Type '"destructive"' is not assignable to type '"primary" | "secondary" | "ghost" | "danger" | undefined'.
+src/app/dashboard/layout.tsx(328,55): error TS2339: Property 'nameKey' does not exist on type '{ name: string; href: string; icon: any; badge?: number | undefined; }'.
+src/app/dashboard/layout.tsx(340,45): error TS2339: Property 'labelKey' does not exist on type '{ items: { name: string; href: string; icon: any; badge?: number | undefined; }[]; label: string; }'.
+src/app/dashboard/layout.tsx(378,46): error TS2339: Property 'nameKey' does not exist on type '{ name: string; href: string; icon: any; badge?: number | undefined; }'.
+src/app/dashboard/layout.tsx(423,40): error TS2339: Property 'nameKey' does not exist on type '{ name: string; href: string; icon: any; badge?: number | undefined; }'.
+src/app/dashboard/layout.tsx(649,59): error TS2339: Property 'nameKey' does not exist on type '{ name: string; href: string; icon: any; badge?: number | undefined; }'.
+src/app/dashboard/layout.tsx(656,39): error TS2339: Property 'labelKey' does not exist on type '{ items: { name: string; href: string; icon: any; badge?: number | undefined; }[]; label: string; }'.
+src/app/dashboard/layout.tsx(677,82): error TS2339: Property 'nameKey' does not exist on type '{ name: string; href: string; icon: any; badge?: number | undefined; }'.
+src/app/dashboard/layout.tsx(718,51): error TS2339: Property 'nameKey' does not exist on type '{ name: string; href: string; icon: any; isMore?: boolean | undefined; }'.
+src/app/dashboard/layout.tsx(735,103): error TS2339: Property 'nameKey' does not exist on type '{ name: string; href: string; icon: any; isMore?: boolean | undefined; }'.
+src/app/dashboard/layout.tsx(735,152): error TS2339: Property 'nameKey' does not exist on type '{ name: string; href: string; icon: any; isMore?: boolean | undefined; }'.
+src/app/dashboard/layout.tsx(761,25): error TS2339: Property 'nameKey' does not exist on type '{ name: string; href: string; icon: any; isMore?: boolean | undefined; }'.
+src/app/dashboard/layout.tsx(761,74): error TS2339: Property 'nameKey' does not exist on type '{ name: string; href: string; icon: any; isMore?: boolean | undefined; }'.
+src/app/dashboard/payments/page.tsx(485,15): error TS2322: Type '{ value: string; onSearch: Dispatch<SetStateAction<string>>; placeholder: string; }' is not assignable to type 'IntrinsicAttributes & IOSSearchBarProps & RefAttributes<HTMLInputElement>'.
+  Property 'onSearch' does not exist on type 'IntrinsicAttributes & IOSSearchBarProps & RefAttributes<HTMLInputElement>'.
+src/app/dashboard/production/[id]/page.tsx(318,25): error TS2322: Type '{ hidden: { opacity: number; y: number; }; visible: { opacity: number; y: number; transition: { duration: number; ease: string; }; }; }' is not assignable to type 'Variants'.
+  Property 'visible' is incompatible with index signature.
+    Type '{ opacity: number; y: number; transition: { duration: number; ease: string; }; }' is not assignable to type 'Variant'.
+      Type '{ opacity: number; y: number; transition: { duration: number; ease: string; }; }' is not assignable to type 'TargetAndTransition'.
+        Type '{ opacity: number; y: number; transition: { duration: number; ease: string; }; }' is not assignable to type '{ transition?: Transition<any> | undefined; transitionEnd?: ResolvedValues$1 | undefined; }'.
+          Types of property 'transition' are incompatible.
+            Type '{ duration: number; ease: string; }' is not assignable to type 'Transition<any> | undefined'.
+              Type '{ duration: number; ease: string; }' is not assignable to type 'TransitionWithValueOverrides<any>'.
+                Type '{ duration: number; ease: string; }' is not assignable to type 'ValueAnimationTransition<any>'.
+                  Types of property 'ease' are incompatible.
+                    Type 'string' is not assignable to type 'Easing | Easing[] | undefined'.
+src/app/dashboard/production/[id]/page.tsx(333,17): error TS2322: Type '{ hidden: { opacity: number; y: number; }; visible: { opacity: number; y: number; transition: { duration: number; ease: string; }; }; }' is not assignable to type 'Variants'.
+  Property 'visible' is incompatible with index signature.
+    Type '{ opacity: number; y: number; transition: { duration: number; ease: string; }; }' is not assignable to type 'Variant'.
+      Type '{ opacity: number; y: number; transition: { duration: number; ease: string; }; }' is not assignable to type 'TargetAndTransition'.
+        Type '{ opacity: number; y: number; transition: { duration: number; ease: string; }; }' is not assignable to type '{ transition?: Transition<any> | undefined; transitionEnd?: ResolvedValues$1 | undefined; }'.
+          Types of property 'transition' are incompatible.
+            Type '{ duration: number; ease: string; }' is not assignable to type 'Transition<any> | undefined'.
+              Type '{ duration: number; ease: string; }' is not assignable to type 'TransitionWithValueOverrides<any>'.
+                Type '{ duration: number; ease: string; }' is not assignable to type 'ValueAnimationTransition<any>'.
+                  Types of property 'ease' are incompatible.
+                    Type 'string' is not assignable to type 'Easing | Easing[] | undefined'.
+src/app/dashboard/production/[id]/page.tsx(423,25): error TS2322: Type '{ hidden: { opacity: number; y: number; }; visible: { opacity: number; y: number; transition: { duration: number; ease: string; }; }; }' is not assignable to type 'Variants'.
+  Property 'visible' is incompatible with index signature.
+    Type '{ opacity: number; y: number; transition: { duration: number; ease: string; }; }' is not assignable to type 'Variant'.
+      Type '{ opacity: number; y: number; transition: { duration: number; ease: string; }; }' is not assignable to type 'TargetAndTransition'.
+        Type '{ opacity: number; y: number; transition: { duration: number; ease: string; }; }' is not assignable to type '{ transition?: Transition<any> | undefined; transitionEnd?: ResolvedValues$1 | undefined; }'.
+          Types of property 'transition' are incompatible.
+            Type '{ duration: number; ease: string; }' is not assignable to type 'Transition<any> | undefined'.
+              Type '{ duration: number; ease: string; }' is not assignable to type 'TransitionWithValueOverrides<any>'.
+                Type '{ duration: number; ease: string; }' is not assignable to type 'ValueAnimationTransition<any>'.
+                  Types of property 'ease' are incompatible.
+                    Type 'string' is not assignable to type 'Easing | Easing[] | undefined'.
+src/app/dashboard/production/[id]/page.tsx(474,17): error TS2322: Type '{ hidden: { opacity: number; y: number; }; visible: { opacity: number; y: number; transition: { duration: number; ease: string; }; }; }' is not assignable to type 'Variants'.
+  Property 'visible' is incompatible with index signature.
+    Type '{ opacity: number; y: number; transition: { duration: number; ease: string; }; }' is not assignable to type 'Variant'.
+      Type '{ opacity: number; y: number; transition: { duration: number; ease: string; }; }' is not assignable to type 'TargetAndTransition'.
+        Type '{ opacity: number; y: number; transition: { duration: number; ease: string; }; }' is not assignable to type '{ transition?: Transition<any> | undefined; transitionEnd?: ResolvedValues$1 | undefined; }'.
+          Types of property 'transition' are incompatible.
+            Type '{ duration: number; ease: string; }' is not assignable to type 'Transition<any> | undefined'.
+              Type '{ duration: number; ease: string; }' is not assignable to type 'TransitionWithValueOverrides<any>'.
+                Type '{ duration: number; ease: string; }' is not assignable to type 'ValueAnimationTransition<any>'.
+                  Types of property 'ease' are incompatible.
+                    Type 'string' is not assignable to type 'Easing | Easing[] | undefined'.
+src/app/dashboard/production/[id]/page.tsx(541,25): error TS2322: Type '{ hidden: { opacity: number; y: number; }; visible: { opacity: number; y: number; transition: { duration: number; ease: string; }; }; }' is not assignable to type 'Variants'.
+  Property 'visible' is incompatible with index signature.
+    Type '{ opacity: number; y: number; transition: { duration: number; ease: string; }; }' is not assignable to type 'Variant'.
+      Type '{ opacity: number; y: number; transition: { duration: number; ease: string; }; }' is not assignable to type 'TargetAndTransition'.
+        Type '{ opacity: number; y: number; transition: { duration: number; ease: string; }; }' is not assignable to type '{ transition?: Transition<any> | undefined; transitionEnd?: ResolvedValues$1 | undefined; }'.
+          Types of property 'transition' are incompatible.
+            Type '{ duration: number; ease: string; }' is not assignable to type 'Transition<any> | undefined'.
+              Type '{ duration: number; ease: string; }' is not assignable to type 'TransitionWithValueOverrides<any>'.
+                Type '{ duration: number; ease: string; }' is not assignable to type 'ValueAnimationTransition<any>'.
+                  Types of property 'ease' are incompatible.
+                    Type 'string' is not assignable to type 'Easing | Easing[] | undefined'.
+src/app/dashboard/profile/page.tsx(297,29): error TS2322: Type '"blue"' is not assignable to type 'BadgeVariant | undefined'.
+src/app/dashboard/purchasing/page.tsx(458,12): error TS2741: Property 'change' is missing in type '{ label: string; value: number; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; color: "blue"; prefix: string; delay: number; }' but required in type '{ label: string; value: number; change: number; icon: any; color: "blue" | "purple" | "green" | "gray" | "red" | "orange"; prefix?: string | undefined; suffix?: string | undefined; delay?: number | undefined; href?: string | undefined; }'.
+src/app/dashboard/purchasing/page.tsx(459,12): error TS2741: Property 'change' is missing in type '{ label: string; value: number; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; color: "orange"; delay: number; }' but required in type '{ label: string; value: number; change: number; icon: any; color: "blue" | "purple" | "green" | "gray" | "red" | "orange"; prefix?: string | undefined; suffix?: string | undefined; delay?: number | undefined; href?: string | undefined; }'.
+src/app/dashboard/purchasing/page.tsx(460,12): error TS2741: Property 'change' is missing in type '{ label: string; value: number; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; color: "purple"; delay: number; }' but required in type '{ label: string; value: number; change: number; icon: any; color: "blue" | "purple" | "green" | "gray" | "red" | "orange"; prefix?: string | undefined; suffix?: string | undefined; delay?: number | undefined; href?: string | undefined; }'.
+src/app/dashboard/purchasing/page.tsx(461,12): error TS2741: Property 'change' is missing in type '{ label: string; value: number; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; color: "green"; delay: number; }' but required in type '{ label: string; value: number; change: number; icon: any; color: "blue" | "purple" | "green" | "gray" | "red" | "orange"; prefix?: string | undefined; suffix?: string | undefined; delay?: number | undefined; href?: string | undefined; }'.
+src/app/dashboard/users/page.tsx(101,36): error TS2322: Type '"green" | "red" | "orange" | "teal"' is not assignable to type 'BadgeColor | undefined'.
+  Type '"teal"' is not assignable to type 'BadgeColor | undefined'.
+src/app/dashboard/users/page.tsx(177,13): error TS2304: Cannot find name 'toast'.
+src/app/dashboard/users/page.tsx(188,35): error TS2304: Cannot find name 'toast'.
+src/app/dashboard/users/page.tsx(223,13): error TS2304: Cannot find name 'toast'.
+src/app/dashboard/users/page.tsx(225,13): error TS2304: Cannot find name 'toast'.
+src/app/dashboard/users/page.tsx(241,17): error TS2304: Cannot find name 'toast'.
+src/app/dashboard/users/page.tsx(251,17): error TS2304: Cannot find name 'toast'.
+src/app/dashboard/users/page.tsx(264,17): error TS2304: Cannot find name 'toast'.
+src/app/dashboard/users/page.tsx(268,13): error TS2304: Cannot find name 'toast'.
+src/app/dashboard/users/page.tsx(281,48): error TS2304: Cannot find name 'toast'.
+src/app/dashboard/users/page.tsx(282,52): error TS2304: Cannot find name 'toast'.
+src/app/dashboard/users/page.tsx(283,52): error TS2304: Cannot find name 'toast'.
+src/app/dashboard/users/page.tsx(284,52): error TS2304: Cannot find name 'toast'.
+src/app/dashboard/users/page.tsx(285,58): error TS2304: Cannot find name 'toast'.
+src/app/dashboard/users/page.tsx(301,13): error TS2304: Cannot find name 'toast'.
+src/app/dashboard/users/page.tsx(303,13): error TS2304: Cannot find name 'toast'.
+src/app/dashboard/users/page.tsx(435,9): error TS2304: Cannot find name 'toast'.
+src/app/dashboard/users/page.tsx(555,33): error TS2322: Type 'Element' is not assignable to type 'string'.
+src/app/dashboard/users/page.tsx(569,33): error TS2322: Type 'Element' is not assignable to type 'string'.
+src/auth.ts(35,7): error TS2353: Object literal may only specify known properties, and 'tenantId' does not exist in type 'OIDCUserConfig<MicrosoftEntraIDProfile> & { profilePhotoSize?: 48 | 64 | 96 | 120 | 240 | 360 | 432 | 504 | 648 | undefined; }'.
+src/auth.ts(41,26): error TS2339: Property 'picture' does not exist on type 'MicrosoftEntraIDProfile'.
+src/auth.ts(179,13): error TS2322: Type 'string' is not assignable to type 'ObjectId'.
+src/components/ErrorReporter.tsx(14,19): error TS2554: Expected 1 arguments, but got 0.
+src/components/ui/chart.tsx(109,3): error TS2339: Property 'payload' does not exist on type 'Omit<Props<ValueType, NameType>, PropertiesReadFromContext> & { active?: boolean | undefined; allowEscapeViewBox?: AllowInDimension | undefined; ... 24 more ...; wrapperStyle?: CSSProperties | undefined; } & ClassAttributes<...> & HTMLAttributes<...> & { ...; }'.
+src/components/ui/chart.tsx(114,3): error TS2339: Property 'label' does not exist on type 'Omit<Props<ValueType, NameType>, PropertiesReadFromContext> & { active?: boolean | undefined; allowEscapeViewBox?: AllowInDimension | undefined; ... 24 more ...; wrapperStyle?: CSSProperties | undefined; } & ClassAttributes<...> & HTMLAttributes<...> & { ...; }'.
+src/components/ui/chart.tsx(182,23): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/components/ui/chart.tsx(182,29): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/components/ui/chart.tsx(260,39): error TS2344: Type '"verticalAlign" | "payload"' does not satisfy the constraint '"string" | "key" | "filter" | "values" | "id" | "type" | "role" | "end" | "fill" | "result" | "name" | "unicode" | "max" | "version" | "min" | "transform" | "cursor" | "style" | "from" | ... 430 more ... | "onBBoxUpdate"'.
+  Type '"payload"' is not assignable to type '"string" | "key" | "filter" | "values" | "id" | "type" | "role" | "end" | "fill" | "result" | "name" | "unicode" | "max" | "version" | "min" | "transform" | "cursor" | "style" | "from" | ... 430 more ... | "onBBoxUpdate"'.
+src/components/ui/chart.tsx(266,17): error TS2339: Property 'length' does not exist on type '{}'.
+src/components/ui/chart.tsx(278,16): error TS2339: Property 'map' does not exist on type '{}'.
+src/components/ui/chart.tsx(278,21): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/hooks/useWebSocket.ts(44,29): error TS2307: Cannot find module 'socket.io-client' or its corresponding type declarations.
+src/hooks/useWebSocket.ts(48,33): error TS2307: Cannot find module 'socket.io-client' or its corresponding type declarations.
+src/lib/invoice/browser-pool.ts(86,44): error TS2307: Cannot find module 'puppeteer' or its corresponding type declarations.
+src/lib/mongodb.ts(97,5): error TS2322: Type 'Promise<typeof import("mongoose")>' is not assignable to type 'Promise<{ conn: ... | null; promise: Promise<...> | null; }>'.
+  Type 'typeof import("mongoose")' is missing the following properties from type '{ conn: ... | null; promise: Promise<...> | null; }': conn, promise
+src/modules/employees/application/employee.service.ts(97,13): error TS2345: Argument of type '{ fullName: string; phone: string; department: string; designation: string; permissionTemplate: string; email?: string | undefined; customPermissions?: Record<string | number | symbol, unknown> | undefined; }' is not assignable to parameter of type 'CreateEmployeeDTO'.
+  Types of property 'customPermissions' are incompatible.
+    Type 'Record<string | number | symbol, unknown> | undefined' is not assignable to type 'PermissionMap | undefined'.
+      Type 'Record<string | number | symbol, unknown>' is missing the following properties from type 'PermissionMap': orders, production, inventory, clients, and 5 more.
+src/modules/employees/domain/schemas.ts(24,26): error TS2554: Expected 2-3 arguments, but got 1.
+src/modules/employees/domain/schemas.ts(24,35): error TS2554: Expected 2-3 arguments, but got 1.
+src/modules/employees/domain/schemas.ts(43,24): error TS2554: Expected 2-3 arguments, but got 1.
+src/modules/employees/domain/schemas.ts(43,33): error TS2554: Expected 2-3 arguments, but got 1.
+src/modules/employees/infrastructure/employee.repository.ts(235,38): error TS2769: No overload matches this call.
+  Overload 1 of 3, '(filter: Filter<Document>, options?: (FindOptions<Document> & Abortable) | undefined): FindCursor<WithId<Document>>', gave the following error.
+    Type 'string' is not assignable to type 'Condition<ObjectId> | undefined'.
+  Overload 2 of 3, '(filter: Filter<Document>, options?: (FindOptions<Document> & Abortable) | undefined): FindCursor<Document>', gave the following error.
+    Type 'string' is not assignable to type 'Condition<ObjectId> | undefined'.
+src/modules/inventory/domain/schemas.ts(18,19): error TS2353: Object literal may only specify known properties, and 'coerce' does not exist in type '{ error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; }'.
+src/modules/inventory/domain/schemas.ts(28,19): error TS2353: Object literal may only specify known properties, and 'coerce' does not exist in type '{ error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; }'.
+src/modules/inventory/domain/schemas.ts(38,19): error TS2353: Object literal may only specify known properties, and 'coerce' does not exist in type '{ error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; }'.
+src/modules/inventory/domain/schemas.ts(47,19): error TS2353: Object literal may only specify known properties, and 'coerce' does not exist in type '{ error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; }'.
+src/modules/machines/domain/schemas.ts(27,10): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: readonly ["active", "inactive", "maintenance"], params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; } | undefined): ZodEnum<...>', gave the following error.
+    Object literal may only specify known properties, and 'errorMap' does not exist in type '{ error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; }'.
+  Overload 2 of 2, '(entries: Readonly<Record<string, EnumValue>>, params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; } | undefined): ZodEnum<...>', gave the following error.
+    Argument of type 'string[]' is not assignable to parameter of type 'Readonly<Record<string, EnumValue>>'.
+      Index signature for type 'string' is missing in type 'string[]'.
+src/modules/payments/application/payment.service.ts(24,41): error TS2345: Argument of type '{ amount: number; payment_method: string; notes: string; payment_date?: string | null | undefined; client_id?: string | null | undefined; order_id?: string | null | undefined; }' is not assignable to parameter of type 'CreatePaymentDTO'.
+  Types of property 'payment_date' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | undefined'.
+      Type 'null' is not assignable to type 'string | undefined'.
+src/modules/production/application/production.service.ts(49,41): error TS2345: Argument of type '{ orderId: string; orderProductName: string; orderQuantity: number; clientName: string; materials: { inventoryId: string; name: string; quantityUsed: number; unit?: string | undefined; }[]; machineId: string; ... 9 more ...; batchNumber?: string | undefined; }' is not assignable to parameter of type 'CreateProductionDTO'.
+  Types of property 'deliveryDate' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | undefined'.
+      Type 'null' is not assignable to type 'string | undefined'.
+src/modules/purchasing/domain/schemas.ts(28,26): error TS2353: Object literal may only specify known properties, and 'coerce' does not exist in type '{ error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; }'.
+src/modules/purchasing/domain/schemas.ts(30,27): error TS2353: Object literal may only specify known properties, and 'coerce' does not exist in type '{ error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; }'.
+src/modules/purchasing/domain/schemas.ts(37,28): error TS2353: Object literal may only specify known properties, and 'coerce' does not exist in type '{ error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; }'.
+src/shared/middleware/with-validation.ts(69,28): error TS2352: Conversion of type '$ZodIssue' to type 'Record<string, unknown>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '$ZodIssueCustom' is not comparable to type 'Record<string, unknown>'.
+    Index signature for type 'string' is missing in type '$ZodIssueCustom'.

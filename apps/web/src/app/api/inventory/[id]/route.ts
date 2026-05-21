@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { triggerNotification } from "@/lib/notifications/dispatcher";
 
 export async function PUT(
   request: Request,
@@ -38,6 +39,21 @@ export async function PUT(
 
     if (result.matchedCount === 0) {
       return NextResponse.json({ error: "Item not found" }, { status: 404 });
+    }
+
+    // ── Trigger low stock alert if quantity ≤ min_stock_level ──
+    const newQty = Number(body.quantity) || 0;
+    const minStock = Number(body.min_stock_level) || 10;
+    if (newQty <= minStock) {
+      triggerNotification({
+        eventType: "low_stock_alert",
+        payload: {
+          itemName: body.name || "Unknown Item",
+          currentStock: newQty,
+          unit: body.unit || "kg",
+        },
+        triggeredBy: getDataOwnerId(user),
+      }).catch(() => {}); // fire-and-forget
     }
 
     return NextResponse.json({ success: true });

@@ -850,7 +850,7 @@ export default function SetupPage() {
                     cursor: saving ? "not-allowed" : "pointer",
                     boxShadow: "0 8px 32px rgba(167,139,250,0.4)",
                     display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                    fontFamily: "var(--font-outfit), sans-serif",
+                    fontFamily: "'Open Sans', sans-serif",
                   }}
                 >
                   {saving ? (
@@ -897,7 +897,7 @@ export default function SetupPage() {
                 border: "1px solid rgba(255,255,255,0.1)",
                 color: "rgba(255,255,255,0.6)",
                 fontWeight: 700, fontSize: 14, cursor: "pointer",
-                fontFamily: "var(--font-outfit), sans-serif",
+                fontFamily: "'Open Sans', sans-serif",
                 transition: "all 0.2s ease",
               }}
               onMouseEnter={(e) => {
@@ -926,7 +926,7 @@ export default function SetupPage() {
               border: "none", color: "#fff",
               fontWeight: 700, fontSize: 14, cursor: "pointer",
               boxShadow: "0 4px 16px rgba(167,139,250,0.3)",
-              fontFamily: "var(--font-outfit), sans-serif",
+              fontFamily: "'Open Sans', sans-serif",
             }}
           >
             Continue
@@ -993,7 +993,7 @@ const inputBaseStyle: React.CSSProperties = {
   fontSize: 14,
   outline: "none",
   transition: "border-color 0.2s, box-shadow 0.2s",
-  fontFamily: "var(--font-outfit), sans-serif",
+  fontFamily: "'Open Sans', sans-serif",
 };
 
 const focusStyle = {

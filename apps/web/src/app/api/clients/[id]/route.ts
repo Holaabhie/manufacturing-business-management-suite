@@ -26,6 +26,7 @@ export async function PUT(
       {
         $set: {
           name: body.name,
+          company: body.company || "",
           email: body.email,
           phone: body.phone,
           address: body.address,

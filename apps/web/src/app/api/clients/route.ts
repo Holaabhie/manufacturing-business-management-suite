@@ -20,6 +20,7 @@ export async function GET() {
     const formatted = clients.map((c: any) => ({
       id: c._id.toString(),
       name: c.name,
+      company: c.company || "",
       email: c.email,
       phone: c.phone,
       address: c.address,
@@ -47,6 +48,7 @@ export async function POST(request: Request) {
     const result = await db.collection("clients").insertOne({
       userId: getDataOwnerId(user),
       name: body.name,
+      company: body.company || "",
       email: body.email || "",
       phone: body.phone || "",
       address: body.address || "",

@@ -167,7 +167,8 @@ export class PurchasingService {
 
     /**
      * Add purchased quantities to inventory when PO is received.
-     * Uses $inc to atomically increase stock for each line item.
+     * Uses addStockFromPO to atomically increase stock and record
+     * the source PO for traceability.
      */
     private async addStockFromPurchase(
         userId: string,
@@ -175,15 +176,14 @@ export class PurchasingService {
     ): Promise<void> {
         for (const item of order.items) {
             try {
-                // Try to find the inventory item
                 const existing = await this.inventoryRepo.findById(item.inventoryItemId, userId);
                 if (existing) {
-                    // Use deductStock with negative quantity to ADD stock
-                    // (deductStock uses $inc: -quantity, so -(-q) = +q)
-                    await this.inventoryRepo.deductStock(
+                    await this.inventoryRepo.addStockFromPO(
                         item.inventoryItemId,
                         userId,
-                        -item.quantity, // Negative deduction = addition
+                        item.quantity,
+                        order.id,
+                        order.poNumber,
                     );
                 }
                 // If item doesn't exist in inventory, skip silently

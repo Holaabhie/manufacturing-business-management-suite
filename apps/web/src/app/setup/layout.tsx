@@ -8,7 +8,7 @@ export default function SetupLayout({
       style={{
         minHeight: "100vh",
         background: "#080c14",
-        fontFamily: "var(--font-outfit), sans-serif",
+        fontFamily: "'Open Sans', sans-serif",
       }}
     >
       {children}

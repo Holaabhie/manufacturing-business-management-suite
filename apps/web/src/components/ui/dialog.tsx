@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
-import { XIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -38,9 +37,14 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-[1000] bg-black/50",
+        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-[1000]",
         className
       )}
+      style={{
+        background: "var(--overlay-backdrop)",
+        backdropFilter: "var(--overlay-backdrop-blur)",
+        WebkitBackdropFilter: "var(--overlay-backdrop-blur)",
+      }}
       {...props}
     />
   )
@@ -50,38 +54,66 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  fullScreen = false,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
+  fullScreen?: boolean
 }) {
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
-      <div className="fixed inset-0 z-[1001] flex items-center justify-center pointer-events-none p-4">
-        <DialogPrimitive.Content
-          data-slot="dialog-content"
-          className={cn(
-            "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 relative pointer-events-auto w-full max-w-md max-h-[85vh] overflow-hidden rounded-lg border p-6 shadow-lg duration-200",
-            className
-          )}
-          {...props}
-        >
-        {/* Close button — always visible, never scrolls */}
-        {showCloseButton && (
-          <DialogPrimitive.Close
-            data-slot="dialog-close"
-            className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 z-10 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
-          >
-            <XIcon />
-            <span className="sr-only">Close</span>
-          </DialogPrimitive.Close>
+      <DialogPrimitive.Content
+        data-slot="dialog-content"
+        className={cn(
+          fullScreen
+            ? [
+                "fixed inset-0 z-[1001] flex flex-col overflow-hidden",
+                "p-0 outline-none",
+                "data-[state=open]:animate-[sheetSlideUp_0.28s_ease] data-[state=closed]:animate-[sheetSlideDown_0.22s_ease_forwards]",
+              ]
+            : [
+                "fixed bottom-0 left-1/2 z-[1001]",
+                "w-full max-w-[480px]",
+                "max-h-[88dvh] flex flex-col",
+                "rounded-t-[32px] rounded-b-none",
+                "p-0 outline-none",
+                "data-[state=open]:animate-[sheetSlideUp_0.28s_ease] data-[state=closed]:animate-[sheetSlideDown_0.22s_ease_forwards]",
+              ],
+          className
         )}
-        {/* Scrollable content area */}
-        <div className="flex-1 overflow-y-auto min-h-0 grid gap-4">
-          {children}
-        </div>
+        style={
+          fullScreen
+            ? {
+                background: 'var(--overlay-sheet-bg)',
+                color: 'var(--overlay-text-primary)',
+              }
+            : {
+                transform: 'translateX(-50%)',
+                background: 'var(--overlay-sheet-bg)',
+                color: 'var(--overlay-text-primary)',
+                border: '1px solid var(--overlay-border)',
+                borderBottom: 'none',
+                boxShadow: 'var(--overlay-shadow)',
+              }
+        }
+        {...props}
+      >
+        {/* Drag handle — only for bottom sheet variant */}
+        {!fullScreen && (
+          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 16, paddingBottom: 8 }}>
+            <div
+              style={{
+                width: 48,
+                height: 5,
+                borderRadius: 999,
+                background: 'var(--overlay-handle)',
+              }}
+            />
+          </div>
+        )}
+        {children}
       </DialogPrimitive.Content>
-      </div>
     </DialogPortal>
   )
 }

@@ -56,18 +56,18 @@ interface TaskItem {
 
 // ─── Status/Priority Color Maps ──────────────────────────
 const statusColors: Record<string, string> = {
-    pending: "bg-[rgba(255,149,0,0.12)] text-[var(--ios-orange)]",
-    in_progress: "bg-[rgba(0,122,255,0.12)] text-[var(--ios-blue)]",
-    processing: "bg-[rgba(0,122,255,0.12)] text-[var(--ios-blue)]",
-    completed: "bg-[rgba(52,199,89,0.12)] text-[var(--ios-green)]",
-    dispatched: "bg-[rgba(88,86,214,0.12)] text-[var(--ios-indigo)]",
-    cancelled: "bg-[rgba(255,59,48,0.12)] text-[var(--ios-red)]",
+    pending: "bg-[rgba(255,149,0,0.12)] text-[var(--erp-warning)]",
+    in_progress: "bg-[rgba(0,122,255,0.12)] text-[var(--primary)]",
+    processing: "bg-[rgba(0,122,255,0.12)] text-[var(--primary)]",
+    completed: "bg-[rgba(52,199,89,0.12)] text-[var(--erp-success)]",
+    dispatched: "bg-[rgba(88,86,214,0.12)] text-[var(--chart-5)]",
+    cancelled: "bg-[rgba(255,59,48,0.12)] text-[var(--destructive)]",
 };
 
 const priorityDots: Record<string, string> = {
-    high: "bg-[var(--ios-red)]",
-    medium: "bg-[var(--ios-orange)]",
-    low: "bg-[var(--ios-green)]",
+    high: "bg-[var(--destructive)]",
+    medium: "bg-[var(--erp-warning)]",
+    low: "bg-[var(--erp-success)]",
 };
 
 const taskTypeIcons: Record<string, any> = {
@@ -94,11 +94,11 @@ function GlassMiniCard({
     delay?: number;
 }) {
     const colorMap: Record<string, { bg: string; text: string; glow: string }> = {
-        blue: { bg: "rgba(0,122,255,0.10)", text: "var(--ios-blue)", glow: "rgba(0,122,255,0.15)" },
-        green: { bg: "rgba(52,199,89,0.10)", text: "var(--ios-green)", glow: "rgba(52,199,89,0.15)" },
-        orange: { bg: "rgba(255,149,0,0.10)", text: "var(--ios-orange)", glow: "rgba(255,149,0,0.15)" },
-        purple: { bg: "rgba(88,86,214,0.10)", text: "var(--ios-indigo)", glow: "rgba(88,86,214,0.15)" },
-        red: { bg: "rgba(255,59,48,0.10)", text: "var(--ios-red)", glow: "rgba(255,59,48,0.15)" },
+        blue: { bg: "rgba(0,122,255,0.10)", text: "var(--primary)", glow: "rgba(0,122,255,0.15)" },
+        green: { bg: "rgba(52,199,89,0.10)", text: "var(--erp-success)", glow: "rgba(52,199,89,0.15)" },
+        orange: { bg: "rgba(255,149,0,0.10)", text: "var(--erp-warning)", glow: "rgba(255,149,0,0.15)" },
+        purple: { bg: "rgba(88,86,214,0.10)", text: "var(--chart-5)", glow: "rgba(88,86,214,0.15)" },
+        red: { bg: "rgba(255,59,48,0.10)", text: "var(--destructive)", glow: "rgba(255,59,48,0.15)" },
         cyan: { bg: "rgba(90,200,250,0.10)", text: "#5AC8FA", glow: "rgba(90,200,250,0.15)" },
     };
     const c = colorMap[color] || colorMap.blue;
@@ -130,15 +130,15 @@ function GlassMiniCard({
                     <Icon className="h-[18px] w-[18px]" style={{ color: c.text }} />
                 </div>
                 <div className="min-w-0 flex-1">
-                    <p className="text-[22px] font-bold text-[var(--label-primary)] leading-[26px] tracking-tight">
+                    <p className="text-[22px] font-bold text-[var(--foreground)] leading-[26px] tracking-tight">
                         {typeof value === "number" ? value.toLocaleString("en-IN") : value}
                     </p>
-                    <p className="text-[12px] font-medium text-[var(--label-tertiary)] leading-[16px] mt-0.5 truncate">
+                    <p className="text-[12px] font-medium text-[var(--muted-foreground)] leading-[16px] mt-0.5 truncate">
                         {label}
                     </p>
                 </div>
                 {href && (
-                    <ArrowUpRight className="h-3.5 w-3.5 text-[var(--label-quaternary)] group-hover:text-[var(--label-secondary)] transition-colors flex-shrink-0" />
+                    <ArrowUpRight className="h-3.5 w-3.5 text-[var(--muted-foreground)] group-hover:text-[var(--muted-foreground)] transition-colors flex-shrink-0" />
                 )}
             </div>
         </motion.div>
@@ -167,11 +167,11 @@ function StatusItem({
     delay?: number;
 }) {
     const colorMap: Record<string, { bg: string; text: string }> = {
-        blue: { bg: "rgba(0,122,255,0.10)", text: "var(--ios-blue)" },
-        green: { bg: "rgba(52,199,89,0.10)", text: "var(--ios-green)" },
-        orange: { bg: "rgba(255,149,0,0.10)", text: "var(--ios-orange)" },
-        red: { bg: "rgba(255,59,48,0.10)", text: "var(--ios-red)" },
-        purple: { bg: "rgba(88,86,214,0.10)", text: "var(--ios-indigo)" },
+        blue: { bg: "rgba(0,122,255,0.10)", text: "var(--primary)" },
+        green: { bg: "rgba(52,199,89,0.10)", text: "var(--erp-success)" },
+        orange: { bg: "rgba(255,149,0,0.10)", text: "var(--erp-warning)" },
+        red: { bg: "rgba(255,59,48,0.10)", text: "var(--destructive)" },
+        purple: { bg: "rgba(88,86,214,0.10)", text: "var(--chart-5)" },
         cyan: { bg: "rgba(90,200,250,0.10)", text: "#5AC8FA" },
     };
     const c = colorMap[color] || colorMap.blue;
@@ -181,7 +181,7 @@ function StatusItem({
             initial={{ opacity: 0, x: -8 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            className="flex items-center gap-3 p-3 rounded-[12px] hover:bg-[var(--fill-quaternary)] transition-all cursor-pointer group active:scale-[0.98]"
+            className="flex items-center gap-3 p-3 rounded-[12px] hover:bg-[var(--muted)] transition-all cursor-pointer group active:scale-[0.98]"
         >
             <div
                 className="w-[34px] h-[34px] rounded-[10px] flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-105"
@@ -190,7 +190,7 @@ function StatusItem({
                 <Icon className="h-[16px] w-[16px]" style={{ color: c.text }} />
             </div>
             <div className="flex-1 min-w-0">
-                <p className="text-[14px] font-medium text-[var(--label-primary)] leading-[18px] truncate">
+                <p className="text-[14px] font-medium text-[var(--foreground)] leading-[18px] truncate">
                     {label}
                 </p>
             </div>
@@ -201,7 +201,7 @@ function StatusItem({
                 {count}
             </span>
             {href && (
-                <ChevronRight className="h-3.5 w-3.5 text-[var(--label-quaternary)] group-hover:text-[var(--label-tertiary)] transition-colors flex-shrink-0" />
+                <ChevronRight className="h-3.5 w-3.5 text-[var(--muted-foreground)] group-hover:text-[var(--muted-foreground)] transition-colors flex-shrink-0" />
             )}
         </motion.div>
     );
@@ -278,17 +278,17 @@ export default function StaffWorkPanel({ userName }: { userName?: string }) {
         return (
             <div className="space-y-6">
                 <div className="space-y-2">
-                    <div className="h-[34px] w-[200px] rounded-[10px] bg-[var(--fill-tertiary)] shimmer" />
-                    <div className="h-[20px] w-[300px] rounded-[8px] bg-[var(--fill-tertiary)] shimmer" />
+                    <div className="h-[34px] w-[200px] rounded-[10px] bg-[var(--muted)] shimmer" />
+                    <div className="h-[20px] w-[300px] rounded-[8px] bg-[var(--muted)] shimmer" />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="h-[320px] rounded-[16px] bg-[var(--fill-tertiary)] shimmer" />
-                    <div className="h-[320px] rounded-[16px] bg-[var(--fill-tertiary)] shimmer" />
-                    <div className="h-[320px] rounded-[16px] bg-[var(--fill-tertiary)] shimmer" />
+                    <div className="h-[320px] rounded-[16px] bg-[var(--muted)] shimmer" />
+                    <div className="h-[320px] rounded-[16px] bg-[var(--muted)] shimmer" />
+                    <div className="h-[320px] rounded-[16px] bg-[var(--muted)] shimmer" />
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <div className="h-[340px] rounded-[16px] bg-[var(--fill-tertiary)] shimmer" />
-                    <div className="h-[340px] rounded-[16px] bg-[var(--fill-tertiary)] shimmer" />
+                    <div className="h-[340px] rounded-[16px] bg-[var(--muted)] shimmer" />
+                    <div className="h-[340px] rounded-[16px] bg-[var(--muted)] shimmer" />
                 </div>
             </div>
         );
@@ -304,10 +304,10 @@ export default function StaffWorkPanel({ userName }: { userName?: string }) {
             {/* ── Page Header ── */}
             <motion.div variants={staggerItem} className="flex items-end justify-between">
                 <div>
-                    <h1 className="text-[34px] font-bold text-[var(--label-primary)] leading-[41px] tracking-[0.37px]">
+                    <h1 className="text-[34px] font-bold text-[var(--foreground)] leading-[41px] tracking-[0.37px]">
                         Work Panel
                     </h1>
-                    <p className="text-[15px] text-[var(--label-secondary)] mt-1 leading-[20px]">
+                    <p className="text-[15px] text-[var(--muted-foreground)] mt-1 leading-[20px]">
                         {getGreeting()}{userName ? `, ${userName}` : ""}. Here are your tasks for today.
                     </p>
                 </div>
@@ -379,28 +379,28 @@ export default function StaffWorkPanel({ userName }: { userName?: string }) {
                             {/* Recent assigned orders list */}
                             {orders.length > 0 && (
                                 <div className="mt-5 pt-4 border-t border-[var(--border-divider)]">
-                                    <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--label-tertiary)] px-1 mb-2">
+                                    <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--muted-foreground)] px-1 mb-2">
                                         Recent Assigned
                                     </p>
                                     <div className="space-y-0.5">
                                         {orders.slice(0, 3).map((order) => (
                                             <Link key={order._id} href="/dashboard/orders">
-                                                <div className="flex items-center gap-2.5 p-2.5 rounded-[10px] hover:bg-[var(--fill-quaternary)] transition-colors cursor-pointer group">
+                                                <div className="flex items-center gap-2.5 p-2.5 rounded-[10px] hover:bg-[var(--muted)] transition-colors cursor-pointer group">
                                                     {order.priority && (
                                                         <div className={cn("w-[5px] h-[5px] rounded-full flex-shrink-0", priorityDots[order.priority] || priorityDots.medium)} />
                                                     )}
                                                     <div className="flex-1 min-w-0">
-                                                        <p className="text-[13px] font-medium text-[var(--label-primary)] truncate">
+                                                        <p className="text-[13px] font-medium text-[var(--foreground)] truncate">
                                                             {order.orderNumber || `#${order._id.slice(-6)}`}
                                                         </p>
-                                                        <p className="text-[11px] text-[var(--label-tertiary)] truncate">
+                                                        <p className="text-[11px] text-[var(--muted-foreground)] truncate">
                                                             {order.clientName || "—"} · {formatDate(order.dueDate)}
                                                         </p>
                                                     </div>
                                                     <span
                                                         className={cn(
                                                             "text-[10px] font-medium px-1.5 py-0.5 rounded-full capitalize",
-                                                            statusColors[order.status] || "bg-[var(--fill-tertiary)] text-[var(--label-secondary)]"
+                                                            statusColors[order.status] || "bg-[var(--muted)] text-[var(--muted-foreground)]"
                                                         )}
                                                     >
                                                         {order.status || "pending"}
@@ -502,7 +502,7 @@ export default function StaffWorkPanel({ userName }: { userName?: string }) {
 
                             {/* Quick Navigation links */}
                             <div className="mt-5 pt-4 border-t border-[var(--border-divider)]">
-                                <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--label-tertiary)] px-1 mb-2">
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--muted-foreground)] px-1 mb-2">
                                     Quick Links
                                 </p>
                                 <div className="space-y-0.5">
@@ -512,12 +512,12 @@ export default function StaffWorkPanel({ userName }: { userName?: string }) {
                                         { label: "Inventory", icon: Package, href: "/dashboard/inventory", color: "orange" },
                                     ].map((action, idx, arr) => (
                                         <Link key={action.label} href={action.href}>
-                                            <div className="flex items-center gap-2.5 p-2.5 rounded-[10px] hover:bg-[var(--fill-quaternary)] transition-colors cursor-pointer group">
-                                                <action.icon className="h-[14px] w-[14px] text-[var(--label-tertiary)] group-hover:text-[var(--label-secondary)] transition-colors" />
-                                                <span className="text-[13px] font-medium text-[var(--label-primary)] flex-1">
+                                            <div className="flex items-center gap-2.5 p-2.5 rounded-[10px] hover:bg-[var(--muted)] transition-colors cursor-pointer group">
+                                                <action.icon className="h-[14px] w-[14px] text-[var(--muted-foreground)] group-hover:text-[var(--muted-foreground)] transition-colors" />
+                                                <span className="text-[13px] font-medium text-[var(--foreground)] flex-1">
                                                     {action.label}
                                                 </span>
-                                                <ChevronRight className="h-3 w-3 text-[var(--label-quaternary)] group-hover:text-[var(--label-tertiary)] transition-colors" />
+                                                <ChevronRight className="h-3 w-3 text-[var(--muted-foreground)] group-hover:text-[var(--muted-foreground)] transition-colors" />
                                             </div>
                                             {idx < arr.length - 1 && (
                                                 <div className="h-px bg-[var(--border-divider)] mx-3" />
@@ -553,12 +553,12 @@ export default function StaffWorkPanel({ userName }: { userName?: string }) {
                             {orders.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-12 text-center">
                                     <div className="w-[56px] h-[56px] rounded-[16px] bg-[rgba(0,122,255,0.08)] flex items-center justify-center mb-4">
-                                        <ClipboardList className="h-[24px] w-[24px] text-[var(--ios-blue)]" />
+                                        <ClipboardList className="h-[24px] w-[24px] text-[var(--primary)]" />
                                     </div>
-                                    <p className="text-[15px] font-medium text-[var(--label-secondary)]">
+                                    <p className="text-[15px] font-medium text-[var(--muted-foreground)]">
                                         No orders assigned yet
                                     </p>
-                                    <p className="text-[13px] text-[var(--label-tertiary)] mt-1">
+                                    <p className="text-[13px] text-[var(--muted-foreground)] mt-1">
                                         Orders will appear here when assigned to you
                                     </p>
                                 </div>
@@ -567,7 +567,7 @@ export default function StaffWorkPanel({ userName }: { userName?: string }) {
                                     {orders.slice(0, 6).map((order, idx) => (
                                         <Link key={order._id} href="/dashboard/orders">
                                             <motion.div
-                                                className="flex items-center gap-3 p-3 rounded-[10px] hover:bg-[var(--fill-quaternary)] transition-colors cursor-pointer group"
+                                                className="flex items-center gap-3 p-3 rounded-[10px] hover:bg-[var(--muted)] transition-colors cursor-pointer group"
                                                 whileTap={{ scale: 0.97 }}
                                             >
                                                 <div className="flex-1 min-w-0">
@@ -575,26 +575,26 @@ export default function StaffWorkPanel({ userName }: { userName?: string }) {
                                                         {order.priority && (
                                                             <div className={cn("w-[6px] h-[6px] rounded-full flex-shrink-0", priorityDots[order.priority] || priorityDots.medium)} />
                                                         )}
-                                                        <p className="text-[15px] font-medium text-[var(--label-primary)] truncate leading-[20px]">
+                                                        <p className="text-[15px] font-medium text-[var(--foreground)] truncate leading-[20px]">
                                                             {order.orderNumber || `Order #${order._id.slice(-6)}`}
                                                         </p>
                                                     </div>
-                                                    <p className="text-[13px] text-[var(--label-secondary)] truncate leading-[18px] ml-[14px]">
+                                                    <p className="text-[13px] text-[var(--muted-foreground)] truncate leading-[18px] ml-[14px]">
                                                         {order.clientName || "—"} · Due {formatDate(order.dueDate)}
                                                     </p>
                                                 </div>
                                                 <span
                                                     className={cn(
                                                         "text-[12px] font-medium px-2 py-0.5 rounded-full capitalize",
-                                                        order.status === "completed" ? "bg-[rgba(52,199,89,0.12)] text-[var(--ios-green)]" :
-                                                            order.status === "pending" ? "bg-[rgba(255,149,0,0.12)] text-[var(--ios-orange)]" :
-                                                                order.status === "processing" || order.status === "in_progress" ? "bg-[rgba(0,122,255,0.12)] text-[var(--ios-blue)]" :
-                                                                    "bg-[var(--fill-tertiary)] text-[var(--label-secondary)]"
+                                                        order.status === "completed" ? "bg-[rgba(52,199,89,0.12)] text-[var(--erp-success)]" :
+                                                            order.status === "pending" ? "bg-[rgba(255,149,0,0.12)] text-[var(--erp-warning)]" :
+                                                                order.status === "processing" || order.status === "in_progress" ? "bg-[rgba(0,122,255,0.12)] text-[var(--primary)]" :
+                                                                    "bg-[var(--muted)] text-[var(--muted-foreground)]"
                                                     )}
                                                 >
                                                     {order.status || "pending"}
                                                 </span>
-                                                <ChevronRight className="h-[14px] w-[14px] text-[var(--label-quaternary)] group-hover:text-[var(--label-tertiary)] transition-colors flex-shrink-0" />
+                                                <ChevronRight className="h-[14px] w-[14px] text-[var(--muted-foreground)] group-hover:text-[var(--muted-foreground)] transition-colors flex-shrink-0" />
                                             </motion.div>
                                             {idx < Math.min(orders.length, 6) - 1 && (
                                                 <div className="h-px bg-[var(--border-divider)] mx-3" />
@@ -618,12 +618,12 @@ export default function StaffWorkPanel({ userName }: { userName?: string }) {
                             {tasks.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-12 text-center">
                                     <div className="w-[56px] h-[56px] rounded-[16px] bg-[rgba(52,199,89,0.08)] flex items-center justify-center mb-4">
-                                        <ListTodo className="h-[24px] w-[24px] text-[var(--ios-green)]" />
+                                        <ListTodo className="h-[24px] w-[24px] text-[var(--erp-success)]" />
                                     </div>
-                                    <p className="text-[15px] font-medium text-[var(--label-secondary)]">
+                                    <p className="text-[15px] font-medium text-[var(--muted-foreground)]">
                                         All caught up!
                                     </p>
-                                    <p className="text-[13px] text-[var(--label-tertiary)] mt-1">
+                                    <p className="text-[13px] text-[var(--muted-foreground)] mt-1">
                                         No tasks scheduled for today
                                     </p>
                                 </div>
@@ -634,17 +634,17 @@ export default function StaffWorkPanel({ userName }: { userName?: string }) {
                                         return (
                                             <div key={task.id}>
                                                 <motion.div
-                                                    className="flex items-center gap-3 p-3 rounded-[10px] hover:bg-[var(--fill-quaternary)] transition-colors"
+                                                    className="flex items-center gap-3 p-3 rounded-[10px] hover:bg-[var(--muted)] transition-colors"
                                                     whileTap={{ scale: 0.97 }}
                                                 >
                                                     <div
                                                         className={cn(
                                                             "w-[36px] h-[36px] rounded-[8px] flex items-center justify-center flex-shrink-0",
                                                             task.status === "completed"
-                                                                ? "bg-[rgba(52,199,89,0.12)] text-[var(--ios-green)]"
+                                                                ? "bg-[rgba(52,199,89,0.12)] text-[var(--erp-success)]"
                                                                 : task.status === "in_progress"
-                                                                    ? "bg-[rgba(0,122,255,0.12)] text-[var(--ios-blue)]"
-                                                                    : "bg-[rgba(255,149,0,0.12)] text-[var(--ios-orange)]"
+                                                                    ? "bg-[rgba(0,122,255,0.12)] text-[var(--primary)]"
+                                                                    : "bg-[rgba(255,149,0,0.12)] text-[var(--erp-warning)]"
                                                         )}
                                                     >
                                                         {task.status === "completed" ? (
@@ -658,20 +658,20 @@ export default function StaffWorkPanel({ userName }: { userName?: string }) {
                                                             className={cn(
                                                                 "text-[15px] font-medium truncate leading-[20px]",
                                                                 task.status === "completed"
-                                                                    ? "text-[var(--label-tertiary)] line-through"
-                                                                    : "text-[var(--label-primary)]"
+                                                                    ? "text-[var(--muted-foreground)] line-through"
+                                                                    : "text-[var(--foreground)]"
                                                             )}
                                                         >
                                                             {task.title}
                                                         </p>
                                                         <div className="flex items-center gap-2 mt-0.5">
-                                                            <span className="text-[12px] text-[var(--label-tertiary)] capitalize">
+                                                            <span className="text-[12px] text-[var(--muted-foreground)] capitalize">
                                                                 {task.type}
                                                             </span>
                                                             {task.dueTime && (
                                                                 <>
-                                                                    <span className="text-[var(--label-quaternary)]">·</span>
-                                                                    <span className="text-[12px] text-[var(--label-tertiary)]">
+                                                                    <span className="text-[var(--muted-foreground)]">·</span>
+                                                                    <span className="text-[12px] text-[var(--muted-foreground)]">
                                                                         {task.dueTime}
                                                                     </span>
                                                                 </>

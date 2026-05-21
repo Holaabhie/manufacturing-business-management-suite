@@ -1,6 +1,6 @@
 import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
-import type { IOrderRepository, Order, OrderItem, CreateOrderDTO, UpdateOrderDTO, LegacyDeductionItem } from "../domain/types";
+import type { IOrderRepository, Order, OrderItem, OrderMaterial, CreateOrderDTO, UpdateOrderDTO, LegacyDeductionItem } from "../domain/types";
 
 function toEntity(doc: Record<string, unknown>, client?: Record<string, unknown> | null): Order {
     const totalAmount = Number(doc.total_amount || doc.grand_total || 0);
@@ -17,6 +17,10 @@ function toEntity(doc: Record<string, unknown>, client?: Record<string, unknown>
         materialSource: (doc.material_source as "own" | "client") || "own",
         rate: Number(doc.rate || 0),
         totalAmount,
+        materialCost: Number(doc.material_cost || 0),
+        labourCost: Number(doc.labour_cost || 0),
+        overheadCost: Number(doc.overhead_cost || 0),
+        machineryCost: Number(doc.machinery_cost || 0),
         totalPaid,
         balanceDue,
         deliveryDate: doc.delivery_date ? String(doc.delivery_date) : (doc.expected_delivery ? String(doc.expected_delivery) : null),
@@ -35,6 +39,13 @@ function toEntity(doc: Record<string, unknown>, client?: Record<string, unknown>
         totalTax: Number(doc.total_tax || 0),
         shippingCharges: Number(doc.shipping_charges || 0),
         roundOff: Number(doc.round_off || 0),
+        // Materials selected during creation
+        materials: Array.isArray(doc.materials) ? (doc.materials as OrderMaterial[]) : [],
+        estimatedMaterialCost: Number(doc.estimated_material_cost || 0),
+        estimatedGrossProfit: Number(doc.estimated_gross_profit || 0),
+        estimatedMargin: Number(doc.estimated_margin || 0),
+        priority: (doc.priority as 'low' | 'normal' | 'high' | 'urgent') || 'normal',
+        notes: String(doc.notes || ''),
         createdAt: (doc.createdAt || doc.created_at || new Date()) as Date,
         updatedAt: (doc.updatedAt || doc.updated_at || doc.createdAt || doc.created_at || new Date()) as Date,
         processedAt: doc.processedAt ? (doc.processedAt as Date) : (doc.processed_at ? (doc.processed_at as Date) : null),
@@ -128,9 +139,19 @@ export class MongoOrderRepository implements IOrderRepository {
             material_source: data.material_source || "own",
             rate: data.rate,
             total_amount: data.total_amount,
+            material_cost: data.material_cost || 0,
+            labour_cost: data.labour_cost || 0,
+            overhead_cost: data.overhead_cost || 0,
+            machinery_cost: data.machinery_cost || 0,
             delivery_date: data.delivery_date || null,
             status: data.status || "pending",
             payment_status: data.payment_status || "pending",
+            materials: data.materials || [],
+            estimated_material_cost: data.estimated_material_cost || 0,
+            estimated_gross_profit: data.estimated_gross_profit || 0,
+            estimated_margin: data.estimated_margin || 0,
+            priority: data.priority || 'normal',
+            notes: data.notes || '',
             createdAt: now,
             updatedAt: now,
         };
@@ -149,9 +170,19 @@ export class MongoOrderRepository implements IOrderRepository {
             if (data.material_source !== undefined) fields.material_source = data.material_source;
             if (data.rate !== undefined) fields.rate = data.rate;
             if (data.total_amount !== undefined) fields.total_amount = data.total_amount;
+            if (data.material_cost !== undefined) fields.material_cost = data.material_cost;
+            if (data.labour_cost !== undefined) fields.labour_cost = data.labour_cost;
+            if (data.overhead_cost !== undefined) fields.overhead_cost = data.overhead_cost;
+            if (data.machinery_cost !== undefined) fields.machinery_cost = data.machinery_cost;
             if (data.delivery_date !== undefined) fields.delivery_date = data.delivery_date;
             if (data.status !== undefined) fields.status = data.status;
             if (data.payment_status !== undefined) fields.payment_status = data.payment_status;
+            if (data.materials !== undefined) fields.materials = data.materials;
+            if (data.estimated_material_cost !== undefined) fields.estimated_material_cost = data.estimated_material_cost;
+            if (data.estimated_gross_profit !== undefined) fields.estimated_gross_profit = data.estimated_gross_profit;
+            if (data.estimated_margin !== undefined) fields.estimated_margin = data.estimated_margin;
+            if (data.priority !== undefined) fields.priority = data.priority;
+            if (data.notes !== undefined) fields.notes = data.notes;
 
             const result = await col.findOneAndUpdate(
                 { _id: new ObjectId(id), userId },

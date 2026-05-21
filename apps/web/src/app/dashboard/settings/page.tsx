@@ -33,6 +33,11 @@ import {
   Bot,
   UserCog,
   Info,
+  Link2,
+  Eye,
+  EyeOff,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import {
   IOSCard,
@@ -86,11 +91,23 @@ function SettingsContent() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState<"company" | "security" | "notifications" | "modules" | "audit" | "language">("company");
+  const [activeTab, setActiveTab] = useState<"company" | "security" | "notifications" | "modules" | "audit" | "language" | "integrations">("company");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [exportingAll, setExportingAll] = useState(false);
   const t = useTranslations("settings");
   const tCommon = useTranslations("common");
+  const tTally = useTranslations("tally");
+
+  // Tally integration state
+  const [tallyConfig, setTallyConfig] = useState({
+    tallyCompanyName: "",
+    bridgeUrl: "http://localhost:4567",
+    authToken: "",
+  });
+  const [tallyTesting, setTallyTesting] = useState(false);
+  const [tallyConnected, setTallyConnected] = useState<boolean | null>(null);
+  const [tallySaving, setTallySaving] = useState(false);
+  const [showAuthToken, setShowAuthToken] = useState(false);
 
   // Shared company profile hook — single source of truth with OnboardingModal
   const {
@@ -155,10 +172,30 @@ function SettingsContent() {
 
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab === "security" || tab === "notifications" || tab === "company" || tab === "audit" || tab === "language" || tab === "modules") {
+    if (tab === "security" || tab === "notifications" || tab === "company" || tab === "audit" || tab === "language" || tab === "modules" || tab === "integrations") {
       setActiveTab(tab as any);
     }
   }, [searchParams]);
+
+  // Load tally config from bridge-health endpoint
+  useEffect(() => {
+    async function fetchTallyConfig() {
+      try {
+        const res = await fetch("/api/tally/bridge-health");
+        const data = await res.json();
+        if (data.data) {
+          setTallyConfig({
+            tallyCompanyName: data.data.tallyCompanyName || "",
+            bridgeUrl: data.data.bridgeUrl || "http://localhost:4567",
+            authToken: "", // Never send back — masked
+          });
+        }
+      } catch {
+        // Silently fail — settings will show empty
+      }
+    }
+    fetchTallyConfig();
+  }, []);
 
   const fetchProfile = async () => {
     try {
@@ -452,8 +489,8 @@ function SettingsContent() {
       className="max-w-4xl mx-auto space-y-6 sm:space-y-8 pb-12 px-4 sm:px-0"
     >
       <div className="flex flex-col gap-1.5 pt-4 sm:pt-6">
-        <h1 className="text-[28px] sm:text-[34px] font-bold tracking-tight text-[var(--label-primary)]">{t("title")}</h1>
-        <p className="text-[15px] sm:text-[17px] text-[var(--label-secondary)]">{t("subtitle")}</p>
+        <h1 className="text-[28px] sm:text-[34px] font-bold tracking-tight text-[var(--foreground)]">{t("title")}</h1>
+        <p className="text-[15px] sm:text-[17px] text-[var(--muted-foreground)]">{t("subtitle")}</p>
       </div>
 
       <div className="grid gap-6 sm:gap-8 md:grid-cols-4">
@@ -462,46 +499,60 @@ function SettingsContent() {
           <IOSCard className="p-2 sm:p-2.5">
             <div className="space-y-1">
               <button
-                className={`w-full flex items-center gap-3 rounded-[12px] px-3.5 py-2.5 text-[15px] font-medium transition-colors ${activeTab === "company" ? "bg-[var(--fill-tertiary)] text-[var(--label-primary)]" : "text-[var(--label-secondary)] hover:bg-[var(--fill-quaternary)]"}`}
+                className={`w-full flex items-center gap-3 rounded-[12px] px-3.5 py-2.5 text-[15px] font-medium transition-colors ${activeTab === "company" ? "bg-[var(--muted)] text-[var(--foreground)]" : "text-[var(--muted-foreground)] hover:bg-[var(--muted)]"}`}
                 onClick={() => setActiveTab("company")}
               >
                 <Building2 size={18} className={activeTab === "company" ? "text-[#FF9500]" : "opacity-70"} />
                 Company Info
               </button>
               <button
-                className={`w-full flex items-center gap-3 rounded-[12px] px-3.5 py-2.5 text-[15px] font-medium transition-colors ${activeTab === "language" ? "bg-[var(--fill-tertiary)] text-[var(--label-primary)]" : "text-[var(--label-secondary)] hover:bg-[var(--fill-quaternary)]"}`}
+                className={`w-full flex items-center gap-3 rounded-[12px] px-3.5 py-2.5 text-[15px] font-medium transition-colors ${activeTab === "language" ? "bg-[var(--muted)] text-[var(--foreground)]" : "text-[var(--muted-foreground)] hover:bg-[var(--muted)]"}`}
                 onClick={() => setActiveTab("language")}
               >
                 <Globe size={18} className={activeTab === "language" ? "text-[#007AFF]" : "opacity-70"} />
                 {tCommon("language")}
               </button>
               <button
-                className={`w-full flex items-center gap-3 rounded-[12px] px-3.5 py-2.5 text-[15px] font-medium transition-colors ${activeTab === "security" ? "bg-[var(--fill-tertiary)] text-[var(--label-primary)]" : "text-[var(--label-secondary)] hover:bg-[var(--fill-quaternary)]"}`}
+                className={`w-full flex items-center gap-3 rounded-[12px] px-3.5 py-2.5 text-[15px] font-medium transition-colors ${activeTab === "security" ? "bg-[var(--muted)] text-[var(--foreground)]" : "text-[var(--muted-foreground)] hover:bg-[var(--muted)]"}`}
                 onClick={() => setActiveTab("security")}
               >
                 <Shield size={18} className={activeTab === "security" ? "text-[#34C759]" : "opacity-70"} />
                 {t("security")}
               </button>
               <button
-                className={`w-full flex items-center gap-3 rounded-[12px] px-3.5 py-2.5 text-[15px] font-medium transition-colors ${activeTab === "notifications" ? "bg-[var(--fill-tertiary)] text-[var(--label-primary)]" : "text-[var(--label-secondary)] hover:bg-[var(--fill-quaternary)]"}`}
+                className={`w-full flex items-center gap-3 rounded-[12px] px-3.5 py-2.5 text-[15px] font-medium transition-colors ${activeTab === "notifications" ? "bg-[var(--muted)] text-[var(--foreground)]" : "text-[var(--muted-foreground)] hover:bg-[var(--muted)]"}`}
                 onClick={() => setActiveTab("notifications")}
               >
                 <Bell size={18} className={activeTab === "notifications" ? "text-[#FF2D55]" : "opacity-70"} />
                 {t("notifications")}
               </button>
               <button
-                className={`w-full flex items-center gap-3 rounded-[12px] px-3.5 py-2.5 text-[15px] font-medium transition-colors ${activeTab === "modules" ? "bg-[var(--fill-tertiary)] text-[var(--label-primary)]" : "text-[var(--label-secondary)] hover:bg-[var(--fill-quaternary)]"}`}
+                className={`w-full flex items-center gap-3 rounded-[12px] px-3.5 py-2.5 text-[15px] font-medium transition-colors ${activeTab === "modules" ? "bg-[var(--muted)] text-[var(--foreground)]" : "text-[var(--muted-foreground)] hover:bg-[var(--muted)]"}`}
                 onClick={() => setActiveTab("modules")}
               >
                 <Puzzle size={18} className={activeTab === "modules" ? "text-[#FF9500]" : "opacity-70"} />
                 Modules
               </button>
               <button
-                className={`w-full flex items-center gap-3 rounded-[12px] px-3.5 py-2.5 text-[15px] font-medium transition-colors ${activeTab === "audit" ? "bg-[var(--fill-tertiary)] text-[var(--label-primary)]" : "text-[var(--label-secondary)] hover:bg-[var(--fill-quaternary)]"}`}
+                className={`w-full flex items-center gap-3 rounded-[12px] px-3.5 py-2.5 text-[15px] font-medium transition-colors text-[var(--muted-foreground)] hover:bg-[var(--muted)]`}
+                onClick={() => window.location.href = "/dashboard/settings/team"}
+              >
+                <Users size={18} className="opacity-70" />
+                Team
+              </button>
+              <button
+                className={`w-full flex items-center gap-3 rounded-[12px] px-3.5 py-2.5 text-[15px] font-medium transition-colors ${activeTab === "audit" ? "bg-[var(--muted)] text-[var(--foreground)]" : "text-[var(--muted-foreground)] hover:bg-[var(--muted)]"}`}
                 onClick={() => setActiveTab("audit")}
               >
                 <Shield size={18} className={activeTab === "audit" ? "text-[#5856D6]" : "opacity-70"} />
                 {t("auditTrails")}
+              </button>
+              <button
+                className={`w-full flex items-center gap-3 rounded-[12px] px-3.5 py-2.5 text-[15px] font-medium transition-colors ${activeTab === "integrations" ? "bg-[var(--muted)] text-[var(--foreground)]" : "text-[var(--muted-foreground)] hover:bg-[var(--muted)]"}`}
+                onClick={() => setActiveTab("integrations")}
+              >
+                <Link2 size={18} className={activeTab === "integrations" ? "text-[#FF9500]" : "opacity-70"} />
+                {tTally("settings.title")}
               </button>
             </div>
           </IOSCard>
@@ -519,13 +570,13 @@ function SettingsContent() {
                 className="space-y-6"
               >
                 <div className="flex flex-col gap-1.5 mb-6">
-                  <h2 className="text-[22px] font-semibold text-[var(--label-primary)]">{t("companyDetails")}</h2>
-                  <p className="text-[15px] text-[var(--label-secondary)]">{t("companyDetailsSubtitle")}</p>
+                  <h2 className="text-[22px] font-semibold text-[var(--foreground)]">{t("companyDetails")}</h2>
+                  <p className="text-[15px] text-[var(--muted-foreground)]">{t("companyDetailsSubtitle")}</p>
                 </div>
 
                 {companyLoading ? (
                   <div className="flex items-center justify-center py-20">
-                    <Loader2 className="h-8 w-8 animate-spin text-[var(--label-secondary)]" />
+                    <Loader2 className="h-8 w-8 animate-spin text-[var(--muted-foreground)]" />
                   </div>
                 ) : (
                   <form onSubmit={handleUpdateCompany} className="space-y-6">
@@ -536,7 +587,7 @@ function SettingsContent() {
                       {/* Basic Company Information */}
                       <IOSCard className="p-1 sm:p-2">
                         <div className="p-4 sm:p-5 space-y-6">
-                          <h3 className="text-[17px] font-semibold text-[var(--label-primary)] mb-4 flex items-center gap-2">
+                          <h3 className="text-[17px] font-semibold text-[var(--foreground)] mb-4 flex items-center gap-2">
                             <Building2 className="h-5 w-5 text-[#FF9500]" />
                             Business Information
                           </h3>
@@ -544,7 +595,7 @@ function SettingsContent() {
                           {/* Logo Upload */}
                           <div className="flex flex-col sm:flex-row items-start gap-6">
                             <div className="flex-shrink-0 w-full sm:w-auto flex flex-col items-center">
-                              <div className="relative w-28 h-28 rounded-2xl border-2 border-dashed border-[var(--border-card)] bg-[var(--fill-quaternary)] flex items-center justify-center overflow-hidden group">
+                              <div className="relative w-28 h-28 rounded-2xl border-2 border-dashed border-[var(--border)] bg-[var(--muted)] flex items-center justify-center overflow-hidden group">
                                 {companyData.logoUrl ? (
                                   <img
                                     src={companyData.logoUrl}
@@ -552,7 +603,7 @@ function SettingsContent() {
                                     className="w-full h-full object-contain p-2 bg-white dark:bg-black"
                                   />
                                 ) : (
-                                  <Building2 className="h-10 w-10 text-[var(--label-tertiary)]" />
+                                  <Building2 className="h-10 w-10 text-[var(--muted-foreground)]" />
                                 )}
                                 <label
                                   htmlFor="logo-upload"
@@ -568,15 +619,15 @@ function SettingsContent() {
                                   onChange={handleLogoUpload}
                                 />
                               </div>
-                              <p className="text-[11px] font-medium text-[var(--label-tertiary)] mt-3">{t("maxFileSize")}</p>
+                              <p className="text-[11px] font-medium text-[var(--muted-foreground)] mt-3">{t("maxFileSize")}</p>
                             </div>
                             <div className="flex-1 w-full grid gap-5 sm:grid-cols-2">
                               <div className="space-y-2 sm:col-span-2">
-                                <label htmlFor="companyName" className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">
+                                <label htmlFor="companyName" className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">
                                   {t("companyName")} <span className="text-[#FF3B30]">*</span>
                                 </label>
                                 <div className="relative">
-                                  <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--label-tertiary)]" />
+                                  <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--muted-foreground)]" />
                                   <IOSInput
                                     id="companyName"
                                     placeholder="Your Company Name Pvt. Ltd."
@@ -588,9 +639,9 @@ function SettingsContent() {
                                 </div>
                               </div>
                               <div className="space-y-2">
-                                <label htmlFor="companyPhone" className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">{t("phone")}</label>
+                                <label htmlFor="companyPhone" className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">{t("phone")}</label>
                                 <div className="relative">
-                                  <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--label-tertiary)]" />
+                                  <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--muted-foreground)]" />
                                   <IOSInput
                                     id="companyPhone"
                                     placeholder="+91 22 1234 5678"
@@ -601,9 +652,9 @@ function SettingsContent() {
                                 </div>
                               </div>
                               <div className="space-y-2">
-                                <label htmlFor="companyEmail" className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">{t("email")}</label>
+                                <label htmlFor="companyEmail" className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">{t("email")}</label>
                                 <div className="relative">
-                                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--label-tertiary)]" />
+                                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--muted-foreground)]" />
                                   <IOSInput
                                     id="companyEmail"
                                     type="email"
@@ -618,15 +669,15 @@ function SettingsContent() {
                           </div>
 
                           <div className="space-y-2 pt-2">
-                            <label htmlFor="companyAddress" className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">{t("address")}</label>
+                            <label htmlFor="companyAddress" className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">{t("address")}</label>
                             <div className="relative">
-                              <MapPin className="absolute left-3.5 top-3.5 h-5 w-5 text-[var(--label-tertiary)]" />
+                              <MapPin className="absolute left-3.5 top-3.5 h-5 w-5 text-[var(--muted-foreground)]" />
                               <Textarea
                                 id="companyAddress"
                                 placeholder={"123 Industrial Area, Sector 5\nMumbai, Maharashtra - 400001"}
                                 value={companyData.address}
                                 onChange={(e) => setCompanyData({ ...companyData, address: e.target.value })}
-                                className="pl-11 pt-3.5 min-h-[96px] resize-none rounded-[12px] bg-white dark:bg-[#1C1C1E] border border-[var(--border-card)] text-[16px] text-[var(--label-primary)] focus:ring-[3px] focus:ring-[#007AFF]/30 focus:border-[#007AFF] outline-none transition-all placeholder:text-[var(--label-tertiary)] shadow-sm"
+                                className="pl-11 pt-3.5 min-h-[96px] resize-none rounded-[12px] bg-white dark:bg-[#1C1C1E] border border-[var(--border)] text-[16px] text-[var(--foreground)] focus:ring-[3px] focus:ring-[#007AFF]/30 focus:border-[#007AFF] outline-none transition-all placeholder:text-[var(--muted-foreground)] shadow-sm"
                               />
                             </div>
                           </div>
@@ -636,13 +687,13 @@ function SettingsContent() {
                       {/* Tax Details */}
                       <IOSCard className="p-1 sm:p-2">
                         <div className="p-4 sm:p-5 space-y-4">
-                          <h3 className="text-[17px] font-semibold text-[var(--label-primary)] mb-2 flex items-center gap-2">
+                          <h3 className="text-[17px] font-semibold text-[var(--foreground)] mb-2 flex items-center gap-2">
                             <CreditCard className="h-5 w-5 text-[#34C759]" />
                             Tax Information
                           </h3>
                           <div className="grid gap-5 sm:grid-cols-2">
                             <div className="space-y-2">
-                              <label htmlFor="gstin" className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">{t("gstin")}</label>
+                              <label htmlFor="gstin" className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">{t("gstin")}</label>
                               <IOSInput
                                 id="gstin"
                                 placeholder="27AABCU9603R1ZM"
@@ -651,10 +702,10 @@ function SettingsContent() {
                                 className="h-[48px] font-mono uppercase"
                                 maxLength={15}
                               />
-                              <p className="text-[11px] text-[var(--label-tertiary)] ml-1">{t("gstinHint")}</p>
+                              <p className="text-[11px] text-[var(--muted-foreground)] ml-1">{t("gstinHint")}</p>
                             </div>
                             <div className="space-y-2">
-                              <label htmlFor="pan" className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">{t("pan")}</label>
+                              <label htmlFor="pan" className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">{t("pan")}</label>
                               <IOSInput
                                 id="pan"
                                 placeholder="AABCU9603R"
@@ -663,7 +714,7 @@ function SettingsContent() {
                                 className="h-[48px] font-mono uppercase"
                                 maxLength={10}
                               />
-                              <p className="text-[11px] text-[var(--label-tertiary)] ml-1">{t("panHint")}</p>
+                              <p className="text-[11px] text-[var(--muted-foreground)] ml-1">{t("panHint")}</p>
                             </div>
                           </div>
                         </div>
@@ -672,13 +723,13 @@ function SettingsContent() {
                       {/* Bank Details */}
                       <IOSCard className="p-1 sm:p-2">
                         <div className="p-4 sm:p-5 space-y-4">
-                          <h3 className="text-[17px] font-semibold text-[var(--label-primary)] mb-2 flex items-center gap-2">
+                          <h3 className="text-[17px] font-semibold text-[var(--foreground)] mb-2 flex items-center gap-2">
                             <Landmark className="h-5 w-5 text-[#5AC8FA]" />
                             {t("bankDetails")}
                           </h3>
                           <div className="grid gap-5 sm:grid-cols-2">
                             <div className="space-y-2">
-                              <label htmlFor="bankName" className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">{t("bankName")}</label>
+                              <label htmlFor="bankName" className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">{t("bankName")}</label>
                               <IOSInput
                                 id="bankName"
                                 placeholder="State Bank of India"
@@ -688,7 +739,7 @@ function SettingsContent() {
                               />
                             </div>
                             <div className="space-y-2">
-                              <label htmlFor="accountNo" className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">{t("accountNumber")}</label>
+                              <label htmlFor="accountNo" className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">{t("accountNumber")}</label>
                               <IOSInput
                                 id="accountNo"
                                 placeholder="1234567890123456"
@@ -698,7 +749,7 @@ function SettingsContent() {
                               />
                             </div>
                             <div className="space-y-2">
-                              <label htmlFor="ifsc" className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">{t("ifscCode")}</label>
+                              <label htmlFor="ifsc" className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">{t("ifscCode")}</label>
                               <IOSInput
                                 id="ifsc"
                                 placeholder="SBIN0001234"
@@ -709,7 +760,7 @@ function SettingsContent() {
                               />
                             </div>
                             <div className="space-y-2">
-                              <label htmlFor="upiId" className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">{t("upiId")}</label>
+                              <label htmlFor="upiId" className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">{t("upiId")}</label>
                               <IOSInput
                                 id="upiId"
                                 placeholder="yourcompany@sbi"
@@ -756,13 +807,13 @@ function SettingsContent() {
                 className="space-y-6"
               >
                 <div className="flex flex-col gap-1.5 mb-6">
-                  <h2 className="text-[22px] font-semibold text-[var(--label-primary)]">{t("securitySettings")}</h2>
-                  <p className="text-[15px] text-[var(--label-secondary)]">{t("securitySubtitle")}</p>
+                  <h2 className="text-[22px] font-semibold text-[var(--foreground)]">{t("securitySettings")}</h2>
+                  <p className="text-[15px] text-[var(--muted-foreground)]">{t("securitySubtitle")}</p>
                 </div>
 
                 <IOSCard className="p-1 sm:p-2">
                   <div className="p-4 sm:p-5">
-                    <h3 className="text-[17px] font-semibold text-[var(--label-primary)] mb-4 flex items-center gap-2">
+                    <h3 className="text-[17px] font-semibold text-[var(--foreground)] mb-4 flex items-center gap-2">
                       <Lock className="h-5 w-5 text-[#FF3B30]" />
                       {t("authentication")}
                     </h3>
@@ -770,14 +821,14 @@ function SettingsContent() {
                     <div className="flex flex-col gap-3">
                       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
-                          <div className="flex items-center justify-between p-4 rounded-[16px] bg-[var(--fill-quaternary)] border border-[var(--border-card)] hover:bg-[var(--fill-tertiary)] transition-all cursor-pointer group active:scale-[0.99]">
+                          <div className="flex items-center justify-between p-4 rounded-[16px] bg-[var(--muted)] border border-[var(--border)] hover:bg-[var(--muted)] transition-all cursor-pointer group active:scale-[0.99]">
                             <div className="flex items-center gap-4">
                               <div className="w-10 h-10 rounded-[12px] bg-[#007AFF]/10 flex items-center justify-center group-hover:scale-105 transition-transform">
                                 <Key className="h-5 w-5 text-[#007AFF]" />
                               </div>
                               <div>
-                                <p className="text-[15px] font-semibold text-[var(--label-primary)]">{t("changePassword")}</p>
-                                <p className="text-[13px] text-[var(--label-secondary)] pt-0.5">{t("changePasswordSubtitle")}</p>
+                                <p className="text-[15px] font-semibold text-[var(--foreground)]">{t("changePassword")}</p>
+                                <p className="text-[13px] text-[var(--muted-foreground)] pt-0.5">{t("changePasswordSubtitle")}</p>
                               </div>
                             </div>
                             <IOSButton variant="gray" className="rounded-full px-4 text-[13px] font-semibold">{tCommon("update")}</IOSButton>
@@ -785,13 +836,18 @@ function SettingsContent() {
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-md bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px] p-0 overflow-hidden">
                           <div className="p-6">
-                            <DialogHeader>
-                              <DialogTitle className="text-[20px] font-semibold text-[var(--label-primary)]">{t("changePassword")}</DialogTitle>
-                              <DialogDescription className="text-[14px] text-[var(--label-secondary)] mt-1.5">{t("enterNewPassword")}</DialogDescription>
-                            </DialogHeader>
+                            <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+                              <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, rgba(59,130,246,0.4), rgba(255,255,255,0.06))", border: "1px solid rgba(255,255,255,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <KeyRound className="h-[18px] w-[18px] text-[#60a5fa]" />
+                              </div>
+                              <div>
+                                <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "#f1f5f9", lineHeight: "22px", margin: 0 }}>{t("changePassword")}</DialogTitle>
+                                <DialogDescription style={{ fontSize: 13, color: "#64748b", lineHeight: "18px", margin: "2px 0 0" }}>{t("enterNewPassword")}</DialogDescription>
+                              </div>
+                            </div>
                             <div className="space-y-4 py-6">
                               <div className="space-y-1.5">
-                                <label htmlFor="new-password" className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">{t("newPassword")}</label>
+                                <label htmlFor="new-password" className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">{t("newPassword")}</label>
                                 <IOSInput
                                   id="new-password"
                                   type="password"
@@ -801,7 +857,7 @@ function SettingsContent() {
                                 />
                               </div>
                               <div className="space-y-1.5">
-                                <label htmlFor="confirm-password" className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">{t("confirmNewPassword")}</label>
+                                <label htmlFor="confirm-password" className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">{t("confirmNewPassword")}</label>
                                 <IOSInput
                                   id="confirm-password"
                                   type="password"
@@ -811,7 +867,7 @@ function SettingsContent() {
                                 />
                               </div>
                             </div>
-                            <DialogFooter className="flex gap-2 pt-2 border-t border-[var(--border-card)] border-x-[-24px] mx-[-24px] px-6 pb-2">
+                            <DialogFooter className="flex gap-2 pt-2 border-t border-[var(--border)] border-x-[-24px] mx-[-24px] px-6 pb-2">
                               <IOSButton
                                 variant="filled"
                                 color="blue"
@@ -827,14 +883,14 @@ function SettingsContent() {
                         </DialogContent>
                       </Dialog>
 
-                      <div className="flex items-center justify-between p-4 rounded-[16px] bg-[var(--fill-quaternary)] border border-[var(--border-card)] hover:bg-[var(--fill-tertiary)] transition-all">
+                      <div className="flex items-center justify-between p-4 rounded-[16px] bg-[var(--muted)] border border-[var(--border)] hover:bg-[var(--muted)] transition-all">
                         <div className="flex items-center gap-4">
                           <div className="w-10 h-10 rounded-[12px] bg-[#34C759]/10 flex items-center justify-center">
                             <Fingerprint className="h-5 w-5 text-[#34C759]" />
                           </div>
                           <div>
-                            <p className="text-[15px] font-semibold text-[var(--label-primary)]">{t("twoFactorAuth")}</p>
-                            <p className="text-[13px] text-[var(--label-secondary)] pt-0.5 text-balance">{t("twoFactorAuthSubtitle")}</p>
+                            <p className="text-[15px] font-semibold text-[var(--foreground)]">{t("twoFactorAuth")}</p>
+                            <p className="text-[13px] text-[var(--muted-foreground)] pt-0.5 text-balance">{t("twoFactorAuthSubtitle")}</p>
                           </div>
                         </div>
                         <Switch />
@@ -856,11 +912,11 @@ function SettingsContent() {
 
                 <IOSCard className="p-1 sm:p-2 border border-[#007AFF]/30 bg-[#007AFF]/5 dark:bg-[#007AFF]/10">
                   <div className="p-4 sm:p-5">
-                    <h3 className="text-[17px] font-semibold text-[var(--label-primary)] mb-2 flex items-center gap-2">
+                    <h3 className="text-[17px] font-semibold text-[var(--foreground)] mb-2 flex items-center gap-2">
                        <Upload className="h-5 w-5 text-[#007AFF]" />
                        {t("dataExport")}
                     </h3>
-                    <p className="text-[13px] text-[var(--label-secondary)] mb-5">{t("dataExportDescription")}</p>
+                    <p className="text-[13px] text-[var(--muted-foreground)] mb-5">{t("dataExportDescription")}</p>
                     <IOSButton 
                        variant="filled" 
                        color="blue" 
@@ -880,7 +936,7 @@ function SettingsContent() {
                       <AlertTriangle className="h-5 w-5" />
                       Danger Zone
                     </h3>
-                    <p className="text-[13px] text-[var(--label-secondary)] mb-5">{t("dangerZoneDescription")}</p>
+                    <p className="text-[13px] text-[var(--muted-foreground)] mb-5">{t("dangerZoneDescription")}</p>
                     <IOSButton variant="filled" color="red" className="rounded-[12px] font-semibold px-8 h-[44px]">
                       {t("deleteAccount")}
                     </IOSButton>
@@ -898,31 +954,31 @@ function SettingsContent() {
                 className="space-y-6"
               >
                 <div className="flex flex-col gap-1.5 mb-6">
-                  <h2 className="text-[22px] font-semibold text-[var(--label-primary)]">{t("notificationsTitle")}</h2>
-                  <p className="text-[15px] text-[var(--label-secondary)]">{t("notificationsSubtitle")}</p>
+                  <h2 className="text-[22px] font-semibold text-[var(--foreground)]">{t("notificationsTitle")}</h2>
+                  <p className="text-[15px] text-[var(--muted-foreground)]">{t("notificationsSubtitle")}</p>
                 </div>
 
                 <IOSCard className="p-1 sm:p-2">
                   <div className="p-4 sm:p-5">
-                    <h3 className="text-[17px] font-semibold text-[var(--label-primary)] mb-4 flex items-center gap-2">
+                    <h3 className="text-[17px] font-semibold text-[var(--foreground)] mb-4 flex items-center gap-2">
                       <Bell className="h-5 w-5 text-[#FF9500]" />
                       {t("systemAlerts")}
                     </h3>
                     <div className="flex flex-col gap-3">
-                      <div className="flex items-center justify-between p-4 rounded-[16px] bg-[var(--fill-quaternary)] border border-[var(--border-card)]">
+                      <div className="flex items-center justify-between p-4 rounded-[16px] bg-[var(--muted)] border border-[var(--border)]">
                         <div className="space-y-0.5">
-                          <p className="text-[15px] font-semibold text-[var(--label-primary)]">{t("stockAlerts")}</p>
-                          <p className="text-[13px] text-[var(--label-secondary)]">{t("stockAlertsDescription")}</p>
+                          <p className="text-[15px] font-semibold text-[var(--foreground)]">{t("stockAlerts")}</p>
+                          <p className="text-[13px] text-[var(--muted-foreground)]">{t("stockAlertsDescription")}</p>
                         </div>
                         <Switch
                           checked={preferences.stock_alerts}
                           onCheckedChange={(checked) => handleUpdatePreferences({ stock_alerts: checked })}
                         />
                       </div>
-                      <div className="flex items-center justify-between p-4 rounded-[16px] bg-[var(--fill-quaternary)] border border-[var(--border-card)]">
+                      <div className="flex items-center justify-between p-4 rounded-[16px] bg-[var(--muted)] border border-[var(--border)]">
                         <div className="space-y-0.5">
-                          <p className="text-[15px] font-semibold text-[var(--label-primary)]">{t("orderAlerts")}</p>
-                          <p className="text-[13px] text-[var(--label-secondary)]">{t("orderAlertsDescription")}</p>
+                          <p className="text-[15px] font-semibold text-[var(--foreground)]">{t("orderAlerts")}</p>
+                          <p className="text-[13px] text-[var(--muted-foreground)]">{t("orderAlertsDescription")}</p>
                         </div>
                         <Switch
                           checked={preferences.order_alerts}
@@ -935,25 +991,25 @@ function SettingsContent() {
 
                 <IOSCard className="p-1 sm:p-2">
                   <div className="p-4 sm:p-5">
-                    <h3 className="text-[17px] font-semibold text-[var(--label-primary)] mb-4 flex items-center gap-2">
+                    <h3 className="text-[17px] font-semibold text-[var(--foreground)] mb-4 flex items-center gap-2">
                       <Mail className="h-5 w-5 text-[#007AFF]" />
                       {t("notificationChannels")}
                     </h3>
                     <div className="flex flex-col gap-3">
-                      <div className="flex items-center justify-between p-4 rounded-[16px] bg-[var(--fill-quaternary)] border border-[var(--border-card)]">
+                      <div className="flex items-center justify-between p-4 rounded-[16px] bg-[var(--muted)] border border-[var(--border)]">
                         <div className="space-y-0.5">
-                          <p className="text-[15px] font-semibold text-[var(--label-primary)]">{t("emailNotifications")}</p>
-                          <p className="text-[13px] text-[var(--label-secondary)]">{t("emailNotificationsDescription")}</p>
+                          <p className="text-[15px] font-semibold text-[var(--foreground)]">{t("emailNotifications")}</p>
+                          <p className="text-[13px] text-[var(--muted-foreground)]">{t("emailNotificationsDescription")}</p>
                         </div>
                         <Switch
                           checked={preferences.emailNotifications}
                           onCheckedChange={(checked) => handleUpdatePreferences({ emailNotifications: checked })}
                         />
                       </div>
-                      <div className="flex items-center justify-between p-4 rounded-[16px] bg-[var(--fill-quaternary)] border border-[var(--border-card)]">
+                      <div className="flex items-center justify-between p-4 rounded-[16px] bg-[var(--muted)] border border-[var(--border)]">
                         <div className="space-y-0.5">
-                          <p className="text-[15px] font-semibold text-[var(--label-primary)]">{t("pushNotifications")}</p>
-                          <p className="text-[13px] text-[var(--label-secondary)]">{t("pushNotificationsDescription")}</p>
+                          <p className="text-[15px] font-semibold text-[var(--foreground)]">{t("pushNotifications")}</p>
+                          <p className="text-[13px] text-[var(--muted-foreground)]">{t("pushNotificationsDescription")}</p>
                         </div>
                         <Switch
                           checked={preferences.pushNotifications}
@@ -983,8 +1039,8 @@ function SettingsContent() {
                       <Puzzle size={22} color="white" />
                     </div>
                     <div>
-                      <h2 className="text-[22px] font-semibold text-[var(--label-primary)]">Modules</h2>
-                      <p className="text-[15px] text-[var(--label-secondary)]">Enable or disable features to customize your workspace</p>
+                      <h2 className="text-[22px] font-semibold text-[var(--foreground)]">Modules</h2>
+                      <p className="text-[15px] text-[var(--muted-foreground)]">Enable or disable features to customize your workspace</p>
                     </div>
                   </div>
                 </div>
@@ -1000,7 +1056,7 @@ function SettingsContent() {
                       return (
                         <div
                           key={key}
-                          className="flex items-center justify-between p-4 rounded-[16px] bg-[var(--fill-quaternary)] border border-[var(--border-card)] hover:bg-[var(--fill-tertiary)] transition-all"
+                          className="flex items-center justify-between p-4 rounded-[16px] bg-[var(--muted)] border border-[var(--border)] hover:bg-[var(--muted)] transition-all"
                         >
                           <div className="flex items-center gap-4">
                             <div
@@ -1010,8 +1066,8 @@ function SettingsContent() {
                               {IconComponent && <IconComponent className="h-5 w-5" style={{ color: meta.color }} />}
                             </div>
                             <div>
-                              <p className="text-[15px] font-semibold text-[var(--label-primary)]">{meta.label}</p>
-                              <p className="text-[13px] text-[var(--label-secondary)] pt-0.5">{meta.description}</p>
+                              <p className="text-[15px] font-semibold text-[var(--foreground)]">{meta.label}</p>
+                              <p className="text-[13px] text-[var(--muted-foreground)] pt-0.5">{meta.description}</p>
                             </div>
                           </div>
                           <Switch
@@ -1026,7 +1082,7 @@ function SettingsContent() {
                     })}
 
                     {/* Divider */}
-                    <div className="border-t border-[var(--border-card)] my-2" />
+                    <div className="border-t border-[var(--border)] my-2" />
 
                     {/* Locked modules */}
                     {(["dashboard", "ai_assistant", "staff_roles"] as (keyof ModuleConfig)[]).map((key) => {
@@ -1036,7 +1092,7 @@ function SettingsContent() {
                       return (
                         <div
                           key={key}
-                          className="flex items-center justify-between p-4 rounded-[16px] bg-[var(--fill-quaternary)] border border-[var(--border-card)] opacity-60"
+                          className="flex items-center justify-between p-4 rounded-[16px] bg-[var(--muted)] border border-[var(--border)] opacity-60"
                         >
                           <div className="flex items-center gap-4">
                             <div
@@ -1046,12 +1102,12 @@ function SettingsContent() {
                               {IconComponent && <IconComponent className="h-5 w-5" style={{ color: meta.color }} />}
                             </div>
                             <div>
-                              <p className="text-[15px] font-semibold text-[var(--label-primary)]">{meta.label}</p>
-                              <p className="text-[13px] text-[var(--label-secondary)] pt-0.5">{meta.description}</p>
+                              <p className="text-[15px] font-semibold text-[var(--foreground)]">{meta.label}</p>
+                              <p className="text-[13px] text-[var(--muted-foreground)] pt-0.5">{meta.description}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[var(--fill-tertiary)] text-[var(--label-tertiary)]">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[var(--muted)] text-[var(--muted-foreground)]">
                               <Lock className="h-3 w-3" />
                               Always included
                             </span>
@@ -1068,8 +1124,8 @@ function SettingsContent() {
                   <div className="p-4 sm:p-5 flex items-start gap-3">
                     <Info className="h-5 w-5 text-[#007AFF] flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-[14px] font-medium text-[var(--label-primary)]">Your data is always safe</p>
-                      <p className="text-[13px] text-[var(--label-secondary)] mt-1">Disabled modules are hidden from the sidebar but no data is deleted. Re-enable a module anytime to access your existing data.</p>
+                      <p className="text-[14px] font-medium text-[var(--foreground)]">Your data is always safe</p>
+                      <p className="text-[13px] text-[var(--muted-foreground)] mt-1">Disabled modules are hidden from the sidebar but no data is deleted. Re-enable a module anytime to access your existing data.</p>
                     </div>
                   </div>
                 </IOSCard>
@@ -1088,17 +1144,200 @@ function SettingsContent() {
                   <div className="flex items-center gap-3">
                     <div
                       className="w-11 h-11 rounded-2xl flex items-center justify-center"
-                      style={{ background: 'linear-gradient(135deg, var(--ios-indigo), var(--ios-purple))' }}
+                      style={{ background: 'linear-gradient(135deg, var(--chart-5), var(--chart-4))' }}
                     >
                       <Shield size={22} color="white" />
                     </div>
                     <div>
-                      <h2 className="text-[22px] font-semibold text-[var(--label-primary)]">{t("auditTrail")}</h2>
-                      <p className="text-[15px] text-[var(--label-secondary)]">{t("auditTrailSubtitle")}</p>
+                      <h2 className="text-[22px] font-semibold text-[var(--foreground)]">{t("auditTrail")}</h2>
+                      <p className="text-[15px] text-[var(--muted-foreground)]">{t("auditTrailSubtitle")}</p>
                     </div>
                   </div>
                 </div>
                 <AuditTrailPanel />
+              </motion.div>
+            )}
+            {activeTab === "integrations" && (
+              <motion.div
+                key="integrations"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
+                <div className="flex flex-col gap-1.5 mb-6">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-11 h-11 rounded-2xl flex items-center justify-center"
+                      style={{ background: 'linear-gradient(135deg, #FF9500, #FF5E3A)' }}
+                    >
+                      <Link2 size={22} color="white" />
+                    </div>
+                    <div>
+                      <h2 className="text-[22px] font-semibold text-[var(--foreground)]">{tTally("settings.title")}</h2>
+                      <p className="text-[15px] text-[var(--muted-foreground)]">{tTally("settings.setupHint")}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {isStaff && (
+                  <ReadOnlyBanner feature="Tally Integration" />
+                )}
+
+                <fieldset disabled={isStaff} className="space-y-6 border-none p-0 m-0 min-w-0">
+                  <IOSCard className="p-1 sm:p-2">
+                    <div className="p-4 sm:p-5 space-y-6">
+                      <h3 className="text-[17px] font-semibold text-[var(--foreground)] mb-4 flex items-center gap-2">
+                        <Link2 className="h-5 w-5 text-[#FF9500]" />
+                        {tTally("settings.title")}
+                      </h3>
+
+                      {/* Tally Company Name */}
+                      <div className="space-y-2">
+                        <label htmlFor="tallyCompanyName" className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">
+                          {tTally("settings.companyName")}
+                        </label>
+                        <IOSInput
+                          id="tallyCompanyName"
+                          placeholder={tTally("settings.companyNamePlaceholder")}
+                          value={tallyConfig.tallyCompanyName}
+                          onChange={(e: any) => setTallyConfig({ ...tallyConfig, tallyCompanyName: e.target.value })}
+                          className="h-[48px]"
+                        />
+                      </div>
+
+                      {/* Bridge URL */}
+                      <div className="space-y-2">
+                        <label htmlFor="bridgeUrl" className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">
+                          {tTally("settings.bridgeUrl")}
+                        </label>
+                        <IOSInput
+                          id="bridgeUrl"
+                          placeholder="http://localhost:4567"
+                          value={tallyConfig.bridgeUrl}
+                          onChange={(e: any) => setTallyConfig({ ...tallyConfig, bridgeUrl: e.target.value })}
+                          className="h-[48px] font-mono"
+                        />
+                      </div>
+
+                      {/* Auth Token */}
+                      <div className="space-y-2">
+                        <label htmlFor="authToken" className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">
+                          {tTally("settings.authToken")}
+                        </label>
+                        <div className="relative">
+                          <IOSInput
+                            id="authToken"
+                            type={showAuthToken ? "text" : "password"}
+                            placeholder="••••••••"
+                            value={tallyConfig.authToken}
+                            onChange={(e: any) => setTallyConfig({ ...tallyConfig, authToken: e.target.value })}
+                            className="h-[48px] font-mono pr-12"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowAuthToken(!showAuthToken)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
+                          >
+                            {showAuthToken ? <EyeOff size={18} /> : <Eye size={18} />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Test Connection */}
+                      <div className="flex items-center gap-3 pt-2">
+                        <IOSButton
+                          type="button"
+                          variant="gray"
+                          disabled={tallyTesting}
+                          className="px-6 text-[13px] font-semibold h-[40px]"
+                          onClick={async () => {
+                            setTallyTesting(true);
+                            setTallyConnected(null);
+                            try {
+                              const url = tallyConfig.bridgeUrl || "http://localhost:4567";
+                              const healthRes = await fetch(`${url}/health`, {
+                                signal: AbortSignal.timeout(5000),
+                              });
+                              if (healthRes.ok) {
+                                const tallyRes = await fetch(`${url}/tally-status`, {
+                                  signal: AbortSignal.timeout(5000),
+                                });
+                                setTallyConnected(tallyRes.ok);
+                              } else {
+                                setTallyConnected(false);
+                              }
+                            } catch {
+                              setTallyConnected(false);
+                            } finally {
+                              setTallyTesting(false);
+                            }
+                          }}
+                        >
+                          {tallyTesting ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Link2 className="mr-2 h-4 w-4" />
+                          )}
+                          {tallyTesting ? tTally("settings.testing") : tTally("settings.testConnection")}
+                        </IOSButton>
+
+                        {tallyConnected === true && (
+                          <div className="flex items-center gap-1.5 text-emerald-600">
+                            <CheckCircle2 size={16} />
+                            <span className="text-[13px] font-medium">{tTally("settings.connected")}</span>
+                          </div>
+                        )}
+                        {tallyConnected === false && (
+                          <div className="flex items-center gap-1.5 text-red-500">
+                            <XCircle size={16} />
+                            <span className="text-[13px] font-medium">{tTally("settings.notConnected")}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </IOSCard>
+                </fieldset>
+
+                {/* Save Button */}
+                {!isStaff && (
+                  <div className="flex justify-end pt-2">
+                    <IOSButton
+                      type="button"
+                      variant="filled"
+                      color="blue"
+                      disabled={tallySaving}
+                      className="px-8 text-[15px] font-semibold h-[44px]"
+                      onClick={async () => {
+                        setTallySaving(true);
+                        try {
+                          const res = await fetch("/api/profile/company", {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              tally_company_name: tallyConfig.tallyCompanyName,
+                              tally_bridge_url: tallyConfig.bridgeUrl,
+                              ...(tallyConfig.authToken ? { tally_auth_token: tallyConfig.authToken } : {}),
+                            }),
+                          });
+                          if (!res.ok) throw new Error("Failed to save");
+                          toast.success("Tally settings saved!");
+                        } catch (err: any) {
+                          toast.error(err.message || "Failed to save Tally settings");
+                        } finally {
+                          setTallySaving(false);
+                        }
+                      }}
+                    >
+                      {tallySaving ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="mr-2 h-4 w-4" />
+                      )}
+                      {tTally("settings.saveTallySettings")}
+                    </IOSButton>
+                  </div>
+                )}
               </motion.div>
             )}
 
@@ -1114,13 +1353,13 @@ function SettingsContent() {
                   <div className="flex items-center gap-3">
                     <div
                       className="w-11 h-11 rounded-2xl flex items-center justify-center"
-                      style={{ background: 'linear-gradient(135deg, var(--ios-blue), var(--ios-teal, #5AC8FA))' }}
+                      style={{ background: 'linear-gradient(135deg, var(--primary), var(--chart-3))' }}
                     >
                       <Globe size={22} color="white" />
                     </div>
                     <div>
-                      <h2 className="text-[22px] font-semibold text-[var(--label-primary)]">{t("languageSection")}</h2>
-                      <p className="text-[15px] text-[var(--label-secondary)]">{t("languageSectionSubtitle")}</p>
+                      <h2 className="text-[22px] font-semibold text-[var(--foreground)]">{t("languageSection")}</h2>
+                      <p className="text-[15px] text-[var(--muted-foreground)]">{t("languageSectionSubtitle")}</p>
                     </div>
                   </div>
                 </div>

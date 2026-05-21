@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo, useCallback, Suspense } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect, Suspense } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   Plus,
   Search,
@@ -23,12 +23,21 @@ import {
   Timer,
   Inbox,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Activity,
   Layers,
+  FileText,
+  Send,
+  User,
+  Package,
+  Calendar,
   Cpu,
-  Users2,
-  ArrowUpRight,
+  StickyNote,
+  Zap,
+  Flame,
 } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -40,6 +49,7 @@ import {
 } from "@/components/ui/table";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -77,12 +87,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { NumericInput, parseNumericValue } from "@/components/ui/numeric-input";
 import { motion } from "framer-motion";
 import { exportToExcel } from "@/lib/excel-export";
+import { MobileSheet } from "@/components/ui/MobileSheet";
 import { IOSCard } from "@/components/ui/ios/IOSCard";
 import { IOSButton } from "@/components/ui/ios/IOSButton";
 import { IOSBadge } from "@/components/ui/ios/IOSBadge";
 import { staggerContainer, staggerItem } from "@/styles/animations";
 import { StatWidget } from "@/components/ui/StatWidget";
 import { TogglePill } from "@/components/ui/glass";
+import { CompletionConfirmationModal, InvoicePreviewModal } from "@/components/orders/CompletionModals";
 
 // ─── React Query Hooks ──────────────────────────────────
 import {
@@ -97,6 +109,7 @@ import {
 } from "@/lib/hooks/use-orders";
 
 function OrdersContent() {
+  const router = useRouter();
   const { role, isAdmin, isStaff, isPro, loading: roleLoading } = useRole();
 
   // ─── React Query: data fetching ────────────────────────
@@ -124,16 +137,73 @@ function OrdersContent() {
   const [isLoadingMaterials, setIsLoadingMaterials] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentOrder, setCurrentOrder] = useState<any>(null);
+  // ─── Strictly Isolated Modal Booleans ─────────────────
+  // Each modal has its own [isOpen, setIsOpen] boolean.
+  // open=true is ONLY set by explicit user actions (button clicks).
+  // open=false is set by onOpenChange(false) or programmatic close.
+  // Radix onOpenChange(true) callbacks are BLOCKED to prevent re-entrancy.
   const [isDeleteDialogOpenConfirm, setIsDeleteDialogOpenConfirm] =
     useState(false);
   const [orderToDeleteId, setOrderToDeleteId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [paymentOrder, setPaymentOrder] = useState<any>(null);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+
+  // ─── Completion Confirmation Modal state ──────────────
+  const [completionOrder, setCompletionOrder] = useState<any>(null);
+  const [isCompletionModalOpen, setIsCompletionModalOpen] = useState(false);
+  const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
+  const [generatedInvoice, setGeneratedInvoice] = useState<any>(null);
+  const [isInvoicePreviewOpen, setIsInvoicePreviewOpen] = useState(false);
+  const [invoiceEditData, setInvoiceEditData] = useState<any>(null);
+
+  // ─── Long-press & Bottom Sheet state ─────────────────
+  const [longPressedOrder, setLongPressedOrder] = useState<any>(null);
+  const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
+  const [pressedCardId, setPressedCardId] = useState<string | null>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = useCallback((msg: string) => {
+    setToastMessage(msg);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToastMessage(null), 2000);
+  }, []);
+
+  const handleLongPressStart = useCallback((order: any) => {
+    longPressTimerRef.current = setTimeout(() => {
+      if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(50);
+      setLongPressedOrder(order);
+      setIsBottomSheetOpen(true);
+      setPressedCardId(null);
+    }, 500);
+    setPressedCardId(order.id);
+  }, []);
+
+  const handleLongPressEnd = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    setPressedCardId(null);
+  }, []);
+
+  const closeBottomSheet = useCallback(() => {
+    setIsBottomSheetOpen(false);
+    setTimeout(() => setLongPressedOrder(null), 350);
+  }, []);
 
   // ─── URL-based status filtering ────────────────────────
   const searchParams = useSearchParams();
   const statusFilter = searchParams.get("status");
+  const setStatusShortcut = useCallback((status: string | null) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (!status || status === "all") params.delete("status");
+    else params.set("status", status);
+    router.push(params.toString() ? `/dashboard/orders?${params.toString()}` : "/dashboard/orders");
+  }, [router, searchParams]);
 
   const [paymentFormData, setPaymentFormData] = useState({
     amount: "",
@@ -163,7 +233,7 @@ function OrdersContent() {
       );
       return;
     }
-    setIsDialogOpen(true);
+    router.push("/dashboard/orders/create");
   };
 
   const exportToPDF = () => {
@@ -237,7 +307,12 @@ function OrdersContent() {
     delivery_date: "",
     status: "pending",
     payment_status: "pending",
+    material_cost: "",
+    labour_cost: "",
+    overhead_cost: "",
     order_items: [] as { inventory_id: string; quantity_deducted: string }[],
+    priority: "normal" as "low" | "normal" | "high" | "urgent",
+    notes: "",
   });
 
   const fetchClientProducts = async (clientId: string) => {
@@ -286,16 +361,44 @@ function OrdersContent() {
       delivery_date: "",
       status: "pending",
       payment_status: "pending",
+      material_cost: "",
+      labour_cost: "",
+      overhead_cost: "",
       order_items: [],
+      priority: "normal",
+      notes: "",
     });
     setClientProducts([]);
     setClientProductMaterials([]);
     setCurrentOrder(null);
   };
 
+  // ─── Safe close helpers (prevent any state cascade) ────
+  const closeOrderDialog = () => {
+    setIsDialogOpen(false);
+    resetForm();
+  };
+
+  const closePaymentDialog = () => {
+    setIsPaymentDialogOpen(false);
+    setPaymentOrder(null);
+  };
+
   const openEditDialog = (order: any) => {
     if (!order) return;
     setCurrentOrder(order);
+    // Compute material cost from saved materials array
+    const savedMaterials: any[] = Array.isArray(order.materials) ? order.materials : [];
+    const computedFromSavedMaterials = savedMaterials.reduce((acc: number, mat: any) => {
+      const costPerUnit = Number(mat.purchase_cost_per_unit || 0);
+      const qty = Number(mat.quantityRequired || 0);
+      return acc + (costPerUnit * qty);
+    }, 0);
+    const effectiveMaterialCost = computedFromSavedMaterials > 0
+      ? String(computedFromSavedMaterials)
+      : order.materialCost ? String(order.materialCost)
+      : order.estimatedMaterialCost ? String(order.estimatedMaterialCost)
+      : "0";
     setFormData({
       client_id: order.clientId ?? "",
       product_name: order.productName ?? order.product_name ?? "",
@@ -308,13 +411,18 @@ function OrdersContent() {
         : "",
       status: order.status,
       payment_status: order.paymentStatus,
+      material_cost: effectiveMaterialCost,
+      labour_cost: order.labourCost ? String(order.labourCost) : "0",
+      overhead_cost: order.overheadCost ? String(order.overheadCost) : "0",
       order_items: [],
+      priority: order.priority ?? "normal",
+      notes: order.notes ?? "",
     });
     if (order.clientId) {
       fetchClientProducts(order.clientId).then(() => {
         // Find if this product exists to fetch materials
         fetch(`/api/v1/clients/${order.clientId}/products`)
-          .then((r) => r.json())
+          .then((r) => r.ok ? r.json() : { data: [] })
           .then((json) => {
             const matched = (json.data || []).find(
               (p: any) => p.name === order.productName,
@@ -418,10 +526,15 @@ function OrdersContent() {
       delivery_date: formData.delivery_date || null,
       status: formData.status,
       payment_status: formData.payment_status,
+      material_cost: computedMaterialCost.total,
+      labour_cost: parseNumericValue(formData.labour_cost),
+      overhead_cost: parseNumericValue(formData.overhead_cost),
       order_items: formData.order_items.map((item) => ({
         inventory_id: item.inventory_id,
         quantity_deducted: parseNumericValue(item.quantity_deducted),
       })),
+      priority: formData.priority,
+      notes: formData.notes,
     };
 
     if (currentOrder) {
@@ -429,16 +542,14 @@ function OrdersContent() {
         { id: currentOrder.id, payload: orderPayload },
         {
           onSuccess: () => {
-            setIsDialogOpen(false);
-            resetForm();
+            closeOrderDialog();
           },
         },
       );
     } else {
       createOrder.mutate(orderPayload, {
         onSuccess: () => {
-          setIsDialogOpen(false);
-          resetForm();
+          closeOrderDialog();
         },
       });
     }
@@ -454,7 +565,7 @@ function OrdersContent() {
   };
 
   const openPaymentDialog = (order: any) => {
-    setCurrentOrder(order);
+    setPaymentOrder(order);
     const balance = order.totalAmount - (order.totalPaid || 0);
     setPaymentFormData({
       amount: String(balance > 0 ? balance : 0),
@@ -470,13 +581,13 @@ function OrdersContent() {
 
   const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentOrder) return;
+    if (!paymentOrder) return;
     recordPayment.mutate(
       {
         reference_type: "SalesOrder",
-        reference_id: currentOrder.id,
+        reference_id: paymentOrder.id,
         party_type: "Customer",
-        party_id: currentOrder.clientId,
+        party_id: paymentOrder.clientId,
         amount: Number(paymentFormData.amount),
         payment_mode: paymentFormData.payment_mode,
         payment_date: paymentFormData.payment_date,
@@ -487,7 +598,7 @@ function OrdersContent() {
       },
       {
         onSuccess: () => {
-          setIsPaymentDialogOpen(false);
+          closePaymentDialog();
         },
       },
     );
@@ -583,9 +694,9 @@ function OrdersContent() {
   };
 
   const STATUS_OPTIONS = [
-    { value: "pending", label: "Pending", color: "var(--label-tertiary)" },
-    { value: "processing", label: "In Production", color: "var(--ios-orange)" },
-    { value: "completed", label: "Completed", color: "var(--ios-green)" },
+    { value: "pending", label: "Pending", color: "var(--muted-foreground)" },
+    { value: "processing", label: "In Production", color: "var(--erp-warning)" },
+    { value: "completed", label: "Completed", color: "var(--erp-success)" },
   ] as const;
 
   const handleStatusChange = (
@@ -594,10 +705,73 @@ function OrdersContent() {
     newStatus: string,
   ) => {
     if (currentStatus === "completed" || currentStatus === newStatus) return;
+    // ── Intercept "completed" → show confirmation modal ──
+    if (newStatus === "completed") {
+      const orderToComplete = (orders as any[]).find((o: any) => o.id === orderId);
+      if (orderToComplete) {
+        setCompletionOrder(orderToComplete);
+        setIsCompletionModalOpen(true);
+        return;
+      }
+    }
     setUpdatingOrderId(orderId);
     updateOrderStatus.mutate(
       { id: orderId, status: newStatus },
       { onSettled: () => setUpdatingOrderId(null) },
+    );
+  };
+
+  const handleCompleteOnly = () => {
+    if (!completionOrder) return;
+    setIsCompletionModalOpen(false);
+    setUpdatingOrderId(completionOrder.id);
+    updateOrderStatus.mutate(
+      { id: completionOrder.id, status: "completed" },
+      { onSettled: () => { setUpdatingOrderId(null); setCompletionOrder(null); } },
+    );
+  };
+
+  const handleCompleteAndInvoice = async () => {
+    if (!completionOrder) return;
+    setIsCompletionModalOpen(false);
+    setUpdatingOrderId(completionOrder.id);
+    // 1. Mark as completed
+    updateOrderStatus.mutate(
+      { id: completionOrder.id, status: "completed" },
+      {
+        onSettled: () => setUpdatingOrderId(null),
+        onSuccess: async () => {
+          // 2. Auto-generate invoice
+          setIsGeneratingInvoice(true);
+          try {
+            const res = await fetch("/api/invoices/auto-generate", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ orderId: completionOrder.id }),
+            });
+            const data = await res.json();
+            if (!res.ok || data.error) {
+              showToast(data.error || "Failed to generate invoice");
+              return;
+            }
+            setGeneratedInvoice(data);
+            setInvoiceEditData({
+              invoiceNumber: data.invoiceNumber,
+              issueDate: new Date().toISOString().split("T")[0],
+              dueDate: new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
+              notes: data.invoiceData?.notes || "",
+              gstRate: 18,
+            });
+            setIsInvoicePreviewOpen(true);
+            showToast("Invoice generated!");
+          } catch (err) {
+            showToast("Failed to generate invoice");
+          } finally {
+            setIsGeneratingInvoice(false);
+            setCompletionOrder(null);
+          }
+        },
+      },
     );
   };
 
@@ -614,6 +788,46 @@ function OrdersContent() {
     };
   }, [orders]);
 
+  // ─── Auto-computed Material Cost from Inventory ──────────
+  const computedMaterialCost = useMemo(() => {
+    const sourceMaterials = formData.material_source === "own" ? inventory : clientProductMaterials;
+    let total = 0;
+    const warnings: string[] = [];
+
+    // When order_items exist (create mode), compute from deduction rows
+    if (formData.order_items.length > 0) {
+      for (const item of formData.order_items) {
+        if (!item.inventory_id) continue;
+        const invItem = sourceMaterials.find((i: any) => i.id === item.inventory_id);
+        if (!invItem) continue;
+        const baseCost = Number(invItem.purchase_cost_per_unit || 0);
+        const taxRate = Number(invItem.tax_rate || 0);
+        const landedCost = baseCost * (1 + taxRate / 100);
+        if (landedCost === 0) warnings.push(invItem.name);
+        total += landedCost * parseNumericValue(item.quantity_deducted);
+      }
+    }
+    // In edit mode (order_items empty), compute from saved materials array
+    else if (currentOrder?.materials && Array.isArray(currentOrder.materials) && currentOrder.materials.length > 0) {
+      for (const mat of currentOrder.materials) {
+        let costPerUnit = Number(mat.purchase_cost_per_unit || 0);
+        // If cost is missing, try to look it up from inventory
+        if (costPerUnit === 0 && mat.inventoryItemId) {
+          const invItem = inventory.find((i: any) => i.id === mat.inventoryItemId);
+          if (invItem) {
+            costPerUnit = Number(invItem.purchase_cost_per_unit || 0);
+            const taxRate = Number(invItem.tax_rate || 0);
+            costPerUnit = costPerUnit * (1 + taxRate / 100);
+          }
+          if (costPerUnit === 0) warnings.push(mat.itemName || 'Unknown material');
+        }
+        total += costPerUnit * Number(mat.quantityRequired || 0);
+      }
+    }
+
+    return { total, warnings };
+  }, [formData.order_items, formData.material_source, inventory, clientProductMaterials, currentOrder]);
+
 
   return (
     <motion.div
@@ -628,11 +842,11 @@ function OrdersContent() {
         className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
       >
         <div>
-          <h1 className="text-[34px] font-bold text-[var(--label-primary)] leading-[41px] tracking-[0.37px]">
+          <h1 className="text-[34px] font-bold text-[var(--foreground)] leading-[41px] tracking-[0.37px]">
             Orders & Production
           </h1>
-          <p className="text-[15px] text-[var(--label-secondary)] mt-1 leading-[20px] flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-[var(--ios-blue)]" />{" "}
+          <p className="text-[15px] text-[var(--muted-foreground)] mt-1 leading-[20px] flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-[var(--primary)]" />{" "}
             Integrated material flow
           </p>
         </div>
@@ -708,10 +922,10 @@ function OrdersContent() {
       {/* ── Search Bar (ALWAYS visible) ── */}
       <motion.div
         variants={staggerItem}
-        className="flex items-center gap-2 mb-6"
+        className="workflow-command-bar mb-6"
       >
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-[10px] top-1/2 -translate-y-1/2 h-[17px] w-[17px] text-[var(--label-tertiary)]" />
+          <Search className="absolute left-[10px] top-1/2 -translate-y-1/2 h-[17px] w-[17px] text-[var(--muted-foreground)]" />
           <input
             placeholder="Filter by product or client..."
             className="glass-input w-full h-[36px] pr-4 pl-[34px] text-[15px]"
@@ -719,7 +933,47 @@ function OrdersContent() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <span className="text-[13px] text-[var(--label-tertiary)]">
+        <div className="flex items-center gap-2">
+          {[
+            { key: "pending", label: "Pending" },
+            { key: "processing", label: "Processing" },
+            { key: "completed", label: "Completed" },
+          ].map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => setStatusShortcut(item.key)}
+              className={cn(
+                "h-8 px-3 rounded-lg text-xs font-semibold transition-colors cursor-pointer",
+                statusFilter === item.key
+                  ? "bg-[var(--primary)] text-white"
+                  : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--accent)]"
+              )}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={handleAddNewClick}
+          className="h-8 px-3 rounded-lg bg-[var(--primary)] text-white text-xs font-semibold hover:opacity-90 cursor-pointer transition-opacity"
+        >
+          Quick add
+        </button>
+        {(searchTerm || statusFilter) && (
+          <button
+            type="button"
+            onClick={() => {
+              setSearchTerm("");
+              setStatusShortcut(null);
+            }}
+            className="h-8 px-3 rounded-lg text-xs font-medium text-[var(--muted-foreground)] bg-[var(--muted)] hover:bg-[var(--accent)] cursor-pointer"
+          >
+            Clear
+          </button>
+        )}
+        <span className="text-[13px] text-[var(--muted-foreground)]">
           {filteredOrders.length} orders
         </span>
       </motion.div>
@@ -728,16 +982,16 @@ function OrdersContent() {
         {ordersError && (
           <motion.div
             variants={staggerItem}
-            className="flex items-center gap-3 p-4 rounded-[16px] border border-[var(--ios-red)]/20 bg-[rgba(255,59,48,0.06)]"
+            className="flex items-center gap-3 p-4 rounded-[16px] border border-[var(--destructive)]/20 bg-[rgba(255,59,48,0.06)]"
           >
             <div className="w-[40px] h-[40px] rounded-[12px] bg-[rgba(255,59,48,0.10)] flex items-center justify-center flex-shrink-0">
-              <AlertCircle className="h-[18px] w-[18px] text-[var(--ios-red)]" />
+              <AlertCircle className="h-[18px] w-[18px] text-[var(--destructive)]" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[15px] font-semibold text-[var(--label-primary)]">
+              <p className="text-[15px] font-semibold text-[var(--foreground)]">
                 Failed to load orders
               </p>
-              <p className="text-[13px] text-[var(--label-secondary)] mt-0.5 truncate">
+              <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5 truncate">
                 {ordersErrorObj?.message || "Unknown error — please try refreshing."}
               </p>
             </div>
@@ -758,10 +1012,10 @@ function OrdersContent() {
         {roleLoading || ordersLoading ? (
           <div className="flex items-center justify-center py-20">
             <div className="flex flex-col items-center gap-3">
-              <div className="w-10 h-10 rounded-[12px] bg-[var(--ios-blue)]/20 flex items-center justify-center">
-                <Loader2 className="h-5 w-5 text-[var(--ios-blue)] animate-spin" />
+              <div className="w-10 h-10 rounded-[12px] bg-[var(--primary)]/20 flex items-center justify-center">
+                <Loader2 className="h-5 w-5 text-[var(--primary)] animate-spin" />
               </div>
-              <p className="text-[13px] text-[var(--label-secondary)]">
+              <p className="text-[13px] text-[var(--muted-foreground)]">
                 Loading...
               </p>
             </div>
@@ -775,10 +1029,10 @@ function OrdersContent() {
                 <IOSCard variant="elevated" padding="lg" className="h-full">
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h3 className="text-[17px] font-bold text-[var(--label-primary)] leading-[22px]">
+                      <h3 className="text-[17px] font-bold text-[var(--foreground)] leading-[22px]">
                         Orders
                       </h3>
-                      <p className="text-[13px] text-[var(--label-tertiary)] mt-0.5">
+                      <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5">
                         {filteredOrders.length} total
                       </p>
                     </div>
@@ -807,7 +1061,7 @@ function OrdersContent() {
                         },
                       ].map((item, i, arr) => (
                         <div key={item.label}>
-                          <div className="flex items-center gap-3 p-2.5 rounded-[12px] hover:bg-[var(--fill-quaternary)] transition-all">
+                          <div className="flex items-center gap-3 p-2.5 rounded-[12px] hover:bg-[var(--muted)] transition-all">
                             <div
                               className="w-[32px] h-[32px] rounded-[9px] flex items-center justify-center flex-shrink-0"
                               style={{
@@ -824,14 +1078,14 @@ function OrdersContent() {
                                 style={{
                                   color:
                                     item.color === "orange"
-                                      ? "var(--ios-orange)"
+                                      ? "var(--erp-warning)"
                                       : item.color === "blue"
-                                        ? "var(--ios-blue)"
-                                        : "var(--ios-green)",
+                                        ? "var(--primary)"
+                                        : "var(--erp-success)",
                                 }}
                               />
                             </div>
-                            <span className="text-[14px] font-medium text-[var(--label-primary)] flex-1">
+                            <span className="text-[14px] font-medium text-[var(--foreground)] flex-1">
                               {item.label}
                             </span>
                             <span
@@ -845,10 +1099,10 @@ function OrdersContent() {
                                       : "rgba(52,199,89,0.10)",
                                 color:
                                   item.color === "orange"
-                                    ? "var(--ios-orange)"
+                                    ? "var(--erp-warning)"
                                     : item.color === "blue"
-                                      ? "var(--ios-blue)"
-                                      : "var(--ios-green)",
+                                      ? "var(--primary)"
+                                      : "var(--erp-success)",
                               }}
                             >
                               {item.count}
@@ -863,15 +1117,15 @@ function OrdersContent() {
 
                     {/* Recent Orders List */}
                     <div className="border-t border-[var(--border-divider)] pt-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--label-tertiary)] px-1 mb-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--muted-foreground)] px-1 mb-2">
                         Recent Orders
                       </p>
                       {filteredOrders.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-8 text-center">
                           <div className="w-[40px] h-[40px] rounded-[12px] bg-[rgba(0,122,255,0.08)] flex items-center justify-center mb-3">
-                            <ClipboardList className="h-[18px] w-[18px] text-[var(--ios-blue)]" />
+                            <ClipboardList className="h-[18px] w-[18px] text-[var(--primary)]" />
                           </div>
-                          <p className="text-[13px] font-medium text-[var(--label-secondary)]">
+                          <p className="text-[13px] font-medium text-[var(--muted-foreground)]">
                             No orders found
                           </p>
                         </div>
@@ -888,24 +1142,24 @@ function OrdersContent() {
                                     delay: 0.1 + idx * 0.04,
                                     duration: 0.3,
                                   }}
-                                  className="flex items-center gap-2.5 p-2.5 rounded-[10px] hover:bg-[var(--fill-quaternary)] transition-colors cursor-pointer group"
+                                  className="flex items-center gap-2.5 p-2.5 rounded-[10px] hover:bg-[var(--muted)] transition-colors cursor-pointer group"
                                 >
                                   {/* Priority dot */}
                                   <div
                                     className={cn(
                                       "w-[5px] h-[5px] rounded-full flex-shrink-0",
                                       (order.status ?? "") === "completed"
-                                        ? "bg-[var(--ios-green)]"
+                                        ? "bg-[var(--erp-success)]"
                                         : (order.status ?? "") === "processing"
-                                          ? "bg-[var(--ios-blue)]"
-                                          : "bg-[var(--ios-orange)]",
+                                          ? "bg-[var(--primary)]"
+                                          : "bg-[var(--erp-warning)]",
                                     )}
                                   />
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-[13px] font-medium text-[var(--label-primary)] truncate">
+                                    <p className="text-[13px] font-medium text-[var(--foreground)] truncate">
                                       {order.productName ?? order.product_name ?? "—"}
                                     </p>
-                                    <p className="text-[11px] text-[var(--label-tertiary)] truncate">
+                                    <p className="text-[11px] text-[var(--muted-foreground)] truncate">
                                       {order.client?.name ?? order.clients?.name ?? "—"} ·{" "}
                                       {order.quantity ?? 0} {order.unit ?? "kg"}
                                     </p>
@@ -914,10 +1168,10 @@ function OrdersContent() {
                                     className={cn(
                                       "text-[10px] font-medium px-1.5 py-0.5 rounded-full capitalize whitespace-nowrap",
                                       order.status === "completed"
-                                        ? "bg-[rgba(52,199,89,0.12)] text-[var(--ios-green)]"
+                                        ? "bg-[rgba(52,199,89,0.12)] text-[var(--erp-success)]"
                                         : order.status === "processing"
-                                          ? "bg-[rgba(0,122,255,0.12)] text-[var(--ios-blue)]"
-                                          : "bg-[rgba(255,149,0,0.12)] text-[var(--ios-orange)]",
+                                          ? "bg-[rgba(0,122,255,0.12)] text-[var(--primary)]"
+                                          : "bg-[rgba(255,149,0,0.12)] text-[var(--erp-warning)]",
                                     )}
                                   >
                                     {getStatusLabel(order.status)}
@@ -962,7 +1216,7 @@ function OrdersContent() {
                 >
                   <div
                     className="absolute -top-6 -right-6 w-16 h-16 rounded-full opacity-40 blur-xl"
-                    style={{ background: "var(--ios-blue)" }}
+                    style={{ background: "var(--primary)" }}
                   />
                   <div className="relative flex flex-col items-center text-center gap-3">
                     <div
@@ -971,14 +1225,14 @@ function OrdersContent() {
                     >
                       <ClipboardList
                         className="h-[20px] w-[20px]"
-                        style={{ color: "var(--ios-blue)" }}
+                        style={{ color: "var(--primary)" }}
                       />
                     </div>
                     <div>
-                      <p className="text-[28px] font-bold text-[var(--label-primary)] leading-[32px] tracking-tight">
+                      <p className="text-[28px] font-bold text-[var(--foreground)] leading-[32px] tracking-tight">
                         {orderStats.total}
                       </p>
-                      <p className="text-[12px] font-medium text-[var(--label-tertiary)] leading-[16px] mt-1">
+                      <p className="text-[12px] font-medium text-[var(--muted-foreground)] leading-[16px] mt-1">
                         Total Orders
                       </p>
                     </div>
@@ -1006,7 +1260,7 @@ function OrdersContent() {
                 >
                   <div
                     className="absolute -top-6 -right-6 w-16 h-16 rounded-full opacity-40 blur-xl"
-                    style={{ background: "var(--ios-green)" }}
+                    style={{ background: "var(--erp-success)" }}
                   />
                   <div className="relative flex flex-col items-center text-center gap-3">
                     <div
@@ -1015,16 +1269,16 @@ function OrdersContent() {
                     >
                       <CheckCircle2
                         className="h-[20px] w-[20px]"
-                        style={{ color: "var(--ios-green)" }}
+                        style={{ color: "var(--erp-success)" }}
                       />
                     </div>
                     <div>
-                      <p className="text-[28px] font-bold text-[var(--label-primary)] leading-[32px] tracking-tight">
+                      <p className="text-[28px] font-bold text-[var(--foreground)] leading-[32px] tracking-tight">
                         {
                           orderStats.completed
                         }
                       </p>
-                      <p className="text-[12px] font-medium text-[var(--label-tertiary)] leading-[16px] mt-1">
+                      <p className="text-[12px] font-medium text-[var(--muted-foreground)] leading-[16px] mt-1">
                         Completed Orders
                       </p>
                     </div>
@@ -1036,10 +1290,10 @@ function OrdersContent() {
               <motion.div variants={staggerItem} className="order-3">
                 <IOSCard variant="elevated" padding="lg" className="h-full">
                   <div className="mb-4">
-                    <h3 className="text-[17px] font-bold text-[var(--label-primary)] leading-[22px]">
+                    <h3 className="text-[17px] font-bold text-[var(--foreground)] leading-[22px]">
                       Production
                     </h3>
-                    <p className="text-[13px] text-[var(--label-tertiary)] mt-0.5">
+                    <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5">
                       Status & Queue
                     </p>
                   </div>
@@ -1073,7 +1327,7 @@ function OrdersContent() {
                         },
                       ].map((item, i, arr) => (
                         <div key={item.label}>
-                          <div className="flex items-center gap-3 p-2.5 rounded-[12px] hover:bg-[var(--fill-quaternary)] transition-all">
+                          <div className="flex items-center gap-3 p-2.5 rounded-[12px] hover:bg-[var(--muted)] transition-all">
                             <div
                               className="w-[32px] h-[32px] rounded-[9px] flex items-center justify-center flex-shrink-0"
                               style={{
@@ -1092,16 +1346,16 @@ function OrdersContent() {
                                 style={{
                                   color:
                                     item.color === "blue"
-                                      ? "var(--ios-blue)"
+                                      ? "var(--primary)"
                                       : item.color === "orange"
-                                        ? "var(--ios-orange)"
+                                        ? "var(--erp-warning)"
                                         : item.color === "purple"
-                                          ? "var(--ios-indigo)"
-                                          : "var(--ios-green)",
+                                          ? "var(--chart-5)"
+                                          : "var(--erp-success)",
                                 }}
                               />
                             </div>
-                            <span className="text-[14px] font-medium text-[var(--label-primary)] flex-1">
+                            <span className="text-[14px] font-medium text-[var(--foreground)] flex-1">
                               {item.label}
                             </span>
                             <span
@@ -1117,12 +1371,12 @@ function OrdersContent() {
                                         : "rgba(52,199,89,0.10)",
                                 color:
                                   item.color === "blue"
-                                    ? "var(--ios-blue)"
+                                    ? "var(--primary)"
                                     : item.color === "orange"
-                                      ? "var(--ios-orange)"
+                                      ? "var(--erp-warning)"
                                       : item.color === "purple"
-                                        ? "var(--ios-indigo)"
-                                        : "var(--ios-green)",
+                                        ? "var(--chart-5)"
+                                        : "var(--erp-success)",
                               }}
                             >
                               {item.count}
@@ -1137,7 +1391,7 @@ function OrdersContent() {
 
                     {/* Production Progress Bars */}
                     <div className="mt-5 pt-4 border-t border-[var(--border-divider)]">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--label-tertiary)] px-1 mb-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--muted-foreground)] px-1 mb-3">
                         Production Progress
                       </p>
                       <div className="space-y-3 px-1">
@@ -1146,21 +1400,21 @@ function OrdersContent() {
                             label: "Completion Rate",
                             value: orderStats.completed,
                             max: Math.max(orderStats.total, 1),
-                            color: "var(--ios-green)",
+                            color: "var(--erp-success)",
                             bg: "rgba(52,199,89,0.08)",
                           },
                           {
                             label: "In Progress",
                             value: orderStats.processing,
                             max: Math.max(orderStats.total, 1),
-                            color: "var(--ios-blue)",
+                            color: "var(--primary)",
                             bg: "rgba(0,122,255,0.08)",
                           },
                           {
                             label: "Pending",
                             value: orderStats.pending,
                             max: Math.max(orderStats.total, 1),
-                            color: "var(--ios-orange)",
+                            color: "var(--erp-warning)",
                             bg: "rgba(255,149,0,0.08)",
                           },
                         ].map((bar, i) => {
@@ -1171,7 +1425,7 @@ function OrdersContent() {
                           return (
                             <div key={bar.label} className="space-y-1.5">
                               <div className="flex items-center justify-between">
-                                <span className="text-[13px] font-medium text-[var(--label-primary)]">
+                                <span className="text-[13px] font-medium text-[var(--foreground)]">
                                   {bar.label}
                                 </span>
                                 <span
@@ -1205,7 +1459,7 @@ function OrdersContent() {
 
                     {/* Quick Links */}
                     <div className="mt-5 pt-4 border-t border-[var(--border-divider)]">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--label-tertiary)] px-1 mb-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--muted-foreground)] px-1 mb-2">
                         Quick Links
                       </p>
                       <div className="space-y-0.5">
@@ -1222,12 +1476,12 @@ function OrdersContent() {
                           },
                         ].map((link, idx, arr) => (
                           <a key={link.label} href={link.href}>
-                            <div className="flex items-center gap-2.5 p-2.5 rounded-[10px] hover:bg-[var(--fill-quaternary)] transition-colors cursor-pointer group">
-                              <link.icon className="h-[14px] w-[14px] text-[var(--label-tertiary)] group-hover:text-[var(--label-secondary)] transition-colors" />
-                              <span className="text-[13px] font-medium text-[var(--label-primary)] flex-1">
+                            <div className="flex items-center gap-2.5 p-2.5 rounded-[10px] hover:bg-[var(--muted)] transition-colors cursor-pointer group">
+                              <link.icon className="h-[14px] w-[14px] text-[var(--muted-foreground)] group-hover:text-[var(--muted-foreground)] transition-colors" />
+                              <span className="text-[13px] font-medium text-[var(--foreground)] flex-1">
                                 {link.label}
                               </span>
-                              <ChevronRight className="h-3 w-3 text-[var(--label-quaternary)] group-hover:text-[var(--label-tertiary)] transition-colors" />
+                              <ChevronRight className="h-3 w-3 text-[var(--muted-foreground)] group-hover:text-[var(--muted-foreground)] transition-colors" />
                             </div>
                             {idx < arr.length - 1 && (
                               <div className="h-px bg-[var(--border-divider)] mx-3" />
@@ -1296,18 +1550,18 @@ function OrdersContent() {
               <Table>
                 <TableHeader>
                   <TableRow className="glass-table-header hover:bg-transparent border-b border-white/[0.07] dark:border-white/[0.07]">
-                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--label-secondary)] uppercase tracking-wide pl-5">
-                      Production Order
+                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide pl-5">
+                      Order
                     </TableHead>
                     {!isStaff && (
-                      <TableHead className="font-semibold py-3 text-[13px] text-[var(--label-secondary)] uppercase tracking-wide">
+                      <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">
                         Financials
                       </TableHead>
                     )}
-                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--label-secondary)] uppercase tracking-wide">
+                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">
                       Timeline / Status
                     </TableHead>
-                    <TableHead className="w-[120px] py-3 pr-5 text-right font-semibold text-[13px] text-[var(--label-secondary)] uppercase tracking-wide">
+                    <TableHead className="w-[120px] py-3 pr-5 text-right font-semibold text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">
                       Action
                     </TableHead>
                   </TableRow>
@@ -1317,16 +1571,16 @@ function OrdersContent() {
                     Array.from({ length: 5 }).map((_, i) => (
                       <TableRow key={i}>
                         <TableCell className="pl-5">
-                          <div className="h-16 w-full rounded-[10px] bg-[var(--fill-tertiary)] shimmer" />
+                          <div className="h-16 w-full rounded-[10px] bg-[var(--muted)] shimmer" />
                         </TableCell>
                         <TableCell>
-                          <div className="h-16 w-full rounded-[10px] bg-[var(--fill-tertiary)] shimmer" />
+                          <div className="h-16 w-full rounded-[10px] bg-[var(--muted)] shimmer" />
                         </TableCell>
                         <TableCell>
-                          <div className="h-16 w-full rounded-[10px] bg-[var(--fill-tertiary)] shimmer" />
+                          <div className="h-16 w-full rounded-[10px] bg-[var(--muted)] shimmer" />
                         </TableCell>
                         <TableCell className="pr-5">
-                          <div className="h-10 w-10 rounded-full bg-[var(--fill-tertiary)] shimmer ml-auto" />
+                          <div className="h-10 w-10 rounded-full bg-[var(--muted)] shimmer ml-auto" />
                         </TableCell>
                       </TableRow>
                     ))
@@ -1337,13 +1591,13 @@ function OrdersContent() {
                         className="text-center py-16"
                       >
                         <div className="flex flex-col items-center gap-3">
-                          <div className="w-[56px] h-[56px] rounded-[14px] bg-[var(--fill-tertiary)] flex items-center justify-center">
-                            <Factory className="h-6 w-6 text-[var(--label-tertiary)]" />
+                          <div className="w-[56px] h-[56px] rounded-[14px] bg-[var(--muted)] flex items-center justify-center">
+                            <Factory className="h-6 w-6 text-[var(--muted-foreground)]" />
                           </div>
-                          <p className="text-[17px] font-medium text-[var(--label-secondary)]">
+                          <p className="text-[17px] font-medium text-[var(--muted-foreground)]">
                             No active orders
                           </p>
-                          <p className="text-[13px] text-[var(--label-tertiary)]">
+                          <p className="text-[13px] text-[var(--muted-foreground)]">
                             Create your first order to start production
                           </p>
                         </div>
@@ -1360,14 +1614,14 @@ function OrdersContent() {
                           duration: 0.25,
                           ease: [0.16, 1, 0.3, 1],
                         }}
-                        className="group glass-table-row hover:bg-[var(--fill-quaternary)] border-b border-[var(--border-card)] transition-colors"
+                        className="group glass-table-row hover:bg-[var(--muted)] border-b border-[var(--border)] transition-colors"
                       >
                         <TableCell className="pl-5 py-4">
                           <div className="flex flex-col">
-                            <span className="text-[17px] font-bold text-[var(--label-primary)] leading-[22px]">
+                            <span className="text-[17px] font-bold text-[var(--foreground)] leading-[22px]">
                               {order.productName ?? order.product_name ?? "—"}
                             </span>
-                            <span className="text-[13px] text-[var(--label-secondary)] mt-0.5">
+                            <span className="text-[13px] text-[var(--muted-foreground)] mt-0.5">
                               Client: {order.client?.name ?? order.clients?.name ?? "—"}
                             </span>
                             <div className="flex items-center gap-2 mt-1.5">
@@ -1378,7 +1632,7 @@ function OrdersContent() {
                               >
                                 {order.quantity ?? 0} {order.unit ?? "kg"}
                               </IOSBadge>
-                              <span className="text-[11px] text-[var(--label-quaternary)] font-mono uppercase">
+                              <span className="text-[11px] text-[var(--muted-foreground)] font-mono uppercase">
                                 {(order.id ?? "").slice(0, 8)}
                               </span>
                             </div>
@@ -1388,11 +1642,11 @@ function OrdersContent() {
                         {!isStaff && (
                           <TableCell className="py-4">
                             <div className="flex flex-col gap-1">
-                              <span className="text-[20px] font-bold text-[var(--ios-blue)]">
+                              <span className="text-[20px] font-bold text-[var(--primary)]">
                                 ₹{Number(order.totalAmount ?? order.total_amount ?? 0).toLocaleString()}
                               </span>
                               {(order.totalPaid ?? order.total_paid ?? 0) > 0 && (
-                                <span className="text-[13px] text-[var(--ios-green)] font-semibold">
+                                <span className="text-[13px] text-[var(--erp-success)] font-semibold">
                                   Paid: ₹
                                   {Number(order.totalPaid ?? order.total_paid ?? 0).toLocaleString()}
                                 </span>
@@ -1401,7 +1655,7 @@ function OrdersContent() {
                                 order.paymentStatus !== "paid" &&
                                 order.totalAmount - (order.totalPaid || 0) >
                                   0 && (
-                                  <span className="text-[13px] text-[var(--ios-orange)] font-semibold">
+                                  <span className="text-[13px] text-[var(--erp-warning)] font-semibold">
                                     Due: ₹
                                     {Number(
                                       order.totalAmount -
@@ -1426,16 +1680,16 @@ function OrdersContent() {
                             {/* Status Badge */}
                             <div className="flex items-center gap-1.5">
                               {updatingOrderId === order.id ? (
-                                <Loader2 className="h-[14px] w-[14px] animate-spin text-[var(--ios-blue)]" />
+                                <Loader2 className="h-[14px] w-[14px] animate-spin text-[var(--primary)]" />
                               ) : (
                                 <div
                                   className={cn(
                                     "h-[8px] w-[8px] rounded-full",
                                     order.status === "completed"
-                                      ? "bg-[var(--ios-green)]"
+                                      ? "bg-[var(--erp-success)]"
                                       : order.status === "processing"
-                                        ? "bg-[var(--ios-orange)] animate-pulse"
-                                        : "bg-[var(--label-tertiary)]",
+                                        ? "bg-[var(--erp-warning)] animate-pulse"
+                                        : "bg-[var(--muted-foreground)]",
                                   )}
                                 />
                               )}
@@ -1447,55 +1701,15 @@ function OrdersContent() {
                                 {getStatusLabel(order.status)}
                               </IOSBadge>
                             </div>
-                            {/* Mini Timeline */}
-                            <div className="flex flex-col gap-0.5 ml-1 mt-1">
-                              <div className="flex items-center gap-1.5">
-                                <div className="h-[4px] w-[4px] rounded-full bg-[var(--label-quaternary)]" />
-                                <span className="text-[10px] text-[var(--label-tertiary)] font-medium">
-                                  Created:{" "}
-                                  {order.createdAt ? new Date(order.createdAt).toLocaleDateString(
-                                    "en-IN",
-                                    { day: "2-digit", month: "short" },
-                                  ) : "—"}
-                                </span>
-                              </div>
-                              {order.processedAt && (
-                                <div className="flex items-center gap-1.5">
-                                  <div className="h-[4px] w-[4px] rounded-full bg-[var(--ios-orange)]" />
-                                  <span className="text-[10px] text-[var(--ios-orange)] font-medium">
-                                    Started:{" "}
-                                    {new Date(
-                                      order.processedAt,
-                                    ).toLocaleDateString("en-IN", {
-                                      day: "2-digit",
-                                      month: "short",
-                                    })}
-                                  </span>
-                                </div>
-                              )}
-                              {order.completedAt && (
-                                <div className="flex items-center gap-1.5">
-                                  <div className="h-[4px] w-[4px] rounded-full bg-[var(--ios-green)]" />
-                                  <span className="text-[10px] text-[var(--ios-green)] font-medium">
-                                    Completed:{" "}
-                                    {new Date(
-                                      order.completedAt,
-                                    ).toLocaleDateString("en-IN", {
-                                      day: "2-digit",
-                                      month: "short",
-                                    })}
-                                  </span>
-                                </div>
-                              )}
-                              {order.deliveryDate && (
-                                <span className="text-[11px] bg-[var(--fill-tertiary)] w-fit px-2 py-0.5 rounded-[6px] font-medium text-[var(--label-secondary)] mt-0.5">
-                                  Due:{" "}
-                                  {new Date(
-                                    order.deliveryDate,
-                                  ).toLocaleDateString()}
-                                </span>
-                              )}
-                            </div>
+                            {/* Due Date */}
+                            {order.deliveryDate && (
+                              <span className="text-[11px] bg-[var(--muted)] w-fit px-2 py-0.5 rounded-[6px] font-medium text-[var(--muted-foreground)] mt-1.5 ml-1 block">
+                                Due:{" "}
+                                {new Date(
+                                  order.deliveryDate,
+                                ).toLocaleDateString()}
+                              </span>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell className="pr-5 text-right py-4">
@@ -1504,7 +1718,7 @@ function OrdersContent() {
                             {!isStaff && (
                               <motion.button
                                 whileTap={{ scale: 0.9 }}
-                                className="h-[36px] w-[36px] rounded-[10px] flex items-center justify-center text-[var(--label-secondary)] hover:bg-[var(--fill-tertiary)] transition-colors cursor-pointer"
+                                className="h-[36px] w-[36px] rounded-[10px] flex items-center justify-center text-[var(--muted-foreground)] hover:bg-[var(--muted)] transition-colors cursor-pointer"
                                 onClick={() => generateInvoice(order)}
                               >
                                 <Download className="h-4 w-4" />
@@ -1514,9 +1728,9 @@ function OrdersContent() {
                               <DropdownMenuTrigger asChild>
                                 <motion.button
                                   whileTap={{ scale: 0.9 }}
-                                  className="h-[36px] w-[36px] rounded-[10px] flex items-center justify-center hover:bg-[var(--fill-tertiary)] transition-colors cursor-pointer"
+                                  className="h-[36px] w-[36px] rounded-[10px] flex items-center justify-center hover:bg-[var(--muted)] transition-colors cursor-pointer"
                                 >
-                                  <MoreVertical className="h-[18px] w-[18px] text-[var(--label-secondary)]" />
+                                  <MoreVertical className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
                                 </motion.button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent
@@ -1551,10 +1765,10 @@ function OrdersContent() {
                                           className={cn(
                                             "h-[8px] w-[8px] rounded-full",
                                             opt.value === "completed"
-                                              ? "bg-[var(--ios-green)]"
+                                              ? "bg-[var(--erp-success)]"
                                               : opt.value === "processing"
-                                                ? "bg-[var(--ios-orange)]"
-                                                : "bg-[var(--label-tertiary)]",
+                                                ? "bg-[var(--erp-warning)]"
+                                                : "bg-[var(--muted-foreground)]",
                                           )}
                                         />
                                         <span
@@ -1566,7 +1780,7 @@ function OrdersContent() {
                                           {opt.label}
                                         </span>
                                         {order.status === opt.value && (
-                                          <CheckCircle2 className="ml-auto h-3.5 w-3.5 text-[var(--ios-blue)]" />
+                                          <CheckCircle2 className="ml-auto h-3.5 w-3.5 text-[var(--primary)]" />
                                         )}
                                       </DropdownMenuItem>
                                     ))}
@@ -1589,13 +1803,13 @@ function OrdersContent() {
                                     onClick={() => openPaymentDialog(order)}
                                     className="rounded-[8px]"
                                   >
-                                    <IndianRupee className="mr-2 h-4 w-4 text-[var(--ios-green)]" />{" "}
+                                    <IndianRupee className="mr-2 h-4 w-4 text-[var(--erp-success)]" />{" "}
                                     Record Payment
                                   </DropdownMenuItem>
                                 )}
                                 {isAdmin && (
                                   <DropdownMenuItem
-                                    className="text-[var(--ios-red)] rounded-[8px]"
+                                    className="text-[var(--destructive)] rounded-[8px]"
                                     onClick={() => {
                                       setOrderToDeleteId(order.id);
                                       setIsDeleteDialogOpenConfirm(true);
@@ -1616,74 +1830,210 @@ function OrdersContent() {
               </Table>
             </IOSCard>
 
-            {/* Mobile Order Cards — visible only below md (768px) */}
-            <div className="block md:hidden px-3 py-2 space-y-3">
+            {/* ═══ PREMIUM MOBILE ORDER CARDS ═══ */}
+            <div style={{ padding: '0 2px' }} className="block md:hidden">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {ordersLoading ? (
                 Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="bg-[#1a1f2e] rounded-xl px-4 py-3 border-l-4 border-gray-600">
-                    <div className="h-4 w-32 rounded bg-[var(--fill-tertiary)] shimmer" />
-                    <div className="h-4 w-full rounded bg-[var(--fill-tertiary)] shimmer mt-2" />
-                    <div className="h-3 w-24 rounded bg-[var(--fill-tertiary)] shimmer mt-2" />
-                    <div className="h-3 w-20 rounded bg-[var(--fill-tertiary)] shimmer mt-2" />
+                  <div key={i} style={{
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: 20, padding: 18, position: 'relative', overflow: 'hidden',
+                  }}>
+                    <div style={{ height: 16, width: 140, borderRadius: 8, background: 'rgba(255,255,255,0.06)' }} className="shimmer" />
+                    <div style={{ height: 14, width: '80%', borderRadius: 8, background: 'rgba(255,255,255,0.04)', marginTop: 10 }} className="shimmer" />
+                    <div style={{ height: 14, width: 100, borderRadius: 8, background: 'rgba(255,255,255,0.04)', marginTop: 10 }} className="shimmer" />
                   </div>
                 ))
               ) : filteredOrders.length === 0 ? (
-                <div className="py-16 text-center">
-                  <Factory className="h-10 w-10 mx-auto mb-3 text-gray-500" />
-                  <p className="text-gray-400 text-sm">No active orders</p>
+                <div style={{ padding: '64px 0', textAlign: 'center' }}>
+                  <Factory style={{ height: 40, width: 40, margin: '0 auto 12px', color: '#475569' }} />
+                  <p style={{ color: '#94a3b8', fontSize: 14, fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif" }}>No active orders</p>
                 </div>
-              ) : filteredOrders.map((order: any) => {
+              ) : filteredOrders.map((order: any, idx: number) => {
                 const status = order.status ?? 'pending';
-                const borderColor = status === 'processing' ? 'border-yellow-500'
-                  : status === 'completed' ? 'border-green-500'
-                  : status === 'cancelled' ? 'border-red-500'
-                  : 'border-gray-500';
-                const badgeBg = status === 'processing' ? 'bg-yellow-500/20 text-yellow-400'
-                  : status === 'completed' ? 'bg-green-500/20 text-green-400'
-                  : status === 'cancelled' ? 'bg-red-500/20 text-red-400'
-                  : 'bg-gray-500/20 text-gray-400';
+                const accentColor = status === 'processing' ? '#f59e0b' : status === 'completed' ? '#10b981' : '#3b82f6';
+                const statusLabel = getStatusLabel(status);
+                const statusBg = status === 'processing' ? 'rgba(245,158,11,0.15)' : status === 'completed' ? 'rgba(16,185,129,0.15)' : 'rgba(59,130,246,0.15)';
+                const statusBorder = status === 'processing' ? 'rgba(245,158,11,0.3)' : status === 'completed' ? 'rgba(16,185,129,0.3)' : 'rgba(59,130,246,0.3)';
                 const paymentStatus = order.paymentStatus ?? 'pending';
-                const payBadge = (paymentStatus === 'paid' || paymentStatus === 'Paid')
-                  ? 'bg-green-500/20 text-green-400'
-                  : 'bg-yellow-500/20 text-yellow-400';
+                const isPaid = paymentStatus === 'paid' || paymentStatus === 'Paid';
+                const isPressed = pressedCardId === order.id;
+
                 return (
                   <div
                     key={order.id}
-                    className={cn("bg-[#1a1f2e] rounded-xl px-4 py-3 border-l-4", borderColor)}
-                    onClick={() => openEditDialog(order)}
+                    style={{
+                      position: 'relative',
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)',
+                      border: isPressed ? `1px solid rgba(59,130,246,0.5)` : '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: 20,
+                      boxShadow: isPressed
+                        ? '0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 20px rgba(59,130,246,0.2)'
+                        : '0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)',
+                      padding: 18,
+                      paddingLeft: 24,
+                      overflow: 'hidden',
+                      transform: isPressed ? 'scale(0.96)' : 'scale(1)',
+                      transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease',
+                      cursor: 'pointer',
+                      WebkitTapHighlightColor: 'transparent',
+                      userSelect: 'none' as const,
+                    }}
+                    onTouchStart={() => handleLongPressStart(order)}
+                    onTouchEnd={handleLongPressEnd}
+                    onTouchCancel={handleLongPressEnd}
+                    onMouseDown={() => handleLongPressStart(order)}
+                    onMouseUp={handleLongPressEnd}
+                    onMouseLeave={handleLongPressEnd}
+                    onClick={() => {
+                      if (!isBottomSheetOpen) openEditDialog(order);
+                    }}
                   >
-                    {/* Row 1: Product name + Status badge */}
-                    <div className="flex justify-between items-center">
-                      <span className="text-white text-sm font-bold truncate max-w-[60%]">{order.productName ?? order.product_name ?? '—'}</span>
-                      <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", badgeBg)}>
-                        {getStatusLabel(status)}
+                    {/* Left accent bar */}
+                    <div style={{
+                      position: 'absolute', left: 0, top: 12, bottom: 12,
+                      width: 4, borderRadius: 4, background: accentColor,
+                    }} />
+
+                    {/* Top row: Product + Status */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{
+                        color: '#ffffff', fontWeight: 600, fontSize: 16, maxWidth: '60%',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif",
+                      }}>
+                        {order.productName ?? order.product_name ?? '—'}
+                      </span>
+                      <span style={{
+                        fontSize: 10, fontWeight: 700, letterSpacing: '0.05em',
+                        padding: '3px 10px', borderRadius: 20,
+                        background: statusBg, color: accentColor,
+                        border: `1px solid ${statusBorder}`,
+                        fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif",
+                      }}>
+                        {statusLabel}
                       </span>
                     </div>
-                    {/* Row 2: Client + Quantity */}
-                    <div className="flex justify-between items-center mt-1">
-                      <span className="text-gray-400 text-xs truncate mr-2">{order.client?.name ?? order.clients?.name ?? '—'}</span>
-                      <span className="text-gray-300 text-xs whitespace-nowrap">{order.quantity ?? 0} {order.unit ?? 'kg'}</span>
+
+                    {/* Client name */}
+                    <div style={{ color: '#64748b', fontSize: 13, marginTop: 3, fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif" }}>
+                      {order.client?.name ?? order.clients?.name ?? '—'}
                     </div>
-                    {/* Row 3: Amount + Payment status */}
-                    <div className="flex justify-between items-center mt-1">
-                      <span className="text-blue-400 text-sm font-bold">₹{Number(order.totalAmount ?? order.total_amount ?? 0).toLocaleString('en-IN')}</span>
-                      <span className={cn("text-xs px-2 py-0.5 rounded-full font-semibold", payBadge)}>
-                        {paymentStatus === 'paid' || paymentStatus === 'Paid' ? 'PAID' : 'PENDING'}
+
+                    {/* Divider */}
+                    <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', margin: '10px 0' }} />
+
+                    {/* Bottom row: Amount + Weight + Payment */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{
+                        color: '#60a5fa', fontSize: 20, fontWeight: 700,
+                        fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif",
+                      }}>
+                        ₹{Number(order.totalAmount ?? order.total_amount ?? 0).toLocaleString('en-IN')}
                       </span>
-                    </div>
-                    {/* Row 4: Dates */}
-                    <div className="flex justify-between mt-1">
-                      <span className="text-gray-500 text-xs">Created: {order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}</span>
-                      {order.deliveryDate && (
-                        <span className="text-gray-500 text-xs">Due: {new Date(order.deliveryDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
-                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ color: '#64748b', fontSize: 12, fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif" }}>
+                          {order.quantity ?? 0} {order.unit ?? 'kg'}
+                        </span>
+                        <span style={{
+                          fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
+                          background: isPaid ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
+                          color: isPaid ? '#22c55e' : '#ef4444',
+                          border: `1px solid ${isPaid ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                          boxShadow: isPaid ? '0 0 8px rgba(34,197,94,0.4)' : 'none',
+                          fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif",
+                        }}>
+                          {isPaid ? 'PAID' : 'UNPAID'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 );
               })}
+              </div>
             </div>
           </motion.div>
         </motion.div>
+      )}
+
+      {/* ═══ LONG-PRESS BOTTOM SHEET — MobileSheet ═══ */}
+      <MobileSheet open={isBottomSheetOpen} onClose={closeBottomSheet}>
+        {longPressedOrder && (
+          <>
+            {/* Header */}
+            <div style={{ padding: '0 16px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 700, color: '#e6e0e9', letterSpacing: '-0.5px', lineHeight: 1.3, margin: 0, fontFamily: "Inter, -apple-system, sans-serif" }}>
+                  {longPressedOrder.productName ?? longPressedOrder.product_name ?? 'Order'}
+                </h2>
+                <span style={{ fontSize: 11, fontWeight: 600, padding: '4px 8px', borderRadius: 4, textTransform: 'uppercase', letterSpacing: '1px', background: longPressedOrder.status === 'completed' ? 'rgba(48,209,88,0.1)' : 'rgba(231,195,101,0.1)', color: longPressedOrder.status === 'completed' ? '#30D158' : '#e7c365', border: `1px solid ${longPressedOrder.status === 'completed' ? 'rgba(48,209,88,0.2)' : 'rgba(231,195,101,0.2)'}` }}>
+                  {getStatusLabel(longPressedOrder.status ?? 'pending')}
+                </span>
+              </div>
+              <p style={{ fontSize: 14, color: '#948e9c', margin: 0, display: 'flex', alignItems: 'center', gap: 8, fontFamily: "Inter, sans-serif" }}>
+                <span>₹{Number(longPressedOrder.totalAmount ?? 0).toLocaleString('en-IN')}</span>
+                <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#494551', display: 'inline-block' }} />
+                <span>{longPressedOrder.quantity ?? 0} {longPressedOrder.unit ?? 'items'}</span>
+              </p>
+            </div>
+
+            {/* Action Items */}
+            <div style={{ display: 'flex', flexDirection: 'column', padding: '8px 8px' }}>
+              {[
+                { icon: <Edit2 size={20} />, label: 'Edit Order', color: '#cfbcff', action: () => { closeBottomSheet(); setTimeout(() => openEditDialog(longPressedOrder), 400); } },
+                { icon: <Send size={20} />, label: 'Share', color: '#a855f7', action: () => { closeBottomSheet(); showToast('Share link copied!'); } },
+                { icon: <FileText size={20} />, label: 'View Invoice', color: '#22c55e', action: () => { closeBottomSheet(); setTimeout(() => generateInvoice(longPressedOrder), 400); } },
+                { icon: <Layers size={20} />, label: 'Duplicate', color: '#e7c365', action: () => { closeBottomSheet(); showToast('Order duplicated'); } },
+              ].map((item) => (
+                <button
+                  key={item.label}
+                  onClick={item.action}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', height: 56, padding: '0 12px 0 16px', background: 'transparent', border: 'none', cursor: 'pointer', borderRadius: 14, transition: 'background 0.2s ease', WebkitTapHighlightColor: 'transparent', fontFamily: "Inter, -apple-system, sans-serif" }}
+                  onMouseDown={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                  onMouseUp={(e) => (e.currentTarget.style.background = 'transparent')}
+                  onTouchStart={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                  onTouchEnd={(e) => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <div style={{ color: item.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{item.icon}</div>
+                  <span style={{ color: '#e6e0e9', fontSize: 15, fontWeight: 500 }}>{item.label}</span>
+                </button>
+              ))}
+              {/* Delete */}
+              {isAdmin && (
+                <button
+                  onClick={() => { closeBottomSheet(); setOrderToDeleteId(longPressedOrder.id); setIsDeleteDialogOpenConfirm(true); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', height: 56, padding: '0 12px 0 16px', background: 'transparent', border: 'none', cursor: 'pointer', borderRadius: 14, transition: 'background 0.2s ease', WebkitTapHighlightColor: 'transparent', fontFamily: "Inter, -apple-system, sans-serif" }}
+                  onMouseDown={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                  onMouseUp={(e) => (e.currentTarget.style.background = 'transparent')}
+                  onTouchStart={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                  onTouchEnd={(e) => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <div style={{ color: '#ffb4ab', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Trash2 size={20} /></div>
+                  <span style={{ color: '#ffb4ab', fontSize: 15, fontWeight: 500 }}>Delete</span>
+                </button>
+              )}
+            </div>
+          </>
+        )}
+      </MobileSheet>
+
+      {/* ═══ TOAST NOTIFICATION ═══ */}
+      {toastMessage && (
+        <div style={{
+          position: 'fixed', bottom: 90, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 1000,
+          background: 'rgba(15,23,42,0.95)',
+          border: '1px solid rgba(255,255,255,0.12)',
+          backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+          borderRadius: 24, padding: '10px 20px',
+          color: '#e2e8f0', fontSize: 14, fontWeight: 500,
+          fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif",
+          animation: 'toastSlideUp 0.3s ease forwards',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+        }}>
+          {toastMessage}
+        </div>
       )}
 
       {/* ═══════ DIALOGS ═══════ */}
@@ -1692,26 +2042,72 @@ function OrdersContent() {
       <Dialog
         open={isDialogOpen}
         onOpenChange={(open) => {
-          setIsDialogOpen(open);
-          if (!open) resetForm();
+          // GUARD: only accept close — open is via explicit user actions only
+          if (!open) closeOrderDialog();
         }}
       >
-        <DialogContent className="max-w-3xl p-0 overflow-hidden rounded-[24px] border-white/10 glass-dialog">
-          <ScrollArea className="max-h-[90vh]">
-            <div className="p-6">
-              <DialogHeader>
-                <DialogTitle className="text-[22px] font-bold text-[var(--label-primary)] flex items-center gap-2">
-                  <Factory className="h-5 w-5 text-[var(--ios-blue)]" />
-                  {currentOrder
-                    ? "Edit Production Status"
-                    : "Configure Production Order"}
+        <DialogContent className="max-w-[480px] md:max-w-[min(1100px,85vw)] flex flex-col max-h-[90vh] p-0 gap-0" aria-describedby={undefined} showCloseButton={false} fullScreen>
+          <DialogDescription className="sr-only">
+            Form to configure and issue a production order
+          </DialogDescription>
+          {/* Premium Header */}
+          <div style={{
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '14px 16px 12px',
+            borderBottom: '1px solid rgba(255,255,255,0.07)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+              <div style={{
+                width: 40, height: 40, borderRadius: 12,
+                background: 'linear-gradient(135deg, rgba(59,130,246,0.4), rgba(255,255,255,0.06))',
+                border: '1px solid rgba(255,255,255,0.10)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <Factory className="h-[18px] w-[18px] text-[#60a5fa]" />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <DialogTitle style={{
+                  fontSize: 18, fontWeight: 700, color: '#f1f5f9',
+                  lineHeight: '22px', margin: 0,
+                }}>
+                  {currentOrder ? "Edit Order" : "New Production Order"}
                 </DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+                <p style={{ fontSize: 13, color: '#64748b', lineHeight: '18px', margin: '2px 0 0' }}>
+                  {currentOrder
+                    ? `Editing ${currentOrder.productName || 'order'}` 
+                    : 'Configure and issue a production order'}
+                </p>
+              </div>
+            </div>
+            <DialogClose asChild>
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                style={{
+                  width: 36, height: 36, borderRadius: 10,
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', flexShrink: 0, color: '#94a3b8',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,80,80,0.15)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+              >
+                <X size={16} />
+              </motion.button>
+            </DialogClose>
+          </div>
+
+          {/* Scrollable body */}
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 pt-3 pb-0" style={{ scrollbarWidth: 'thin' }}>
+            <form id="order-form" onSubmit={handleSubmit} className="space-y-6">
                 {/* Client & Product */}
                 <div className="grid grid-cols-2 gap-5 p-4 glass-section rounded-[16px]">
                   <div className="col-span-2 space-y-1.5">
-                    <Label className="text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--label-tertiary)]">
+                    <Label className="text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--muted-foreground)]">
                       Target Client
                     </Label>
                     <Select
@@ -1736,7 +2132,7 @@ function OrdersContent() {
                     </Select>
                   </div>
                   <div className="col-span-2 space-y-1.5">
-                    <Label className="text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--label-tertiary)]">
+                    <Label className="text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--muted-foreground)]">
                       Product Name
                     </Label>
                     <Input
@@ -1754,7 +2150,7 @@ function OrdersContent() {
                     </datalist>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--label-tertiary)]">
+                    <Label className="text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--muted-foreground)]">
                       Ordered Quantity
                     </Label>
                     <div className="flex h-[44px]">
@@ -1763,7 +2159,7 @@ function OrdersContent() {
                         onValueChange={(v) =>
                           setFormData({ ...formData, quantity: v })
                         }
-                        className="h-full rounded-r-none border-r border-[#e5e5ea] focus:z-10 bg-[var(--bg-card)] max-w-[120px]"
+                        className="h-full rounded-r-none border-r border-[#e5e5ea] focus:z-10 bg-[var(--card)] max-w-[120px]"
                         placeholder="Qty"
                         allowDecimal={true}
                         min={0}
@@ -1775,7 +2171,7 @@ function OrdersContent() {
                           setFormData({ ...formData, unit: v })
                         }
                       >
-                        <SelectTrigger className="h-full rounded-l-none border-none flex-1 bg-[var(--bg-card)] focus:ring-0 focus:ring-offset-0 px-3">
+                        <SelectTrigger className="h-full rounded-l-none border-none flex-1 bg-[var(--card)] focus:ring-0 focus:ring-offset-0 px-3">
                           <SelectValue placeholder="Unit" />
                         </SelectTrigger>
                         <SelectContent className="rounded-[12px]">
@@ -1799,7 +2195,7 @@ function OrdersContent() {
                     </div>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--label-tertiary)]">
+                    <Label className="text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--muted-foreground)]">
                       Rate (₹)
                     </Label>
                     <NumericInput
@@ -1816,9 +2212,9 @@ function OrdersContent() {
                     />
                   </div>
                   <div className="col-span-2 space-y-2 mt-1">
-                    <Label className="text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--label-tertiary)] flex items-center gap-1.5">
+                    <Label className="text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--muted-foreground)] flex items-center gap-1.5">
                       Material Source{" "}
-                      <span className="text-[10px] lowercase font-normal text-[var(--label-quaternary)]">
+                      <span className="text-[10px] lowercase font-normal text-[var(--muted-foreground)]">
                         (optional)
                       </span>
                     </Label>
@@ -1859,8 +2255,8 @@ function OrdersContent() {
                 {!currentOrder && (
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                      <h3 className="text-[17px] font-bold text-[var(--label-primary)] flex items-center gap-2">
-                        <Box className="h-5 w-5 text-[var(--label-tertiary)]" />{" "}
+                      <h3 className="text-[17px] font-bold text-[var(--foreground)] flex items-center gap-2">
+                        <Box className="h-5 w-5 text-[var(--muted-foreground)]" />{" "}
                         Material Deduction
                       </h3>
                       <IOSButton
@@ -1874,9 +2270,9 @@ function OrdersContent() {
                       </IOSButton>
                     </div>
                     {formData.order_items.length === 0 && (
-                      <div className="py-6 text-center bg-[var(--fill-quaternary)] rounded-[12px] border-2 border-dashed border-[var(--border-card)]">
-                        <AlertCircle className="h-5 w-5 mx-auto mb-2 text-[var(--label-tertiary)]" />
-                        <p className="text-[13px] text-[var(--label-secondary)]">
+                      <div className="py-6 text-center bg-[var(--muted)] rounded-[12px] border-2 border-dashed border-[var(--border)]">
+                        <AlertCircle className="h-5 w-5 mx-auto mb-2 text-[var(--muted-foreground)]" />
+                        <p className="text-[13px] text-[var(--muted-foreground)]">
                           You must select which raw materials are used for this
                           order.
                         </p>
@@ -1894,10 +2290,10 @@ function OrdersContent() {
                       return (
                         <div key={idx} className="flex gap-3 items-end">
                           <div className="flex-1 space-y-1">
-                            <Label className="text-[11px] font-bold text-[var(--label-tertiary)] uppercase flex items-center gap-2">
+                            <Label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase flex items-center gap-2">
                               Raw Material
                               {isLoadingMaterials && (
-                                <Loader2 className="h-3 w-3 animate-spin text-[var(--ios-blue)]" />
+                                <Loader2 className="h-3 w-3 animate-spin text-[var(--primary)]" />
                               )}
                             </Label>
                             <Select
@@ -1922,7 +2318,7 @@ function OrdersContent() {
                               </SelectTrigger>
                               <SelectContent className="rounded-[12px]">
                                 {sourceMaterials.length === 0 ? (
-                                  <div className="p-3 text-[13px] text-[var(--label-secondary)] text-center">
+                                  <div className="p-3 text-[13px] text-[var(--muted-foreground)] text-center">
                                     No materials available
                                   </div>
                                 ) : (
@@ -1942,7 +2338,7 @@ function OrdersContent() {
                             </Select>
                           </div>
                           <div className="w-36 space-y-1">
-                            <Label className="text-[11px] font-bold text-[var(--label-tertiary)] uppercase">
+                            <Label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase">
                               Qty Used
                             </Label>
                             <NumericInput
@@ -1959,7 +2355,7 @@ function OrdersContent() {
                           <motion.button
                             type="button"
                             whileTap={{ scale: 0.9 }}
-                            className="h-[44px] w-[44px] rounded-[10px] flex items-center justify-center text-[var(--ios-red)] hover:bg-[rgba(255,59,48,0.08)] transition-colors cursor-pointer"
+                            className="h-[44px] w-[44px] rounded-[10px] flex items-center justify-center text-[var(--destructive)] hover:bg-[rgba(255,59,48,0.08)] transition-colors cursor-pointer"
                             onClick={() => removeDeductionRow(idx)}
                           >
                             <X className="h-5 w-5" />
@@ -1970,10 +2366,61 @@ function OrdersContent() {
                   </div>
                 )}
 
+                {/* Cost Breakdown Section */}
+                <div className="mt-4 pt-5 border-t border-[var(--border)]">
+                  <p className="text-[11px] font-bold text-[var(--muted-foreground)] mb-3 uppercase tracking-[0.06em]">
+                    Cost Breakdown <span className="text-[10px] lowercase font-normal text-[var(--muted-foreground)]">(optional — used for profit margin analytics)</span>
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase">
+                        Material Cost (₹) <span className="text-[10px] lowercase font-normal text-[var(--muted-foreground)]">(auto-computed)</span>
+                      </Label>
+                      <div
+                        className="h-[44px] flex items-center px-3 rounded-[10px] bg-[var(--muted)] text-[15px] font-semibold text-[var(--foreground)] tabular-nums"
+                        style={{ opacity: 0.85, cursor: 'not-allowed' }}
+                      >
+                        ₹{computedMaterialCost.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </div>
+                      {computedMaterialCost.warnings.map((name) => (
+                        <p key={name} className="text-[11px] text-[var(--erp-warning)] mt-1">
+                          ⚠ Landing cost missing for {name}
+                        </p>
+                      ))}
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase">
+                        Labour Cost (₹) <span className="text-[10px] lowercase font-normal text-[var(--muted-foreground)]">(optional)</span>
+                      </Label>
+                      <NumericInput
+                        value={formData.labour_cost}
+                        onValueChange={(v) => setFormData({ ...formData, labour_cost: v })}
+                        className="h-[44px]"
+                        placeholder="0"
+                        allowDecimal={true}
+                        min={0}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase">
+                        Overhead Cost (₹) <span className="text-[10px] lowercase font-normal text-[var(--muted-foreground)]">(optional)</span>
+                      </Label>
+                      <NumericInput
+                        value={formData.overhead_cost}
+                        onValueChange={(v) => setFormData({ ...formData, overhead_cost: v })}
+                        className="h-[44px]"
+                        placeholder="0"
+                        allowDecimal={true}
+                        min={0}
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 {/* Delivery & Production Status */}
-                <div className="grid grid-cols-2 gap-4 border-t border-[var(--border-card)] pt-5">
+                <div className="grid grid-cols-2 gap-4 border-t border-[var(--border)] pt-5">
                   <div className="space-y-1.5">
-                    <Label className="text-[13px] text-[var(--label-secondary)]">
+                    <Label className="text-[13px] text-[var(--muted-foreground)]">
                       Expected Delivery
                     </Label>
                     <Input
@@ -1985,11 +2432,11 @@ function OrdersContent() {
                           delivery_date: e.target.value,
                         })
                       }
-                      className="h-[44px] rounded-[10px] bg-[var(--fill-tertiary)] border-none"
+                      className="h-[44px] rounded-[10px] bg-[var(--muted)] border-none"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[13px] text-[var(--label-secondary)]">
+                    <Label className="text-[13px] text-[var(--muted-foreground)]">
                       Production Status
                     </Label>
                     <Select
@@ -1998,7 +2445,7 @@ function OrdersContent() {
                         setFormData({ ...formData, status: v })
                       }
                     >
-                      <SelectTrigger className="h-[44px] rounded-[10px] bg-[var(--fill-tertiary)] border-none">
+                      <SelectTrigger className="h-[44px] rounded-[10px] bg-[var(--muted)] border-none">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="rounded-[12px]">
@@ -2021,11 +2468,11 @@ function OrdersContent() {
 
                 {/* Payment Status Info (read-only) */}
                 {currentOrder && (
-                  <div className="flex items-center gap-2 p-3 rounded-[12px] bg-[var(--fill-quaternary)]">
-                    <IndianRupee className="h-4 w-4 text-[var(--label-tertiary)]" />
-                    <span className="text-[13px] text-[var(--label-secondary)]">
+                  <div className="flex items-center gap-2 p-3 rounded-[12px] bg-[var(--muted)]">
+                    <IndianRupee className="h-4 w-4 text-[var(--muted-foreground)]" />
+                    <span className="text-[13px] text-[var(--muted-foreground)]">
                       Payment status is{" "}
-                      <strong className="text-[var(--label-primary)]">
+                      <strong className="text-[var(--foreground)]">
                         {currentOrder.paymentStatus}
                       </strong>{" "}
                       — auto-updated when payments are recorded.
@@ -2035,10 +2482,10 @@ function OrdersContent() {
 
                 {/* Total */}
                 <div className="bg-[rgba(0,122,255,0.06)] p-4 rounded-[14px] flex justify-between items-center border border-[rgba(0,122,255,0.15)]">
-                  <span className="text-[13px] font-bold text-[var(--label-secondary)] uppercase">
+                  <span className="text-[13px] font-bold text-[var(--muted-foreground)] uppercase">
                     Calculated Total
                   </span>
-                  <span className="text-[22px] font-bold text-[var(--ios-blue)]">
+                  <span className="text-[22px] font-bold text-[var(--primary)]">
                     ₹
                     {(
                       parseNumericValue(formData.quantity) *
@@ -2047,173 +2494,344 @@ function OrdersContent() {
                   </span>
                 </div>
 
-                <DialogFooter className="sticky bottom-0 bg-[var(--bg-card)] pt-4 border-t border-[var(--border-card)]">
+                {/* Cost & Profit Summary */}
+                {(() => {
+                  const sellingPrice = parseNumericValue(formData.quantity) * parseNumericValue(formData.rate);
+                  // When editing, order_items is [] so computedMaterialCost is 0 — fall back to stored cost
+                  const storedMaterialCost = currentOrder ? Number(currentOrder.materialCost ?? currentOrder.material_cost ?? 0) : 0;
+                  const effectiveMaterialCost = computedMaterialCost.total > 0 ? computedMaterialCost.total : storedMaterialCost;
+                  const totalCost = effectiveMaterialCost
+                    + parseNumericValue(formData.labour_cost)
+                    + parseNumericValue(formData.overhead_cost);
+                  const profit = sellingPrice - totalCost;
+                  const marginPct = sellingPrice > 0 ? (profit / sellingPrice) * 100 : 0;
+                  const hasData = totalCost > 0 || effectiveMaterialCost > 0;
+
+                  return (
+                    <div className="p-4 rounded-[14px] bg-[var(--muted)] border border-[var(--border)] mb-0">
+                      <p className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-[0.06em] mb-2">
+                        Cost & Profit Summary
+                      </p>
+                      {!hasData ? (
+                        <p className="text-[13px] text-[var(--muted-foreground)]">Add materials above to see margin</p>
+                      ) : (
+                        <div className="space-y-1.5 text-[14px]">
+                          <div className="flex justify-between">
+                            <span className="text-[var(--muted-foreground)]">Total Cost</span>
+                            <span className="text-[var(--foreground)] font-semibold tabular-nums">₹{totalCost.toLocaleString('en-IN')}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-[var(--muted-foreground)]">Profit</span>
+                            <span className={`font-semibold tabular-nums ${profit >= 0 ? 'text-[var(--erp-success)]' : 'text-[var(--destructive)]'}`}>
+                              ₹{profit.toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-[var(--muted-foreground)]">Margin</span>
+                            <span className={`font-semibold tabular-nums ${profit >= 0 ? 'text-[var(--erp-success)]' : 'text-[var(--destructive)]'}`}>
+                              {marginPct.toFixed(1)}%
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* Push Updates / Issue Order — inline at end of form */}
+                <div style={{ paddingTop: 32, paddingBottom: 'max(24px, env(safe-area-inset-bottom, 24px))' }}>
                   <button
                     type="submit"
-                    className="glow-btn w-full h-[50px] text-[17px] flex items-center justify-center gap-2"
+                    className="w-full cursor-pointer border-none"
+                    style={{
+                      height: 52,
+                      borderRadius: 18,
+                      background: '#1D9E75',
+                      color: '#FFFFFF',
+                      fontSize: 14,
+                      fontWeight: 500,
+                      transition: 'background 150ms ease',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = '#178A65'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = '#1D9E75'; }}
                   >
                     {currentOrder
                       ? "Push Updates"
                       : "Issue Order & Deduct Materials"}
                   </button>
-                </DialogFooter>
+                </div>
+
               </form>
-            </div>
-          </ScrollArea>
+          </div>
         </DialogContent>
       </Dialog>
 
       {/* Delete Dialog */}
       <Dialog
         open={isDeleteDialogOpenConfirm}
-        onOpenChange={setIsDeleteDialogOpenConfirm}
+        onOpenChange={(open) => {
+          // GUARD: only accept close
+          if (!open) { setIsDeleteDialogOpenConfirm(false); setOrderToDeleteId(null); }
+        }}
       >
-        <DialogContent className="max-w-[350px] rounded-[24px] border-white/10 glass-dialog">
-          <DialogHeader>
-            <DialogTitle className="text-[20px] font-bold text-[var(--label-primary)]">
-              Delete Order
-            </DialogTitle>
-            <DialogDescription className="text-[15px] text-[var(--label-secondary)]">
-              Are you sure? This will NOT restore inventory automatically.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex gap-2">
-            <IOSButton
-              variant="gray"
-              size="large"
-              onClick={() => setIsDeleteDialogOpenConfirm(false)}
-              fullWidth
-            >
-              Cancel
-            </IOSButton>
-            <IOSButton
-              variant="destructive"
-              size="large"
-              onClick={() => orderToDeleteId && handleDelete(orderToDeleteId)}
-              fullWidth
-              loading={deleteOrder.isPending}
-              disabled={deleteOrder.isPending}
-            >
-              Delete
-            </IOSButton>
-          </DialogFooter>
+        <DialogContent className="max-w-[350px]" showCloseButton={false}>
+          {/* Premium Header */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '12px 20px 12px', borderBottom: '1px solid rgba(255,255,255,0.07)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{
+                width: 40, height: 40, borderRadius: 12,
+                background: 'linear-gradient(135deg, rgba(239,68,68,0.4), rgba(255,255,255,0.06))',
+                border: '1px solid rgba(255,255,255,0.10)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Trash2 className="h-[18px] w-[18px] text-[#f87171]" />
+              </div>
+              <div>
+                <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', lineHeight: '22px', margin: 0 }}>
+                  Delete Order
+                </DialogTitle>
+                <DialogDescription style={{ fontSize: 13, color: '#64748b', lineHeight: '18px', margin: '2px 0 0' }}>
+                  This will NOT restore inventory automatically.
+                </DialogDescription>
+              </div>
+            </div>
+          </div>
+          <div style={{ padding: '16px 20px 20px' }}>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => { setIsDeleteDialogOpenConfirm(false); setOrderToDeleteId(null); }}
+                style={{
+                  flex: 1, height: 48, borderRadius: 14,
+                  background: 'rgba(255,255,255,0.06)', color: '#94a3b8',
+                  border: '1px solid rgba(255,255,255,0.10)',
+                  fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                  fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif",
+                }}
+              >
+                Cancel
+              </motion.button>
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => orderToDeleteId && handleDelete(orderToDeleteId)}
+                disabled={deleteOrder.isPending}
+                style={{
+                  flex: 1, height: 48, borderRadius: 14,
+                  background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                  color: '#fff',
+                  border: '1px solid rgba(239,68,68,0.3)',
+                  boxShadow: '0 4px 16px rgba(239,68,68,0.25)',
+                  fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                  opacity: deleteOrder.isPending ? 0.5 : 1,
+                  fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif",
+                }}
+              >
+                {deleteOrder.isPending ? 'Deleting...' : 'Delete'}
+              </motion.button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
       {/* Payment Dialog */}
-      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-        <DialogContent className="max-w-md rounded-[24px] border-white/10 glass-dialog">
-          <DialogHeader>
-            <DialogTitle className="text-[20px] font-bold text-[var(--label-primary)] flex items-center gap-2">
-              <IndianRupee className="h-5 w-5 text-[var(--ios-green)]" /> Record
-              Payment
-            </DialogTitle>
-            <DialogDescription className="text-[15px] text-[var(--label-secondary)]">
-              Recording payment for {currentOrder?.productName} (
-              {currentOrder?.client?.name || "Client"})
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handlePaymentSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label className="text-[13px] text-[var(--label-secondary)]">
-                Amount (₹)
-              </Label>
-              <NumericInput
-                value={paymentFormData.amount}
-                onValueChange={(v) =>
-                  setPaymentFormData({ ...paymentFormData, amount: v })
-                }
-                className="h-[44px] font-bold text-[17px]"
-                allowDecimal={true}
-                min={0}
-                required
-              />
+      <Dialog open={isPaymentDialogOpen} onOpenChange={(open) => {
+        // GUARD: only accept close
+        if (!open) closePaymentDialog();
+      }}>
+        <DialogContent className="max-w-[480px]" showCloseButton={false}>
+          {/* Premium Header */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '12px 20px 12px', borderBottom: '1px solid rgba(255,255,255,0.07)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+              <div style={{
+                width: 40, height: 40, borderRadius: 12,
+                background: 'linear-gradient(135deg, rgba(34,197,94,0.4), rgba(255,255,255,0.06))',
+                border: '1px solid rgba(255,255,255,0.10)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <IndianRupee className="h-[18px] w-[18px] text-[#4ade80]" />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', lineHeight: '22px', margin: 0 }}>
+                  Record Payment
+                </DialogTitle>
+                <DialogDescription style={{ fontSize: 13, color: '#64748b', lineHeight: '18px', margin: '2px 0 0' }}>
+                  {paymentOrder?.productName} ({paymentOrder?.client?.name || "Client"})
+                </DialogDescription>
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-[13px] text-[var(--label-secondary)]">
-                Payment Mode
-              </Label>
-              <Select
-                value={paymentFormData.payment_mode}
-                onValueChange={(v) =>
-                  setPaymentFormData({ ...paymentFormData, payment_mode: v })
-                }
+            <DialogClose asChild>
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                style={{
+                  width: 36, height: 36, borderRadius: 10,
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', color: '#94a3b8',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,80,80,0.15)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
               >
-                <SelectTrigger className="h-[44px] rounded-[10px] bg-[var(--fill-tertiary)] border-none">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="rounded-[12px]">
-                  <SelectItem value="Cash" className="rounded-[8px]">
-                    Cash
-                  </SelectItem>
-                  <SelectItem value="Bank Transfer" className="rounded-[8px]">
-                    Bank Transfer
-                  </SelectItem>
-                  <SelectItem value="UPI" className="rounded-[8px]">
-                    UPI
-                  </SelectItem>
-                  <SelectItem value="Cheque" className="rounded-[8px]">
-                    Cheque
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-[13px] text-[var(--label-secondary)]">
-                Payment Date
-              </Label>
-              <Input
-                type="date"
-                value={paymentFormData.payment_date}
-                onChange={(e) =>
-                  setPaymentFormData({
-                    ...paymentFormData,
-                    payment_date: e.target.value,
-                  })
-                }
-                className="h-[44px] rounded-[10px] bg-[var(--fill-tertiary)] border-none"
-                required
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-[13px] text-[var(--label-secondary)]">
-                Reference / UTR (Optional)
-              </Label>
-              <Input
-                value={paymentFormData.transaction_ref}
-                onChange={(e) =>
-                  setPaymentFormData({
-                    ...paymentFormData,
-                    transaction_ref: e.target.value,
-                  })
-                }
-                className="h-[44px] rounded-[10px] bg-[var(--fill-tertiary)] border-none"
-                placeholder="e.g. UPI Ref #1234..."
-              />
-            </div>
-            <DialogFooter className="gap-2">
-              <IOSButton
-                type="button"
-                variant="gray"
-                size="large"
-                onClick={() => setIsPaymentDialogOpen(false)}
-              >
-                Cancel
-              </IOSButton>
-              <IOSButton
-                type="submit"
-                variant="filled"
-                size="large"
-                loading={recordPayment.isPending}
-                disabled={recordPayment.isPending}
-                className="bg-[var(--ios-green)] hover:brightness-95"
-              >
-                {recordPayment.isPending ? "Recording..." : "Save Payment"}
-              </IOSButton>
-            </DialogFooter>
-          </form>
+                <X size={16} />
+              </motion.button>
+            </DialogClose>
+          </div>
+
+          {/* Scrollable body */}
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3">
+            <form id="payment-form" onSubmit={handlePaymentSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-medium tracking-[0.07em] text-[var(--muted-foreground)] uppercase block mb-1.5">
+                  Amount (₹)
+                </label>
+                <NumericInput
+                  value={paymentFormData.amount}
+                  onValueChange={(v) =>
+                    setPaymentFormData({ ...paymentFormData, amount: v })
+                  }
+                  className="h-[44px] font-bold text-[17px]"
+                  allowDecimal={true}
+                  min={0}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-medium tracking-[0.07em] text-[var(--muted-foreground)] uppercase block mb-1.5">
+                  Payment Mode
+                </label>
+                <Select
+                  value={paymentFormData.payment_mode}
+                  onValueChange={(v) =>
+                    setPaymentFormData({ ...paymentFormData, payment_mode: v })
+                  }
+                >
+                  <SelectTrigger className="h-[44px] rounded-[10px] bg-[var(--muted)] border-none">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-[12px]">
+                    <SelectItem value="Cash" className="rounded-[8px]">
+                      Cash
+                    </SelectItem>
+                    <SelectItem value="Bank Transfer" className="rounded-[8px]">
+                      Bank Transfer
+                    </SelectItem>
+                    <SelectItem value="UPI" className="rounded-[8px]">
+                      UPI
+                    </SelectItem>
+                    <SelectItem value="Cheque" className="rounded-[8px]">
+                      Cheque
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-medium tracking-[0.07em] text-[var(--muted-foreground)] uppercase block mb-1.5">
+                  Payment Date
+                </label>
+                <Input
+                  type="date"
+                  value={paymentFormData.payment_date}
+                  onChange={(e) =>
+                    setPaymentFormData({
+                      ...paymentFormData,
+                      payment_date: e.target.value,
+                    })
+                  }
+                  className="h-[44px] rounded-[10px] bg-[var(--muted)] border-none"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-medium tracking-[0.07em] text-[var(--muted-foreground)] uppercase block mb-1.5">
+                  Reference / UTR (Optional)
+                </label>
+                <Input
+                  value={paymentFormData.transaction_ref}
+                  onChange={(e) =>
+                    setPaymentFormData({
+                      ...paymentFormData,
+                      transaction_ref: e.target.value,
+                    })
+                  }
+                  className="h-[44px] rounded-[10px] bg-[var(--muted)] border-none"
+                  placeholder="e.g. UPI Ref #1234..."
+                />
+              </div>
+              {/* Action buttons — inline at end of form */}
+              <div style={{ paddingTop: 24, paddingBottom: 'max(20px, env(safe-area-inset-bottom, 20px))' }}>
+                <div className="flex gap-2">
+                  <IOSButton
+                    type="button"
+                    variant="gray"
+                    size="large"
+                    onClick={() => closePaymentDialog()}
+                    fullWidth
+                  >
+                    Cancel
+                  </IOSButton>
+                  <button
+                    type="submit"
+                    disabled={recordPayment.isPending}
+                    className="flex-1 py-3.5 rounded-xl bg-[var(--erp-success)] text-white text-[13px] font-medium cursor-pointer border-none disabled:opacity-50"
+                  >
+                    {recordPayment.isPending ? "Recording..." : "Save Payment"}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
         </DialogContent>
       </Dialog>
+
+      {/* ═══ COMPLETION CONFIRMATION MODAL ═══ */}
+      <CompletionConfirmationModal
+        open={isCompletionModalOpen}
+        order={completionOrder}
+        onCompleteOnly={handleCompleteOnly}
+        onCompleteAndInvoice={handleCompleteAndInvoice}
+        onCancel={() => { setIsCompletionModalOpen(false); setCompletionOrder(null); }}
+        isLoading={isGeneratingInvoice}
+      />
+
+      {/* ═══ INVOICE PREVIEW MODAL ═══ */}
+      <InvoicePreviewModal
+        open={isInvoicePreviewOpen}
+        invoiceData={generatedInvoice}
+        editData={invoiceEditData}
+        onEditChange={setInvoiceEditData}
+        onClose={() => { setIsInvoicePreviewOpen(false); setGeneratedInvoice(null); }}
+        onDownloadPDF={() => {}}
+        onSendWhatsApp={() => {}}
+      />
+
+      {/* ═══ GENERATING INVOICE OVERLAY ═══ */}
+      <AnimatePresence>
+        {isGeneratingInvoice && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: "fixed", inset: 0, zIndex: 9997,
+              background: "rgba(0,0,0,0.6)",
+              backdropFilter: "blur(4px)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              flexDirection: "column", gap: 16,
+            }}
+          >
+            <Loader2 size={32} style={{ color: "#10b981", animation: "spin 1s linear infinite" }} />
+            <p style={{ color: "#e2e8f0", fontSize: 15, fontWeight: 600, fontFamily: "-apple-system, 'SF Pro Display', sans-serif" }}>
+              Generating invoice...
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
@@ -2225,8 +2843,8 @@ export default function OrdersPage() {
         fallback={
           <div className="space-y-6">
             <div>
-              <div className="h-[34px] w-[220px] rounded-[10px] bg-[var(--fill-tertiary)] shimmer" />
-              <div className="h-[20px] w-[280px] rounded-[8px] bg-[var(--fill-tertiary)] shimmer mt-2" />
+              <div className="h-[34px] w-[220px] rounded-[10px] bg-[var(--muted)] shimmer" />
+              <div className="h-[20px] w-[280px] rounded-[8px] bg-[var(--muted)] shimmer mt-2" />
             </div>
             <div className="kpi-panel">
               <div className="kpi-panel__glow"></div>
@@ -2237,11 +2855,11 @@ export default function OrdersPage() {
                     className="kpi-card flex flex-col justify-center min-h-[140px]"
                   >
                     <div className="flex items-center justify-between mb-4">
-                      <div className="h-[48px] w-[48px] rounded-[14px] bg-[var(--fill-tertiary)] shimmer" />
-                      <div className="h-[24px] w-[50px] rounded-full bg-[var(--fill-tertiary)] shimmer" />
+                      <div className="h-[48px] w-[48px] rounded-[14px] bg-[var(--muted)] shimmer" />
+                      <div className="h-[24px] w-[50px] rounded-full bg-[var(--muted)] shimmer" />
                     </div>
-                    <div className="h-[34px] w-[120px] rounded-[8px] bg-[var(--fill-tertiary)] shimmer mb-2" />
-                    <div className="h-[16px] w-[90px] rounded-[6px] bg-[var(--fill-tertiary)] shimmer" />
+                    <div className="h-[34px] w-[120px] rounded-[8px] bg-[var(--muted)] shimmer mb-2" />
+                    <div className="h-[16px] w-[90px] rounded-[6px] bg-[var(--muted)] shimmer" />
                   </div>
                 ))}
               </div>

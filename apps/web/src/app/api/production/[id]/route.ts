@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { triggerNotification } from "@/lib/notifications/dispatcher";
 
 // ─── GET: Single production detail ──────────────────────────────────
 export async function GET(
@@ -118,8 +119,107 @@ export async function PUT(
                     body.status = "running";
                     break;
                 case "complete":
+                    // ─── Material deduction via internal inventory API ───
+                    {
+                        const materials = existing.materials || [];
+                        const materialsDeducted: any[] = [];
+                        const lowStockAlerts: any[] = [];
+                        const origin = new URL(request.url).origin;
+                        const cookieHeader = request.headers.get("cookie") || "";
+
+                        // First pass: verify all materials have sufficient stock
+                        for (const mat of materials) {
+                            const itemId = mat.inventoryId || mat.inventoryItemId;
+                            if (!itemId) continue;
+
+                            // Read current stock via inventory GET
+                            const checkRes = await fetch(`${origin}/api/inventory`, {
+                                headers: { Cookie: cookieHeader },
+                            });
+                            if (checkRes.ok) {
+                                const allItems = await checkRes.json();
+                                const item = Array.isArray(allItems)
+                                    ? allItems.find((i: any) => i.id === itemId)
+                                    : null;
+                                if (item) {
+                                    const required = Number(mat.quantityUsed || mat.quantity) || 0;
+                                    if (item.quantity < required) {
+                                        return NextResponse.json(
+                                            {
+                                                error: `Insufficient stock for ${item.name}. Available: ${item.quantity} ${item.unit}, Required: ${required} ${item.unit}`,
+                                                itemName: item.name,
+                                                available: item.quantity,
+                                                required,
+                                            },
+                                            { status: 400 }
+                                        );
+                                    }
+                                }
+                            }
+                        }
+
+                        // Second pass: deduct stock via PATCH /api/inventory/[id]/stock
+                        for (const mat of materials) {
+                            const itemId = mat.inventoryId || mat.inventoryItemId;
+                            if (!itemId) continue;
+
+                            const qty = Number(mat.quantityUsed || mat.quantity) || 0;
+                            if (qty <= 0) continue;
+
+                            const deductRes = await fetch(
+                                `${origin}/api/inventory/${itemId}/stock`,
+                                {
+                                    method: "PATCH",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                        Cookie: cookieHeader,
+                                    },
+                                    body: JSON.stringify({
+                                        action: "deduct",
+                                        quantity: qty,
+                                    }),
+                                }
+                            );
+
+                            const deductData = await deductRes.json();
+
+                            if (!deductRes.ok) {
+                                return NextResponse.json(
+                                    {
+                                        error: `Failed to deduct stock for ${mat.name || mat.itemName}: ${deductData.error}`,
+                                        partiallyDeducted: materialsDeducted,
+                                    },
+                                    { status: 400 }
+                                );
+                            }
+
+                            materialsDeducted.push({
+                                itemId,
+                                itemName: deductData.itemName || mat.name || mat.itemName,
+                                quantityDeducted: qty,
+                                previousStock: deductData.previousStock,
+                                newStock: deductData.newStock,
+                                unit: deductData.unit || mat.unit,
+                            });
+
+                            // Check for low stock
+                            if (deductData.newStock !== undefined && deductData.newStock <= 10) {
+                                lowStockAlerts.push({
+                                    itemId,
+                                    itemName: deductData.itemName,
+                                    currentStock: deductData.newStock,
+                                    unit: deductData.unit,
+                                });
+                            }
+                        }
+
+                        // Store deduction results on the production for reference
+                        body._materialsDeducted = materialsDeducted;
+                        body._lowStockAlerts = lowStockAlerts;
+                    }
+
                     actionText = "Production Completed";
-                    detailsText = `Production completed. Final: ${body.producedQuantity || existing.producedQuantity} produced, ${body.rejectQuantity || existing.rejectQuantity} rejected`;
+                    detailsText = `Production completed. Final: ${body.producedQuantity || existing.producedQuantity} produced, ${body.rejectQuantity || existing.rejectQuantity} rejected. Materials deducted from inventory.`;
                     body.status = "completed";
                     body.completedAt = now.toISOString();
                     break;
@@ -166,6 +266,8 @@ export async function PUT(
             updateData.rejectQuantity = Number(body.rejectQuantity);
         if (body.notes !== undefined) updateData.notes = body.notes;
         if (body.completedAt !== undefined) updateData.completedAt = body.completedAt;
+        if (body._materialsDeducted) updateData.materialsDeducted = body._materialsDeducted;
+        if (body._lowStockAlerts) updateData.lowStockAlerts = body._lowStockAlerts;
 
         await db
             .collection("productions")
@@ -175,6 +277,31 @@ export async function PUT(
         const updated = await db
             .collection("productions")
             .findOne({ _id: new ObjectId(id) });
+
+        // ── Trigger notification for production complete ──
+        if (body.action === "complete" && updated) {
+            triggerNotification({
+                eventType: "production_complete",
+                payload: {
+                    productName: updated.orderProductName || "Unknown Product",
+                    completedQty: updated.producedQuantity || 0,
+                    orderId: updated.orderId || "",
+                },
+                triggeredBy: getDataOwnerId(user),
+            }).catch(() => {}); // fire-and-forget
+        }
+
+        // For completion, return enhanced response
+        if (body.action === "complete") {
+            return NextResponse.json({
+                id: updated!._id.toString(),
+                jobId: updated!._id.toString(),
+                status: "COMPLETED",
+                materialsDeducted: body._materialsDeducted || [],
+                lowStockAlerts: body._lowStockAlerts || [],
+                ...updated,
+            });
+        }
 
         return NextResponse.json({
             id: updated!._id.toString(),

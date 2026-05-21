@@ -29,6 +29,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRole } from "@/lib/hooks/use-role";
+import { useTranslations } from "next-intl";
+import { useFormatters } from "@/hooks/useFormatters";
 import {
     Dialog,
     DialogContent,
@@ -109,6 +111,9 @@ const itemVariants = {
 export default function MachinesPage() {
     const router = useRouter();
     const { isAdmin } = useRole();
+    const t = useTranslations("machines");
+    const tCommon = useTranslations("common");
+    const { formatDate } = useFormatters();
 
     const [machines, setMachines] = useState<Machine[]>([]);
     const [loading, setLoading] = useState(true);
@@ -138,7 +143,7 @@ export default function MachinesPage() {
             const data = await res.json();
             setMachines(Array.isArray(data) ? data : []);
         } catch {
-            toast.error("Failed to load machines");
+            toast.error(t("failedToLoad"));
         } finally {
             setLoading(false);
         }
@@ -180,7 +185,7 @@ export default function MachinesPage() {
     // Submit form (add or edit)
     const handleSubmit = async () => {
         if (!formName.trim()) {
-            toast.error("Machine name is required");
+            toast.error(t("machineNameRequired"));
             return;
         }
 
@@ -201,7 +206,7 @@ export default function MachinesPage() {
                     toast.error(data.error);
                     return;
                 }
-                toast.success("Machine added successfully!");
+                toast.success(t("machineAdded"));
             } else if (editingMachine) {
                 const res = await fetch(`/api/machines/${editingMachine.id}`, {
                     method: "PUT",
@@ -218,13 +223,13 @@ export default function MachinesPage() {
                     toast.error(data.error);
                     return;
                 }
-                toast.success("Machine updated successfully!");
+                toast.success(t("machineUpdated"));
             }
 
             setDialogOpen(false);
             fetchMachines();
         } catch {
-            toast.error("Operation failed");
+            toast.error(t("operationFailed"));
         } finally {
             setSaving(false);
         }
@@ -243,12 +248,12 @@ export default function MachinesPage() {
                 toast.error(data.error);
                 return;
             }
-            toast.success("Machine deleted");
+            toast.success(t("machineDeleted"));
             setDeleteDialogOpen(false);
             setDeletingMachine(null);
             fetchMachines();
         } catch {
-            toast.error("Failed to delete machine");
+            toast.error(t("failedToDelete"));
         } finally {
             setDeleting(false);
         }
@@ -258,10 +263,10 @@ export default function MachinesPage() {
     if (!isAdmin) {
         return (
             <div className="flex flex-col items-center justify-center py-32">
-                <AlertCircle className="h-12 w-12 text-[var(--label-tertiary)] mb-4" />
-                <h2 className="text-[20px] font-semibold text-[var(--label-primary)] mb-2">Admin Access Required</h2>
-                <p className="text-[15px] text-[var(--label-secondary)] mb-6">
-                    Only administrators can manage machines.
+                <AlertCircle className="h-12 w-12 text-[var(--muted-foreground)] mb-4" />
+                <h2 className="text-[20px] font-semibold text-[var(--foreground)] mb-2">{t("adminRequired")}</h2>
+                <p className="text-[15px] text-[var(--muted-foreground)] mb-6">
+                    {t("adminRequiredDesc")}
                 </p>
                 <IOSButton
                     variant="gray"
@@ -269,7 +274,7 @@ export default function MachinesPage() {
                     className="px-6 h-[44px] text-[15px] font-medium"
                 >
                     <ArrowLeft className="h-4 w-4 mr-2" />
-                    Go Back
+                    {t("goBack")}
                 </IOSButton>
             </div>
         );
@@ -299,24 +304,24 @@ export default function MachinesPage() {
             {/* ─── Header ──────────────────────────────────────────── */}
             <motion.div variants={itemVariants} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-[13px] text-[var(--label-tertiary)] mb-2 font-medium">
+                    <div className="flex items-center gap-2 text-[13px] text-[var(--muted-foreground)] mb-2 font-medium">
                         <button
                             onClick={() => router.push("/dashboard/production")}
-                            className="hover:text-[var(--label-primary)] transition-colors"
+                            className="hover:text-[var(--foreground)] transition-colors"
                         >
-                            Production
+                            {t("breadcrumbProduction")}
                         </button>
                         <span>/</span>
-                        <span className="text-[var(--label-secondary)]">Machine Management</span>
+                        <span className="text-[var(--muted-foreground)]">{t("breadcrumbMachines")}</span>
                     </div>
-                    <h1 className="text-[28px] sm:text-[34px] font-bold tracking-tight text-[var(--label-primary)] flex items-center gap-3">
+                    <h1 className="text-[28px] sm:text-[34px] font-bold tracking-tight text-[var(--foreground)] flex items-center gap-3">
                         <div className="w-12 h-12 rounded-[14px] bg-gradient-to-br from-[#007AFF]/20 to-[#5AC8FA]/20 dark:from-[#0A84FF]/20 dark:to-[#5AC8FA]/20 flex items-center justify-center">
                             <Cog className="h-6 w-6 text-[#007AFF] dark:text-[#5AC8FA]" />
                         </div>
-                        Machine Management
+                        {t("title")}
                     </h1>
-                    <p className="text-[15px] sm:text-[17px] text-[var(--label-secondary)] pt-1 w-full max-w-xl text-balance">
-                        Add, edit, and manage machines used in production.
+                    <p className="text-[15px] sm:text-[17px] text-[var(--muted-foreground)] pt-1 w-full max-w-xl text-balance">
+                        {t("subtitle")}
                     </p>
                 </div>
 
@@ -328,7 +333,7 @@ export default function MachinesPage() {
                     id="add-machine-btn"
                 >
                     <Plus className="h-5 w-5 mr-1" />
-                    Add Machine
+                    {t("addMachine")}
                 </IOSButton>
             </motion.div>
 
@@ -337,7 +342,7 @@ export default function MachinesPage() {
                 <div className="kpi-panel__glow"></div>
                 <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
                     <StatWidget
-                        label="Total Machines"
+                        label={t("totalMachines")}
                         value={machines.length}
                         change={0}
                         icon={Cpu}
@@ -345,7 +350,7 @@ export default function MachinesPage() {
                         delay={0}
                     />
                     <StatWidget
-                        label="Active / Running"
+                        label={t("activeRunning")}
                         value={machines.filter((m) => m.status === "active" || m.status === "running").length}
                         change={14}
                         icon={Play}
@@ -353,7 +358,7 @@ export default function MachinesPage() {
                         delay={1}
                     />
                     <StatWidget
-                        label="Idle"
+                        label={t("idle")}
                         value={machines.filter((m) => m.status === "idle").length}
                         change={0}
                         icon={Pause}
@@ -361,7 +366,7 @@ export default function MachinesPage() {
                         delay={2}
                     />
                     <StatWidget
-                        label="Maintenance"
+                        label={t("maintenance")}
                         value={machines.filter((m) => m.status === "maintenance").length}
                         change={-2}
                         icon={Wrench}
@@ -369,7 +374,7 @@ export default function MachinesPage() {
                         delay={3}
                     />
                     <StatWidget
-                        label="Disabled"
+                        label={t("disabled")}
                         value={machines.filter((m) => m.status === "inactive").length}
                         change={0}
                         icon={Power}
@@ -382,9 +387,9 @@ export default function MachinesPage() {
             {/* ─── Search ─────────────────────────────────────────── */}
             <motion.div variants={itemVariants}>
                 <div className="relative max-w-sm">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--label-tertiary)]" />
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--muted-foreground)]" />
                     <IOSInput
-                        placeholder="Search machines..."
+                        placeholder={t("searchMachines")}
                         className="pl-11 h-[48px] bg-white dark:bg-[#1C1C1E] shadow-sm"
                         value={searchTerm}
                         onChange={(e: any) => setSearchTerm(e.target.value)}
@@ -396,17 +401,17 @@ export default function MachinesPage() {
             {/* ─── Machine List ────────────────────────────────────── */}
             <motion.div variants={itemVariants}>
                 {filteredMachines.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 text-center rounded-[24px] border-2 border-dashed border-[var(--border-card)]">
-                        <Cpu className="h-10 w-10 text-[var(--label-tertiary)] mb-3" />
-                        <h3 className="text-[17px] font-semibold text-[var(--label-primary)] mb-1">
+                    <div className="flex flex-col items-center justify-center py-20 text-center rounded-[24px] border-2 border-dashed border-[var(--border)]">
+                        <Cpu className="h-10 w-10 text-[var(--muted-foreground)] mb-3" />
+                        <h3 className="text-[17px] font-semibold text-[var(--foreground)] mb-1">
                             {machines.length === 0
-                                ? "No machines added yet"
-                                : "No machines match your search"}
+                                ? t("noMachinesYet")
+                                : t("noMachinesMatch")}
                         </h3>
-                        <p className="text-[15px] text-[var(--label-secondary)]">
+                        <p className="text-[15px] text-[var(--muted-foreground)]">
                             {machines.length === 0
-                                ? "Add your first machine to get started."
-                                : "Try a different search term."}
+                                ? t("noMachinesYetDesc")
+                                : t("noMachinesMatchDesc")}
                         </p>
                         {machines.length === 0 && (
                             <IOSButton
@@ -416,7 +421,7 @@ export default function MachinesPage() {
                                 onClick={openAddDialog}
                             >
                                 <Plus className="h-5 w-5 mr-1" />
-                                Add Machine
+                                {t("addMachine")}
                             </IOSButton>
                         )}
                     </div>
@@ -442,30 +447,28 @@ export default function MachinesPage() {
                                         </div>
                                         <div className="flex-1 min-w-0 flex flex-col justify-center">
                                             <div className="flex items-center gap-2 mb-1">
-                                                <span className="font-semibold text-[17px] text-[var(--label-primary)] truncate">
+                                                <span className="font-semibold text-[17px] text-[var(--foreground)] truncate">
                                                     {machine.machineName}
                                                 </span>
                                                 <div className={cn("flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border border-current/20", sc.color, sc.bg)}>
                                                     <StatusIcon className="h-3 w-3" />
-                                                    {sc.label}
+                                                    {({ active: t("statusActive"), running: t("statusRunning"), idle: t("statusIdle"), inactive: t("statusDisabled"), maintenance: t("statusMaintenance") } as Record<string, string>)[machine.status] || sc.label}
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-3 text-[13px] text-[var(--label-secondary)]">
+                                            <div className="flex items-center gap-3 text-[13px] text-[var(--muted-foreground)]">
                                                 {machine.machineType && (
                                                     <span>{machine.machineType}</span>
                                                 )}
                                                 {machine.capacity && (
                                                     <>
-                                                        <span className="text-[var(--label-tertiary)]">•</span>
+                                                        <span className="text-[var(--muted-foreground)]">•</span>
                                                         <span>{machine.capacity}</span>
                                                     </>
                                                 )}
-                                                <span className="text-[var(--label-tertiary)]">•</span>
+                                                <span className="text-[var(--muted-foreground)]">•</span>
                                                 <span>
-                                                    Added{" "}
-                                                    {new Date(
-                                                        machine.createdAt
-                                                    ).toLocaleDateString()}
+                                                    {t("added")}{" "}
+                                                    {formatDate(machine.createdAt, "short")}
                                                 </span>
                                             </div>
                                         </div>
@@ -473,7 +476,7 @@ export default function MachinesPage() {
 
                                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity ml-4">
                                         <button
-                                            className="h-9 w-9 flex items-center justify-center rounded-full text-[var(--label-secondary)] hover:text-[#007AFF] hover:bg-[#007AFF]/10 transition-colors"
+                                            className="h-9 w-9 flex items-center justify-center rounded-full text-[var(--muted-foreground)] hover:text-[#007AFF] hover:bg-[#007AFF]/10 transition-colors"
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 openEditDialog(machine);
@@ -483,7 +486,7 @@ export default function MachinesPage() {
                                             <PenLine className="h-4 w-4" />
                                         </button>
                                         <button
-                                            className="h-9 w-9 flex items-center justify-center rounded-full text-[var(--label-secondary)] hover:text-[#FF3B30] hover:bg-[#FF3B30]/10 transition-colors"
+                                            className="h-9 w-9 flex items-center justify-center rounded-full text-[var(--muted-foreground)] hover:text-[#FF3B30] hover:bg-[#FF3B30]/10 transition-colors"
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 setDeletingMachine(machine);
@@ -505,55 +508,55 @@ export default function MachinesPage() {
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent className="sm:max-w-[480px] bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px] overflow-hidden p-0">
                     <div className="p-6">
-                        <DialogHeader>
-                            <DialogTitle className="flex items-center gap-2 text-[20px] font-semibold text-[var(--label-primary)]">
-                                <div className="p-1.5 rounded-lg bg-[#007AFF]/10">
-                                    <Cpu className="h-5 w-5 text-[#007AFF]" />
-                                </div>
-                                {dialogMode === "add" ? "Add Machine" : "Edit Machine"}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 16, marginBottom: 0, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                          <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg, rgba(59,130,246,0.4), rgba(255,255,255,0.06))', border: '1px solid rgba(255,255,255,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Cpu className="h-[18px] w-[18px] text-[#60a5fa]" />
+                          </div>
+                          <div>
+                            <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', lineHeight: '22px', margin: 0 }}>
+                              {dialogMode === "add" ? t("addMachine") : t("editMachine")}
                             </DialogTitle>
-                            <DialogDescription className="text-[14px] text-[var(--label-secondary)] mt-1.5">
-                                {dialogMode === "add"
-                                    ? "Add a new machine to your production floor."
-                                    : "Update machine details."}
+                            <DialogDescription style={{ fontSize: 13, color: '#64748b', lineHeight: '18px', margin: '2px 0 0' }}>
+                              {dialogMode === "add" ? t("addMachineDesc") : t("editMachineDesc")}
                             </DialogDescription>
-                        </DialogHeader>
+                          </div>
+                        </div>
 
                         <div className="space-y-4 py-6">
                             <div className="space-y-1.5">
-                                <label className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">
-                                    Machine Name <span className="text-[#FF3B30]">*</span>
+                                <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">
+                                    {t("machineName")} <span className="text-[#FF3B30]">*</span>
                                 </label>
                                 <IOSInput
                                     value={formName}
                                     onChange={(e: any) => setFormName(e.target.value)}
-                                    placeholder="e.g. CNC Lathe #1"
+                                    placeholder={t("machineNamePlaceholder")}
                                     className="h-[44px]"
                                     id="machine-name-input"
                                 />
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">
-                                    Machine Type
+                                <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">
+                                    {t("machineType")}
                                 </label>
                                 <IOSInput
                                     value={formType}
                                     onChange={(e: any) => setFormType(e.target.value)}
-                                    placeholder="e.g. CNC, Lathe, Press, Mixer..."
+                                    placeholder={t("machineTypePlaceholder")}
                                     className="h-[44px]"
                                     id="machine-type-input"
                                 />
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">
-                                    Capacity / Description
+                                <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">
+                                    {t("capacityDescription")}
                                 </label>
                                 <IOSInput
                                     value={formCapacity}
                                     onChange={(e: any) => setFormCapacity(e.target.value)}
-                                    placeholder="e.g. 500 units/hr, 2 Ton capacity..."
+                                    placeholder={t("capacityPlaceholder")}
                                     className="h-[44px]"
                                     id="machine-capacity-input"
                                 />
@@ -561,55 +564,43 @@ export default function MachinesPage() {
 
                             {dialogMode === "edit" && (
                                 <div className="space-y-1.5">
-                                    <label className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">
-                                        Status
+                                    <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">
+                                        {t("status")}
                                     </label>
                                     <div className="relative">
                                         <select
                                             value={formStatus}
                                             onChange={(e) => setFormStatus(e.target.value)}
-                                            className="w-full h-[44px] px-4 rounded-[12px] bg-[var(--fill-tertiary)] hover:bg-[var(--fill-secondary)] border-transparent text-[15px] font-medium focus:ring-[3px] focus:ring-[#007AFF]/30 focus:border-[#007AFF] outline-none transition-all appearance-none text-[var(--label-primary)]"
+                                            className="w-full h-[44px] px-4 rounded-[12px] bg-[var(--muted)] hover:bg-[var(--accent)] border-transparent text-[15px] font-medium focus:ring-[3px] focus:ring-[#007AFF]/30 focus:border-[#007AFF] outline-none transition-all appearance-none text-[var(--foreground)]"
                                             id="machine-status-select"
                                         >
-                                            <option value="active">Active</option>
-                                            <option value="running">Running</option>
-                                            <option value="idle">Idle</option>
-                                            <option value="maintenance">Maintenance</option>
-                                            <option value="inactive">Disabled</option>
+                                            <option value="active">{t("statusActive")}</option>
+                                            <option value="running">{t("statusRunning")}</option>
+                                            <option value="idle">{t("statusIdle")}</option>
+                                            <option value="maintenance">{t("statusMaintenance")}</option>
+                                            <option value="inactive">{t("statusDisabled")}</option>
                                         </select>
                                     </div>
                                 </div>
                             )}
                         </div>
 
-                        <DialogFooter className="flex gap-2 pt-2 border-t border-[var(--border-card)] border-x-[-24px] mx-[-24px] px-6 pb-2">
-                            <IOSButton
-                                variant="gray"
+                        <div style={{ display: 'flex', gap: 10, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.07)', marginLeft: -24, marginRight: -24, paddingLeft: 24, paddingRight: 24, paddingBottom: 8 }}>
+                            <button
                                 onClick={() => setDialogOpen(false)}
-                                className="flex-1 text-[15px] font-semibold h-[44px]"
+                                style={{ flex: 1, height: 48, borderRadius: 14, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.10)', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}
                             >
-                                Cancel
-                            </IOSButton>
-                            <IOSButton
-                                variant="filled"
-                                color="blue"
+                                {tCommon("cancel")}
+                            </button>
+                            <button
                                 onClick={handleSubmit}
                                 disabled={saving || !formName.trim()}
                                 id="save-machine-btn"
-                                className="flex-1 text-[15px] font-semibold h-[44px]"
+                                style={{ flex: 1, height: 48, borderRadius: 14, background: 'linear-gradient(135deg, #3b82f6, #2563eb)', color: '#fff', border: '1px solid rgba(59,130,246,0.3)', boxShadow: '0 4px 16px rgba(59,130,246,0.25)', fontSize: 15, fontWeight: 600, cursor: 'pointer', opacity: (saving || !formName.trim()) ? 0.5 : 1 }}
                             >
-                                {saving ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Saving...
-                                    </>
-                                ) : dialogMode === "add" ? (
-                                    "Add Machine"
-                                ) : (
-                                    "Save Changes"
-                                )}
-                            </IOSButton>
-                        </DialogFooter>
+                                {saving ? t("saving") : dialogMode === "add" ? t("addMachine") : t("saveChanges")}
+                            </button>
+                        </div>
                     </div>
                 </DialogContent>
             </Dialog>
@@ -618,44 +609,35 @@ export default function MachinesPage() {
             <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                 <DialogContent className="sm:max-w-[400px] bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px] overflow-hidden p-0">
                     <div className="p-6">
-                        <DialogHeader>
-                            <DialogTitle className="flex items-center gap-2 text-[#FF3B30] text-[20px] font-semibold">
-                                <div className="p-1.5 rounded-lg bg-[#FF3B30]/10">
-                                    <Trash2 className="h-5 w-5" />
-                                </div>
-                                Delete Machine
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                          <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg, rgba(239,68,68,0.4), rgba(255,255,255,0.06))', border: '1px solid rgba(255,255,255,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Trash2 className="h-[18px] w-[18px] text-[#f87171]" />
+                          </div>
+                          <div>
+                            <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', lineHeight: '22px', margin: 0 }}>
+                              {t("deleteMachine")}
                             </DialogTitle>
-                            <DialogDescription className="text-[14px] text-[var(--label-secondary)] mt-3">
-                                Are you sure you want to delete{" "}
-                                <strong className="text-[var(--label-primary)]">{deletingMachine?.machineName}</strong>? This
-                                action cannot be undone.
+                            <DialogDescription style={{ fontSize: 13, color: '#64748b', lineHeight: '18px', margin: '2px 0 0' }}>
+                              {t("deleteConfirm")}
                             </DialogDescription>
-                        </DialogHeader>
-                        <DialogFooter className="flex gap-2 pt-6 mt-2 border-t border-[var(--border-card)] border-x-[-24px] mx-[-24px] px-6 pb-2">
-                            <IOSButton
-                                variant="gray"
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 10, paddingTop: 24, marginTop: 8, borderTop: '1px solid rgba(255,255,255,0.07)', marginLeft: -24, marginRight: -24, paddingLeft: 24, paddingRight: 24, paddingBottom: 8 }}>
+                            <button
                                 onClick={() => setDeleteDialogOpen(false)}
-                                className="flex-1 text-[15px] font-semibold h-[44px]"
+                                style={{ flex: 1, height: 48, borderRadius: 14, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.10)', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}
                             >
-                                Cancel
-                            </IOSButton>
-                            <IOSButton
-                                variant="destructive"
+                                {tCommon("cancel")}
+                            </button>
+                            <button
                                 onClick={handleDelete}
                                 disabled={deleting}
                                 id="confirm-delete-machine-btn"
-                                className="flex-1 text-[15px] font-semibold h-[44px]"
+                                style={{ flex: 1, height: 48, borderRadius: 14, background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: '#fff', border: '1px solid rgba(239,68,68,0.3)', boxShadow: '0 4px 16px rgba(239,68,68,0.25)', fontSize: 15, fontWeight: 600, cursor: 'pointer', opacity: deleting ? 0.5 : 1 }}
                             >
-                                {deleting ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Deleting...
-                                    </>
-                                ) : (
-                                    "Delete Machine"
-                                )}
-                            </IOSButton>
-                        </DialogFooter>
+                                {deleting ? t("deleting") : t("deleteMachine")}
+                            </button>
+                        </div>
                     </div>
                 </DialogContent>
             </Dialog>

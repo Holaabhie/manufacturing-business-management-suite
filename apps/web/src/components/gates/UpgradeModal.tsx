@@ -16,6 +16,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { PLANS, formatPrice, getYearlySavings, type PlanId } from '@/lib/razorpay/plans';
 import { useUpgrade } from '@/hooks/useUpgrade';
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 
 interface UpgradeModalProps {
   isOpen: boolean;
@@ -39,13 +40,9 @@ export function UpgradeModal({
   // Ensure we only portal after client mount
   useEffect(() => { setMounted(true); }, []);
 
-  // Lock body scroll when open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    }
-    return () => { document.body.style.overflow = ''; };
-  }, [isOpen]);
+  // Body scroll lock — centralized, reference-counted
+  // MUST be called before any early return to satisfy Rules of Hooks
+  useBodyScrollLock(isOpen);
 
   if (!isOpen || !mounted) return null;
 
@@ -64,7 +61,7 @@ export function UpgradeModal({
     <>
       {/* ── Backdrop overlay ── */}
       <div
-        onClick={onClose}
+        onPointerDown={onClose}
         style={{
           position: 'fixed',
           top: 0,

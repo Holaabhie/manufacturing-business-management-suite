@@ -20,17 +20,17 @@ import { cn } from '@/lib/utils';
 import { useToastStore, type ToastType } from '@/hooks/useToast';
 
 const iconMap: Record<ToastType, React.ReactNode> = {
-    success: <CheckCircle size={20} className="text-[var(--ios-green)]" />,
-    error: <XCircle size={20} className="text-[var(--ios-red)]" />,
-    info: <Info size={20} className="text-[var(--ios-blue)]" />,
-    warning: <AlertTriangle size={20} className="text-[var(--ios-orange)]" />,
+    success: <CheckCircle size={20} className="text-[var(--erp-success)]" />,
+    error: <XCircle size={20} className="text-[var(--destructive)]" />,
+    info: <Info size={20} className="text-[var(--primary)]" />,
+    warning: <AlertTriangle size={20} className="text-[var(--erp-warning)]" />,
 };
 
 const borderColorMap: Record<ToastType, string> = {
-    success: 'border-l-[var(--ios-green)]',
-    error: 'border-l-[var(--ios-red)]',
-    info: 'border-l-[var(--ios-blue)]',
-    warning: 'border-l-[var(--ios-orange)]',
+    success: 'border-l-[var(--erp-success)]',
+    error: 'border-l-[var(--destructive)]',
+    info: 'border-l-[var(--primary)]',
+    warning: 'border-l-[var(--erp-warning)]',
 };
 
 /**
@@ -70,11 +70,11 @@ export function IOSToastContainer() {
                             <span className="flex-shrink-0 mt-0.5">{iconMap[toast.type]}</span>
 
                             <div className="flex-1 min-w-0">
-                                <p className="text-[15px] font-semibold text-[var(--label-primary)] leading-[20px]">
+                                <p className="text-[15px] font-semibold text-[var(--foreground)] leading-[20px]">
                                     {toast.title}
                                 </p>
                                 {toast.message && (
-                                    <p className="text-[13px] text-[var(--label-secondary)] mt-0.5 leading-[18px]">
+                                    <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5 leading-[18px]">
                                         {toast.message}
                                     </p>
                                 )}
@@ -82,10 +82,10 @@ export function IOSToastContainer() {
 
                             <motion.button
                                 onClick={() => removeToast(toast.id)}
-                                className="flex-shrink-0 p-1 rounded-full hover:bg-[var(--fill-tertiary)] cursor-pointer transition-colors"
+                                className="flex-shrink-0 p-1 rounded-full hover:bg-[var(--muted)] cursor-pointer transition-colors"
                                 whileTap={{ scale: 0.85 }}
                             >
-                                <X size={14} className="text-[var(--label-tertiary)]" />
+                                <X size={14} className="text-[var(--muted-foreground)]" />
                             </motion.button>
                         </div>
                     </motion.div>

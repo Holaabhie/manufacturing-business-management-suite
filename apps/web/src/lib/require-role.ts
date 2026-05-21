@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionUser, type UserDoc } from "@/lib/auth-session";
-import { hasPermission, ADMIN_PERMISSIONS, type PermissionModule, type PermissionMap } from "@/lib/permissions";
+import { hasPermission, isOwnerRole, resolvePermissions, type FlatPermissionMap } from "@/lib/permissions";
 import type { WithId } from "mongodb";
 
 export type RoleCheckResult =
@@ -13,21 +13,25 @@ export type RoleCheckResult =
  * 
  * Usage:
  * ```typescript
- * const result = await requireRole(["Admin"]);
+ * const result = await requireRole(["Owner", "Manager"]);
  * if (result.error) {
  *   return NextResponse.json({ error: result.error }, { status: result.status });
  * }
  * const user = result.user;
  * ```
  */
-export async function requireRole(allowedRoles: ("Admin" | "Staff")[]): Promise<RoleCheckResult> {
+export async function requireRole(allowedRoles: string[]): Promise<RoleCheckResult> {
     const user = await getSessionUser();
 
     if (!user) {
         return { error: "Unauthorized - Please log in", status: 401 };
     }
 
-    if (!allowedRoles.includes(user.role)) {
+    // Normalize: Admin === Owner
+    const normalizedUserRole = user.role === "Admin" ? "Owner" : user.role;
+    const normalizedAllowed = allowedRoles.map(r => r === "Admin" ? "Owner" : r);
+
+    if (!normalizedAllowed.includes(normalizedUserRole)) {
         return {
             error: `Forbidden - This action requires ${allowedRoles.join(" or ")} role`,
             status: 403
@@ -39,11 +43,11 @@ export async function requireRole(allowedRoles: ("Admin" | "Staff")[]): Promise<
 
 /**
  * Check if the current user has a specific granular permission.
- * Admin always passes. Staff checks against their permission map.
+ * Owner/Admin always passes. Others check against their resolved permission map.
  * 
  * Usage:
  * ```typescript
- * const result = await requirePermission("orders", "create");
+ * const result = await requirePermission("orders.create");
  * if (result.error) {
  *   return NextResponse.json({ error: result.error }, { status: result.status });
  * }
@@ -51,8 +55,7 @@ export async function requireRole(allowedRoles: ("Admin" | "Staff")[]): Promise<
  * ```
  */
 export async function requirePermission(
-    module: PermissionModule,
-    action: string
+    permissionKey: string
 ): Promise<RoleCheckResult> {
     const user = await getSessionUser();
 
@@ -60,14 +63,14 @@ export async function requirePermission(
         return { error: "Unauthorized - Please log in", status: 401 };
     }
 
-    const isAdmin = user.role === "Admin";
-    const permissions: PermissionMap | undefined = isAdmin
-        ? ADMIN_PERMISSIONS
-        : (user as any).permissions;
+    const isOwner = isOwnerRole(user.role);
+    if (isOwner) return { user };
 
-    if (!hasPermission(permissions, module, action, isAdmin)) {
+    const resolved = resolvePermissions(user.role, user.customPermissions as FlatPermissionMap);
+
+    if (!hasPermission(resolved, permissionKey, false)) {
         return {
-            error: `Forbidden - You don't have ${module}.${action} permission`,
+            error: `Forbidden - You don't have ${permissionKey} permission`,
             status: 403
         };
     }
@@ -101,9 +104,8 @@ export async function requireOrganization(
  * The most comprehensive guard for API routes.
  */
 export async function requireAccess(options: {
-    roles?: ("Admin" | "Staff")[];
-    module?: PermissionModule;
-    action?: string;
+    roles?: string[];
+    permission?: string;
     organizationId?: string;
 }): Promise<RoleCheckResult> {
     const user = await getSessionUser();
@@ -113,11 +115,16 @@ export async function requireAccess(options: {
     }
 
     // Check role
-    if (options.roles && !options.roles.includes(user.role)) {
-        return {
-            error: `Forbidden - This action requires ${options.roles.join(" or ")} role`,
-            status: 403
-        };
+    if (options.roles) {
+        const normalizedUserRole = user.role === "Admin" ? "Owner" : user.role;
+        const normalizedAllowed = options.roles.map(r => r === "Admin" ? "Owner" : r);
+
+        if (!normalizedAllowed.includes(normalizedUserRole)) {
+            return {
+                error: `Forbidden - This action requires ${options.roles.join(" or ")} role`,
+                status: 403
+            };
+        }
     }
 
     // Check organization
@@ -129,17 +136,16 @@ export async function requireAccess(options: {
     }
 
     // Check granular permission
-    if (options.module && options.action) {
-        const isAdmin = user.role === "Admin";
-        const permissions: PermissionMap | undefined = isAdmin
-            ? ADMIN_PERMISSIONS
-            : (user as any).permissions;
-
-        if (!hasPermission(permissions, options.module, options.action, isAdmin)) {
-            return {
-                error: `Forbidden - You don't have ${options.module}.${options.action} permission`,
-                status: 403
-            };
+    if (options.permission) {
+        const isOwner = isOwnerRole(user.role);
+        if (!isOwner) {
+            const resolved = resolvePermissions(user.role, user.customPermissions as FlatPermissionMap);
+            if (!hasPermission(resolved, options.permission, false)) {
+                return {
+                    error: `Forbidden - You don't have ${options.permission} permission`,
+                    status: 403
+                };
+            }
         }
     }
 
@@ -167,15 +173,15 @@ export function unauthorizedResponse(message?: string) {
 }
 
 /**
- * Check if user is Admin
+ * Check if user is Owner/Admin
  */
 export async function requireAdmin(): Promise<RoleCheckResult> {
-    return requireRole(["Admin"]);
+    return requireRole(["Owner", "Admin"]);
 }
 
 /**
- * Check if user is at least Staff (both Admin and Staff pass)
+ * Check if user is at least Staff (all roles pass)
  */
 export async function requireStaffOrAdmin(): Promise<RoleCheckResult> {
-    return requireRole(["Admin", "Staff"]);
+    return requireRole(["Owner", "Admin", "Manager", "Staff", "Accountant"]);
 }

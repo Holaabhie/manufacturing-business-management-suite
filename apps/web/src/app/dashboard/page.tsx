@@ -50,6 +50,13 @@ import { staggerContainer, staggerItem } from "@/styles/animations";
 import { StatWidget, AnimatedValue, EmptyWidgetSlot } from "@/components/ui/StatWidget";
 import StaffWorkPanel from "@/components/StaffWorkPanel";
 import { useTranslations } from "next-intl";
+import dynamic from "next/dynamic";
+import type { ActivityItem } from "@/components/dashboard/activity-detail-types";
+
+const ActivityDetailPopup = dynamic(
+  () => import("@/components/dashboard/ActivityDetailPopup"),
+  { ssr: false },
+);
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -106,6 +113,8 @@ interface RecentActivity {
   description: string;
   time: string;
   status: "success" | "warning" | "info" | "pending";
+  entityId: string;
+  entityType: string;
 }
 
 interface ChartDataPoint {
@@ -118,19 +127,19 @@ interface WeeklyDataPoint {
   value: number;
 }
 
-// ─── Glassmorphism Chart Tooltip ─────────────────────────
+// ─── Enterprise Chart Tooltip ────────────────────────────
 function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-[rgba(10,20,50,0.85)] backdrop-blur-md rounded-[12px] px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.3)] border border-white/10">
-      <p className="text-[13px] font-medium text-white/70 mb-1.5">{label}</p>
+    <div className="bg-popover border border-border rounded-lg px-3 py-2.5 shadow-lg">
+      <p className="text-[12px] font-medium text-muted-foreground mb-1">{label}</p>
       {payload.map((p: any, i: number) => (
         <div key={i} className="flex items-center gap-2">
           <div 
-            className="w-2.5 h-2.5 rounded-full" 
-            style={{ backgroundColor: p.color || '#0A84FF' }}
+            className="w-2 h-2 rounded-full" 
+            style={{ backgroundColor: p.color || 'var(--primary)' }}
           />
-          <p className="text-[15px] font-bold text-white tracking-tight">
+          <p className="text-[13px] font-semibold text-foreground tabular-nums">
             {p.name === "revenue" ? `₹${p.value.toLocaleString()}` : p.value}
           </p>
         </div>
@@ -160,6 +169,10 @@ export default function DashboardPage() {
   const [isWidgetModalOpen, setIsWidgetModalOpen] = useState(false);
   const [activeSlotIndex, setActiveSlotIndex] = useState<number | null>(null);
   const [savingWidgets, setSavingWidgets] = useState(false);
+
+  // Activity Detail Popup state
+  const [activityPopupOpen, setActivityPopupOpen] = useState(false);
+  const [selectedActivity, setSelectedActivity] = useState<ActivityItem | null>(null);
 
   // Export State
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
@@ -198,7 +211,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (userRole === "Admin" || userRole === "Owner") {
       fetch("/api/dashboard/widgets")
-        .then((res) => res.json())
+        .then((res) => res.ok ? res.json() : { success: false })
         .then((data) => {
           if (data.success && data.widgets) {
             setWidgetLayout(data.widgets);
@@ -257,8 +270,8 @@ export default function DashboardPage() {
 
         if (Array.isArray(activityRes) && activityRes.length > 0) {
           const activityList: RecentActivity[] = activityRes.map((item: any, index: number) => {
-            const typeMap: Record<string, RecentActivity["type"]> = { order: "order", inventory: "inventory", client: "inventory", payment: "payment" };
-            const statusMap: Record<string, RecentActivity["status"]> = { order: "info", inventory: "warning", client: "success", payment: "success" };
+            const typeMap: Record<string, RecentActivity["type"]> = { order: "order", inventory: "inventory", client: "client", payment: "payment", production: "production" };
+            const statusMap: Record<string, RecentActivity["status"]> = { order: "info", inventory: "warning", client: "success", payment: "success", production: "info" };
             return {
               id: String(index),
               type: typeMap[item.type] || "order",
@@ -266,6 +279,8 @@ export default function DashboardPage() {
               description: item.message?.split(":").slice(1).join(":").trim() || item.message || "",
               time: item.createdAt || new Date().toISOString(),
               status: statusMap[item.type] || "info",
+              entityId: item.entityId || "",
+              entityType: item.type || "order",
             };
           });
           setActivities(activityList);
@@ -304,25 +319,40 @@ export default function DashboardPage() {
   };
 
   const activityColors: Record<string, string> = {
-    success: "bg-[rgba(52,199,89,0.12)] text-[var(--ios-green)]",
-    warning: "bg-[rgba(255,149,0,0.12)] text-[var(--ios-orange)]",
-    info: "bg-[rgba(0,122,255,0.12)] text-[var(--ios-blue)]",
-    pending: "bg-[rgba(142,142,147,0.12)] text-[var(--ios-gray)]",
+    success: "bg-[rgba(52,199,89,0.12)] text-[var(--erp-success)]",
+    warning: "bg-[rgba(255,149,0,0.12)] text-[var(--erp-warning)]",
+    info: "bg-[rgba(0,122,255,0.12)] text-[var(--primary)]",
+    pending: "bg-muted text-muted-foreground",
   };
 
   // ─── Export Helpers ────────────────────────────────────
   const fetchExportData = useCallback(async () => {
-    const [ordersRes, paymentsRes, statsRes] = await Promise.all([
-      fetch("/api/orders").then((r) => (r.ok ? r.json() : [])).catch(() => []),
-      fetch("/api/payments").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+    const unwrap = async (url: string) => {
+      try {
+        const r = await fetch(url);
+        if (!r.ok) return [];
+        const json = await r.json();
+        // v1 envelope: { success, data }
+        const payload = json?.data ?? json;
+        return Array.isArray(payload) ? payload : [];
+      } catch {
+        return [];
+      }
+    };
+
+    const [orders, payments, statsRes] = await Promise.all([
+      unwrap("/api/v1/orders"),
+      (userRole === "Admin" || userRole === "Owner")
+        ? unwrap("/api/v1/payments")
+        : Promise.resolve([]),
       fetch("/api/dashboard/stats").then((r) => (r.ok ? r.json() : null)).catch(() => null),
     ]);
     return {
-      orders: Array.isArray(ordersRes) ? ordersRes : [],
-      payments: Array.isArray(paymentsRes) ? paymentsRes : [],
+      orders,
+      payments,
       stats: statsRes && !statsRes.error ? statsRes : null,
     };
-  }, []);
+  }, [userRole]);
 
   const fmtDate = (d: any) => {
     if (!d) return "—";
@@ -570,17 +600,17 @@ export default function DashboardPage() {
     return (
       <div className="space-y-6">
         <div className="space-y-2">
-          <div className="h-[34px] w-[200px] rounded-[10px] bg-[var(--fill-tertiary)] shimmer" />
-          <div className="h-[20px] w-[300px] rounded-[8px] bg-[var(--fill-tertiary)] shimmer" />
+          <div className="h-[34px] w-[200px] rounded-[10px] bg-[var(--muted)] shimmer" />
+          <div className="h-[20px] w-[300px] rounded-[8px] bg-[var(--muted)] shimmer" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-[140px] rounded-[16px] bg-[var(--fill-tertiary)] shimmer" />
+            <div key={i} className="h-[140px] rounded-[16px] bg-[var(--muted)] shimmer" />
           ))}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2 h-[340px] rounded-[16px] bg-[var(--fill-tertiary)] shimmer" />
-          <div className="h-[340px] rounded-[16px] bg-[var(--fill-tertiary)] shimmer" />
+          <div className="lg:col-span-2 h-[340px] rounded-[16px] bg-[var(--muted)] shimmer" />
+          <div className="h-[340px] rounded-[16px] bg-[var(--muted)] shimmer" />
         </div>
       </div>
     );
@@ -599,7 +629,7 @@ export default function DashboardPage() {
       variants={staggerContainer}
       initial="initial"
       animate="animate"
-      className="space-y-6 hero-glow"
+      className="space-y-6 hero-glow bg-[#F1F4F9] dark:bg-transparent min-h-screen -m-6 p-6"
     >
       {/* Onboarding Modal */}
       <OnboardingModal />
@@ -614,10 +644,10 @@ export default function DashboardPage() {
       {/* ── Page Header ── */}
       <motion.div variants={staggerItem} className="flex items-end justify-between">
         <div>
-          <h1 className="text-[34px] font-bold text-[var(--label-primary)] leading-[41px] tracking-[0.37px]">
+          <h1 className="text-[34px] font-bold text-[var(--foreground)] leading-[41px] tracking-[0.37px]">
             {t("title")}
           </h1>
-          <p className="text-[15px] text-[var(--label-secondary)] mt-1 leading-[20px]">
+          <p className="text-[15px] text-[var(--muted-foreground)] mt-1 leading-[20px]">
             {t("welcome")}
           </p>
         </div>
@@ -653,14 +683,14 @@ export default function DashboardPage() {
               >
                 <button
                   onClick={handleExportExcel}
-                  className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-[8px] text-[14px] font-medium text-[var(--label-primary)] hover:bg-[var(--fill-tertiary)] transition-colors text-left"
+                  className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-[8px] text-[14px] font-medium text-[var(--foreground)] hover:bg-[var(--muted)] transition-colors text-left"
                 >
                   <FileSpreadsheet className="h-4 w-4 text-[#34C759]" />
                   {t("exportAsExcel")}
                 </button>
                 <button
                   onClick={handleExportPDF}
-                  className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-[8px] text-[14px] font-medium text-[var(--label-primary)] hover:bg-[var(--fill-tertiary)] transition-colors text-left"
+                  className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-[8px] text-[14px] font-medium text-[var(--foreground)] hover:bg-[var(--muted)] transition-colors text-left"
                 >
                   <FileText className="h-4 w-4 text-[#FF453A]" />
                   {t("exportAsPDF")}
@@ -789,42 +819,42 @@ export default function DashboardPage() {
       {/* ── Charts + Quick Actions ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <motion.div variants={staggerItem} className="lg:col-span-2">
-          <IOSCard variant="stitch-elevated" padding="lg" className="bg-white dark:bg-[#1C1C1E] !rounded-2xl shadow-md border-0 dark:border dark:border-[var(--border-card)] dark:shadow-none">
+          <IOSCard variant="stitch-elevated" padding="lg" className="bg-white dark:bg-[#1C1C1E] !rounded-2xl shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] hover:shadow-[0_4px_20px_rgba(15,23,42,0.10),0_2px_8px_rgba(15,23,42,0.06)] transition-shadow duration-200 !border !border-black/[0.09] dark:!border-[var(--border)] dark:shadow-none dark:hover:shadow-none">
             <IOSCardHeader title={t("revenueOverview")} subtitle={t("last6Months")} />
             <IOSCardContent>
-              <div className="h-[260px] -ml-4">
+              <div className="h-[260px] -ml-4" style={{ minWidth: 0, overflow: 'hidden' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
                     <defs>
                       <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#0A84FF" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#0A84FF" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#2563EB" stopOpacity={0.2} />
+                        <stop offset="95%" stopColor="#2563EB" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                     <XAxis 
                       dataKey="name" 
                       axisLine={false} 
                       tickLine={false} 
-                      tick={{ fill: "var(--label-secondary)", fontSize: 13, fontWeight: 500 }} 
+                      tick={{ fill: "var(--muted-foreground)", fontSize: 13, fontWeight: 500 }} 
                       dy={10} 
                     />
                     <YAxis 
                       axisLine={false} 
                       tickLine={false} 
-                      tick={{ fill: "var(--label-secondary)", fontSize: 13, fontWeight: 500 }} 
+                      tick={{ fill: "var(--muted-foreground)", fontSize: 13, fontWeight: 500 }} 
                       tickFormatter={(v) => `₹${v / 1000}K`} 
                       dx={-10} 
                     />
-                    <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--border-subtle)', strokeWidth: 1, strokeDasharray: '3 3' }} />
+                    <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--border)', strokeWidth: 1, strokeDasharray: '3 3' }} />
                     <Area 
                       type="monotone" 
                       dataKey="revenue" 
-                      stroke="#0A84FF" 
-                      strokeWidth={3}
+                      stroke="#2563EB" 
+                      strokeWidth={2}
                       fillOpacity={1} 
                       fill="url(#revenueGradient)"
-                      activeDot={{ r: 6, fill: "#0A84FF", stroke: "#FFFFFF", strokeWidth: 2 }}
+                      activeDot={{ r: 5, fill: "#2563EB", stroke: "#FFFFFF", strokeWidth: 2 }}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -834,22 +864,22 @@ export default function DashboardPage() {
         </motion.div>
 
         <motion.div variants={staggerItem}>
-          <IOSCard variant="stitch-elevated" padding="lg" className="h-full bg-white dark:bg-[#1C1C1E] !rounded-2xl shadow-md border-0 dark:border dark:border-[var(--border-card)] dark:shadow-none">
+          <IOSCard variant="stitch-elevated" padding="lg" className="h-full bg-white dark:bg-[#1C1C1E] !rounded-2xl shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] hover:shadow-[0_4px_20px_rgba(15,23,42,0.10),0_2px_8px_rgba(15,23,42,0.06)] transition-shadow duration-200 !border !border-black/[0.09] dark:!border-[var(--border)] dark:shadow-none dark:hover:shadow-none">
             <IOSCardHeader title={t("quickActions")} />
             <IOSCardContent className="space-y-1">
               {[
-                { label: t("createOrder"), icon: ShoppingCart, href: "/dashboard/orders", bg: "bg-blue-50 dark:bg-[rgba(10,132,255,0.12)]", text: "text-blue-600 dark:text-[var(--ios-blue)]" },
-                { label: t("addProduct"), icon: Package, href: "/dashboard/inventory", bg: "bg-green-50 dark:bg-[rgba(48,209,88,0.12)]", text: "text-green-600 dark:text-[var(--ios-green)]" },
-                { label: t("generateInvoice"), icon: FileText, href: "/dashboard/billing", bg: "bg-purple-50 dark:bg-[rgba(191,90,242,0.12)]", text: "text-purple-600 dark:text-[var(--ios-purple)]" },
-                { label: t("viewAnalytics"), icon: BarChart3, href: "/dashboard/analytics", bg: "bg-orange-50 dark:bg-[rgba(255,159,10,0.12)]", text: "text-orange-600 dark:text-[var(--ios-orange)]" },
+                { label: t("createOrder"), icon: ShoppingCart, href: "/dashboard/orders", bg: "bg-blue-50 dark:bg-[rgba(10,132,255,0.12)]", text: "text-blue-600 dark:text-[var(--primary)]" },
+                { label: t("addProduct"), icon: Package, href: "/dashboard/inventory", bg: "bg-green-50 dark:bg-[rgba(48,209,88,0.12)]", text: "text-green-600 dark:text-[var(--erp-success)]" },
+                { label: t("generateInvoice"), icon: FileText, href: "/dashboard/billing", bg: "bg-purple-50 dark:bg-[rgba(191,90,242,0.12)]", text: "text-purple-600 dark:text-[var(--chart-4)]" },
+                { label: t("viewAnalytics"), icon: BarChart3, href: "/dashboard/analytics", bg: "bg-orange-50 dark:bg-[rgba(255,159,10,0.12)]", text: "text-orange-600 dark:text-[var(--erp-warning)]" },
               ].map((action, idx, arr) => (
                 <Link key={action.label} href={action.href}>
-                  <motion.div className="flex items-center gap-3 p-3 rounded-[10px] hover:bg-slate-50 dark:hover:bg-[var(--fill-quaternary)] transition-colors cursor-pointer group" whileTap={{ scale: 0.97 }}>
+                  <motion.div className="flex items-center gap-3 p-3 rounded-[10px] hover:bg-slate-50 dark:hover:bg-[var(--muted)] transition-colors cursor-pointer group" whileTap={{ scale: 0.97 }}>
                     <div className={cn("w-[36px] h-[36px] flex items-center justify-center rounded-xl flex-shrink-0 transition-colors", action.bg)}>
                       <action.icon className={cn("h-[18px] w-[18px]", action.text)} />
                     </div>
-                    <span className="text-[15px] font-medium text-[var(--label-primary)] flex-1">{action.label}</span>
-                    <ChevronRight className="h-[16px] w-[16px] text-[var(--label-quaternary)] group-hover:text-[var(--label-tertiary)] transition-colors" />
+                    <span className="text-[15px] font-medium text-[var(--foreground)] flex-1">{action.label}</span>
+                    <ChevronRight className="h-[16px] w-[16px] text-[var(--muted-foreground)] group-hover:text-[var(--muted-foreground)] transition-colors" />
                   </motion.div>
                   {idx < arr.length - 1 && <div className="h-px bg-[var(--border-divider)] mx-3" />}
                 </Link>
@@ -861,17 +891,17 @@ export default function DashboardPage() {
 
       {/* ── Weekly Orders + Recent Activity ── */}
       <div className="flex flex-col lg:flex-row items-stretch gap-4">
-        <motion.div variants={staggerItem} className="lg:w-1/3">
-          <IOSCard variant="elevated" padding="lg" className="h-full bg-white dark:bg-[#1C1C1E] !rounded-2xl shadow-md border-0 dark:border dark:border-[var(--border-card)] dark:shadow-none">
+        <motion.div variants={staggerItem} className="lg:w-1/3" style={{ minWidth: 0, minHeight: 0 }}>
+          <IOSCard variant="elevated" padding="lg" className="h-full bg-white dark:bg-[#1C1C1E] !rounded-2xl shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] hover:shadow-[0_4px_20px_rgba(15,23,42,0.10),0_2px_8px_rgba(15,23,42,0.06)] transition-shadow duration-200 !border !border-black/[0.09] dark:!border-[var(--border)] dark:shadow-none dark:hover:shadow-none">
             <IOSCardHeader title={t("thisWeek")} subtitle={t("ordersByDay")} />
             <IOSCardContent>
-              <div className="h-[200px] -ml-4">
+              <div className="h-[200px] -ml-4" style={{ minWidth: 0, overflow: 'hidden' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={weeklyData}>
-                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: "var(--label-tertiary)", fontSize: 13 }} />
+                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 13 }} />
                     <YAxis hide />
                     <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="value" radius={[6, 6, 0, 0]} fill="var(--ios-blue)" opacity={0.8} />
+                    <Bar dataKey="value" radius={[6, 6, 0, 0]} fill="var(--primary)" opacity={0.8} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -880,7 +910,7 @@ export default function DashboardPage() {
         </motion.div>
 
         <motion.div variants={staggerItem} className="lg:flex-1">
-          <IOSCard variant="elevated" padding="lg" className="h-full bg-white dark:bg-[#1C1C1E] !rounded-2xl shadow-md border-0 dark:border dark:border-[var(--border-card)] dark:shadow-none">
+          <IOSCard variant="elevated" padding="lg" className="h-full bg-white dark:bg-[#1C1C1E] !rounded-2xl shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] hover:shadow-[0_4px_20px_rgba(15,23,42,0.10),0_2px_8px_rgba(15,23,42,0.06)] transition-shadow duration-200 !border !border-black/[0.09] dark:!border-[var(--border)] dark:shadow-none dark:hover:shadow-none">
             <IOSCardHeader
               title={t("recentActivity")}
               action={
@@ -899,18 +929,33 @@ export default function DashboardPage() {
                       initial={{ opacity: 0, x: -8 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.05, duration: 0.3, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }}
-                      className="flex items-center gap-3 p-3 rounded-[10px] hover:bg-[var(--fill-quaternary)] transition-colors"
+                      onClick={() => {
+                        setSelectedActivity({
+                          id: activity.id,
+                          type: activity.type,
+                          title: activity.title,
+                          description: activity.description,
+                          time: activity.time,
+                          status: activity.status,
+                          entityId: activity.entityId,
+                          entityType: activity.entityType,
+                        });
+                        setActivityPopupOpen(true);
+                      }}
+                      style={{ cursor: "pointer" }}
+                      className="flex items-center gap-3 p-3 rounded-[12px] hover:bg-[#F8FAFC] dark:hover:bg-[rgba(255,255,255,0.04)] transition-all duration-150 ease-in-out"
                     >
                       <div className={cn("w-[36px] h-[36px] rounded-[8px] flex items-center justify-center flex-shrink-0", activityColors[activity.status])}>
                         <Icon className="h-[16px] w-[16px]" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[15px] font-medium text-[var(--label-primary)] truncate leading-[20px]">{activity.title}</p>
-                        <p className="text-[13px] text-[var(--label-secondary)] truncate leading-[18px]">{activity.description}</p>
+                        <p className="text-[15px] font-medium text-[var(--foreground)] truncate leading-[20px]">{activity.title}</p>
+                        <p className="text-[13px] text-[var(--muted-foreground)] truncate leading-[18px]">{activity.description}</p>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <div className={`activity-dot activity-dot--${activity.status}`} />
-                        <span className="text-[13px] text-[var(--label-tertiary)]">{formatTimeAgo(activity.time)}</span>
+                        <span className="text-[13px] text-[var(--muted-foreground)]">{formatTimeAgo(activity.time)}</span>
+                        <ChevronRight className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />
                       </div>
                     </motion.div>
                   );
@@ -924,16 +969,16 @@ export default function DashboardPage() {
       {/* ── Low Stock Alert ── */}
       {stats && stats.lowStockItems > 0 && (
         <motion.div variants={staggerItem}>
-          <IOSCard variant="glass" padding="lg" className="bg-white dark:bg-[#1C1C1E] rounded-xl shadow-sm">
+          <IOSCard variant="glass" padding="lg" className="bg-white dark:bg-[#1C1C1E] !rounded-2xl shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] !border !border-black/[0.09] dark:!border-[var(--border)] dark:shadow-none">
             <div className="flex items-center gap-3">
               <div className="w-[44px] h-[44px] rounded-[12px] bg-[rgba(255,149,0,0.12)] flex items-center justify-center flex-shrink-0 pulse-glow">
-                <AlertTriangle className="h-[20px] w-[20px] text-[var(--ios-orange)]" />
+                <AlertTriangle className="h-[20px] w-[20px] text-[var(--erp-warning)]" />
               </div>
               <div className="flex-1">
-                <p className="text-[15px] font-semibold text-[var(--label-primary)] leading-[20px]">
+                <p className="text-[15px] font-semibold text-[var(--foreground)] leading-[20px]">
                   {t("lowStockAlert", { count: stats.lowStockItems })}
                 </p>
-                <p className="text-[13px] text-[var(--label-secondary)] leading-[18px]">
+                <p className="text-[13px] text-[var(--muted-foreground)] leading-[18px]">
                   {t("lowStockDescription")}
                 </p>
               </div>
@@ -944,6 +989,13 @@ export default function DashboardPage() {
           </IOSCard>
         </motion.div>
       )}
+
+      {/* ── Activity Detail Popup ── */}
+      <ActivityDetailPopup
+        activity={selectedActivity}
+        open={activityPopupOpen}
+        onOpenChange={setActivityPopupOpen}
+      />
 
       {/* ── Widget Selection Modal ── */}
       <Dialog open={isWidgetModalOpen} onOpenChange={setIsWidgetModalOpen}>
@@ -964,19 +1016,26 @@ export default function DashboardPage() {
                   className={cn(
                     "flex flex-col items-start gap-2 p-4 rounded-[16px] text-left transition-all border",
                     isUsed
-                      ? "bg-[var(--fill-quaternary)] border-transparent opacity-50 cursor-not-allowed"
-                      : "bg-[var(--fill-tertiary)] border-[var(--border-subtle)] hover:bg-[var(--fill-secondary)] hover:border-[var(--border-card)] hover:shadow-sm"
+                      ? "bg-[var(--muted)] border-transparent opacity-50 cursor-not-allowed"
+                      : "bg-[var(--muted)] border-[var(--border)] hover:bg-[var(--accent)] hover:border-[var(--border)] hover:shadow-sm"
                   )}
                 >
                   <div className={cn(
                     "h-10 w-10 flex items-center justify-center rounded-full",
-                    isUsed ? "bg-[var(--fill-tertiary)] text-[var(--label-tertiary)]" : `kpi-card__icon--${widget.color} bg-[var(--fill-tertiary)]`
+                    isUsed ? "bg-[var(--muted)] text-[var(--muted-foreground)]" : `kpi-card__icon--${widget.color} bg-[var(--muted)]`
                   )}>
-                    <widget.icon className={cn("h-5 w-5", isUsed ? "" : `text-[var(--ios-${widget.color})]`)} />
+                    <widget.icon className={cn("h-5 w-5", isUsed ? "" : ({
+                      blue: "text-primary",
+                      green: "text-green-500",
+                      orange: "text-amber-500",
+                      purple: "text-violet-500",
+                      red: "text-destructive",
+                      pink: "text-pink-500",
+                    } as Record<string, string>)[widget.color] || "text-primary")} />
                   </div>
                   <div>
-                    <span className="block font-medium text-[15px] text-[var(--label-primary)]">{widget.id}</span>
-                    <span className="block mt-0.5 text-[12px] text-[var(--label-secondary)]">
+                    <span className="block font-medium text-[15px] text-[var(--foreground)]">{widget.id}</span>
+                    <span className="block mt-0.5 text-[12px] text-[var(--muted-foreground)]">
                       {isUsed ? t("alreadyAdded") : t("clickToAdd")}
                     </span>
                   </div>
@@ -984,7 +1043,7 @@ export default function DashboardPage() {
               );
             })}
           </div>
-          <DialogFooter className="mt-4 pt-4 border-t border-[var(--border-card)]">
+          <DialogFooter className="mt-4 pt-4 border-t border-[var(--border)]">
             <DialogClose asChild>
               <IOSButton variant="gray" size="large" className="w-full sm:w-auto">{tCommon("cancel")}</IOSButton>
             </DialogClose>

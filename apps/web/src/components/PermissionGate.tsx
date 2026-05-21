@@ -74,8 +74,9 @@ export function PermissionGate({
     // While loading, show nothing to prevent flashing
     if (loading) return null;
 
-    // Check permission
-    const hasAccess = hasPermission(permissions, module, action, isAdmin);
+    // Check permission using flat key: "module.action"
+    const permissionKey = `${module}.${action}`;
+    const hasAccess = hasPermission(permissions, permissionKey, isAdmin);
 
     // User has permission — render normally
     if (hasAccess) {

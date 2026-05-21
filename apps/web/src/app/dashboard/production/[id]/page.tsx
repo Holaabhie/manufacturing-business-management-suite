@@ -127,6 +127,7 @@ export default function ProductionDetailPage() {
     const [pauseDialogOpen, setPauseDialogOpen] = useState(false);
     const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
     const [updating, setUpdating] = useState(false);
+    const [overrideMode, setOverrideMode] = useState(false);
     const [progressHistory, setProgressHistory] = useState<ProductionProgressEntry[]>([]);
 
     const fetchProduction = useCallback(async () => {
@@ -302,14 +303,13 @@ export default function ProductionDetailPage() {
 
     const sc = statusConfig[production.status];
     const StatusIcon = sc.icon;
-    const isEditable = isStaff || role === "Staff";
-    const canEditProgress = !isAdmin && production.status !== "completed";
-    // Staff can update progress; admins can view only
+    const canEdit = isStaff || (isAdmin && overrideMode);
+    const canEditProgress = canEdit && production.status !== "completed";
     const canPerformActions = production.status !== "completed";
 
     return (
         <motion.div
-            className="space-y-6"
+            className="space-y-6 pb-6"
             variants={containerVariants}
             initial="hidden"
             animate="visible"
@@ -558,16 +558,50 @@ export default function ProductionDetailPage() {
                     {/* ═══ Tab: Update Progress ═══ */}
                     <TabsContent value="update">
                         <div className="rounded-xl border bg-card dark:bg-slate-900 border-border dark:border-slate-800 p-6">
-                            {isAdmin ? (
-                                <div className="flex flex-col items-center justify-center py-10 text-center">
-                                    <AlertTriangle className="h-8 w-8 text-amber-500 mb-3" />
-                                    <h3 className="font-bold text-lg mb-1">Admin View Only</h3>
-                                    <p className="text-sm text-muted-foreground max-w-sm">
-                                        Admins can view production details but cannot update progress.
-                                        Only staff/operators can update production quantities.
-                                    </p>
+                            {/* Admin Override Toggle — only visible to admin */}
+                            {isAdmin && (
+                                <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl mb-4" style={{ background: 'rgba(234,179,8,0.1)', border: '1px solid rgba(234,179,8,0.3)', overflow: 'visible' }}>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-semibold" style={{ color: '#facc15' }}>Admin Override Mode</p>
+                                        <p className="text-xs" style={{ color: '#9ca3af' }}>Turn on to update production progress directly</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setOverrideMode(!overrideMode)}
+                                        id="admin-override-toggle"
+                                        style={{
+                                            position: 'relative',
+                                            flexShrink: 0,
+                                            width: 44,
+                                            height: 24,
+                                            borderRadius: 9999,
+                                            border: 'none',
+                                            padding: 0,
+                                            cursor: 'pointer',
+                                            backgroundColor: overrideMode ? '#eab308' : '#4b5563',
+                                            transition: 'background-color 0.2s ease-in-out',
+                                        }}
+                                    >
+                                        <span
+                                            style={{
+                                                position: 'absolute',
+                                                top: 2,
+                                                left: 2,
+                                                width: 20,
+                                                height: 20,
+                                                borderRadius: '50%',
+                                                backgroundColor: '#ffffff',
+                                                boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                                                transition: 'transform 0.2s ease-in-out',
+                                                transform: overrideMode ? 'translateX(20px)' : 'translateX(0px)',
+                                            }}
+                                        />
+                                    </button>
                                 </div>
-                            ) : production.status === "completed" ? (
+                            )}
+
+                            {/* Production Complete state — only when truly completed */}
+                            {production.status === "completed" ? (
                                 <div className="flex flex-col items-center justify-center py-10 text-center">
                                     <CheckCircle2 className="h-8 w-8 text-emerald-500 mb-3" />
                                     <h3 className="font-bold text-lg mb-1">Production Complete</h3>
@@ -576,7 +610,30 @@ export default function ProductionDetailPage() {
                                         possible.
                                     </p>
                                 </div>
+                            ) : /* Admin read-only view when override is OFF */
+                            isAdmin && !overrideMode ? (
+                                <div className="flex flex-col items-center justify-center py-10 text-center">
+                                    <BarChart3 className="h-8 w-8 text-indigo-400 mb-3" />
+                                    <h3 className="font-bold text-lg mb-1">Production Summary</h3>
+                                    <p className="text-sm text-muted-foreground max-w-sm mb-6">
+                                        Enable Override Mode above to update production quantities.
+                                    </p>
+                                    <div className="grid grid-cols-2 gap-4 w-full max-w-xs">
+                                        <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-4 text-center">
+                                            <p className="text-2xl font-black text-emerald-500">{production.producedQuantity}</p>
+                                            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mt-1">Produced</p>
+                                        </div>
+                                        <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-4 text-center">
+                                            <p className="text-2xl font-black text-red-500">{production.rejectQuantity}</p>
+                                            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mt-1">Rejected</p>
+                                        </div>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-4">
+                                        Target: {production.expectedOutput} units &middot; Progress: {production.progressPercent}%
+                                    </p>
+                                </div>
                             ) : (
+                                /* ─── Editable Progress Form (Staff always, Admin when override ON) ─── */
                                 <div className="space-y-6">
                                     <div>
                                         <h3 className="text-lg font-bold mb-1">Update Output</h3>
@@ -701,9 +758,7 @@ export default function ProductionDetailPage() {
                                     <Button
                                         className="w-full h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold gap-2 shadow-lg shadow-indigo-500/20"
                                         onClick={handleUpdateProgress}
-                                        disabled={
-                                            updating || production.status === "pending"
-                                        }
+                                        disabled={updating || production.status === "pending"}
                                         id="save-progress-btn"
                                     >
                                         {updating ? (
@@ -997,99 +1052,107 @@ export default function ProductionDetailPage() {
 
             {/* ─── Pause Dialog ────────────────────────────────────── */}
             <Dialog open={pauseDialogOpen} onOpenChange={setPauseDialogOpen}>
-                <DialogContent className="max-w-[400px]">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <PauseCircle className="h-5 w-5 text-orange-500" />
+                <DialogContent className="max-w-[400px]" showCloseButton={false}>
+                    <DialogHeader className="px-4 pt-3">
+                        <DialogTitle className="text-[15px] font-medium flex items-center gap-2">
+                            <PauseCircle className="h-4 w-4 text-orange-500" />
                             Pause Production
                         </DialogTitle>
-                        <DialogDescription>
+                        <DialogDescription className="text-[13px]">
                             Optionally provide a reason for pausing.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                            Reason (Optional)
-                        </Label>
-                        <Input
-                            value={pauseReason}
-                            onChange={(e) => setPauseReason(e.target.value)}
-                            placeholder="e.g. Machine malfunction, Material shortage..."
-                            className="h-10"
-                        />
+                    <div className="px-4 py-3">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                Reason (Optional)
+                            </Label>
+                            <Input
+                                value={pauseReason}
+                                onChange={(e) => setPauseReason(e.target.value)}
+                                placeholder="e.g. Machine malfunction, Material shortage..."
+                                className="h-10"
+                            />
+                        </div>
                     </div>
-                    <DialogFooter className="gap-2">
-                        <Button
-                            variant="outline"
-                            onClick={() => setPauseDialogOpen(false)}
-                            className="flex-1 rounded-xl"
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            className="flex-1 rounded-xl bg-orange-600 hover:bg-orange-700 text-white"
-                            onClick={() =>
-                                performAction("pause", { reason: pauseReason })
-                            }
-                            disabled={updating}
-                        >
-                            Pause Production
-                        </Button>
-                    </DialogFooter>
+                    <div className="px-4 pb-5 pt-2.5 border-t border-[var(--border)]">
+                        <DialogFooter className="gap-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => setPauseDialogOpen(false)}
+                                className="flex-1 rounded-xl"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                className="flex-1 rounded-xl bg-orange-600 hover:bg-orange-700 text-white"
+                                onClick={() =>
+                                    performAction("pause", { reason: pauseReason })
+                                }
+                                disabled={updating}
+                            >
+                                Pause Production
+                            </Button>
+                        </DialogFooter>
+                    </div>
                 </DialogContent>
             </Dialog>
 
             {/* ─── Complete Dialog ──────────────────────────────────── */}
             <Dialog open={completeDialogOpen} onOpenChange={setCompleteDialogOpen}>
-                <DialogContent className="max-w-[400px]">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <Flag className="h-5 w-5 text-emerald-500" />
+                <DialogContent className="max-w-[400px]" showCloseButton={false}>
+                    <DialogHeader className="px-4 pt-3">
+                        <DialogTitle className="text-[15px] font-medium flex items-center gap-2">
+                            <Flag className="h-4 w-4 text-emerald-500" />
                             Complete Production
                         </DialogTitle>
-                        <DialogDescription>
+                        <DialogDescription className="text-[13px]">
                             Mark this production as completed? This action is final.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 p-3 space-y-1">
-                        <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Produced:</span>
-                            <span className="font-bold">{updateProduced} units</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Rejected:</span>
-                            <span className="font-bold text-red-500">
-                                {updateReject} units
-                            </span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Target:</span>
-                            <span className="font-bold">
-                                {production.expectedOutput} units
-                            </span>
+                    <div className="px-4 py-3">
+                        <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 p-3 space-y-1">
+                            <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">Produced:</span>
+                                <span className="font-bold">{updateProduced} units</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">Rejected:</span>
+                                <span className="font-bold text-red-500">
+                                    {updateReject} units
+                                </span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">Target:</span>
+                                <span className="font-bold">
+                                    {production.expectedOutput} units
+                                </span>
+                            </div>
                         </div>
                     </div>
-                    <DialogFooter className="gap-2">
-                        <Button
-                            variant="outline"
-                            onClick={() => setCompleteDialogOpen(false)}
-                            className="flex-1 rounded-xl"
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white"
-                            onClick={() =>
-                                performAction("complete", {
-                                    producedQuantity: Number(updateProduced),
-                                    rejectQuantity: Number(updateReject),
-                                })
-                            }
-                            disabled={updating}
-                        >
-                            Complete
-                        </Button>
-                    </DialogFooter>
+                    <div className="px-4 pb-5 pt-2.5 border-t border-[var(--border)]">
+                        <DialogFooter className="gap-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => setCompleteDialogOpen(false)}
+                                className="flex-1 rounded-xl"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white"
+                                onClick={() =>
+                                    performAction("complete", {
+                                        producedQuantity: Number(updateProduced),
+                                        rejectQuantity: Number(updateReject),
+                                    })
+                                }
+                                disabled={updating}
+                            >
+                                Complete
+                            </Button>
+                        </DialogFooter>
+                    </div>
                 </DialogContent>
             </Dialog>
         </motion.div>

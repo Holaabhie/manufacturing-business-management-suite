@@ -1,4 +1,5 @@
 import { Schema, model, models, Document } from 'mongoose';
+import type { FlatPermissionMap } from '@/lib/permissions';
 
 export interface IInvitation extends Document {
     organizationId: string;
@@ -6,12 +7,11 @@ export interface IInvitation extends Document {
     // Staff details
     email: string;
     phone?: string;
-    fullName: string;
-    employeeId: string;
-    department?: string;
+    fullName?: string;
 
     // Role & permissions
-    role: 'Staff'; // Only Staff can be invited; Admin is set during org creation
+    role: 'Owner' | 'Manager' | 'Staff' | 'Accountant';
+    customPermissions?: FlatPermissionMap;
     permissionTemplateId?: string;
 
     // Invitation details
@@ -19,14 +19,14 @@ export interface IInvitation extends Document {
     status: 'pending' | 'accepted' | 'expired' | 'revoked';
 
     // Tracking
-    invitedBy: string;      // Admin user ID
+    invitedBy: string;      // Admin/Owner user ID
     invitedByName: string;  // Admin name for display
+
     expiresAt: Date;
     acceptedAt?: Date;
     acceptedUserId?: string; // User ID created upon acceptance
 
     // Metadata
-    temporaryPassword: string; // Hashed temporary password
     resendCount: number;
     lastResentAt?: Date;
 
@@ -54,25 +54,19 @@ const InvitationSchema = new Schema<IInvitation>({
     },
     fullName: {
         type: String,
-        required: true,
-        trim: true,
-    },
-    employeeId: {
-        type: String,
-        required: true,
-        trim: true,
-    },
-    department: {
-        type: String,
         trim: true,
     },
 
     // Role & permissions
     role: {
         type: String,
-        enum: ['Staff'],
+        enum: ['Owner', 'Manager', 'Staff', 'Accountant'],
         default: 'Staff',
         required: true,
+    },
+    customPermissions: {
+        type: Schema.Types.Mixed,
+        default: undefined,
     },
     permissionTemplateId: String,
 
@@ -107,10 +101,6 @@ const InvitationSchema = new Schema<IInvitation>({
     acceptedUserId: String,
 
     // Metadata
-    temporaryPassword: {
-        type: String,
-        required: true,
-    },
     resendCount: {
         type: Number,
         default: 0,

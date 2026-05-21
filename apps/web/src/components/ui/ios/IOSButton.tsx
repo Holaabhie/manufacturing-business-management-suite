@@ -27,34 +27,34 @@ const buttonVariants = cva(
         'inline-flex items-center justify-center gap-2 font-semibold',
         'transition-colors duration-200',
         'disabled:opacity-40 disabled:pointer-events-none',
-        'outline-none focus-visible:ring-2 focus-visible:ring-[var(--ios-blue)] focus-visible:ring-offset-2',
+        'outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2',
         'select-none cursor-pointer',
     ].join(' '),
     {
         variants: {
             variant: {
                 filled: [
-                    'bg-[var(--ios-blue)] text-white',
+                    'bg-[var(--primary)] text-white',
                     'shadow-[0_1px_4px_rgba(0,122,255,0.3)]',
                     'hover:bg-[#0066D6]',
                     'dark:bg-[#0A84FF] dark:hover:bg-[#0070E0]',
                 ].join(' '),
                 gray: [
-                    'bg-[var(--fill-secondary)] text-[var(--label-primary)]',
+                    'bg-[var(--accent)] text-[var(--foreground)]',
                     'hover:bg-[var(--fill-primary)]',
                 ].join(' '),
                 tinted: [
-                    'bg-[rgba(0,122,255,0.12)] text-[var(--ios-blue)]',
+                    'bg-[rgba(0,122,255,0.12)] text-[var(--primary)]',
                     'hover:bg-[rgba(0,122,255,0.18)]',
                     'dark:bg-[rgba(10,132,255,0.15)] dark:text-[#0A84FF]',
                 ].join(' '),
                 plain: [
-                    'bg-transparent text-[var(--ios-blue)]',
+                    'bg-transparent text-[var(--primary)]',
                     'hover:bg-[rgba(0,122,255,0.06)]',
                     'dark:text-[#0A84FF]',
                 ].join(' '),
                 destructive: [
-                    'bg-[var(--ios-red)] text-white',
+                    'bg-[var(--destructive)] text-white',
                     'shadow-[0_1px_4px_rgba(255,59,48,0.3)]',
                     'hover:bg-[#E5352B]',
                     'dark:bg-[#FF453A] dark:hover:bg-[#E53E33]',

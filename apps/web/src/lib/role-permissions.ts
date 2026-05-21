@@ -10,22 +10,25 @@
  */
 
 import {
-    type PermissionMap,
-    type PermissionModule,
-    ADMIN_PERMISSIONS,
+    type FlatPermissionMap,
+    type RoleType,
+    normalizeRoleType,
+    isOwnerRole,
     canView,
     hasModuleAccess,
     canAccessRoute as granularCanAccessRoute,
     MODULE_ROUTE_MAP,
 } from "@/lib/permissions";
 
-export type UserRole = "Admin" | "Staff" | string;
+export type UserRole = "Admin" | "Owner" | "Manager" | "Staff" | "Accountant" | string;
 
 export function normalizeRole(role: string | null): UserRole | null {
     if (!role) return null;
     const lower = role.toLowerCase();
-    if (lower === "admin") return "Admin";
+    if (lower === "admin" || lower === "owner") return "Owner";
+    if (lower === "manager") return "Manager";
     if (lower === "staff") return "Staff";
+    if (lower === "accountant") return "Accountant";
     return role as UserRole;
 }
 
@@ -35,10 +38,30 @@ export const ROLE_PERMISSIONS: Record<string, {
     hiddenSections: string[];
     readOnlyRoutes: string[];
 }> = {
-    Admin: {
+    Owner: {
         allowedRoutes: ["*"], // All routes
         hiddenSections: [], // Nothing hidden
         readOnlyRoutes: [], // Full access
+    },
+    Admin: {
+        allowedRoutes: ["*"],
+        hiddenSections: [],
+        readOnlyRoutes: [],
+    },
+    Manager: {
+        allowedRoutes: [
+            "/dashboard",
+            "/dashboard/dashboard",
+            "/dashboard/orders",
+            "/dashboard/production",
+            "/dashboard/machines",
+            "/dashboard/inventory",
+            "/dashboard/clients",
+            "/dashboard/purchasing",
+            "/dashboard/profile",
+        ],
+        hiddenSections: ["FINANCE", "INTELLIGENCE", "SYSTEM"],
+        readOnlyRoutes: [],
     },
     Staff: {
         allowedRoutes: [
@@ -55,6 +78,19 @@ export const ROLE_PERMISSIONS: Record<string, {
         hiddenSections: ["FINANCE", "INTELLIGENCE", "SYSTEM", "RELATIONSHIPS"], // Hide these navigation groups
         readOnlyRoutes: [], // No read-only routes
     },
+    Accountant: {
+        allowedRoutes: [
+            "/dashboard",
+            "/dashboard/dashboard",
+            "/dashboard/orders",
+            "/dashboard/billing",
+            "/dashboard/payments",
+            "/dashboard/analytics",
+            "/dashboard/profile",
+        ],
+        hiddenSections: ["OPERATIONS", "INTELLIGENCE", "SYSTEM"],
+        readOnlyRoutes: ["/dashboard/orders"],
+    },
 };
 
 /**
@@ -64,17 +100,17 @@ export const ROLE_PERMISSIONS: Record<string, {
 export function isRouteAllowed(
     rawRole: UserRole | null,
     route: string,
-    permissions?: PermissionMap | null
+    permissions?: FlatPermissionMap | null
 ): boolean {
     const role = normalizeRole(rawRole);
     if (!role) return false;
 
     // If granular permissions available, use them
-    if (permissions && role !== "Admin") {
+    if (permissions && !isOwnerRole(role)) {
         return granularCanAccessRoute(permissions, route, false);
     }
 
-    const perms = ROLE_PERMISSIONS[role];
+    const perms = ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS["Staff"];
     if (perms.allowedRoutes.includes("*")) return true;
 
     return perms.allowedRoutes.some(
@@ -90,20 +126,20 @@ export function isRouteAllowed(
 export function isSectionHidden(
     rawRole: UserRole | null,
     section: string,
-    permissions?: PermissionMap | null
+    permissions?: FlatPermissionMap | null
 ): boolean {
     const role = normalizeRole(rawRole);
     if (!role) return true;
-    if (role === "Admin") return false;
+    if (isOwnerRole(role)) return false;
 
     // Map section labels to permission modules
-    const sectionModuleMap: Record<string, PermissionModule[]> = {
+    const sectionModuleMap: Record<string, string[]> = {
         "OPERATIONS": ["orders", "production", "inventory"],
         "BUSINESS": ["clients"],
-        "FINANCE": ["finance"],
-        "INTELLIGENCE": ["assistant"],
+        "FINANCE": ["invoices", "reports"],
+        "INTELLIGENCE": ["reports"],
         "TEAM": ["team"],
-        "ADMINISTRATION": ["settings", "audit", "team"],
+        "ADMINISTRATION": ["settings", "team", "staff"],
     };
 
     // If granular permissions available, check module access
@@ -114,7 +150,7 @@ export function isSectionHidden(
         }
     }
 
-    const perms = ROLE_PERMISSIONS[role];
+    const perms = ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS["Staff"];
     return perms.hiddenSections.includes(section);
 }
 
@@ -125,27 +161,24 @@ export function isSectionHidden(
 export function isRouteReadOnly(
     rawRole: UserRole | null,
     route: string,
-    permissions?: PermissionMap | null
+    permissions?: FlatPermissionMap | null
 ): boolean {
     const role = normalizeRole(rawRole);
     if (!role) return true;
-    if (role === "Admin") return false;
+    if (isOwnerRole(role)) return false;
 
     // If granular permissions available, check edit access
     if (permissions) {
-        // Find the module for this route
-        for (const [module, routes] of Object.entries(MODULE_ROUTE_MAP)) {
+        for (const [moduleId, routes] of Object.entries(MODULE_ROUTE_MAP)) {
             if (routes.some(r => route === r || route.startsWith(r + "/"))) {
-                const mod = module as PermissionModule;
-                const hasView = canView(permissions, mod, false);
-                const modulePerms = permissions[mod] as Record<string, boolean>;
-                const hasEdit = modulePerms?.edit === true || modulePerms?.create === true;
+                const hasView = canView(permissions, moduleId, false);
+                const hasEdit = permissions[`${moduleId}.edit`] === true || permissions[`${moduleId}.create`] === true;
                 return hasView && !hasEdit;
             }
         }
     }
 
-    const perms = ROLE_PERMISSIONS[role];
+    const perms = ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS["Staff"];
     return perms.readOnlyRoutes.some(
         readOnly => route === readOnly || route.startsWith(readOnly + "/")
     );
@@ -161,7 +194,7 @@ export function filterNavigationByRole(
         items: Array<{ name: string; href: string; icon: any; badge?: number }>;
     }>,
     rawRole: UserRole | null,
-    permissions?: PermissionMap | null
+    permissions?: FlatPermissionMap | null
 ): Array<{
     label: string;
     items: Array<{ name: string; href: string; icon: any; badge?: number }>;
@@ -169,8 +202,8 @@ export function filterNavigationByRole(
     const role = normalizeRole(rawRole);
     if (!role) return [];
 
-    // Admin sees everything
-    if (role === "Admin") return navigationGroups;
+    // Owner sees everything
+    if (isOwnerRole(role)) return navigationGroups;
 
     return navigationGroups
         .filter(group => !isSectionHidden(role, group.label, permissions))
@@ -190,12 +223,12 @@ export function filterNavigationByRole(
 export function filterMobileNavByRole(
     mobileNavItems: Array<{ name: string; href: string; icon: any; isMore?: boolean }>,
     rawRole: UserRole | null,
-    permissions?: PermissionMap | null
+    permissions?: FlatPermissionMap | null
 ): Array<{ name: string; href: string; icon: any; isMore?: boolean }> {
     const role = normalizeRole(rawRole);
     if (!role) return [];
 
-    if (role === "Admin") return mobileNavItems;
+    if (isOwnerRole(role)) return mobileNavItems;
 
     return mobileNavItems.filter(item =>
         item.isMore || // Keep "More" button

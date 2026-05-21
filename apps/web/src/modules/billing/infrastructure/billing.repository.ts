@@ -36,6 +36,9 @@ function toEntity(doc: Record<string, unknown>): Bill {
         notes: String(doc.notes || ""),
         terms: String(doc.terms || ""),
         status: (String(doc.status || "draft")) as Bill["status"],
+        tallySynced: Boolean(doc.tallySynced || false),
+        tallyVoucherNumber: doc.tallyVoucherNumber ? String(doc.tallyVoucherNumber) : undefined,
+        tallySyncedAt: doc.tallySyncedAt ? String(doc.tallySyncedAt) : undefined,
         createdAt: String(doc.created_at || doc.createdAt || ""),
         updatedAt: String(doc.updated_at || doc.updatedAt || ""),
     };
@@ -114,6 +117,9 @@ export class MongoBillingRepository implements IBillingRepository {
             if (data.notes !== undefined) fields.notes = data.notes;
             if (data.terms !== undefined) fields.terms = data.terms;
             if (data.status !== undefined) fields.status = data.status;
+            if (data.tallySynced !== undefined) fields.tallySynced = data.tallySynced;
+            if (data.tallyVoucherNumber !== undefined) fields.tallyVoucherNumber = data.tallyVoucherNumber;
+            if (data.tallySyncedAt !== undefined) fields.tallySyncedAt = data.tallySyncedAt;
 
             const result = await c.findOneAndUpdate(
                 { _id: new ObjectId(id), userId },

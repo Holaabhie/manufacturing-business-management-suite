@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
@@ -130,17 +131,8 @@ export function OnboardingModal() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Lock body scroll when modal is open
-  useEffect(() => {
-    if (show && !closing) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [show, closing]);
+  // Body scroll lock — centralized, reference-counted
+  useBodyScrollLock(show && !closing);
 
   // ESC key handler
   useEffect(() => {

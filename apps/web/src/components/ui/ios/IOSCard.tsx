@@ -21,10 +21,10 @@ const cardVariants = cva('transition-all duration-300', {
     variants: {
         variant: {
             elevated: [
-                'bg-[var(--bg-card)] rounded-[16px]',
-                'border border-[var(--border-card)]',
-                'shadow-[var(--shadow-card)]',
-                'hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-0.5',
+                'bg-[var(--card)] rounded-[16px]',
+                'border border-[var(--border)]',
+                'shadow-sm',
+                'hover:shadow-md hover:-translate-y-0.5',
             ].join(' '),
             glass: [
                 'rounded-[16px]',
@@ -34,16 +34,16 @@ const cardVariants = cva('transition-all duration-300', {
                 'shadow-[var(--shadow-sm)]',
             ].join(' '),
             grouped: [
-                'bg-[var(--bg-card)] rounded-[10px]',
-                'border border-[var(--border-card)]',
+                'bg-[var(--card)] rounded-[10px]',
+                'border border-[var(--border)]',
             ].join(' '),
             inset: [
-                'bg-[var(--fill-quaternary)] rounded-[10px]',
+                'bg-[var(--muted)] rounded-[10px]',
             ].join(' '),
             // Stitch-tier: deep frosted glass with gradient-sheen border
             'stitch-elevated': [
                 'rounded-[16px]',
-                'bg-[var(--bg-card)] dark:bg-[rgba(14,14,22,0.85)]',
+                'bg-[var(--card)] dark:bg-[rgba(14,14,22,0.85)]',
                 'backdrop-blur-[48px] backdrop-saturate-[220%]',
                 'border border-[rgba(60,60,67,0.28)] dark:border-white/[0.08]',
                 'shadow-[0_2px_8px_rgba(0,0,0,0.12),0_12px_40px_rgba(0,0,0,0.14)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4),0_12px_40px_rgba(0,0,0,0.5)]',
@@ -58,7 +58,7 @@ const cardVariants = cva('transition-all duration-300', {
             xl: 'p-6',
         },
         interactive: {
-            true: 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ios-blue)] focus-visible:ring-offset-2',
+            true: 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2',
             false: '',
         },
     },
@@ -132,12 +132,12 @@ export function IOSCardHeader({
         >
             <div className="flex-1 min-w-0">
                 {title && (
-                    <h3 className="text-[17px] font-semibold text-[var(--label-primary)] leading-[22px] tracking-[-0.2px]">
+                    <h3 className="text-[17px] font-semibold text-[var(--foreground)] leading-[22px] tracking-[-0.2px]">
                         {title}
                     </h3>
                 )}
                 {subtitle && (
-                    <p className="text-[12px] font-medium text-[var(--label-tertiary)] mt-0.5 leading-[16px] uppercase tracking-[0.06em]">
+                    <p className="text-[12px] font-medium text-[var(--muted-foreground)] mt-0.5 leading-[16px] uppercase tracking-[0.06em]">
                         {subtitle}
                     </p>
                 )}
@@ -168,7 +168,7 @@ export function IOSCardFooter({
     return (
         <div
             className={cn(
-                'flex items-center mt-4 pt-4 border-t border-[var(--border-card)]',
+                'flex items-center mt-4 pt-4 border-t border-[var(--border)]',
                 className
             )}
             {...props}

@@ -143,7 +143,7 @@ function CheckoutForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="bg-[var(--fill-tertiary)] rounded-[20px] p-5 border border-[var(--border-card)]">
+      <div className="bg-[var(--muted)] rounded-[20px] p-5 border border-[var(--border)]">
         <div className="max-h-[300px] overflow-y-auto">
           <PaymentElement
             onReady={() => setElementReady(true)}
@@ -190,7 +190,7 @@ function CheckoutForm({
         </IOSButton>
       </div>
 
-      <p className="text-[13px] text-center text-[var(--label-secondary)]">
+      <p className="text-[13px] text-center text-[var(--muted-foreground)]">
         By subscribing, you agree to our terms. Cancel anytime from your profile settings.
       </p>
     </form>
@@ -356,8 +356,8 @@ export default function UpgradePage() {
           </IOSButton>
         </Link>
         <div>
-          <h1 className="text-[34px] font-bold tracking-tight text-[var(--label-primary)]">Subscription Plans</h1>
-          <p className="text-[17px] text-[var(--label-secondary)]">Choose the plan that fits your business needs</p>
+          <h1 className="text-[34px] font-bold tracking-tight text-[var(--foreground)]">Subscription Plans</h1>
+          <p className="text-[17px] text-[var(--muted-foreground)]">Choose the plan that fits your business needs</p>
         </div>
       </div>
 
@@ -446,19 +446,19 @@ export default function UpgradePage() {
                 <div className="px-6 pt-10 pb-4">
                   <div className={cn(
                     "w-16 h-16 rounded-[18px] flex items-center justify-center mb-5",
-                    key === "pro" ? "bg-gradient-to-br from-amber-400 to-amber-600" : "bg-[var(--fill-secondary)]"
+                    key === "pro" ? "bg-gradient-to-br from-amber-400 to-amber-600" : "bg-[var(--accent)]"
                   )}>
-                    <Icon className={cn("h-8 w-8", key === "pro" ? "text-white" : "text-[var(--label-secondary)]")} />
+                    <Icon className={cn("h-8 w-8", key === "pro" ? "text-white" : "text-[var(--muted-foreground)]")} />
                   </div>
-                  <h3 className="text-[28px] font-bold text-[var(--label-primary)] mb-2">{tier.name}</h3>
-                  <p className="text-[15px] text-[var(--label-secondary)] leading-relaxed">{tier.description}</p>
+                  <h3 className="text-[28px] font-bold text-[var(--foreground)] mb-2">{tier.name}</h3>
+                  <p className="text-[15px] text-[var(--muted-foreground)] leading-relaxed">{tier.description}</p>
                 </div>
 
                 <div className="px-6 space-y-6 flex-1">
                   <div className="flex items-baseline gap-1 mt-2">
-                    <span className="text-[42px] font-bold text-[var(--label-primary)]">{tier.priceLabel}</span>
+                    <span className="text-[42px] font-bold text-[var(--foreground)]">{tier.priceLabel}</span>
                     {tier.price > 0 && (
-                      <span className="text-[15px] font-medium text-[var(--label-secondary)]">/mo</span>
+                      <span className="text-[15px] font-medium text-[var(--muted-foreground)]">/mo</span>
                     )}
                   </div>
 
@@ -473,13 +473,13 @@ export default function UpgradePage() {
                             <Check className="h-3.5 w-3.5" />
                           </div>
                         ) : (
-                          <div className="w-6 h-6 rounded-full bg-[var(--fill-tertiary)] flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <X className="h-3.5 w-3.5 text-[var(--label-tertiary)]" />
+                          <div className="w-6 h-6 rounded-full bg-[var(--muted)] flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <X className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />
                           </div>
                         )}
                         <span className={cn(
                           "text-[15px] leading-snug",
-                          !feature.included ? "text-[var(--label-tertiary)]" : "text-[var(--label-primary)]"
+                          !feature.included ? "text-[var(--muted-foreground)]" : "text-[var(--foreground)]"
                         )}>
                           {feature.text}
                         </span>
@@ -494,7 +494,7 @@ export default function UpgradePage() {
                       variant={isCurrentTier ? "gray" : "plain"}
                       className={cn(
                         "w-full h-[50px] text-[17px] font-bold",
-                        !isCurrentTier && "bg-[var(--fill-secondary)] text-[var(--label-primary)]"
+                        !isCurrentTier && "bg-[var(--accent)] text-[var(--foreground)]"
                       )}
                       disabled={isCurrentTier || isPro}
                     >
@@ -536,36 +536,36 @@ export default function UpgradePage() {
         })}
       </div>
 
-      <IOSCard className="border-[var(--border-card)] border-dashed mb-16">
+      <IOSCard className="border-[var(--border)] border-dashed mb-16">
         <div className="py-10 px-6">
           <div className="grid md:grid-cols-4 gap-8 text-center">
             <div className="space-y-3">
-              <div className="w-14 h-14 rounded-[18px] bg-[var(--fill-secondary)] flex items-center justify-center mx-auto shadow-sm">
+              <div className="w-14 h-14 rounded-[18px] bg-[var(--accent)] flex items-center justify-center mx-auto shadow-sm">
                 <Package className="h-7 w-7 text-[#007AFF]" />
               </div>
-              <h3 className="text-[17px] font-bold text-[var(--label-primary)]">Unlimited Inventory</h3>
-              <p className="text-[14px] text-[var(--label-secondary)]">Track all your raw materials and products</p>
+              <h3 className="text-[17px] font-bold text-[var(--foreground)]">Unlimited Inventory</h3>
+              <p className="text-[14px] text-[var(--muted-foreground)]">Track all your raw materials and products</p>
             </div>
             <div className="space-y-3">
-              <div className="w-14 h-14 rounded-[18px] bg-[var(--fill-secondary)] flex items-center justify-center mx-auto shadow-sm">
+              <div className="w-14 h-14 rounded-[18px] bg-[var(--accent)] flex items-center justify-center mx-auto shadow-sm">
                 <ShoppingCart className="h-7 w-7 text-[#5856D6]" />
               </div>
-              <h3 className="text-[17px] font-bold text-[var(--label-primary)]">Unlimited Orders</h3>
-              <p className="text-[14px] text-[var(--label-secondary)]">Process orders without limits</p>
+              <h3 className="text-[17px] font-bold text-[var(--foreground)]">Unlimited Orders</h3>
+              <p className="text-[14px] text-[var(--muted-foreground)]">Process orders without limits</p>
             </div>
             <div className="space-y-3">
-              <div className="w-14 h-14 rounded-[18px] bg-[var(--fill-secondary)] flex items-center justify-center mx-auto shadow-sm">
+              <div className="w-14 h-14 rounded-[18px] bg-[var(--accent)] flex items-center justify-center mx-auto shadow-sm">
                 <BarChart3 className="h-7 w-7 text-[#FF2D55]" />
               </div>
-              <h3 className="text-[17px] font-bold text-[var(--label-primary)]">Advanced Analytics</h3>
-              <p className="text-[14px] text-[var(--label-secondary)]">Deep insights into your operations</p>
+              <h3 className="text-[17px] font-bold text-[var(--foreground)]">Advanced Analytics</h3>
+              <p className="text-[14px] text-[var(--muted-foreground)]">Deep insights into your operations</p>
             </div>
             <div className="space-y-3">
-              <div className="w-14 h-14 rounded-[18px] bg-[var(--fill-secondary)] flex items-center justify-center mx-auto shadow-sm">
+              <div className="w-14 h-14 rounded-[18px] bg-[var(--accent)] flex items-center justify-center mx-auto shadow-sm">
                 <Download className="h-7 w-7 text-[#34C759]" />
               </div>
-              <h3 className="text-[17px] font-bold text-[var(--label-primary)]">Data Export</h3>
-              <p className="text-[14px] text-[var(--label-secondary)]">Export to Excel, PDF, and more</p>
+              <h3 className="text-[17px] font-bold text-[var(--foreground)]">Data Export</h3>
+              <p className="text-[14px] text-[var(--muted-foreground)]">Export to Excel, PDF, and more</p>
             </div>
           </div>
         </div>
@@ -577,13 +577,13 @@ export default function UpgradePage() {
         <DialogContent className="sm:max-w-[480px] bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px] overflow-hidden p-0">
           <div className="p-6">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-[20px] font-semibold text-[var(--label-primary)]">
+              <DialogTitle className="flex items-center gap-2 text-[20px] font-semibold text-[var(--foreground)]">
                 <div className="p-1.5 rounded-lg bg-amber-500/10">
                   <Crown className="h-5 w-5 text-amber-500" />
                 </div>
                 Upgrade to Pro
               </DialogTitle>
-              <DialogDescription className="text-[14px] text-[var(--label-secondary)] mt-1.5">
+              <DialogDescription className="text-[14px] text-[var(--muted-foreground)] mt-1.5">
                 Complete your payment to unlock all Pro features.
               </DialogDescription>
             </DialogHeader>
@@ -619,19 +619,19 @@ export default function UpgradePage() {
         <DialogContent className="sm:max-w-[440px] bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px] overflow-hidden p-0">
           <div className="p-6">
             <DialogHeader>
-              <DialogTitle className="text-[20px] font-semibold text-[var(--label-primary)]">Cancel Subscription</DialogTitle>
-              <DialogDescription className="text-[14px] text-[var(--label-secondary)] mt-1.5">
+              <DialogTitle className="text-[20px] font-semibold text-[var(--foreground)]">Cancel Subscription</DialogTitle>
+              <DialogDescription className="text-[14px] text-[var(--muted-foreground)] mt-1.5">
                 Choose how you'd like to cancel your Pro subscription.
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 py-6">
-              <div className="p-4 rounded-[16px] bg-[var(--fill-secondary)] space-y-2">
+              <div className="p-4 rounded-[16px] bg-[var(--accent)] space-y-2">
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-[var(--label-secondary)]" />
-                  <span className="font-semibold text-[var(--label-primary)]">Cancel at Period End</span>
+                  <Calendar className="h-4 w-4 text-[var(--muted-foreground)]" />
+                  <span className="font-semibold text-[var(--foreground)]">Cancel at Period End</span>
                 </div>
-                <p className="text-[13px] text-[var(--label-secondary)]">
+                <p className="text-[13px] text-[var(--muted-foreground)]">
                   Keep access until {subscription?.currentPeriodEnd
                     ? new Date(subscription.currentPeriodEnd).toLocaleDateString()
                     : "the end of your billing period"}.
@@ -652,7 +652,7 @@ export default function UpgradePage() {
                   <AlertCircle className="h-4 w-4 text-[#FF3B30]" />
                   <span className="font-semibold text-[#FF3B30]">Cancel Immediately</span>
                 </div>
-                <p className="text-[13px] text-[var(--label-secondary)]">
+                <p className="text-[13px] text-[var(--muted-foreground)]">
                   Lose access to Pro features right now. No refund for remaining days.
                 </p>
                 <IOSButton
@@ -667,7 +667,7 @@ export default function UpgradePage() {
               </div>
             </div>
 
-            <DialogFooter className="flex pt-2 border-t border-[var(--border-card)] border-x-[-24px] mx-[-24px] px-6 pb-2">
+            <DialogFooter className="flex pt-2 border-t border-[var(--border)] border-x-[-24px] mx-[-24px] px-6 pb-2">
               <IOSButton
                 variant="plain"
                 className="w-full h-[44px] text-[15px] font-semibold text-[#007AFF]"

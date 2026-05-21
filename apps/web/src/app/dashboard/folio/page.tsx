@@ -61,33 +61,33 @@ type ActiveTab = "expenses" | "notes";
 const CATEGORIES = ["Food", "Travel", "Office", "Utilities", "Other"] as const;
 
 const CATEGORY_COLORS: Record<string, string> = {
-  Food: "var(--ios-orange)",
-  Travel: "var(--ios-blue)",
-  Office: "var(--ios-purple)",
-  Utilities: "var(--ios-green)",
-  Other: "var(--ios-gray)",
+  Food: "#F59E0B",
+  Travel: "#2563EB",
+  Office: "#8B5CF6",
+  Utilities: "#16A34A",
+  Other: "#6B7280",
 };
 
 const CATEGORY_BG: Record<string, string> = {
-  Food: "rgba(255, 149, 0, 0.12)",
-  Travel: "rgba(0, 122, 255, 0.12)",
-  Office: "rgba(175, 82, 222, 0.12)",
-  Utilities: "rgba(52, 199, 89, 0.12)",
-  Other: "rgba(142, 142, 147, 0.12)",
+  Food: "rgba(245, 158, 11, 0.12)",
+  Travel: "rgba(37, 99, 235, 0.12)",
+  Office: "rgba(139, 92, 246, 0.12)",
+  Utilities: "rgba(22, 163, 74, 0.12)",
+  Other: "rgba(107, 114, 128, 0.12)",
 };
 
 // ─── Empty State illustration (inline SVG) ──────────────
 function EmptyExpensesIllustration() {
   return (
     <svg width="160" height="140" viewBox="0 0 160 140" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="30" y="20" width="100" height="100" rx="20" fill="var(--fill-quaternary)" />
-      <rect x="45" y="45" width="70" height="8" rx="4" fill="var(--fill-tertiary)" />
-      <rect x="45" y="60" width="50" height="8" rx="4" fill="var(--fill-tertiary)" />
-      <rect x="45" y="75" width="60" height="8" rx="4" fill="var(--fill-tertiary)" />
-      <circle cx="120" cy="100" r="22" fill="var(--ios-blue)" opacity="0.15" />
-      <path d="M113 100h14M120 93v14" stroke="var(--ios-blue)" strokeWidth="2.5" strokeLinecap="round" />
-      <circle cx="40" cy="30" r="8" fill="var(--ios-orange)" opacity="0.2" />
-      <circle cx="130" cy="35" r="6" fill="var(--ios-purple)" opacity="0.15" />
+      <rect x="30" y="20" width="100" height="100" rx="20" fill="var(--muted)" />
+      <rect x="45" y="45" width="70" height="8" rx="4" fill="var(--border)" />
+      <rect x="45" y="60" width="50" height="8" rx="4" fill="var(--border)" />
+      <rect x="45" y="75" width="60" height="8" rx="4" fill="var(--border)" />
+      <circle cx="120" cy="100" r="22" fill="#2563EB" opacity="0.15" />
+      <path d="M113 100h14M120 93v14" stroke="#2563EB" strokeWidth="2.5" strokeLinecap="round" />
+      <circle cx="40" cy="30" r="8" fill="#F59E0B" opacity="0.2" />
+      <circle cx="130" cy="35" r="6" fill="#8B5CF6" opacity="0.15" />
     </svg>
   );
 }
@@ -95,14 +95,14 @@ function EmptyExpensesIllustration() {
 function EmptyNotesIllustration() {
   return (
     <svg width="160" height="140" viewBox="0 0 160 140" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="25" y="15" width="50" height="60" rx="10" fill="var(--fill-quaternary)" transform="rotate(-6 25 15)" />
-      <rect x="55" y="25" width="50" height="60" rx="10" fill="var(--fill-tertiary)" transform="rotate(3 55 25)" />
-      <rect x="40" y="35" width="50" height="60" rx="10" fill="var(--ios-blue)" opacity="0.12" />
-      <rect x="50" y="50" width="30" height="5" rx="2.5" fill="var(--ios-blue)" opacity="0.3" />
-      <rect x="50" y="60" width="22" height="5" rx="2.5" fill="var(--ios-blue)" opacity="0.2" />
-      <circle cx="120" cy="100" r="22" fill="var(--ios-green)" opacity="0.15" />
-      <path d="M113 100h14M120 93v14" stroke="var(--ios-green)" strokeWidth="2.5" strokeLinecap="round" />
-      <circle cx="130" cy="30" r="8" fill="var(--ios-pink)" opacity="0.15" />
+      <rect x="25" y="15" width="50" height="60" rx="10" fill="var(--muted)" transform="rotate(-6 25 15)" />
+      <rect x="55" y="25" width="50" height="60" rx="10" fill="var(--border)" transform="rotate(3 55 25)" />
+      <rect x="40" y="35" width="50" height="60" rx="10" fill="#2563EB" opacity="0.12" />
+      <rect x="50" y="50" width="30" height="5" rx="2.5" fill="#2563EB" opacity="0.3" />
+      <rect x="50" y="60" width="22" height="5" rx="2.5" fill="#2563EB" opacity="0.2" />
+      <circle cx="120" cy="100" r="22" fill="#16A34A" opacity="0.15" />
+      <path d="M113 100h14M120 93v14" stroke="#16A34A" strokeWidth="2.5" strokeLinecap="round" />
+      <circle cx="130" cy="30" r="8" fill="#EC4899" opacity="0.15" />
     </svg>
   );
 }
@@ -114,14 +114,14 @@ function ExpensesSkeleton() {
       {/* Stat cards skeleton */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="h-[88px] rounded-[14px] bg-[var(--fill-tertiary)] shimmer" />
+          <div key={i} className="h-[88px] rounded-lg bg-muted animate-pulse" />
         ))}
       </div>
       {/* Table skeleton */}
-      <div className="rounded-[14px] bg-[var(--fill-tertiary)] overflow-hidden">
-        <div className="h-[48px] bg-[var(--fill-secondary)] shimmer" />
+      <div className="rounded-lg bg-muted overflow-hidden">
+        <div className="h-[48px] bg-accent animate-pulse" />
         {[0, 1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-[52px] border-t border-[var(--fill-quaternary)] shimmer" style={{ animationDelay: `${i * 0.1}s` }} />
+          <div key={i} className="h-[52px] border-t border-border animate-pulse" style={{ animationDelay: `${i * 0.1}s` }} />
         ))}
       </div>
     </div>
@@ -134,7 +134,7 @@ function NotesSkeleton() {
       {[120, 160, 100, 140, 180, 110].map((h, i) => (
         <div
           key={i}
-          className="break-inside-avoid rounded-[14px] bg-[var(--fill-tertiary)] shimmer"
+          className="break-inside-avoid rounded-lg bg-muted animate-pulse"
           style={{ height: `${h}px`, animationDelay: `${i * 0.08}s` }}
         />
       ))}
@@ -151,26 +151,21 @@ function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void 
       className="flex flex-col items-center justify-center py-16 gap-4"
     >
       <div
-        className="w-[56px] h-[56px] rounded-[16px] flex items-center justify-center"
-        style={{ background: "rgba(255, 59, 48, 0.12)" }}
+        className="w-14 h-14 rounded-lg flex items-center justify-center bg-destructive/10"
       >
-        <AlertCircle className="w-7 h-7 text-[var(--ios-red)]" />
+        <AlertCircle className="w-6 h-6 text-destructive" />
       </div>
       <div className="text-center">
-        <p className="text-[17px] font-semibold text-[var(--label-primary)] mb-1">
+        <p className="text-[16px] font-semibold text-foreground mb-1">
           Something went wrong
         </p>
-        <p className="text-[13px] text-[var(--label-secondary)] max-w-[300px]">
+        <p className="text-[13px] text-muted-foreground max-w-[300px]">
           {message}
         </p>
       </div>
       <button
         onClick={onRetry}
-        className="flex items-center gap-2 px-4 py-2 rounded-[10px] text-[15px] font-medium text-white cursor-pointer transition-all duration-200 hover:opacity-90 active:scale-95"
-        style={{
-          background: "linear-gradient(135deg, var(--ios-blue), var(--ios-indigo))",
-          boxShadow: "0 4px 14px rgba(0, 122, 255, 0.3)",
-        }}
+        className="flex items-center gap-2 px-4 py-2 rounded-md text-[13px] font-medium text-white bg-primary hover:bg-primary/90 cursor-pointer transition-colors active:scale-[0.98]"
       >
         <RefreshCw className="w-4 h-4" />
         Retry
@@ -418,10 +413,10 @@ export default function FolioPage() {
     >
       {/* ── Page Header ── */}
       <motion.div variants={staggerItem}>
-        <h1 className="text-[34px] font-bold text-[var(--label-primary)] leading-[41px] tracking-[0.37px]">
+        <h1 className="text-[24px] font-semibold text-foreground leading-tight">
           Folio
         </h1>
-        <p className="text-[15px] text-[var(--label-secondary)] mt-1 leading-[20px]">
+        <p className="text-[14px] text-muted-foreground mt-1">
           Track expenses and capture quick notes.
         </p>
       </motion.div>
@@ -429,10 +424,10 @@ export default function FolioPage() {
       {/* ── Pill Tab Switcher ── */}
       <motion.div variants={staggerItem} className="flex justify-center">
         <div
-          className="inline-flex rounded-[12px] p-[3px] gap-[2px]"
+          className="inline-flex rounded-md p-[3px] gap-[2px] bg-muted border border-border"
           style={{
-            background: "var(--fill-tertiary)",
-            border: "1px solid var(--border-card)",
+            background: "var(--muted)",
+            border: "1px solid var(--border)",
           }}
         >
           {(["expenses", "notes"] as const).map((tab) => {
@@ -442,19 +437,12 @@ export default function FolioPage() {
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={cn(
-                  "relative px-6 py-2 rounded-[10px] text-[15px] font-semibold transition-all duration-300 cursor-pointer",
+                  "relative px-6 py-2 rounded-md text-[13px] font-medium transition-all duration-200 cursor-pointer",
                   isActive
-                    ? "text-white shadow-[0_2px_10px_rgba(0,122,255,0.35)]"
-                    : "text-[var(--label-secondary)] hover:text-[var(--label-primary)] hover:bg-[var(--fill-quaternary)]"
+                    ? "text-white bg-primary shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
                 )}
-                style={
-                  isActive
-                    ? {
-                        background:
-                          "linear-gradient(135deg, var(--ios-blue), var(--ios-indigo))",
-                      }
-                    : undefined
-                }
+                style={undefined}
               >
                 <span className="flex items-center gap-2">
                   {tab === "expenses" ? (
@@ -494,25 +482,25 @@ export default function FolioPage() {
                       label: "Total Spent",
                       value: formatCurrency(expenseStats.total),
                       icon: IndianRupee,
-                      color: "var(--ios-blue)",
-                      bg: "rgba(0, 122, 255, 0.10)",
-                      glow: "rgba(0, 122, 255, 0.15)",
+                      color: "#2563EB",
+                      bg: "rgba(37, 99, 235, 0.10)",
+                      glow: "rgba(37, 99, 235, 0.15)",
                     },
                     {
                       label: "This Month",
                       value: formatCurrency(expenseStats.thisMonth),
                       icon: Calendar,
-                      color: "var(--ios-green)",
-                      bg: "rgba(52, 199, 89, 0.10)",
-                      glow: "rgba(52, 199, 89, 0.15)",
+                      color: "#16A34A",
+                      bg: "rgba(22, 163, 74, 0.10)",
+                      glow: "rgba(22, 163, 74, 0.15)",
                     },
                     {
                       label: "Top Category",
                       value: expenseStats.topCategory,
                       icon: Tag,
-                      color: "var(--ios-purple)",
-                      bg: "rgba(175, 82, 222, 0.10)",
-                      glow: "rgba(175, 82, 222, 0.15)",
+                      color: "#8B5CF6",
+                      bg: "rgba(139, 92, 246, 0.10)",
+                      glow: "rgba(139, 92, 246, 0.15)",
                     },
                   ].map((stat, i) => (
                     <motion.div
@@ -522,9 +510,9 @@ export default function FolioPage() {
                       transition={{ delay: i * 0.06, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                       className="relative overflow-hidden rounded-[14px] p-4"
                       style={{
-                        background: "var(--bg-card)",
-                        border: "1px solid var(--border-card)",
-                        boxShadow: `var(--shadow-card), 0 0 0 1px ${stat.glow}`,
+                        background: "var(--card)",
+                        border: "1px solid var(--border)",
+                        boxShadow: `0 1px 3px rgba(0,0,0,0.08), 0 0 0 1px ${stat.glow}`,
                       }}
                     >
                       {/* Background glow */}
@@ -540,10 +528,10 @@ export default function FolioPage() {
                           <stat.icon className="w-[20px] h-[20px]" style={{ color: stat.color }} />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-[12px] font-medium text-[var(--label-tertiary)] uppercase tracking-wider">
+                          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
                             {stat.label}
                           </p>
-                          <p className="text-[20px] font-bold text-[var(--label-primary)] truncate leading-tight mt-0.5">
+                          <p className="text-[18px] font-semibold text-foreground truncate leading-tight mt-0.5 tabular-nums">
                             {stat.value}
                           </p>
                         </div>
@@ -556,13 +544,7 @@ export default function FolioPage() {
                 <div className="flex justify-end">
                   <button
                     onClick={openAddExpense}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-[12px] text-[15px] font-semibold text-white cursor-pointer transition-all duration-200 hover:opacity-90 active:scale-[0.97]"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, var(--ios-blue), var(--ios-indigo))",
-                      boxShadow:
-                        "0 4px 14px rgba(0, 122, 255, 0.30), 0 0 0 1px rgba(255,255,255,0.08)",
-                    }}
+                    className="flex items-center gap-2 px-4 py-2 rounded-md text-[13px] font-medium text-white bg-primary hover:bg-primary/90 cursor-pointer transition-colors active:scale-[0.97]"
                   >
                     <Plus className="w-4 h-4" />
                     Add Expense
@@ -577,10 +559,10 @@ export default function FolioPage() {
                     className="flex flex-col items-center justify-center py-16 gap-3"
                   >
                     <EmptyExpensesIllustration />
-                    <p className="text-[17px] font-semibold text-[var(--label-primary)]">
+                    <p className="text-[16px] font-semibold text-foreground">
                       No expenses yet
                     </p>
-                    <p className="text-[13px] text-[var(--label-secondary)]">
+                    <p className="text-[13px] text-muted-foreground">
                       Tap &ldquo;Add Expense&rdquo; to start tracking your spending.
                     </p>
                   </motion.div>
@@ -588,9 +570,9 @@ export default function FolioPage() {
                   <div
                     className="rounded-[14px] overflow-hidden"
                     style={{
-                      background: "var(--bg-card)",
-                      border: "1px solid var(--border-card)",
-                      boxShadow: "var(--shadow-card)",
+                      background: "var(--card)",
+                      border: "1px solid var(--border)",
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
                     }}
                   >
                     {/* Desktop Table */}
@@ -599,15 +581,15 @@ export default function FolioPage() {
                         <thead>
                           <tr
                             style={{
-                              background: "var(--fill-quaternary)",
-                              borderBottom: "1px solid var(--border-card)",
+                              background: "var(--muted)",
+                              borderBottom: "1px solid var(--border)",
                             }}
                           >
                             {["Date", "Category", "Amount", "Description", ""].map(
                               (h) => (
                                 <th
                                   key={h}
-                                  className="text-left px-4 py-3 text-[12px] font-semibold uppercase tracking-wider text-[var(--label-tertiary)]"
+                                  className="text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
                                 >
                                   {h}
                                 </th>
@@ -626,39 +608,39 @@ export default function FolioPage() {
                                 duration: 0.3,
                                 ease: [0.16, 1, 0.3, 1],
                               }}
-                              className="group transition-colors hover:bg-[var(--fill-quaternary)]"
+                              className="group transition-colors hover:bg-[var(--muted)]"
                               style={{
                                 borderBottom:
                                   idx < expenses.length - 1
-                                    ? "1px solid var(--border-card)"
+                                    ? "1px solid var(--border)"
                                     : undefined,
                               }}
                             >
-                              <td className="px-4 py-3 text-[14px] text-[var(--label-primary)] font-medium whitespace-nowrap">
+                              <td className="px-4 py-3 text-[13px] text-foreground font-medium whitespace-nowrap">
                                 {formatDate(exp.date)}
                               </td>
                               <td className="px-4 py-3">
                                 <span
                                   className="inline-flex items-center px-2.5 py-1 rounded-full text-[12px] font-semibold"
                                   style={{
-                                    color: CATEGORY_COLORS[exp.category] || "var(--ios-gray)",
-                                    background: CATEGORY_BG[exp.category] || "var(--fill-quaternary)",
+                                    color: CATEGORY_COLORS[exp.category] || "#6B7280",
+                                    background: CATEGORY_BG[exp.category] || "var(--muted)",
                                   }}
                                 >
                                   {exp.category}
                                 </span>
                               </td>
-                              <td className="px-4 py-3 text-[15px] font-bold text-[var(--label-primary)] tabular-nums">
+                              <td className="px-4 py-3 text-[13px] font-semibold text-foreground tabular-nums">
                                 {formatCurrency(exp.amount)}
                               </td>
-                              <td className="px-4 py-3 text-[14px] text-[var(--label-secondary)] max-w-[200px] truncate">
+                              <td className="px-4 py-3 text-[13px] text-muted-foreground max-w-[200px] truncate">
                                 {exp.description || "—"}
                               </td>
                               <td className="px-4 py-3">
                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                   <button
                                     onClick={() => openEditExpense(exp)}
-                                    className="p-1.5 rounded-[8px] text-[var(--label-tertiary)] hover:text-[var(--ios-blue)] hover:bg-[rgba(0,122,255,0.1)] transition-all cursor-pointer"
+                                    className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all cursor-pointer"
                                     title="Edit"
                                   >
                                     <Pencil className="w-4 h-4" />
@@ -666,7 +648,7 @@ export default function FolioPage() {
                                   <button
                                     onClick={() => handleDeleteExpense(exp.id)}
                                     disabled={deletingExpenseId === exp.id}
-                                    className="p-1.5 rounded-[8px] text-[var(--label-tertiary)] hover:text-[var(--ios-red)] hover:bg-[rgba(255,59,48,0.1)] transition-all cursor-pointer disabled:opacity-50"
+                                    className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all cursor-pointer disabled:opacity-50"
                                     title="Delete"
                                   >
                                     <Trash2 className="w-4 h-4" />
@@ -680,15 +662,15 @@ export default function FolioPage() {
                         <tfoot>
                           <tr
                             style={{
-                              background: "var(--fill-quaternary)",
-                              borderTop: "2px solid var(--border-card)",
+                              background: "var(--muted)",
+                              borderTop: "2px solid var(--border)",
                             }}
                           >
-                            <td className="px-4 py-3 text-[13px] font-bold uppercase tracking-wider text-[var(--label-tertiary)]">
+                            <td className="px-4 py-3 text-[13px] font-bold uppercase tracking-wider text-muted-foreground">
                               Total
                             </td>
                             <td />
-                            <td className="px-4 py-3 text-[16px] font-bold text-[var(--ios-blue)] tabular-nums">
+                            <td className="px-4 py-3 text-[14px] font-semibold text-primary tabular-nums">
                               {formatCurrency(expenseStats.total)}
                             </td>
                             <td />
@@ -699,49 +681,49 @@ export default function FolioPage() {
                     </div>
 
                     {/* Mobile Card List */}
-                    <div className="sm:hidden divide-y divide-[var(--border-card)]">
+                    <div className="sm:hidden divide-y divide-[var(--border)]">
                       {expenses.map((exp) => (
                         <div key={exp.id} className="p-4 flex items-center gap-3">
                           <div
                             className="w-[40px] h-[40px] rounded-[10px] flex items-center justify-center flex-shrink-0"
                             style={{
-                              background: CATEGORY_BG[exp.category] || "var(--fill-quaternary)",
+                              background: CATEGORY_BG[exp.category] || "var(--muted)",
                             }}
                           >
                             <Tag
                               className="w-5 h-5"
                               style={{
-                                color: CATEGORY_COLORS[exp.category] || "var(--ios-gray)",
+                                color: CATEGORY_COLORS[exp.category] || "#6B7280",
                               }}
                             />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between">
-                              <p className="text-[15px] font-semibold text-[var(--label-primary)]">
+                              <p className="text-[14px] font-semibold text-foreground">
                                 {formatCurrency(exp.amount)}
                               </p>
                               <span
                                 className="text-[11px] font-medium px-2 py-0.5 rounded-full"
                                 style={{
                                   color:
-                                    CATEGORY_COLORS[exp.category] || "var(--ios-gray)",
+                                    CATEGORY_COLORS[exp.category] || "#6B7280",
                                   background:
-                                    CATEGORY_BG[exp.category] || "var(--fill-quaternary)",
+                                    CATEGORY_BG[exp.category] || "var(--muted)",
                                 }}
                               >
                                 {exp.category}
                               </span>
                             </div>
-                            <p className="text-[13px] text-[var(--label-secondary)] truncate">
+                            <p className="text-[13px] text-muted-foreground truncate">
                               {exp.description || "—"}
                             </p>
-                            <p className="text-[11px] text-[var(--label-tertiary)] mt-0.5">
+                            <p className="text-[11px] text-muted-foreground/60 mt-0.5">
                               {formatDate(exp.date)}
                             </p>
                           </div>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <button className="p-1.5 rounded-[8px] text-[var(--label-tertiary)] hover:bg-[var(--fill-quaternary)] cursor-pointer">
+                              <button className="p-1.5 rounded-[8px] text-[var(--muted-foreground)] hover:bg-[var(--muted)] cursor-pointer">
                                 <MoreVertical className="w-4 h-4" />
                               </button>
                             </DropdownMenuTrigger>
@@ -754,7 +736,7 @@ export default function FolioPage() {
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => handleDeleteExpense(exp.id)}
-                                className="rounded-[8px] gap-2 cursor-pointer text-[var(--ios-red)] focus:text-[var(--ios-red)]"
+                                className="rounded-[8px] gap-2 cursor-pointer text-[var(--destructive)] focus:text-[var(--destructive)]"
                               >
                                 <Trash2 className="w-3.5 h-3.5" /> Delete
                               </DropdownMenuItem>
@@ -765,12 +747,12 @@ export default function FolioPage() {
                       {/* Mobile totals */}
                       <div
                         className="p-4 flex items-center justify-between"
-                        style={{ background: "var(--fill-quaternary)" }}
+                        style={{ background: "var(--muted)" }}
                       >
-                        <span className="text-[13px] font-bold uppercase tracking-wider text-[var(--label-tertiary)]">
+                        <span className="text-[13px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
                           Total
                         </span>
-                        <span className="text-[17px] font-bold text-[var(--ios-blue)] tabular-nums">
+                        <span className="text-[15px] font-semibold text-primary tabular-nums">
                           {formatCurrency(expenseStats.total)}
                         </span>
                       </div>
@@ -800,10 +782,10 @@ export default function FolioPage() {
                 className="flex flex-col items-center justify-center py-20 gap-3"
               >
                 <EmptyNotesIllustration />
-                <p className="text-[17px] font-semibold text-[var(--label-primary)]">
+                <p className="text-[16px] font-semibold text-foreground">
                   No notes yet
                 </p>
-                <p className="text-[13px] text-[var(--label-secondary)]">
+                <p className="text-[13px] text-muted-foreground">
                   Tap the + button to jot down something.
                 </p>
               </motion.div>
@@ -822,22 +804,22 @@ export default function FolioPage() {
                     className="break-inside-avoid mb-4 group"
                   >
                     <div
-                      className="rounded-[14px] overflow-hidden transition-all duration-300 hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-1"
+                      className="rounded-[14px] overflow-hidden transition-all duration-300 hover:shadow-md hover:-translate-y-1"
                       style={{
-                        background: "var(--bg-card)",
-                        border: "1px solid var(--border-card)",
-                        boxShadow: "var(--shadow-card)",
+                        background: "var(--card)",
+                        border: "1px solid var(--border)",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
                         borderLeft: `4px solid ${note.color}`,
                       }}
                     >
                       <div className="p-4">
                         <div className="flex items-start justify-between gap-2 mb-2">
-                          <h3 className="text-[15px] font-semibold text-[var(--label-primary)] leading-tight line-clamp-2">
+                          <h3 className="text-[15px] font-semibold text-[var(--foreground)] leading-tight line-clamp-2">
                             {note.title || "Untitled"}
                           </h3>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <button className="p-1 rounded-[6px] text-[var(--label-quaternary)] opacity-0 group-hover:opacity-100 hover:text-[var(--label-secondary)] hover:bg-[var(--fill-quaternary)] transition-all cursor-pointer flex-shrink-0">
+                              <button className="p-1 rounded-[6px] text-[var(--muted-foreground)] opacity-0 group-hover:opacity-100 hover:text-[var(--muted-foreground)] hover:bg-[var(--muted)] transition-all cursor-pointer flex-shrink-0">
                                 <MoreVertical className="w-4 h-4" />
                               </button>
                             </DropdownMenuTrigger>
@@ -850,7 +832,7 @@ export default function FolioPage() {
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => handleDeleteNote(note.id)}
-                                className="rounded-[8px] gap-2 cursor-pointer text-[var(--ios-red)] focus:text-[var(--ios-red)]"
+                                className="rounded-[8px] gap-2 cursor-pointer text-[var(--destructive)] focus:text-[var(--destructive)]"
                               >
                                 <Trash2 className="w-3.5 h-3.5" /> Delete
                               </DropdownMenuItem>
@@ -859,7 +841,7 @@ export default function FolioPage() {
                         </div>
                         {note.body && (
                           <p
-                            className="text-[13px] text-[var(--label-secondary)] leading-[18px] mb-3"
+                            className="text-[13px] text-[var(--muted-foreground)] leading-[18px] mb-3"
                             style={{
                               display: "-webkit-box",
                               WebkitLineClamp: 3,
@@ -870,7 +852,7 @@ export default function FolioPage() {
                             {note.body}
                           </p>
                         )}
-                        <p className="text-[11px] text-[var(--label-quaternary)] font-medium">
+                        <p className="text-[11px] text-[var(--muted-foreground)] font-medium">
                           {formatTimeAgo(note.updatedAt || note.createdAt)}
                         </p>
                       </div>
@@ -888,7 +870,7 @@ export default function FolioPage() {
               onClick={openAddNote}
               className="fixed bottom-24 md:bottom-8 right-6 md:right-10 w-[56px] h-[56px] rounded-full flex items-center justify-center text-white cursor-pointer z-40 transition-transform hover:scale-105 active:scale-95"
               style={{
-                background: "linear-gradient(135deg, var(--ios-blue), var(--ios-indigo))",
+                background: "linear-gradient(135deg, var(--primary), var(--chart-5))",
                 boxShadow:
                   "0 6px 24px rgba(0, 122, 255, 0.4), 0 0 0 1px rgba(255,255,255,0.1)",
               }}
@@ -901,17 +883,21 @@ export default function FolioPage() {
 
       {/* ════════════ EXPENSE MODAL ════════════ */}
       <Dialog open={expenseModalOpen} onOpenChange={setExpenseModalOpen}>
-        <DialogContent className="sm:max-w-[480px] rounded-[20px] p-0 gap-0 overflow-hidden border-[var(--border-card)] bg-[var(--bg-card)]">
-          <DialogHeader className="px-6 pt-6 pb-4">
-            <DialogTitle className="text-[20px] font-bold text-[var(--label-primary)]">
-              {editingExpense ? "Edit Expense" : "Add Expense"}
-            </DialogTitle>
-          </DialogHeader>
+        <DialogContent className="sm:max-w-[480px] rounded-[20px] p-0 gap-0 overflow-hidden border-[var(--border)] bg-[var(--card)]">
+          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "16px 24px 12px", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+            <div style={{ width: 40, height: 40, borderRadius: 8, background: "rgba(37, 99, 235, 0.12)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Receipt className="h-[18px] w-[18px] text-[#60a5fa]" />
+            </div>
+            <div>
+              <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "#f1f5f9", lineHeight: "22px", margin: 0 }}>{editingExpense ? "Edit Expense" : "Add Expense"}</DialogTitle>
+              <p style={{ fontSize: 13, color: "#64748b", lineHeight: "18px", margin: "2px 0 0" }}>Track business spending</p>
+            </div>
+          </div>
 
           <div className="px-6 pb-6 space-y-4">
             {/* Date */}
             <div>
-              <label className="block text-[13px] font-medium text-[var(--label-secondary)] mb-1.5">
+              <label className="block text-[13px] font-medium text-[var(--muted-foreground)] mb-1.5">
                 Date
               </label>
               <input
@@ -920,17 +906,17 @@ export default function FolioPage() {
                 onChange={(e) =>
                   setExpenseForm((p) => ({ ...p, date: e.target.value }))
                 }
-                className="w-full h-[44px] px-4 rounded-[10px] text-[15px] text-[var(--label-primary)] transition-all duration-200 outline-none"
+                className="w-full h-[44px] px-4 rounded-[10px] text-[15px] text-[var(--foreground)] transition-all duration-200 outline-none"
                 style={{
-                  background: "var(--bg-input)",
-                  border: "1px solid var(--border-input)",
+                  background: "var(--input)",
+                  border: "1px solid var(--border)",
                 }}
               />
             </div>
 
             {/* Category */}
             <div>
-              <label className="block text-[13px] font-medium text-[var(--label-secondary)] mb-1.5">
+              <label className="block text-[13px] font-medium text-[var(--muted-foreground)] mb-1.5">
                 Category
               </label>
               <select
@@ -938,10 +924,10 @@ export default function FolioPage() {
                 onChange={(e) =>
                   setExpenseForm((p) => ({ ...p, category: e.target.value }))
                 }
-                className="w-full h-[44px] px-4 rounded-[10px] text-[15px] text-[var(--label-primary)] transition-all duration-200 outline-none appearance-none cursor-pointer"
+                className="w-full h-[44px] px-4 rounded-[10px] text-[15px] text-[var(--foreground)] transition-all duration-200 outline-none appearance-none cursor-pointer"
                 style={{
-                  background: "var(--bg-input)",
-                  border: "1px solid var(--border-input)",
+                  background: "var(--input)",
+                  border: "1px solid var(--border)",
                 }}
               >
                 {CATEGORIES.map((c) => (
@@ -954,7 +940,7 @@ export default function FolioPage() {
 
             {/* Amount */}
             <div>
-              <label className="block text-[13px] font-medium text-[var(--label-secondary)] mb-1.5">
+              <label className="block text-[13px] font-medium text-[var(--muted-foreground)] mb-1.5">
                 Amount (₹)
               </label>
               <input
@@ -966,17 +952,17 @@ export default function FolioPage() {
                   setExpenseForm((p) => ({ ...p, amount: e.target.value }))
                 }
                 placeholder="0.00"
-                className="w-full h-[44px] px-4 rounded-[10px] text-[15px] text-[var(--label-primary)] transition-all duration-200 outline-none placeholder:text-[var(--label-quaternary)]"
+                className="w-full h-[44px] px-4 rounded-[10px] text-[15px] text-[var(--foreground)] transition-all duration-200 outline-none placeholder:text-[var(--muted-foreground)]"
                 style={{
-                  background: "var(--bg-input)",
-                  border: "1px solid var(--border-input)",
+                  background: "var(--input)",
+                  border: "1px solid var(--border)",
                 }}
               />
             </div>
 
             {/* Description */}
             <div>
-              <label className="block text-[13px] font-medium text-[var(--label-secondary)] mb-1.5">
+              <label className="block text-[13px] font-medium text-[var(--muted-foreground)] mb-1.5">
                 Description
               </label>
               <input
@@ -986,10 +972,10 @@ export default function FolioPage() {
                   setExpenseForm((p) => ({ ...p, description: e.target.value }))
                 }
                 placeholder="What was this for?"
-                className="w-full h-[44px] px-4 rounded-[10px] text-[15px] text-[var(--label-primary)] transition-all duration-200 outline-none placeholder:text-[var(--label-quaternary)]"
+                className="w-full h-[44px] px-4 rounded-[10px] text-[15px] text-[var(--foreground)] transition-all duration-200 outline-none placeholder:text-[var(--muted-foreground)]"
                 style={{
-                  background: "var(--bg-input)",
-                  border: "1px solid var(--border-input)",
+                  background: "var(--input)",
+                  border: "1px solid var(--border)",
                 }}
               />
             </div>
@@ -997,7 +983,7 @@ export default function FolioPage() {
             {/* Actions */}
             <div className="flex justify-end gap-3 pt-2">
               <DialogClose asChild>
-                <button className="px-5 py-2.5 rounded-[10px] text-[15px] font-medium text-[var(--label-secondary)] hover:bg-[var(--fill-quaternary)] transition-all cursor-pointer">
+                <button className="px-5 py-2.5 rounded-[10px] text-[15px] font-medium text-[var(--muted-foreground)] hover:bg-[var(--muted)] transition-all cursor-pointer">
                   Cancel
                 </button>
               </DialogClose>
@@ -1007,7 +993,7 @@ export default function FolioPage() {
                 className="px-5 py-2.5 rounded-[10px] text-[15px] font-semibold text-white transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.97]"
                 style={{
                   background:
-                    "linear-gradient(135deg, var(--ios-blue), var(--ios-indigo))",
+                    "linear-gradient(135deg, var(--primary), var(--chart-5))",
                   boxShadow: "0 4px 14px rgba(0, 122, 255, 0.3)",
                 }}
               >
@@ -1024,17 +1010,21 @@ export default function FolioPage() {
 
       {/* ════════════ NOTE MODAL ════════════ */}
       <Dialog open={noteModalOpen} onOpenChange={setNoteModalOpen}>
-        <DialogContent className="sm:max-w-[520px] rounded-[20px] p-0 gap-0 overflow-hidden border-[var(--border-card)] bg-[var(--bg-card)]">
-          <DialogHeader className="px-6 pt-6 pb-4">
-            <DialogTitle className="text-[20px] font-bold text-[var(--label-primary)]">
-              {editingNote ? "Edit Note" : "New Note"}
-            </DialogTitle>
-          </DialogHeader>
+        <DialogContent className="sm:max-w-[520px] rounded-[20px] p-0 gap-0 overflow-hidden border-[var(--border)] bg-[var(--card)]">
+          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "16px 24px 12px", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+            <div style={{ width: 40, height: 40, borderRadius: 8, background: "rgba(139, 92, 246, 0.12)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <StickyNote className="h-[18px] w-[18px] text-[#c084fc]" />
+            </div>
+            <div>
+              <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "#f1f5f9", lineHeight: "22px", margin: 0 }}>{editingNote ? "Edit Note" : "New Note"}</DialogTitle>
+              <p style={{ fontSize: 13, color: "#64748b", lineHeight: "18px", margin: "2px 0 0" }}>Quick business notes</p>
+            </div>
+          </div>
 
           <div className="px-6 pb-6 space-y-4">
             {/* Title */}
             <div>
-              <label className="block text-[13px] font-medium text-[var(--label-secondary)] mb-1.5">
+              <label className="block text-[13px] font-medium text-[var(--muted-foreground)] mb-1.5">
                 Title
               </label>
               <input
@@ -1044,17 +1034,17 @@ export default function FolioPage() {
                   setNoteForm((p) => ({ ...p, title: e.target.value }))
                 }
                 placeholder="Quick title…"
-                className="w-full h-[44px] px-4 rounded-[10px] text-[15px] text-[var(--label-primary)] transition-all duration-200 outline-none placeholder:text-[var(--label-quaternary)]"
+                className="w-full h-[44px] px-4 rounded-[10px] text-[15px] text-[var(--foreground)] transition-all duration-200 outline-none placeholder:text-[var(--muted-foreground)]"
                 style={{
-                  background: "var(--bg-input)",
-                  border: "1px solid var(--border-input)",
+                  background: "var(--input)",
+                  border: "1px solid var(--border)",
                 }}
               />
             </div>
 
             {/* Body */}
             <div>
-              <label className="block text-[13px] font-medium text-[var(--label-secondary)] mb-1.5">
+              <label className="block text-[13px] font-medium text-[var(--muted-foreground)] mb-1.5">
                 Note
               </label>
               <textarea
@@ -1064,10 +1054,10 @@ export default function FolioPage() {
                 }
                 placeholder="Write your note here…"
                 rows={6}
-                className="w-full px-4 py-3 rounded-[10px] text-[15px] text-[var(--label-primary)] leading-[22px] transition-all duration-200 outline-none resize-none placeholder:text-[var(--label-quaternary)]"
+                className="w-full px-4 py-3 rounded-[10px] text-[15px] text-[var(--foreground)] leading-[22px] transition-all duration-200 outline-none resize-none placeholder:text-[var(--muted-foreground)]"
                 style={{
-                  background: "var(--bg-input)",
-                  border: "1px solid var(--border-input)",
+                  background: "var(--input)",
+                  border: "1px solid var(--border)",
                 }}
               />
             </div>
@@ -1075,7 +1065,7 @@ export default function FolioPage() {
             {/* Actions */}
             <div className="flex justify-end gap-3 pt-2">
               <DialogClose asChild>
-                <button className="px-5 py-2.5 rounded-[10px] text-[15px] font-medium text-[var(--label-secondary)] hover:bg-[var(--fill-quaternary)] transition-all cursor-pointer">
+                <button className="px-5 py-2.5 rounded-[10px] text-[15px] font-medium text-[var(--muted-foreground)] hover:bg-[var(--muted)] transition-all cursor-pointer">
                   Cancel
                 </button>
               </DialogClose>
@@ -1088,7 +1078,7 @@ export default function FolioPage() {
                 className="px-5 py-2.5 rounded-[10px] text-[15px] font-semibold text-white transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.97]"
                 style={{
                   background:
-                    "linear-gradient(135deg, var(--ios-blue), var(--ios-indigo))",
+                    "linear-gradient(135deg, var(--primary), var(--chart-5))",
                   boxShadow: "0 4px 14px rgba(0, 122, 255, 0.3)",
                 }}
               >

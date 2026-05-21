@@ -63,7 +63,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { NumericInput, parseNumericValue } from "@/components/ui/numeric-input";
-import { exportToTally } from "@/lib/tallyExport";
+import TallyExportButton from "@/components/billing/TallyExportButton";
 
 // --- iOS Components ---
 import {
@@ -113,6 +113,9 @@ interface Bill {
     notes: string;
     terms: string;
     status: 'draft' | 'sent' | 'paid' | 'overdue';
+    tallySynced?: boolean;
+    tallyVoucherNumber?: string;
+    tallySyncedAt?: string;
     createdAt: string;
 }
 
@@ -622,14 +625,14 @@ export default function BillingPage() {
     }
 
     return (
-        <div className="space-y-8 bg-[var(--bg-page)] min-h-screen p-6 rounded-3xl overflow-x-hidden">
+        <div className="space-y-8 bg-[var(--background)] min-h-screen p-6 rounded-3xl overflow-x-hidden">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-                        <FileText className="h-8 w-8 text-[var(--ios-green)]" />
+                        <FileText className="h-8 w-8 text-[var(--erp-success)]" />
                         Tally-Style Billing
                     </h1>
-                    <p className="text-[var(--label-secondary)] mt-1">Generate professional GST invoices for your orders</p>
+                    <p className="text-[var(--muted-foreground)] mt-1">Generate professional GST invoices for your orders</p>
                 </div>
 
                 {/* Company Details Warning */}
@@ -678,22 +681,22 @@ export default function BillingPage() {
                         <DialogContent className="max-w-4xl max-h-[95vh] p-0 bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px]">
                         <ScrollArea className="max-h-[95vh]">
                             <div className="p-6">
-                                <DialogHeader>
-                                    <DialogTitle className="text-[20px] font-semibold flex items-center gap-2 text-[var(--label-primary)]">
-                                        <Building2 className="h-6 w-6 text-[var(--ios-green)]" />
-                                        Create Tax Invoice
-                                    </DialogTitle>
-                                    <DialogDescription className="text-[15px] pt-1">
-                                        Generate a GST compliant invoice with automatic calculations
-                                    </DialogDescription>
-                                </DialogHeader>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 16, marginBottom: 0, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                                  <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg, rgba(16,185,129,0.4), rgba(255,255,255,0.06))', border: '1px solid rgba(255,255,255,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Building2 className="h-[18px] w-[18px] text-[#34d399]" />
+                                  </div>
+                                  <div>
+                                    <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', lineHeight: '22px', margin: 0 }}>Create Tax Invoice</DialogTitle>
+                                    <DialogDescription style={{ fontSize: 13, color: '#64748b', lineHeight: '18px', margin: '2px 0 0' }}>GST compliant invoice with auto calculations</DialogDescription>
+                                  </div>
+                                </div>
 
                                 <form onSubmit={handleSubmit} className="space-y-6 mt-6">
                                     {/* Client & Date Section */}
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-[var(--fill-quaternary)] rounded-[16px] border border-[var(--border-card)]">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-[var(--muted)] rounded-[16px] border border-[var(--border)]">
                                         <div className="space-y-2">
-                                            <label className="flex items-center gap-2 text-[13px] font-medium text-[var(--label-secondary)] pl-1">
-                                                <User className="h-4 w-4 text-[var(--label-tertiary)]" />
+                                            <label className="flex items-center gap-2 text-[13px] font-medium text-[var(--muted-foreground)] pl-1">
+                                                <User className="h-4 w-4 text-[var(--muted-foreground)]" />
                                                 Bill To (Client)
                                             </label>
                                             <div className="relative" ref={clientDropdownRef}>
@@ -702,35 +705,35 @@ export default function BillingPage() {
                                                     onClick={() => { setClientDropdownOpen(!clientDropdownOpen); setClientSearch(""); }}
                                                     className={cn(
                                                         'w-full h-[44px] rounded-[10px] text-left flex items-center',
-                                                        'bg-[var(--fill-tertiary)] dark:bg-[var(--fill-quaternary)]',
+                                                        'bg-[var(--muted)] dark:bg-[var(--muted)]',
                                                         'text-[15px]',
                                                         'outline-none border-none',
                                                         'pl-4 pr-10',
                                                         'transition-shadow duration-200 cursor-pointer',
-                                                        clientDropdownOpen && 'ring-2 ring-[var(--ios-blue)]',
+                                                        clientDropdownOpen && 'ring-2 ring-[var(--primary)]',
                                                     )}
                                                 >
                                                     {formData.client_id
-                                                        ? <span className="text-[var(--label-primary)] truncate">{clients.find(c => c.id === formData.client_id)?.name || 'Select client...'}</span>
-                                                        : <span className="text-[var(--label-tertiary)]">Select client...</span>
+                                                        ? <span className="text-[var(--foreground)] truncate">{clients.find(c => c.id === formData.client_id)?.name || 'Select client...'}</span>
+                                                        : <span className="text-[var(--muted-foreground)]">Select client...</span>
                                                     }
                                                 </button>
                                                 <ChevronDown
                                                     size={20}
                                                     className={cn(
-                                                        "absolute right-3 top-[22px] -translate-y-1/2 text-[var(--label-tertiary)] pointer-events-none transition-transform duration-200",
+                                                        "absolute right-3 top-[22px] -translate-y-1/2 text-[var(--muted-foreground)] pointer-events-none transition-transform duration-200",
                                                         clientDropdownOpen && "rotate-180"
                                                     )}
                                                 />
                                                 {clientDropdownOpen && (
-                                                    <div className="absolute z-50 mt-1 w-full rounded-[12px] bg-[var(--bg-card)] border border-[var(--border-card)] shadow-[var(--shadow-lg)] overflow-hidden">
-                                                        <div className="p-2 border-b border-[var(--border-card)]">
+                                                    <div className="absolute z-50 mt-1 w-full rounded-[12px] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-lg)] overflow-hidden">
+                                                        <div className="p-2 border-b border-[var(--border)]">
                                                             <input
                                                                 type="text"
                                                                 placeholder="Search clients..."
                                                                 value={clientSearch}
                                                                 onChange={(e) => setClientSearch(e.target.value)}
-                                                                className="w-full h-[36px] rounded-[8px] bg-[var(--fill-quaternary)] text-[14px] text-[var(--label-primary)] placeholder:text-[var(--label-tertiary)] outline-none border-none px-3"
+                                                                className="w-full h-[36px] rounded-[8px] bg-[var(--muted)] text-[14px] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] outline-none border-none px-3"
                                                                 autoFocus
                                                             />
                                                         </div>
@@ -749,8 +752,8 @@ export default function BillingPage() {
                                                                         className={cn(
                                                                             "w-full text-left px-4 py-2.5 text-[15px] transition-colors duration-150",
                                                                             formData.client_id === c.id
-                                                                                ? "bg-[var(--ios-blue)]/20 text-[var(--ios-blue)] font-medium"
-                                                                                : "text-[var(--label-primary)] hover:bg-[var(--ios-blue)]/10"
+                                                                                ? "bg-[var(--primary)]/20 text-[var(--primary)] font-medium"
+                                                                                : "text-[var(--foreground)] hover:bg-[var(--primary)]/10"
                                                                         )}
                                                                     >
                                                                         {c.name}
@@ -758,7 +761,7 @@ export default function BillingPage() {
                                                                 ))
                                                             }
                                                             {clients.filter(c => c.name?.toLowerCase().includes(clientSearch.toLowerCase())).length === 0 && (
-                                                                <div className="px-4 py-3 text-[13px] text-[var(--label-tertiary)] text-center">No clients found</div>
+                                                                <div className="px-4 py-3 text-[13px] text-[var(--muted-foreground)] text-center">No clients found</div>
                                                             )}
                                                         </div>
                                                     </div>
@@ -767,8 +770,8 @@ export default function BillingPage() {
                                         </div>
 
                                         <div className="space-y-2">
-                                            <label className="flex items-center gap-2 text-[13px] font-medium text-[var(--label-secondary)] pl-1">
-                                                <Calendar className="h-4 w-4 text-[var(--label-tertiary)]" />
+                                            <label className="flex items-center gap-2 text-[13px] font-medium text-[var(--muted-foreground)] pl-1">
+                                                <Calendar className="h-4 w-4 text-[var(--muted-foreground)]" />
                                                 Invoice Date
                                             </label>
                                             <IOSInput
@@ -779,8 +782,8 @@ export default function BillingPage() {
                                         </div>
 
                                         <div className="space-y-2">
-                                            <label className="flex items-center gap-2 text-[13px] font-medium text-[var(--label-secondary)] pl-1">
-                                                <Calendar className="h-4 w-4 text-[var(--label-tertiary)]" />
+                                            <label className="flex items-center gap-2 text-[13px] font-medium text-[var(--muted-foreground)] pl-1">
+                                                <Calendar className="h-4 w-4 text-[var(--muted-foreground)]" />
                                                 Due Date
                                             </label>
                                             <IOSInput
@@ -793,8 +796,8 @@ export default function BillingPage() {
 
                                     {/* Quick Import from Orders */}
                                     {formData.client_id && (
-                                        <div className="p-4 bg-[var(--ios-blue)]/5 dark:bg-[var(--ios-blue)]/10 rounded-[16px] border border-[var(--ios-blue)]/20">
-                                            <label className="text-[var(--ios-blue)] font-semibold text-[13px]">Quick Import from Orders</label>
+                                        <div className="p-4 bg-[var(--primary)]/5 dark:bg-[var(--primary)]/10 rounded-[16px] border border-[var(--primary)]/20">
+                                            <label className="text-[var(--primary)] font-semibold text-[13px]">Quick Import from Orders</label>
                                             <div className="flex flex-wrap gap-2 mt-2">
                                                 {orders.filter(o => (o.client_id || o.clientId || (o.client && o.client._id)) === formData.client_id).slice(0, 5).map(order => {
                                                     const oId = order.id || order._id;
@@ -815,20 +818,20 @@ export default function BillingPage() {
                                                     </IOSButton>
                                                 )})}
                                                 {orders.filter(o => (o.client_id || o.clientId || (o.client && o.client._id)) === formData.client_id).length === 0 && (
-                                                    <span className="text-[13px] text-[var(--ios-blue)] opacity-70">No orders found for this client</span>
+                                                    <span className="text-[13px] text-[var(--primary)] opacity-70">No orders found for this client</span>
                                                 )}
                                             </div>
                                         </div>
                                     )}
 
                                     {/* GST Type Toggle */}
-                                    <div className="flex items-center gap-4 p-3 bg-[var(--fill-tertiary)] rounded-[12px]">
-                                        <label className="font-semibold text-[13px] text-[var(--label-primary)] pl-1">GST Type:</label>
+                                    <div className="flex items-center gap-4 p-3 bg-[var(--muted)] rounded-[12px]">
+                                        <label className="font-semibold text-[13px] text-[var(--foreground)] pl-1">GST Type:</label>
                                         <div className="flex gap-2">
                                             <IOSButton
                                                 type="button"
                                                 variant={!formData.isIGST ? "filled" : "gray"}
-                                                className={cn("!py-1.5", !formData.isIGST && "!bg-[var(--ios-green)]")}
+                                                className={cn("!py-1.5", !formData.isIGST && "!bg-[var(--erp-success)]")}
                                                 onClick={() => setFormData({ ...formData, isIGST: false })}
                                             >
                                                 CGST + SGST (Intra-State)
@@ -836,7 +839,7 @@ export default function BillingPage() {
                                             <IOSButton
                                                 type="button"
                                                 variant={formData.isIGST ? "filled" : "gray"}
-                                                className={cn("!py-1.5", formData.isIGST && "!bg-[var(--ios-green)]")}
+                                                className={cn("!py-1.5", formData.isIGST && "!bg-[var(--erp-success)]")}
                                                 onClick={() => setFormData({ ...formData, isIGST: true })}
                                             >
                                                 IGST (Inter-State)
@@ -848,7 +851,7 @@ export default function BillingPage() {
                                     <div className="space-y-4">
                                         <div className="flex justify-between items-center">
                                             <h3 className="font-bold text-lg flex items-center gap-2">
-                                                <Package className="h-5 w-5 text-[var(--label-tertiary)]" />
+                                                <Package className="h-5 w-5 text-[var(--muted-foreground)]" />
                                                 Line Items
                                             </h3>
                                             <Button type="button" variant="outline" size="sm" onClick={addItem}>
@@ -858,17 +861,17 @@ export default function BillingPage() {
                                         </div>
 
                                         {formData.items.length === 0 ? (
-                                            <div className="py-12 text-center bg-[var(--fill-quaternary)] rounded-xl border-2 border-dashed border-[var(--border-card)]">
-                                                <Package className="h-10 w-10 mx-auto mb-3 text-[var(--label-quaternary)]" />
-                                                <p className="text-[var(--label-secondary)]">No items added yet. Click "Add Item" or import from orders.</p>
+                                            <div className="py-12 text-center bg-[var(--muted)] rounded-xl border-2 border-dashed border-[var(--border)]">
+                                                <Package className="h-10 w-10 mx-auto mb-3 text-[var(--muted-foreground)]" />
+                                                <p className="text-[var(--muted-foreground)]">No items added yet. Click "Add Item" or import from orders.</p>
                                             </div>
                                         ) : (
                                             <div className="space-y-3">
                                                 {formData.items.map((item, index) => (
-                                                    <div key={item.id} className="p-3 bg-[var(--bg-card)] rounded-xl border border-[var(--border-card)] space-y-3">
+                                                    <div key={item.id} className="p-3 bg-[var(--card)] rounded-xl border border-[var(--border)] space-y-3">
                                                         {/* Description — full width */}
                                                         <div className="space-y-1">
-                                                            <label className="text-[10px] uppercase text-[var(--label-secondary)] pl-1">Description</label>
+                                                            <label className="text-[10px] uppercase text-[var(--muted-foreground)] pl-1">Description</label>
                                                             <IOSInput
                                                                 placeholder="Product/Service name"
                                                                 value={item.description}
@@ -880,7 +883,7 @@ export default function BillingPage() {
                                                         {/* HSN + QTY + Unit */}
                                                         <div className="grid grid-cols-3 gap-2">
                                                             <div className="space-y-1">
-                                                                <label className="text-[10px] uppercase text-[var(--label-secondary)] pl-1">HSN</label>
+                                                                <label className="text-[10px] uppercase text-[var(--muted-foreground)] pl-1">HSN</label>
                                                                 <IOSInput
                                                                     placeholder="Code"
                                                                     value={item.hsnCode}
@@ -889,18 +892,18 @@ export default function BillingPage() {
                                                                 />
                                                             </div>
                                                             <div className="space-y-1">
-                                                                <label className="text-[10px] uppercase text-[var(--label-secondary)] pl-1">QTY</label>
+                                                                <label className="text-[10px] uppercase text-[var(--muted-foreground)] pl-1">QTY</label>
                                                                 <NumericInput
                                                                     value={item.quantity || ""}
                                                                     onValueChange={(v: string) => updateItem(item.id, 'quantity', parseNumericValue(v))}
-                                                                    className="h-9 bg-[var(--fill-quaternary)] border-none text-[15px]"
+                                                                    className="h-9 bg-[var(--muted)] border-none text-[15px]"
                                                                     placeholder="0"
                                                                     allowDecimal={true}
                                                                     min={0}
                                                                 />
                                                             </div>
                                                             <div className="space-y-1">
-                                                                <label className="text-[10px] uppercase text-[var(--label-secondary)] pl-1">Unit</label>
+                                                                <label className="text-[10px] uppercase text-[var(--muted-foreground)] pl-1">Unit</label>
                                                                 <IOSInput
                                                                     placeholder="pcs"
                                                                     value={item.unit}
@@ -913,18 +916,18 @@ export default function BillingPage() {
                                                         {/* Rate (₹) + GST % */}
                                                         <div className="grid grid-cols-2 gap-2">
                                                             <div className="space-y-1">
-                                                                <label className="text-[10px] uppercase text-[var(--label-secondary)] pl-1">Rate (₹)</label>
+                                                                <label className="text-[10px] uppercase text-[var(--muted-foreground)] pl-1">Rate (₹)</label>
                                                                 <NumericInput
                                                                     value={item.rate || ""}
                                                                     onValueChange={(v: string) => updateItem(item.id, 'rate', parseNumericValue(v))}
-                                                                    className="h-9 bg-[var(--fill-quaternary)] border-none text-[15px]"
+                                                                    className="h-9 bg-[var(--muted)] border-none text-[15px]"
                                                                     placeholder="0.00"
                                                                     allowDecimal={true}
                                                                     min={0}
                                                                 />
                                                             </div>
                                                             <div className="space-y-1">
-                                                                <label className="text-[10px] uppercase text-[var(--label-secondary)] pl-1">GST %</label>
+                                                                <label className="text-[10px] uppercase text-[var(--muted-foreground)] pl-1">GST %</label>
                                                                 <IOSSelect
                                                                     value={item.gstRate.toString()}
                                                                     onChange={(e: any) => updateItem(item.id, 'gstRate', parseInt(e.target.value))}
@@ -940,7 +943,7 @@ export default function BillingPage() {
                                                         </div>
 
                                                         {/* Delete (left) + Amount (right) */}
-                                                        <div className="flex items-center justify-between pt-2 border-t border-[var(--border-card)]">
+                                                        <div className="flex items-center justify-between pt-2 border-t border-[var(--border)]">
                                                             <IOSButton
                                                                 type="button"
                                                                 variant="destructive"
@@ -951,8 +954,8 @@ export default function BillingPage() {
                                                                 Remove
                                                             </IOSButton>
                                                             <div className="flex items-center gap-1.5">
-                                                                <span className="text-[11px] uppercase text-[var(--label-tertiary)] font-medium">Amount</span>
-                                                                <span className="text-[17px] font-bold text-[var(--ios-green)]">
+                                                                <span className="text-[11px] uppercase text-[var(--muted-foreground)] font-medium">Amount</span>
+                                                                <span className="text-[17px] font-bold text-[var(--erp-success)]">
                                                                     ₹{item.amount.toLocaleString('en-IN')}
                                                                 </span>
                                                             </div>
@@ -965,32 +968,32 @@ export default function BillingPage() {
 
                                     {/* Totals Summary */}
                                     <div className="flex justify-end">
-                                        <div className="w-80 space-y-2 p-4 bg-[var(--fill-quaternary)] rounded-xl border border-[var(--border-card)]">
+                                        <div className="w-80 space-y-2 p-4 bg-[var(--muted)] rounded-xl border border-[var(--border)]">
                                             <div className="flex justify-between text-sm">
-                                                <span className="text-[var(--label-secondary)]">Subtotal</span>
+                                                <span className="text-[var(--muted-foreground)]">Subtotal</span>
                                                 <span className="font-bold">₹{totals.subtotal.toLocaleString('en-IN')}</span>
                                             </div>
                                             {!formData.isIGST ? (
                                                 <>
                                                     <div className="flex justify-between text-sm">
-                                                        <span className="text-[var(--label-secondary)]">CGST</span>
+                                                        <span className="text-[var(--muted-foreground)]">CGST</span>
                                                         <span className="font-medium">₹{totals.cgstAmount.toLocaleString('en-IN')}</span>
                                                     </div>
                                                     <div className="flex justify-between text-sm">
-                                                        <span className="text-[var(--label-secondary)]">SGST</span>
+                                                        <span className="text-[var(--muted-foreground)]">SGST</span>
                                                         <span className="font-medium">₹{totals.sgstAmount.toLocaleString('en-IN')}</span>
                                                     </div>
                                                 </>
                                             ) : (
                                                 <div className="flex justify-between text-sm">
-                                                    <span className="text-[var(--label-secondary)]">IGST</span>
+                                                    <span className="text-[var(--muted-foreground)]">IGST</span>
                                                     <span className="font-medium">₹{totals.igstAmount.toLocaleString('en-IN')}</span>
                                                 </div>
                                             )}
                                             <Separator />
                                             <div className="flex justify-between text-lg pt-2">
                                                 <span className="font-bold">Grand Total</span>
-                                                <span className="font-black text-[var(--ios-green)]">₹{totals.totalAmount.toLocaleString('en-IN')}</span>
+                                                <span className="font-black text-[var(--erp-success)]">₹{totals.totalAmount.toLocaleString('en-IN')}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -998,35 +1001,33 @@ export default function BillingPage() {
                                     {/* Notes & Terms */}
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <label className="flex items-center gap-2 text-[13px] font-medium text-[var(--label-secondary)] pl-1">Notes / Remarks</label>
+                                            <label className="flex items-center gap-2 text-[13px] font-medium text-[var(--muted-foreground)] pl-1">Notes / Remarks</label>
                                             <Textarea
                                                 placeholder="Additional notes for the client..."
                                                 value={formData.notes}
                                                 onChange={(e: any) => setFormData({ ...formData, notes: e.target.value })}
                                                 rows={4}
-                                                className="bg-[var(--fill-quaternary)] border-none text-[15px]"
+                                                className="bg-[var(--muted)] border-none text-[15px]"
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="flex items-center gap-2 text-[13px] font-medium text-[var(--label-secondary)] pl-1">Terms & Conditions</label>
+                                            <label className="flex items-center gap-2 text-[13px] font-medium text-[var(--muted-foreground)] pl-1">Terms & Conditions</label>
                                             <Textarea
                                                 value={formData.terms}
                                                 onChange={(e: any) => setFormData({ ...formData, terms: e.target.value })}
                                                 rows={4}
-                                                className="bg-[var(--fill-quaternary)] border-none text-[15px]"
+                                                className="bg-[var(--muted)] border-none text-[15px]"
                                             />
                                         </div>
                                     </div>
 
-                                    <DialogFooter className="pt-4 border-t border-[var(--border-card)]">
-                                        <IOSButton type="button" variant="gray" onClick={() => setIsDialogOpen(false)}>
-                                            Cancel
-                                        </IOSButton>
-                                        <IOSButton type="submit" variant="filled">
-                                            <CheckCircle2 className="h-4 w-4 mr-2" />
+                                    <div style={{ display: 'flex', gap: 10, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+                                        <button type="button" onClick={() => setIsDialogOpen(false)} style={{ flex: 1, height: 48, borderRadius: 14, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.10)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                                        <button type="submit" style={{ flex: 1, height: 48, borderRadius: 14, background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', border: '1px solid rgba(16,185,129,0.3)', boxShadow: '0 4px 16px rgba(16,185,129,0.25)', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                                            <CheckCircle2 className="h-4 w-4" />
                                             Create Invoice
-                                        </IOSButton>
-                                    </DialogFooter>
+                                        </button>
+                                    </div>
                                 </form>
                             </div>
                         </ScrollArea>
@@ -1037,35 +1038,35 @@ export default function BillingPage() {
 
             {/* Stats Cards */}
             <div className="grid gap-4 md:grid-cols-4">
-                <IOSCard variant="elevated" className="!bg-gradient-to-br from-[var(--ios-green)]/10 to-[var(--ios-green)]/5 dark:from-[var(--ios-green)]/20 dark:to-[var(--ios-green)]/10 border border-[var(--ios-green)]/20">
-                    <IOSCardHeader title="Total Invoiced" className="[&_h3]:text-[11px] [&_h3]:uppercase [&_h3]:tracking-widest [&_h3]:text-[var(--ios-green)] pb-0" />
+                <IOSCard variant="elevated" className="!bg-gradient-to-br from-[var(--erp-success)]/10 to-[var(--erp-success)]/5 dark:from-[var(--erp-success)]/20 dark:to-[var(--erp-success)]/10 border border-[var(--erp-success)]/20">
+                    <IOSCardHeader title="Total Invoiced" className="[&_h3]:text-[11px] [&_h3]:uppercase [&_h3]:tracking-widest [&_h3]:text-[var(--erp-success)] pb-0" />
                     <IOSCardContent className="pt-2">
-                        <div className="text-[28px] font-bold tracking-tight text-[var(--label-primary)]">₹{stats.totalValue.toLocaleString('en-IN')}</div>
-                        <p className="text-[13px] text-[var(--label-secondary)] font-medium mt-1">{stats.total} invoices generated</p>
+                        <div className="text-[28px] font-bold tracking-tight text-[var(--foreground)]">₹{stats.totalValue.toLocaleString('en-IN')}</div>
+                        <p className="text-[13px] text-[var(--muted-foreground)] font-medium mt-1">{stats.total} invoices generated</p>
                     </IOSCardContent>
                 </IOSCard>
 
                 <IOSCard variant="elevated">
-                    <IOSCardHeader title="Paid" className="[&_h3]:text-[11px] [&_h3]:uppercase [&_h3]:tracking-widest [&_h3]:text-[var(--label-secondary)] pb-0" />
+                    <IOSCardHeader title="Paid" className="[&_h3]:text-[11px] [&_h3]:uppercase [&_h3]:tracking-widest [&_h3]:text-[var(--muted-foreground)] pb-0" />
                     <IOSCardContent className="pt-2">
-                        <div className="text-[28px] font-bold tracking-tight text-[var(--label-primary)]">{stats.paid}</div>
-                        <p className="text-[13px] text-[var(--ios-green)] font-medium mt-1">₹{stats.paidValue.toLocaleString('en-IN')} collected</p>
+                        <div className="text-[28px] font-bold tracking-tight text-[var(--foreground)]">{stats.paid}</div>
+                        <p className="text-[13px] text-[var(--erp-success)] font-medium mt-1">₹{stats.paidValue.toLocaleString('en-IN')} collected</p>
                     </IOSCardContent>
                 </IOSCard>
 
                 <IOSCard variant="elevated">
-                    <IOSCardHeader title="Pending" className="[&_h3]:text-[11px] [&_h3]:uppercase [&_h3]:tracking-widest [&_h3]:text-[var(--label-secondary)] pb-0" />
+                    <IOSCardHeader title="Pending" className="[&_h3]:text-[11px] [&_h3]:uppercase [&_h3]:tracking-widest [&_h3]:text-[var(--muted-foreground)] pb-0" />
                     <IOSCardContent className="pt-2">
-                        <div className="text-[28px] font-bold tracking-tight text-[var(--ios-orange)]">{stats.sent}</div>
-                        <p className="text-[13px] text-[var(--label-secondary)] font-medium mt-1">Awaiting payment</p>
+                        <div className="text-[28px] font-bold tracking-tight text-[var(--erp-warning)]">{stats.sent}</div>
+                        <p className="text-[13px] text-[var(--muted-foreground)] font-medium mt-1">Awaiting payment</p>
                     </IOSCardContent>
                 </IOSCard>
 
                 <IOSCard variant="elevated">
-                    <IOSCardHeader title="Drafts" className="[&_h3]:text-[11px] [&_h3]:uppercase [&_h3]:tracking-widest [&_h3]:text-[var(--label-secondary)] pb-0" />
+                    <IOSCardHeader title="Drafts" className="[&_h3]:text-[11px] [&_h3]:uppercase [&_h3]:tracking-widest [&_h3]:text-[var(--muted-foreground)] pb-0" />
                     <IOSCardContent className="pt-2">
-                        <div className="text-[28px] font-bold tracking-tight text-[var(--label-tertiary)]">{stats.draft}</div>
-                        <p className="text-[13px] text-[var(--label-secondary)] font-medium mt-1">Ready to send</p>
+                        <div className="text-[28px] font-bold tracking-tight text-[var(--muted-foreground)]">{stats.draft}</div>
+                        <p className="text-[13px] text-[var(--muted-foreground)] font-medium mt-1">Ready to send</p>
                     </IOSCardContent>
                 </IOSCard>
             </div>
@@ -1079,15 +1080,15 @@ export default function BillingPage() {
             />
 
             {/* Bills Table — Desktop only */}
-            <div className="hidden md:block rounded-2xl border bg-[var(--bg-card)] shadow-[var(--shadow-card)] overflow-hidden border-[var(--border-card)]">
+            <div className="hidden md:block rounded-2xl border bg-[var(--card)] shadow-sm overflow-hidden border-[var(--border)]">
                 <Table>
-                    <TableHeader className="bg-[var(--fill-quaternary)] border-b border-[var(--border-card)]">
+                    <TableHeader className="bg-[var(--muted)] border-b border-[var(--border)]">
                         <TableRow className="hover:bg-transparent">
-                            <TableHead className="font-medium text-[var(--label-secondary)] py-4 pl-6">Invoice</TableHead>
-                            <TableHead className="font-medium text-[var(--label-secondary)] py-4">Client</TableHead>
-                            <TableHead className="font-medium text-[var(--label-secondary)] py-4">Date</TableHead>
-                            <TableHead className="font-medium text-[var(--label-secondary)] py-4 text-right">Amount</TableHead>
-                            <TableHead className="font-medium text-[var(--label-secondary)] py-4 text-center">Status</TableHead>
+                            <TableHead className="font-medium text-[var(--muted-foreground)] py-4 pl-6">Invoice</TableHead>
+                            <TableHead className="font-medium text-[var(--muted-foreground)] py-4">Client</TableHead>
+                            <TableHead className="font-medium text-[var(--muted-foreground)] py-4">Date</TableHead>
+                            <TableHead className="font-medium text-[var(--muted-foreground)] py-4 text-right">Amount</TableHead>
+                            <TableHead className="font-medium text-[var(--muted-foreground)] py-4 text-center">Status</TableHead>
                             <TableHead className="w-[100px]"></TableHead>
                         </TableRow>
                     </TableHeader>
@@ -1105,8 +1106,8 @@ export default function BillingPage() {
                             ))
                         ) : filteredBills.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center py-20 text-[var(--label-secondary)]">
-                                    <FileText className="h-10 w-10 mx-auto mb-3 text-[var(--label-tertiary)]" />
+                                <TableCell colSpan={6} className="text-center py-20 text-[var(--muted-foreground)]">
+                                    <FileText className="h-10 w-10 mx-auto mb-3 text-[var(--muted-foreground)]" />
                                     <p className="text-[13px]">No invoices found. Create your first invoice to get started.</p>
                                 </TableCell>
                             </TableRow>
@@ -1117,29 +1118,30 @@ export default function BillingPage() {
                                 initial="hidden"
                                 animate="show"
                                 custom={index}
-                                className="group bg-[var(--bg-card)] hover:bg-[var(--fill-quaternary)] border-b border-[var(--border-card)] transition-all shadow-sm hover:shadow-[var(--shadow-card-hover)]"
+                                className="group bg-[var(--card)] hover:bg-[var(--muted)] border-b border-[var(--border)] transition-all shadow-sm hover:shadow-md"
                             >
                                 <TableCell className="pl-6 py-4">
                                     <span className="font-semibold text-[15px] text-blue-600 tracking-tight">{bill.billNumber}</span>
                                 </TableCell>
                                 <TableCell className="py-4">
                                     <div className="flex flex-col">
-                                        <span className="font-medium text-[15px] text-[var(--label-primary)]">{bill.clientName}</span>
+                                        <span className="font-medium text-[15px] text-[var(--foreground)]">{bill.clientName}</span>
                                         {bill.clientGSTIN && (
-                                            <span className="text-[12px] text-[var(--label-secondary)]">GSTIN: {bill.clientGSTIN}</span>
+                                            <span className="text-[12px] text-[var(--muted-foreground)]">GSTIN: {bill.clientGSTIN}</span>
                                         )}
                                     </div>
                                 </TableCell>
                                 <TableCell className="py-4">
                                     <div className="flex flex-col">
-                                        <span className="font-medium text-[14px] text-[var(--label-primary)]">{new Date(bill.billDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                                        <span className="text-[12px] text-[var(--label-secondary)]">Due: {new Date(bill.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                                        <span className="font-medium text-[14px] text-[var(--foreground)]">{new Date(bill.billDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                                        <span className="text-[12px] text-[var(--muted-foreground)]">Due: {new Date(bill.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
                                     </div>
                                 </TableCell>
                                 <TableCell className="py-4 text-right pr-6">
                                     <span className="font-semibold text-[17px] tracking-tight">₹{bill.totalAmount.toLocaleString('en-IN')}</span>
                                 </TableCell>
                                 <TableCell className="py-4 text-center">
+                                    <div className="flex flex-col items-center gap-1">
                                     <IOSBadge
                                         variant={bill.status === 'paid' ? 'filled' : bill.status === 'sent' ? 'tinted' : bill.status === 'draft' ? 'outline' : 'filled'}
                                         color={bill.status === 'paid' ? 'green' : bill.status === 'sent' ? 'blue' : bill.status === 'draft' ? 'gray' : 'red'}
@@ -1147,6 +1149,16 @@ export default function BillingPage() {
                                     >
                                         {bill.status}
                                     </IOSBadge>
+                                    <TallyExportButton
+                                        invoiceId={bill.id}
+                                        invoiceNumber={bill.billNumber}
+                                        tallySynced={bill.tallySynced}
+                                        tallySyncedAt={bill.tallySyncedAt}
+                                        tallyVoucherNumber={bill.tallyVoucherNumber}
+                                        onSuccess={() => fetchData()}
+                                        compact
+                                    />
+                                    </div>
                                 </TableCell>
                                 <TableCell className="py-4 pr-4">
                                     <DropdownMenu>
@@ -1165,8 +1177,27 @@ export default function BillingPage() {
                                                 Download PDF
                                             </DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => generatePDF(bill, 'print')}>
-                                                <Printer className="mr-2 h-4 w-4 text-[var(--ios-green)]" />
+                                                <Printer className="mr-2 h-4 w-4 text-[var(--erp-success)]" />
                                                 Print Invoice
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                }}
+                                                className="p-0 focus:bg-transparent"
+                                            >
+                                                <div className="px-2 py-1.5">
+                                                    <TallyExportButton
+                                                        invoiceId={bill.id}
+                                                        invoiceNumber={bill.billNumber}
+                                                        tallySynced={bill.tallySynced}
+                                                        tallySyncedAt={bill.tallySyncedAt}
+                                                        tallyVoucherNumber={bill.tallyVoucherNumber}
+                                                        onSuccess={() => fetchData()}
+                                                    />
+                                                </div>
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
                                             {bill.status === 'draft' && (
@@ -1252,44 +1283,106 @@ export default function BillingPage() {
                 ))}
             </div>
 
-            {/* Preview Dialog */}
+            {/* DESKTOP UX REFACTOR — Preview Dialog */}
             <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-                <DialogContent className="w-full max-w-3xl max-h-[90vh] p-0 overflow-x-hidden overflow-y-auto bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px] md:rounded-[24px]">
-                    <ScrollArea className="max-h-[80vh]">
-                        {selectedBill && (
-                            <div className="p-4 md:p-8 pb-8 md:pb-12 overflow-x-hidden" ref={printRef}>
+                <DialogContent fullScreen className="!bg-transparent" aria-describedby={undefined}>
+                    <DialogTitle className="sr-only">Invoice Preview</DialogTitle>
+                    {/* DESKTOP UX REFACTOR — Centered modal shell */}
+                    <div className="fixed inset-0 z-[1] flex items-end lg:items-center lg:justify-center" onClick={() => setIsPreviewOpen(false)}>
+                      <div
+                        className="w-full lg:w-[min(1200px,92vw)] max-h-[88dvh] lg:h-[min(92vh,980px)] flex flex-col overflow-hidden rounded-t-[32px] lg:rounded-2xl shadow-2xl"
+                        style={{ background: 'var(--overlay-sheet-bg, #0D1421)' }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {/* DESKTOP UX REFACTOR — Sticky Top Toolbar (desktop only) */}
+                        <div className="hidden lg:flex items-center justify-between px-6 py-4 border-b border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] backdrop-blur-sm shrink-0">
+                          <div className="flex items-center gap-3">
+                            <FileText size={18} className="text-[var(--erp-success)]" />
+                            <span className="text-[15px] font-semibold text-[var(--foreground)]">Invoice Preview</span>
+                            {selectedBill && (
+                              <span className="text-[13px] text-[var(--muted-foreground)] font-mono ml-1">{selectedBill.billNumber}</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {selectedBill && (
+                              <>
+                                <button
+                                  onClick={() => generatePDF(selectedBill, 'print')}
+                                  disabled={pdfGenerating}
+                                  className="h-9 px-4 rounded-lg border border-[rgba(255,255,255,0.10)] bg-transparent text-[var(--muted-foreground)] text-[13px] font-medium flex items-center gap-2 hover:bg-white/5 transition-colors cursor-pointer disabled:opacity-50"
+                                >
+                                  <Printer size={14} />
+                                  Print
+                                </button>
+                                <button
+                                  onClick={() => generatePDF(selectedBill, 'download')}
+                                  disabled={pdfGenerating}
+                                  className="h-9 px-4 rounded-lg border-none bg-[#2563EB] text-white text-[13px] font-semibold flex items-center gap-2 hover:bg-[#1d4ed8] transition-colors cursor-pointer disabled:opacity-50"
+                                >
+                                  {pdfGenerating ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                                  {pdfGenerating ? "Generating..." : "Download PDF"}
+                                </button>
+                                <TallyExportButton
+                                  invoiceId={selectedBill.id}
+                                  invoiceNumber={selectedBill.billNumber}
+                                  tallySynced={selectedBill.tallySynced}
+                                  tallySyncedAt={selectedBill.tallySyncedAt}
+                                  tallyVoucherNumber={selectedBill.tallyVoucherNumber}
+                                  onSuccess={() => fetchData()}
+                                />
+                              </>
+                            )}
+                            <button
+                              onClick={() => setIsPreviewOpen(false)}
+                              className="h-9 w-9 rounded-lg border border-[rgba(255,255,255,0.10)] bg-transparent text-[var(--muted-foreground)] flex items-center justify-center hover:bg-white/5 transition-colors cursor-pointer ml-1"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Mobile drag handle (visible below lg) */}
+                        <div className="flex lg:hidden justify-center pt-3 pb-2 shrink-0">
+                          <div className="w-12 h-[5px] rounded-full" style={{ background: 'var(--overlay-handle, rgba(255,255,255,0.2))' }} />
+                        </div>
+                        {/* DESKTOP UX REFACTOR — Scrollable Document Area */}
+                        <div className="flex-1 overflow-y-auto min-h-0 lg:bg-[rgba(0,0,0,0.15)]">
+                          {selectedBill && (
+                            <div className="lg:flex lg:justify-center lg:py-8 lg:px-4">
+                              <div className="w-full lg:max-w-[900px] lg:rounded-xl lg:shadow-[0_8px_30px_rgba(0,0,0,0.25)]" style={{ background: 'var(--overlay-sheet-bg, #0D1421)' }}>
+                                <div className="p-4 md:p-6 lg:p-10 pb-[120px] lg:pb-10 overflow-x-hidden" ref={printRef}>
                                 {/* Invoice Header */}
-                                <div className="text-center border-b border-[var(--border-card)] pb-4 md:pb-6 mb-4 md:mb-6">
-                                    <h1 className="text-lg md:text-[24px] font-bold tracking-tight text-[var(--ios-green)] break-words">{companyInfo?.companyName || "Your Company Name"}</h1>
-                                    <p className="text-[12px] md:text-[13px] text-[var(--label-secondary)] mt-1 break-words">{companyInfo?.address?.replace('\n', ', ') || "Company Address"}</p>
-                                    <p className="text-[11px] md:text-[12px] text-[var(--label-tertiary)] mt-1 break-words">Phone: {companyInfo?.phone || "N/A"} | Email: {companyInfo?.email || "N/A"}</p>
-                                    <p className="text-[11px] md:text-[12px] text-[var(--label-tertiary)] break-words">GSTIN: {companyInfo?.gstin || "N/A"} | PAN: {companyInfo?.pan || "N/A"}</p>
+                                <div className="text-center border-b border-[var(--border)] pb-4 md:pb-6 mb-4 md:mb-6">
+                                    <h1 className="text-lg md:text-[24px] font-bold tracking-tight text-[var(--erp-success)] break-words">{companyInfo?.companyName || "Your Company Name"}</h1>
+                                    <p className="text-[12px] md:text-[13px] text-[var(--muted-foreground)] mt-1 break-words">{companyInfo?.address?.replace('\n', ', ') || "Company Address"}</p>
+                                    <p className="text-[11px] md:text-[12px] text-[var(--muted-foreground)] mt-1 break-words">Phone: {companyInfo?.phone || "N/A"} | Email: {companyInfo?.email || "N/A"}</p>
+                                    <p className="text-[11px] md:text-[12px] text-[var(--muted-foreground)] break-words">GSTIN: {companyInfo?.gstin || "N/A"} | PAN: {companyInfo?.pan || "N/A"}</p>
                                 </div>
 
-                                <div className="bg-[var(--ios-green)] w-full text-center py-3 text-white font-bold text-lg tracking-widest rounded mb-4 md:mb-6">
+                                <div className="bg-[var(--erp-success)] w-full text-center py-3 text-white font-bold text-lg tracking-widest rounded mb-4 md:mb-6">
                                     TAX INVOICE
                                 </div>
 
                                 {/* Bill To + Invoice Info — stacked on mobile, side by side on desktop */}
                                 <div className="flex flex-col md:grid md:grid-cols-2 gap-4 md:gap-8 mb-4 md:mb-6">
                                     <div className="min-w-0">
-                                        <h3 className="font-bold text-sm text-[var(--label-secondary)] mb-2">BILL TO:</h3>
-                                        <p className="font-bold text-base md:text-lg text-[var(--label-primary)] break-words">{selectedBill.clientName}</p>
-                                        {selectedBill.clientAddress && <p className="text-sm text-[var(--label-secondary)] break-words">{selectedBill.clientAddress}</p>}
-                                        {selectedBill.clientGSTIN && <p className="text-sm text-[var(--label-secondary)] break-words">GSTIN: {selectedBill.clientGSTIN}</p>}
-                                        {selectedBill.clientPhone && <p className="text-sm text-[var(--label-secondary)]">Phone: {selectedBill.clientPhone}</p>}
+                                        <h3 className="font-bold text-sm text-[var(--muted-foreground)] mb-2">BILL TO:</h3>
+                                        <p className="font-bold text-base md:text-lg text-[var(--foreground)] break-words">{selectedBill.clientName}</p>
+                                        {selectedBill.clientAddress && <p className="text-sm text-[var(--muted-foreground)] break-words">{selectedBill.clientAddress}</p>}
+                                        {selectedBill.clientGSTIN && <p className="text-sm text-[var(--muted-foreground)] break-words">GSTIN: {selectedBill.clientGSTIN}</p>}
+                                        {selectedBill.clientPhone && <p className="text-sm text-[var(--muted-foreground)]">Phone: {selectedBill.clientPhone}</p>}
                                     </div>
                                     <div className="min-w-0 md:text-right">
-                                        <p className="text-sm break-words"><span className="text-[var(--label-secondary)]">Invoice No:</span> <span className="font-bold">{selectedBill.billNumber}</span></p>
-                                        <p className="text-sm"><span className="text-[var(--label-secondary)]">Date:</span> {new Date(selectedBill.billDate).toLocaleDateString('en-IN')}</p>
-                                        <p className="text-sm"><span className="text-[var(--label-secondary)]">Due Date:</span> {new Date(selectedBill.dueDate).toLocaleDateString('en-IN')}</p>
+                                        <p className="text-sm break-words"><span className="text-[var(--muted-foreground)]">Invoice No:</span> <span className="font-bold">{selectedBill.billNumber}</span></p>
+                                        <p className="text-sm"><span className="text-[var(--muted-foreground)]">Date:</span> {new Date(selectedBill.billDate).toLocaleDateString('en-IN')}</p>
+                                        <p className="text-sm"><span className="text-[var(--muted-foreground)]">Due Date:</span> {new Date(selectedBill.dueDate).toLocaleDateString('en-IN')}</p>
                                     </div>
                                 </div>
 
                                 {/* Items Table — Desktop only */}
                                 <table className="hidden md:table w-full mb-6">
                                     <thead>
-                                        <tr className="bg-[var(--fill-tertiary)]">
+                                        <tr className="bg-[var(--muted)]">
                                             <th className="text-left p-2 text-xs font-bold">S.No</th>
                                             <th className="text-left p-2 text-xs font-bold">Description</th>
                                             <th className="text-left p-2 text-xs font-bold">HSN</th>
@@ -1301,7 +1394,7 @@ export default function BillingPage() {
                                     </thead>
                                     <tbody>
                                         {selectedBill.items.map((item, idx) => (
-                                            <tr key={item.id} className="border-b">
+                                            <tr key={`${item.id}-${idx}`} className="border-b">
                                                 <td className="p-2 text-sm">{idx + 1}</td>
                                                 <td className="p-2 text-sm font-medium">{item.description}</td>
                                                 <td className="p-2 text-sm">{item.hsnCode || '-'}</td>
@@ -1317,10 +1410,10 @@ export default function BillingPage() {
                                 {/* Items Cards — Mobile only */}
                                 <div className="block md:hidden mb-4 space-y-2">
                                     {selectedBill.items.map((item, idx) => (
-                                        <div key={item.id} className="bg-white/5 rounded-lg px-3 py-2">
+                                        <div key={`${item.id}-${idx}`} className="bg-white/5 rounded-lg px-3 py-2">
                                             <div className="flex justify-between items-start">
-                                                <span className="text-sm font-bold text-[var(--label-primary)] break-words min-w-0 flex-1 mr-2">{item.description}</span>
-                                                <span className="text-sm font-bold text-[var(--label-primary)] whitespace-nowrap">₹{item.amount.toLocaleString('en-IN')}</span>
+                                                <span className="text-sm font-bold text-[var(--foreground)] break-words min-w-0 flex-1 mr-2">{item.description}</span>
+                                                <span className="text-sm font-bold text-[var(--foreground)] whitespace-nowrap">₹{item.amount.toLocaleString('en-IN')}</span>
                                             </div>
                                             {item.hsnCode && (
                                                 <p className="text-xs text-gray-400 mt-0.5">HSN: {item.hsnCode}</p>
@@ -1337,48 +1430,48 @@ export default function BillingPage() {
                                 <div className="flex justify-end mb-4 md:mb-6">
                                     <div className="w-full md:w-64 space-y-1">
                                         <div className="flex justify-between text-sm">
-                                            <span className="text-[var(--label-secondary)]">Subtotal</span>
+                                            <span className="text-[var(--muted-foreground)]">Subtotal</span>
                                             <span className="font-bold">₹{selectedBill.subtotal.toLocaleString('en-IN')}</span>
                                         </div>
                                         {selectedBill.igstAmount > 0 ? (
                                             <div className="flex justify-between text-sm">
-                                                <span className="text-[var(--label-secondary)]">IGST</span>
+                                                <span className="text-[var(--muted-foreground)]">IGST</span>
                                                 <span>₹{selectedBill.igstAmount.toLocaleString('en-IN')}</span>
                                             </div>
                                         ) : (
                                             <>
                                                 <div className="flex justify-between text-sm">
-                                                    <span className="text-[var(--label-secondary)]">CGST</span>
+                                                    <span className="text-[var(--muted-foreground)]">CGST</span>
                                                     <span>₹{selectedBill.cgstAmount.toLocaleString('en-IN')}</span>
                                                 </div>
                                                 <div className="flex justify-between text-sm">
-                                                    <span className="text-[var(--label-secondary)]">SGST</span>
+                                                    <span className="text-[var(--muted-foreground)]">SGST</span>
                                                     <span>₹{selectedBill.sgstAmount.toLocaleString('en-IN')}</span>
                                                 </div>
                                             </>
                                         )}
                                         <div className="flex justify-between text-base md:text-lg font-bold text-green-400 border-t border-white/20 pt-2 mt-1">
                                             <span>Total</span>
-                                            <span className="font-black text-[var(--ios-green)]">₹{selectedBill.totalAmount.toLocaleString('en-IN')}</span>
+                                            <span className="font-black text-[var(--erp-success)]">₹{selectedBill.totalAmount.toLocaleString('en-IN')}</span>
                                         </div>
                                     </div>
                                 </div>
 
-                                <p className="text-xs md:text-sm italic text-[var(--label-secondary)] mb-4 md:mb-6 break-words">
+                                <p className="text-xs md:text-sm italic text-[var(--muted-foreground)] mb-4 md:mb-6 break-words">
                                     Amount in words: <span className="font-medium">{selectedBill.amountInWords}</span>
                                 </p>
 
                                 {/* Bank Details + Terms — stacked on mobile */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 text-xs text-[var(--label-secondary)] border-t border-[var(--border-card)] pt-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 text-xs text-[var(--muted-foreground)] border-t border-[var(--border)] pt-4">
                                     <div className="min-w-0">
-                                        <h4 className="font-bold text-[var(--label-primary)] mb-1">Bank Details:</h4>
+                                        <h4 className="font-bold text-[var(--foreground)] mb-1">Bank Details:</h4>
                                         <p className="break-words">Bank: {companyInfo?.bankName || "N/A"}</p>
                                         <p className="break-words">A/C No: {companyInfo?.accountNo || "N/A"}</p>
                                         <p>IFSC: {companyInfo?.ifsc || "N/A"}</p>
                                         <p className="break-words">UPI: {companyInfo?.upiId || "N/A"}</p>
                                     </div>
                                     <div className="min-w-0">
-                                        <h4 className="font-bold text-[var(--label-primary)] mb-1">Terms & Conditions:</h4>
+                                        <h4 className="font-bold text-[var(--foreground)] mb-1">Terms & Conditions:</h4>
                                         <pre className="whitespace-pre-wrap font-sans break-words">{selectedBill.terms}</pre>
                                     </div>
                                 </div>
@@ -1391,53 +1484,68 @@ export default function BillingPage() {
                                     </div>
                                 </div>
 
-                                <p className="text-center text-xs text-[var(--label-tertiary)] mt-6 md:mt-8">
+                                <p className="text-center text-xs text-[var(--muted-foreground)] mt-6 md:mt-8">
                                     This is a computer generated invoice.
                                 </p>
+                                </div>
+                              </div>
                             </div>
-                        )}
-                    </ScrollArea>
-                    <div className="p-3 md:p-4 border-t border-[var(--border-card)] flex flex-wrap justify-end gap-2 bg-[var(--fill-quaternary)]/50 rounded-b-[24px]">
-                        <IOSButton variant="gray" onClick={() => setIsPreviewOpen(false)}>
-                            Close
-                        </IOSButton>
-                        {selectedBill && (
-                            <>
-                                <IOSButton variant="tinted" color="green" onClick={() => generatePDF(selectedBill, 'print')} disabled={pdfGenerating}>
-                                    {pdfGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4" />}
-                                    {pdfGenerating ? "Generating..." : "Print"}
-                                </IOSButton>
-                                <IOSButton variant="filled" onClick={() => generatePDF(selectedBill, 'download')} disabled={pdfGenerating}>
-                                    {pdfGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                                    {pdfGenerating ? "Generating..." : "Download"}
-                                </IOSButton>
-                            </>
-                        )}
-                    </div>
+                          )}
+                        </div>
+
+                        {/* DESKTOP UX REFACTOR — Mobile Bottom Dock (hidden on desktop) */}
+                        <div
+                          className="flex lg:hidden shrink-0"
+                          style={{
+                            background: "var(--overlay-sheet-bg, #0D1421)",
+                            borderTop: "1px solid var(--overlay-border, rgba(255,255,255,0.08))",
+                            backdropFilter: "blur(12px)",
+                            WebkitBackdropFilter: "blur(12px)",
+                            padding: "12px 16px",
+                            paddingBottom: "max(env(safe-area-inset-bottom, 0px), 16px)",
+                          }}
+                        >
+                          <div style={{ display: "flex", gap: 10, width: "100%" }}>
+                            <button
+                              onClick={() => setIsPreviewOpen(false)}
+                              style={{ flex: 1, height: 48, borderRadius: 14, border: "1px solid var(--overlay-border, rgba(255,255,255,0.10))", background: "transparent", color: "var(--overlay-text-secondary, #94a3b8)", fontSize: 14, fontWeight: 500, cursor: "pointer" }}
+                            >
+                              Close
+                            </button>
+                            {selectedBill && (
+                              <button
+                                onClick={() => generatePDF(selectedBill, 'download')}
+                                disabled={pdfGenerating}
+                                style={{ flex: 1.4, height: 48, borderRadius: 14, border: "none", background: "#2563EB", color: "#FFFFFF", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                              >
+                                {pdfGenerating ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+                                {pdfGenerating ? "Generating..." : "Download PDF"}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                      </div>{/* end modal shell */}
+                    </div>{/* end centering wrapper */}
                 </DialogContent>
             </Dialog>
 
             {/* Delete Confirmation Dialog */}
             <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <DialogContent className="max-w-[350px] bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px]">
-                    <DialogHeader>
-                        <DialogTitle className="text-[20px] font-semibold text-[var(--label-primary)]">Delete Invoice</DialogTitle>
-                        <DialogDescription className="text-[15px] pt-1 text-[var(--label-secondary)]">
-                            Are you sure you want to delete this invoice? This action cannot be undone.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter className="flex gap-2 pt-4 border-t border-[var(--border-card)]">
-                        <IOSButton variant="gray" onClick={() => setIsDeleteDialogOpen(false)} className="flex-1">
-                            Cancel
-                        </IOSButton>
-                        <IOSButton
-                            variant="destructive"
-                            onClick={() => billToDelete && handleDelete(billToDelete)}
-                            className="flex-1"
-                        >
-                            Delete
-                        </IOSButton>
-                    </DialogFooter>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                      <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg, rgba(239,68,68,0.4), rgba(255,255,255,0.06))', border: '1px solid rgba(255,255,255,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Trash2 className="h-[18px] w-[18px] text-[#f87171]" />
+                      </div>
+                      <div>
+                        <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', lineHeight: '22px', margin: 0 }}>Delete Invoice</DialogTitle>
+                        <DialogDescription style={{ fontSize: 13, color: '#64748b', lineHeight: '18px', margin: '2px 0 0' }}>This action cannot be undone.</DialogDescription>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 10, paddingTop: 16 }}>
+                      <button onClick={() => setIsDeleteDialogOpen(false)} style={{ flex: 1, height: 48, borderRadius: 14, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.10)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                      <button onClick={() => billToDelete && handleDelete(billToDelete)} style={{ flex: 1, height: 48, borderRadius: 14, background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: '#fff', border: '1px solid rgba(239,68,68,0.3)', boxShadow: '0 4px 16px rgba(239,68,68,0.25)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Delete</button>
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>

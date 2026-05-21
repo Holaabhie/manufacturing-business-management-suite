@@ -71,6 +71,11 @@ export interface ICompanyProfile extends Document {
     bank_branch?: string;
     upi_id?: string;
 
+    // Tally Prime Integration
+    tally_company_name?: string;
+    tally_bridge_url?: string;
+    tally_auth_token?: string;
+
     // System
     organizationId: string; // Linking to multitenant org
     is_onboarding_complete: boolean;
@@ -145,6 +150,11 @@ const CompanyProfileSchema = new Schema<ICompanyProfile>({
     bank_ifsc: String,
     bank_branch: String,
     upi_id: String,
+
+    // Tally Prime Integration
+    tally_company_name: String,
+    tally_bridge_url: { type: String, default: 'http://localhost:4567' },
+    tally_auth_token: String,
 
     organizationId: { type: String, required: true, index: true },
     is_onboarding_complete: { type: Boolean, default: false },

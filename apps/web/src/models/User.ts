@@ -1,5 +1,5 @@
 import { Schema, model, models, Document } from 'mongoose';
-import type { PermissionMap } from '@/lib/permissions';
+import type { FlatPermissionMap } from '@/lib/permissions';
 
 export interface IUser extends Document {
   // Core identification
@@ -13,7 +13,7 @@ export interface IUser extends Document {
 
   // User information
   fullName?: string;
-  role: 'Admin' | 'Staff';
+  role: 'Admin' | 'Owner' | 'Manager' | 'Staff' | 'Accountant';
   subscription_tier: 'starter' | 'pro';
   subscription_status?: string;
 
@@ -25,12 +25,14 @@ export interface IUser extends Document {
   employeeId?: string;
   department?: string;
 
-  // Granular permissions
-  permissions?: PermissionMap;
+  // Granular permissions (flat dot-notation)
+  permissions?: FlatPermissionMap;
+  customPermissions?: FlatPermissionMap;
   permissionTemplateId?: string;
 
   // Account status
   status: 'active' | 'inactive' | 'suspended' | 'pending_setup';
+  isActive: boolean;
 
   // First-time setup tracking
   firstLoginCompleted: boolean;
@@ -123,7 +125,7 @@ const UserSchema = new Schema<IUser>({
   },
   role: {
     type: String,
-    enum: ['Admin', 'Staff'],
+    enum: ['Admin', 'Owner', 'Manager', 'Staff', 'Accountant'],
     default: 'Staff'
   },
   subscription_tier: {
@@ -151,6 +153,10 @@ const UserSchema = new Schema<IUser>({
     type: Schema.Types.Mixed,
     default: undefined,
   },
+  customPermissions: {
+    type: Schema.Types.Mixed,
+    default: undefined,
+  },
   permissionTemplateId: String,
 
   // Account status
@@ -158,6 +164,10 @@ const UserSchema = new Schema<IUser>({
     type: String,
     enum: ['active', 'inactive', 'suspended', 'pending_setup'],
     default: 'active',
+  },
+  isActive: {
+    type: Boolean,
+    default: true,
   },
 
   // First-time setup
@@ -241,6 +251,7 @@ UserSchema.index({ organizationId: 1, role: 1 });
 UserSchema.index({ organizationId: 1, status: 1 });
 UserSchema.index({ organizationId: 1, employeeId: 1 });
 UserSchema.index({ organizationId: 1, department: 1 });
+UserSchema.index({ isActive: 1 });
 
 // Compound index for account linking
 UserSchema.index({ email: 1, phone: 1 }, { unique: true, sparse: true });

@@ -49,6 +49,15 @@ export async function GET() {
             status: 1,
             payment_status: 1,
             client_id: 1,
+            material_cost: 1,
+            labour_cost: 1,
+            overhead_cost: 1,
+            materials: 1,
+            estimated_material_cost: 1,
+            estimated_gross_profit: 1,
+            estimated_margin: 1,
+            priority: 1,
+            notes: 1,
             createdAt: 1,
             processedAt: 1,
             completedAt: 1,
@@ -70,6 +79,15 @@ export async function GET() {
       status: o.status,
       payment_status: o.payment_status,
       client_id: o.client_id,
+      material_cost: o.material_cost || 0,
+      labour_cost: o.labour_cost || 0,
+      overhead_cost: o.overhead_cost || 0,
+      materials: Array.isArray(o.materials) ? o.materials : [],
+      estimated_material_cost: o.estimated_material_cost || 0,
+      estimated_gross_profit: o.estimated_gross_profit || 0,
+      estimated_margin: o.estimated_margin || 0,
+      priority: o.priority || 'normal',
+      notes: o.notes || '',
       created_at: o.createdAt,
       createdAt: o.createdAt,
       processedAt: o.processedAt || null,
@@ -97,7 +115,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    const {
+      material_cost = 0,
+      labour_cost = 0,
+      overhead_cost = 0,
+      ...body
+    } = await request.json();
     const db = await getDb();
 
     // Create order
@@ -110,9 +133,18 @@ export async function POST(request: Request) {
       material_source: body.material_source || "own",
       rate: Number(body.rate),
       total_amount: Number(body.total_amount),
+      material_cost: Number(material_cost) || 0,
+      labour_cost: Number(labour_cost) || 0,
+      overhead_cost: Number(overhead_cost) || 0,
       delivery_date: body.delivery_date || null,
       status: body.status || "pending",
       payment_status: body.payment_status || "pending",
+      materials: Array.isArray(body.materials) ? body.materials : [],
+      estimated_material_cost: Number(body.estimated_material_cost) || 0,
+      estimated_gross_profit: Number(body.estimated_gross_profit) || 0,
+      estimated_margin: Number(body.estimated_margin) || 0,
+      priority: body.priority || 'normal',
+      notes: body.notes || '',
       createdAt: new Date(),
       updatedAt: new Date(),
     });

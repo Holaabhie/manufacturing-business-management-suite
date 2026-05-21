@@ -36,6 +36,10 @@ export interface Bill {
     notes: string;
     terms: string;
     status: BillStatus;
+    // Tally Prime sync tracking
+    tallySynced?: boolean;
+    tallyVoucherNumber?: string;
+    tallySyncedAt?: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -73,6 +77,10 @@ export interface UpdateBillDTO {
     notes?: string;
     terms?: string;
     status?: BillStatus;
+    // Tally Prime sync
+    tallySynced?: boolean;
+    tallyVoucherNumber?: string;
+    tallySyncedAt?: string;
 }
 
 export interface IBillingRepository {

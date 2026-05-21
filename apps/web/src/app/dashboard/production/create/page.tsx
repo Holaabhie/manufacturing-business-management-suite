@@ -40,6 +40,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { NumericInput } from "@/components/ui/numeric-input";
+import { MaterialsStep } from "@/components/production/MaterialsStep";
+import type { SelectedMaterial } from "@/lib/materials-types";
 
 import type { ShiftType } from "@/lib/production-types";
 
@@ -64,14 +66,7 @@ interface InventoryItem {
     name: string;
     quantity: number;
     unit: string;
-}
-
-interface SelectedMaterial {
-    inventoryId: string;
-    name: string;
-    quantityUsed: number;
-    unit: string;
-    availableStock: number;
+    purchase_cost_per_unit?: number;
 }
 
 interface MachineData {
@@ -94,8 +89,9 @@ interface OperatorData {
 // ─── Step definitions ───────────────────────────────────────────────
 const steps = [
     { id: 1, title: "Order Selection", icon: ShoppingCart, description: "Select a confirmed order" },
-    { id: 2, title: "Production Setup", icon: Settings, description: "Materials, machine & operator" },
-    { id: 3, title: "Configuration", icon: Sliders, description: "Output targets & schedule" },
+    { id: 2, title: "Production Setup", icon: Settings, description: "Machine & operator" },
+    { id: 3, title: "Materials", icon: Package, description: "Raw materials & stock" },
+    { id: 4, title: "Configuration", icon: Sliders, description: "Output targets & schedule" },
 ];
 
 // ─── Page Component ─────────────────────────────────────────────────
@@ -134,15 +130,20 @@ export default function CreateProductionPage() {
     const [targetCompletion, setTargetCompletion] = useState("");
     const [notes, setNotes] = useState("");
 
+    // Cost & Profit fields
+    const [labourCost, setLabourCost] = useState(0);
+    const [overhead, setOverhead] = useState(0);
+    const [saleValue, setSaleValue] = useState(0);
+
     // ─── Fetch data ───────────────────────────────────────────
     useEffect(() => {
         const fetchData = async () => {
             try {
                 const [ordersRes, inventoryRes, machinesRes, employeesRes] = await Promise.all([
-                    fetch("/api/v1/orders").then((r) => r.json()),
-                    fetch("/api/inventory").then((r) => r.json()),
-                    fetch("/api/machines").then((r) => r.json()),
-                    fetch("/api/employees").then((r) => r.json()).catch(() => ({ employees: [] })),
+                    fetch("/api/v1/orders").then((r) => r.ok ? r.json() : { data: [] }).catch(() => ({ data: [] })),
+                    fetch("/api/inventory").then((r) => r.ok ? r.json() : []).catch(() => []),
+                    fetch("/api/machines").then((r) => r.ok ? r.json() : []).catch(() => []),
+                    fetch("/api/employees").then((r) => r.ok ? r.json() : { employees: [] }).catch(() => ({ employees: [] })),
                 ]);
                 // v1 API wraps data in { success, data } envelope
                 const orderData = ordersRes?.data ?? (Array.isArray(ordersRes) ? ordersRes : []);
@@ -201,6 +202,14 @@ export default function CreateProductionPage() {
         () => orders.find((o) => o.id === selectedOrderId),
         [orders, selectedOrderId]
     );
+
+    // ─── Cost computations ────────────────────────────────────
+    const materialCost = useMemo(
+        () => selectedMaterials.reduce((sum, m) => sum + (m.quantityUsed * (m.unitCost || 0)), 0),
+        [selectedMaterials]
+    );
+    const totalCost = useMemo(() => materialCost + labourCost + overhead, [materialCost, labourCost, overhead]);
+    const marginPercent = useMemo(() => saleValue > 0 ? ((saleValue - totalCost) / saleValue) * 100 : 0, [saleValue, totalCost]);
 
     // Only active machines are selectable
     const availableMachines = useMemo(
@@ -262,14 +271,17 @@ export default function CreateProductionPage() {
                 return !!selectedOrderId;
             case 2:
                 return (
-                    selectedMaterials.length > 0 &&
-                    selectedMaterials.every((m) => m.inventoryId && m.quantityUsed > 0) &&
                     assignedMachines.length > 0 &&
                     assignedMachines.every(m => !!m.machineId) &&
                     assignedOperators.length > 0 &&
                     assignedOperators.every(o => !!o.operatorId)
                 );
             case 3:
+                return (
+                    selectedMaterials.length > 0 &&
+                    selectedMaterials.every((m) => m.inventoryId && m.quantityUsed > 0)
+                );
+            case 4:
                 return (
                     Number(expectedOutput) > 0
                 );
@@ -346,7 +358,7 @@ export default function CreateProductionPage() {
     const [slideDirection, setSlideDirection] = useState(0);
 
     const goNext = () => {
-        if (currentStep < 3 && canProceed(currentStep)) {
+        if (currentStep < 4 && canProceed(currentStep)) {
             setSlideDirection(1);
             setCurrentStep(currentStep + 1);
         }
@@ -374,7 +386,10 @@ export default function CreateProductionPage() {
     }
 
     return (
-        <div className="space-y-6 max-w-4xl mx-auto">
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden' }}>
+        {/* ─── Scrollable content area ─── */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 0' }}>
+        <div className="space-y-6 max-w-4xl mx-auto" style={{ paddingBottom: '24px' }}>
             {/* ─── Breadcrumb ──────────────────────────────────────── */}
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <button
@@ -598,7 +613,7 @@ export default function CreateProductionPage() {
                                 <div>
                                     <h2 className="text-lg font-bold mb-1">Production Setup</h2>
                                     <p className="text-sm text-muted-foreground">
-                                        Select raw materials, assign a machine, and assign an operator.
+                                        Assign machines and operators for this production run.
                                     </p>
                                 </div>
 
@@ -621,98 +636,6 @@ export default function CreateProductionPage() {
                                         </div>
                                     </div>
                                 )}
-
-                                {/* Raw Materials */}
-                                <div className="space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                            Raw Materials
-                                        </Label>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            className="rounded-lg h-8 text-xs gap-1"
-                                            onClick={addMaterial}
-                                        >
-                                            <Plus className="h-3 w-3" />
-                                            Add Material
-                                        </Button>
-                                    </div>
-
-                                    {selectedMaterials.length === 0 ? (
-                                        <div className="rounded-xl border-2 border-dashed border-border py-8 text-center">
-                                            <Package className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
-                                            <p className="text-sm text-muted-foreground">
-                                                Add raw materials needed for this production
-                                            </p>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-2">
-                                            {selectedMaterials.map((mat, idx) => (
-                                                <div
-                                                    key={idx}
-                                                    className="flex items-center gap-2 rounded-lg border border-border p-3 bg-muted/20"
-                                                >
-                                                    <div className="flex-1 min-w-0">
-                                                        <Select
-                                                            value={mat.inventoryId}
-                                                            onValueChange={(v) =>
-                                                                updateMaterial(idx, "inventoryId", v)
-                                                            }
-                                                        >
-                                                            <SelectTrigger className="h-9 bg-card">
-                                                                <SelectValue placeholder="Select material..." />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {inventory.map((item) => (
-                                                                    <SelectItem
-                                                                        key={item.id}
-                                                                        value={item.id}
-                                                                        disabled={item.quantity <= 0}
-                                                                    >
-                                                                        {item.name}
-                                                                    </SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </div>
-                                                    <div className="w-[72px] flex-shrink-0">
-                                                        <NumericInput
-                                                            className="h-9 bg-card font-semibold text-center rounded-lg"
-                                                            value={mat.quantityUsed || ""}
-                                                            onValueChange={(v) =>
-                                                                updateMaterial(
-                                                                    idx,
-                                                                    "quantityUsed",
-                                                                    Number(v) || 0
-                                                                )
-                                                            }
-                                                            placeholder="0"
-                                                            allowDecimal={true}
-                                                            min={0}
-                                                            max={mat.availableStock}
-                                                        />
-                                                    </div>
-                                                    {mat.unit && (
-                                                        <span className="text-[10px] text-muted-foreground flex-shrink-0 w-8 text-right">
-                                                            {mat.unit}
-                                                        </span>
-                                                    )}
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-9 w-9 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg flex-shrink-0"
-                                                        onClick={() => removeMaterial(idx)}
-                                                    >
-                                                        <X className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
 
                                 {/* Machines Assignment */}
                                 <div className="space-y-3">
@@ -840,8 +763,17 @@ export default function CreateProductionPage() {
                             </div>
                         )}
 
-                        {/* ═══ STEP 3: Production Configuration ═══ */}
+                        {/* ═══ STEP 3: Materials ═══ */}
                         {currentStep === 3 && (
+                            <MaterialsStep
+                                inventory={inventory}
+                                productName={selectedOrder?.product_name ?? selectedOrder?.productName ?? ""}
+                                onMaterialsChange={(mats) => setSelectedMaterials(mats)}
+                            />
+                        )}
+
+                        {/* ═══ STEP 4: Production Configuration ═══ */}
+                        {currentStep === 4 && (
                             <div className="space-y-6">
                                 <div>
                                     <h2 className="text-lg font-bold mb-1">
@@ -927,6 +859,52 @@ export default function CreateProductionPage() {
                                     </div>
                                 </div>
 
+                                {/* ─── Cost Inputs ─── */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                            Labour Cost (₹)
+                                        </Label>
+                                        <NumericInput
+                                            value={labourCost || ""}
+                                            onValueChange={(v) => setLabourCost(Number(v) || 0)}
+                                            placeholder="0"
+                                            className="h-11 bg-card"
+                                            id="labour-cost"
+                                            allowDecimal={true}
+                                            min={0}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                            Overhead (₹)
+                                        </Label>
+                                        <NumericInput
+                                            value={overhead || ""}
+                                            onValueChange={(v) => setOverhead(Number(v) || 0)}
+                                            placeholder="0"
+                                            className="h-11 bg-card"
+                                            id="overhead-cost"
+                                            allowDecimal={true}
+                                            min={0}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                            Sale Value (₹)
+                                        </Label>
+                                        <NumericInput
+                                            value={saleValue || ""}
+                                            onValueChange={(v) => setSaleValue(Number(v) || 0)}
+                                            placeholder="0"
+                                            className="h-11 bg-card"
+                                            id="sale-value"
+                                            allowDecimal={true}
+                                            min={0}
+                                        />
+                                    </div>
+                                </div>
+
                                 {/* Notes */}
                                 <div className="space-y-2">
                                     <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -945,7 +923,76 @@ export default function CreateProductionPage() {
                                     />
                                 </div>
 
-                                {/* Summary */}
+                                {/* ─── Cost & Profit Summary ─── */}
+                                <div
+                                    style={{
+                                        background: 'hsl(var(--card))',
+                                        borderRadius: '14px',
+                                        border: '0.5px solid hsl(var(--border))',
+                                        padding: '14px',
+                                        marginBottom: '10px',
+                                    }}
+                                >
+                                    {/* Header */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                        <span style={{ fontSize: '10px', fontWeight: 500, letterSpacing: '0.08em', color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase' }}>
+                                            Cost & Profit Summary
+                                        </span>
+                                        <span style={{ fontSize: '9px', background: '#0f3d2e', color: '#1D9E75', padding: '2px 7px', borderRadius: '10px', fontWeight: 600 }}>
+                                            live
+                                        </span>
+                                    </div>
+
+                                    {/* Cost rows */}
+                                    {[
+                                        { label: 'Material cost', value: materialCost },
+                                        { label: 'Labour cost', value: labourCost },
+                                        { label: 'Overhead', value: overhead },
+                                    ].map(row => (
+                                        <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                            <span style={{ fontSize: '12px', color: 'hsl(var(--muted-foreground))' }}>{row.label}</span>
+                                            <span style={{ fontSize: '13px', fontWeight: 500, color: 'hsl(var(--foreground))' }}>
+                                                ₹{row.value.toLocaleString('en-IN')}
+                                            </span>
+                                        </div>
+                                    ))}
+
+                                    {/* Divider */}
+                                    <div style={{ height: '0.5px', background: 'hsl(var(--border))', margin: '8px 0' }} />
+
+                                    {/* Total + Sale */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                        <span style={{ fontSize: '12px', color: 'hsl(var(--muted-foreground))' }}>Total cost</span>
+                                        <span style={{ fontSize: '13px', fontWeight: 500, color: 'hsl(var(--foreground))' }}>₹{totalCost.toLocaleString('en-IN')}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                        <span style={{ fontSize: '12px', color: 'hsl(var(--muted-foreground))' }}>Sale value</span>
+                                        <span style={{ fontSize: '13px', fontWeight: 500, color: 'hsl(var(--foreground))' }}>₹{saleValue.toLocaleString('en-IN')}</span>
+                                    </div>
+
+                                    <div style={{ height: '0.5px', background: 'hsl(var(--border))', margin: '8px 0' }} />
+
+                                    {/* Net margin */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span style={{ fontSize: '11px', color: 'hsl(var(--muted-foreground))' }}>Net margin</span>
+                                        <span style={{ fontSize: '16px', fontWeight: 500, color: marginPercent < 0 ? '#E24B4A' : '#1D9E75' }}>
+                                            {marginPercent.toFixed(1)}%
+                                        </span>
+                                    </div>
+
+                                    {/* Margin progress bar */}
+                                    <div style={{ height: '4px', background: 'hsl(var(--border))', borderRadius: '3px', marginTop: '8px' }}>
+                                        <div style={{
+                                            height: '4px',
+                                            background: marginPercent > 30 ? '#1D9E75' : marginPercent > 15 ? '#BA7517' : '#E24B4A',
+                                            borderRadius: '3px',
+                                            width: `${Math.min(Math.max(marginPercent, 0), 100)}%`,
+                                            transition: 'width 0.3s ease',
+                                        }} />
+                                    </div>
+                                </div>
+
+                                {/* ─── Production Summary ─── */}
                                 <div className="rounded-xl bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-800 p-4 space-y-3">
                                     <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
                                         Production Summary
@@ -994,9 +1041,20 @@ export default function CreateProductionPage() {
                     </motion.div>
                 </AnimatePresence>
             </div>
+        </div>
+        </div>
 
-            {/* ─── Navigation Footer ───────────────────────────────── */}
-            <div className="flex items-center justify-between">
+        {/* ─── Sticky Footer — always visible at bottom ─── */}
+        <div
+            style={{
+                position: 'sticky',
+                bottom: 0,
+                backgroundColor: 'hsl(var(--background))',
+                borderTop: '0.5px solid hsl(var(--border))',
+                padding: '10px 16px 20px',
+            }}
+        >
+            <div className="flex items-center justify-between max-w-4xl mx-auto">
                 <Button
                     variant="outline"
                     className="gap-2 rounded-xl"
@@ -1006,7 +1064,7 @@ export default function CreateProductionPage() {
                     {currentStep === 1 ? "Cancel" : "Back"}
                 </Button>
 
-                {currentStep < 3 ? (
+                {currentStep < 4 ? (
                     <Button
                         className="gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white"
                         onClick={goNext}
@@ -1017,11 +1075,30 @@ export default function CreateProductionPage() {
                         <ChevronRight className="h-4 w-4" />
                     </Button>
                 ) : (
-                    <Button
-                        className="gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20"
+                    <button
                         onClick={handleSubmit}
                         disabled={!canProceed(currentStep) || submitting}
                         id="submit-production-btn"
+                        style={{
+                            width: '100%',
+                            maxWidth: '220px',
+                            padding: '13px',
+                            borderRadius: '12px',
+                            background: (!canProceed(currentStep) || submitting) ? '#1D9E7580' : '#1D9E75',
+                            border: 'none',
+                            color: '#fff',
+                            fontSize: '14px',
+                            fontWeight: 500,
+                            cursor: (!canProceed(currentStep) || submitting) ? 'not-allowed' : 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            transition: 'transform 0.1s ease',
+                        }}
+                        onPointerDown={(e) => { if (!(!canProceed(currentStep) || submitting)) (e.currentTarget.style.transform = 'scale(0.98)'); }}
+                        onPointerUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                        onPointerLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
                     >
                         {submitting ? (
                             <>
@@ -1034,9 +1111,10 @@ export default function CreateProductionPage() {
                                 <ArrowRight className="h-4 w-4" />
                             </>
                         )}
-                    </Button>
+                    </button>
                 )}
             </div>
+        </div>
         </div>
     );
 }

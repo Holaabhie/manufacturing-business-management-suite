@@ -39,12 +39,12 @@ const activityIcons: Record<string, any> = {
 };
 
 const activityColors: Record<string, string> = {
-  order: "bg-[rgba(10,132,255,0.12)] text-[var(--ios-blue)]",
-  production: "bg-[rgba(142,142,147,0.12)] text-[var(--ios-gray)]",
-  inventory: "bg-[rgba(255,149,0,0.12)] text-[var(--ios-orange)]",
-  payment: "bg-[rgba(52,199,89,0.12)] text-[var(--ios-green)]",
-  client: "bg-[rgba(175,82,222,0.12)] text-[var(--ios-purple)]",
-  invoice: "bg-[rgba(255,45,85,0.12)] text-[var(--ios-red)]",
+  order: "bg-[rgba(10,132,255,0.12)] text-[var(--primary)]",
+  production: "bg-muted text-muted-foreground",
+  inventory: "bg-[rgba(255,149,0,0.12)] text-[var(--erp-warning)]",
+  payment: "bg-[rgba(52,199,89,0.12)] text-[var(--erp-success)]",
+  client: "bg-[rgba(175,82,222,0.12)] text-[var(--chart-4)]",
+  invoice: "bg-[rgba(255,45,85,0.12)] text-[var(--destructive)]",
 };
 
 export default function ActivityLogPage() {
@@ -104,9 +104,9 @@ export default function ActivityLogPage() {
   if (loading && activities.length === 0) {
     return (
       <div className="space-y-6">
-        <div className="h-[34px] w-[200px] rounded-[10px] bg-[var(--fill-tertiary)] shimmer" />
-        <div className="h-[40px] w-full max-w-md rounded-[10px] bg-[var(--fill-tertiary)] shimmer" />
-        <div className="h-[500px] w-full rounded-[16px] bg-[var(--fill-tertiary)] shimmer" />
+        <div className="h-[34px] w-[200px] rounded-[10px] bg-[var(--muted)] shimmer" />
+        <div className="h-[40px] w-full max-w-md rounded-[10px] bg-[var(--muted)] shimmer" />
+        <div className="h-[500px] w-full rounded-[16px] bg-[var(--muted)] shimmer" />
       </div>
     );
   }
@@ -119,17 +119,17 @@ export default function ActivityLogPage() {
       className="space-y-6 hero-glow max-w-4xl mx-auto"
     >
       <motion.div variants={staggerItem}>
-        <h1 className="text-[34px] font-bold text-[var(--label-primary)] leading-[41px] tracking-[0.37px]">
+        <h1 className="text-[34px] font-bold text-[var(--foreground)] leading-[41px] tracking-[0.37px]">
           Activity Log
         </h1>
-        <p className="text-[15px] text-[var(--label-secondary)] mt-1 leading-[20px]">
+        <p className="text-[15px] text-[var(--muted-foreground)] mt-1 leading-[20px]">
           All recent actions across your workspace
         </p>
       </motion.div>
 
       {/* Filter Tabs */}
       <motion.div variants={staggerItem} className="flex overflow-x-auto hide-scrollbar pb-2">
-        <div className="flex gap-2 p-1 bg-[var(--fill-quaternary)] rounded-[12px] border border-[var(--border-card)]">
+        <div className="flex gap-2 p-1 bg-[var(--muted)] rounded-[12px] border border-[var(--border)]">
           {filterOptions.map((opt) => (
             <button
               key={opt.value}
@@ -137,8 +137,8 @@ export default function ActivityLogPage() {
               className={cn(
                 "px-4 py-2 rounded-[8px] text-[14px] font-medium transition-all whitespace-nowrap",
                 filter === opt.value
-                  ? "bg-white dark:bg-[#2C2C2E] text-[var(--label-primary)] shadow-sm"
-                  : "text-[var(--label-secondary)] hover:bg-[var(--fill-tertiary)] hover:text-[var(--label-primary)]"
+                  ? "bg-white dark:bg-[#2C2C2E] text-[var(--foreground)] shadow-sm"
+                  : "text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
               )}
             >
               {opt.label}
@@ -148,15 +148,15 @@ export default function ActivityLogPage() {
       </motion.div>
 
       <motion.div variants={staggerItem}>
-        <IOSCard className="bg-white dark:bg-[#1C1C1E] !rounded-2xl shadow-md border-0 dark:border dark:border-[var(--border-card)] dark:shadow-none overflow-hidden">
+        <IOSCard className="bg-white dark:bg-[#1C1C1E] !rounded-2xl shadow-md border-0 dark:border dark:border-[var(--border)] dark:shadow-none overflow-hidden">
           <div className="flex flex-col">
             {activities.length === 0 ? (
               <div className="py-16 text-center">
-                <div className="w-16 h-16 rounded-full bg-[var(--fill-quaternary)] flex items-center justify-center mx-auto mb-4">
-                  <Activity className="h-8 w-8 text-[var(--label-tertiary)]" />
+                <div className="w-16 h-16 rounded-full bg-[var(--muted)] flex items-center justify-center mx-auto mb-4">
+                  <Activity className="h-8 w-8 text-[var(--muted-foreground)]" />
                 </div>
-                <h3 className="text-[17px] font-medium text-[var(--label-primary)]">No activity found</h3>
-                <p className="text-[14px] text-[var(--label-secondary)] mt-1">Try changing the filter or check back later.</p>
+                <h3 className="text-[17px] font-medium text-[var(--foreground)]">No activity found</h3>
+                <p className="text-[14px] text-[var(--muted-foreground)] mt-1">Try changing the filter or check back later.</p>
               </div>
             ) : (
               <AnimatePresence mode="popLayout">
@@ -173,7 +173,7 @@ export default function ActivityLogPage() {
                       transition={{ delay: index * 0.03 }}
                     >
                       <Link href={activity.href || "#"} className="block group">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 border-b border-[var(--border-divider)] group-hover:bg-[var(--fill-quaternary)] transition-colors">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 border-b border-[var(--border-divider)] group-hover:bg-[var(--muted)] transition-colors">
 
                           <div className="flex items-center gap-4 flex-1 min-w-0">
                             <div className={cn("w-10 h-10 rounded-[10px] flex items-center justify-center flex-shrink-0", colorClass)}>
@@ -181,11 +181,11 @@ export default function ActivityLogPage() {
                             </div>
 
                             <div className="flex-1 min-w-0">
-                              <p className="text-[15px] font-medium text-[var(--label-primary)] truncate">
+                              <p className="text-[15px] font-medium text-[var(--foreground)] truncate">
                                 {activity.title}
                               </p>
                               {activity.subtitle && (
-                                <p className="text-[14px] text-[var(--label-secondary)] truncate">
+                                <p className="text-[14px] text-[var(--muted-foreground)] truncate">
                                   {activity.subtitle}
                                 </p>
                               )}
@@ -194,20 +194,20 @@ export default function ActivityLogPage() {
 
                           <div className="flex items-center justify-between sm:justify-end gap-6 sm:w-[200px] flex-shrink-0 ml-14 sm:ml-0">
                             {activity.amount !== null && (
-                              <p className="text-[15px] font-medium text-[var(--label-primary)]">
+                              <p className="text-[15px] font-medium text-[var(--foreground)]">
                                 ₹{activity.amount.toLocaleString("en-IN")}
                               </p>
                             )}
                             <div className="flex items-center gap-3 text-right">
                               <div className="flex flex-col items-end">
-                                <span className="text-[13px] text-[var(--label-secondary)] font-medium">
+                                <span className="text-[13px] text-[var(--muted-foreground)] font-medium">
                                   {formatTimeAgo(activity.createdAt)}
                                 </span>
-                                <span className="text-[11px] text-[var(--label-tertiary)]">
+                                <span className="text-[11px] text-[var(--muted-foreground)]">
                                   {formatDateTime(activity.createdAt)}
                                 </span>
                               </div>
-                              <ChevronRight className="h-4 w-4 text-[var(--label-quaternary)] group-hover:text-[var(--label-secondary)] transition-colors" />
+                              <ChevronRight className="h-4 w-4 text-[var(--muted-foreground)] group-hover:text-[var(--muted-foreground)] transition-colors" />
                             </div>
                           </div>
 

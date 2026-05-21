@@ -1,7 +1,10 @@
 import { cookies } from "next/headers";
 import { getDb } from "@/lib/mongodb";
 import type { WithId } from "mongodb";
-import type { PermissionMap } from "@/lib/permissions";
+import type { FlatPermissionMap } from "@/lib/permissions";
+
+// Backward compat alias
+type PermissionMap = FlatPermissionMap;
 
 // Re-export for backward compatibility with other files
 export { SESSION_COOKIE_NAME } from "@/lib/auth-constants";
@@ -55,7 +58,7 @@ export type UserDoc = {
   _id: string;
   email: string;
   passwordHash: string;
-  role: "Admin" | "Staff";
+  role: "Admin" | "Owner" | "Manager" | "Staff" | "Accountant";
   subscription_tier: "starter" | "pro";
   subscription_status?: string;
   notification_preferences?: Record<string, unknown>;
@@ -74,8 +77,10 @@ export type UserDoc = {
   department?: string;
   designation?: string;
   permissions?: PermissionMap;
+  customPermissions?: PermissionMap;
   permissionTemplateId?: string;
   status?: "active" | "inactive" | "suspended" | "pending_setup";
+  isActive?: boolean;
   firstLoginCompleted?: boolean;
   failedLoginAttempts?: number;
   lockedUntil?: Date;
@@ -96,7 +101,8 @@ export type UserDoc = {
  * data-fetching API routes so Staff can see admin data.
  */
 export function getDataOwnerId(user: WithId<UserDoc> | UserDoc): string {
-  if (user.role === "Staff" && user.adminId) {
+  // All non-owner roles see the admin's data
+  if ((user.role === "Staff" || user.role === "Manager" || user.role === "Accountant") && user.adminId) {
     return user.adminId;
   }
   return String(user._id);
@@ -108,7 +114,7 @@ export async function createSession(
   userId: string,
   metadata?: {
     organizationId?: string;
-    role?: "Admin" | "Staff";
+    role?: "Admin" | "Owner" | "Manager" | "Staff" | "Accountant" | string;
     ipAddress?: string;
     userAgent?: string;
     provider?: string;

@@ -54,7 +54,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               borderRadius: "10px",
               border: "1px solid rgba(255,255,255,0.15)",
               background: "rgba(0,122,255,0.15)",
-              color: "var(--ios-blue, #007AFF)",
+              color: "var(--primary, #2563EB)",
               cursor: "pointer",
               fontWeight: 600,
               fontSize: "14px",

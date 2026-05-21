@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import { getDb } from "@/lib/mongodb";
 import { requireAdmin } from "@/lib/require-role";
-import { DEFAULT_TEMPLATES, EMPTY_PERMISSIONS, type PermissionMap } from "@/lib/permissions";
+import { ROLE_PRESETS, EMPTY_PERMISSIONS, type FlatPermissionMap as PermissionMap } from "@/lib/permissions";
 import type { WithId } from "mongodb";
 import type { UserDoc } from "@/lib/auth-session";
 import { logAudit, logPermissionChange, getClientIp } from "@/lib/audit";
@@ -340,8 +340,10 @@ export async function PUT(
             const templateId = body.templateId;
             let newPermissions: PermissionMap;
 
-            if (templateId && DEFAULT_TEMPLATES[templateId]) {
-                newPermissions = DEFAULT_TEMPLATES[templateId].permissions;
+            // Map template ID to role preset
+            const roleKey = templateId as keyof typeof ROLE_PRESETS;
+            if (templateId && ROLE_PRESETS[roleKey]) {
+                newPermissions = ROLE_PRESETS[roleKey].permissions;
             } else if (body.permissions) {
                 newPermissions = body.permissions;
             } else {

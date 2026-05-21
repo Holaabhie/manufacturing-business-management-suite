@@ -14,7 +14,13 @@ import {
   MoreVertical,
   X,
   Calendar,
-  Trash2
+  Trash2,
+  IndianRupee,
+  Landmark,
+  Banknote,
+  QrCode,
+  FileText,
+  CreditCard
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -87,10 +93,10 @@ function PaymentsSkeleton() {
       {/* Header skeleton */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <div className="h-[36px] w-[260px] rounded-[10px] bg-[var(--fill-tertiary)] shimmer" />
-          <div className="h-[18px] w-[400px] rounded-[8px] bg-[var(--fill-tertiary)] shimmer mt-2" />
+          <div className="h-[36px] w-[260px] rounded-[10px] bg-[var(--muted)] shimmer" />
+          <div className="h-[18px] w-[400px] rounded-[8px] bg-[var(--muted)] shimmer mt-2" />
         </div>
-        <div className="h-[40px] w-[160px] rounded-[12px] bg-[var(--fill-tertiary)] shimmer" />
+        <div className="h-[40px] w-[160px] rounded-[12px] bg-[var(--muted)] shimmer" />
       </div>
 
       {/* KPI skeleton */}
@@ -100,11 +106,11 @@ function PaymentsSkeleton() {
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="kpi-card flex flex-col justify-center min-h-[140px]">
               <div className="flex items-center justify-between mb-4">
-                <div className="h-[48px] w-[48px] rounded-[14px] bg-[var(--fill-tertiary)] shimmer" />
-                <div className="h-[24px] w-[50px] rounded-full bg-[var(--fill-tertiary)] shimmer" />
+                <div className="h-[48px] w-[48px] rounded-[14px] bg-[var(--muted)] shimmer" />
+                <div className="h-[24px] w-[50px] rounded-full bg-[var(--muted)] shimmer" />
               </div>
-              <div className="h-[34px] w-[120px] rounded-[8px] bg-[var(--fill-tertiary)] shimmer mb-2" />
-              <div className="h-[16px] w-[90px] rounded-[6px] bg-[var(--fill-tertiary)] shimmer" />
+              <div className="h-[34px] w-[120px] rounded-[8px] bg-[var(--muted)] shimmer mb-2" />
+              <div className="h-[16px] w-[90px] rounded-[6px] bg-[var(--muted)] shimmer" />
             </div>
           ))}
         </div>
@@ -113,16 +119,16 @@ function PaymentsSkeleton() {
       {/* Tab + table skeleton */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <div className="h-[44px] w-[320px] rounded-[12px] bg-[var(--fill-tertiary)] shimmer" />
-          <div className="h-[44px] flex-1 max-w-xs rounded-[12px] bg-[var(--fill-tertiary)] shimmer ml-auto" />
+          <div className="h-[44px] w-[320px] rounded-[12px] bg-[var(--muted)] shimmer" />
+          <div className="h-[44px] flex-1 max-w-xs rounded-[12px] bg-[var(--muted)] shimmer ml-auto" />
         </div>
-        <div className="rounded-[16px] overflow-hidden border border-[var(--border-card)]">
+        <div className="rounded-[16px] overflow-hidden border border-[var(--border)]">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-4 px-6 py-4 border-b border-[var(--border-card)]">
-              <div className="h-[40px] flex-1 rounded-[8px] bg-[var(--fill-tertiary)] shimmer" />
-              <div className="h-[20px] w-[100px] rounded-[6px] bg-[var(--fill-tertiary)] shimmer" />
-              <div className="h-[20px] w-[80px] rounded-[6px] bg-[var(--fill-tertiary)] shimmer" />
-              <div className="h-[20px] w-[100px] rounded-[6px] bg-[var(--fill-tertiary)] shimmer" />
+            <div key={i} className="flex items-center gap-4 px-6 py-4 border-b border-[var(--border)]">
+              <div className="h-[40px] flex-1 rounded-[8px] bg-[var(--muted)] shimmer" />
+              <div className="h-[20px] w-[100px] rounded-[6px] bg-[var(--muted)] shimmer" />
+              <div className="h-[20px] w-[80px] rounded-[6px] bg-[var(--muted)] shimmer" />
+              <div className="h-[20px] w-[100px] rounded-[6px] bg-[var(--muted)] shimmer" />
             </div>
           ))}
         </div>
@@ -296,16 +302,19 @@ export default function PaymentsPage() {
             </IOSButton>
           </DialogTrigger>
           <DialogContent className="max-w-md bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px]">
-            <DialogHeader>
-              <DialogTitle className="text-[20px] font-semibold text-[var(--label-primary)]">Record Payment</DialogTitle>
-              <DialogDescription className="text-[15px] text-[var(--label-secondary)]">
-                Link payments to clients or specific orders for accurate tracking.
-              </DialogDescription>
-            </DialogHeader>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, rgba(34,197,94,0.4), rgba(255,255,255,0.06))", border: "1px solid rgba(255,255,255,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <IndianRupee className="h-[18px] w-[18px] text-[#4ade80]" />
+              </div>
+              <div>
+                <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "#f1f5f9", lineHeight: "22px", margin: 0 }}>Record Payment</DialogTitle>
+                <DialogDescription style={{ fontSize: 13, color: "#64748b", lineHeight: "18px", margin: "2px 0 0" }}>Link to clients or orders for tracking</DialogDescription>
+              </div>
+            </div>
             <form onSubmit={handleAddPayment} className="space-y-4 pt-4">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-[13px] font-medium text-[var(--label-secondary)] pl-1">Client Name</label>
+                  <label className="text-[13px] font-medium text-[var(--muted-foreground)] pl-1">Client Name</label>
                   <IOSSelect
                     value={formData.clientId}
                     onChange={(e: any) => setFormData({ ...formData, clientId: e.target.value, orderId: "" })}
@@ -316,7 +325,7 @@ export default function PaymentsPage() {
 
                 {formData.clientId && (
                   <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
-                    <label className="text-[13px] font-medium text-[var(--label-secondary)] pl-1">Linked Order (Optional)</label>
+                    <label className="text-[13px] font-medium text-[var(--muted-foreground)] pl-1">Linked Order (Optional)</label>
                     <IOSSelect
                       value={formData.orderId || "none"}
                       onChange={(e: any) => {
@@ -347,11 +356,11 @@ export default function PaymentsPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[13px] font-medium text-[var(--label-secondary)] pl-1">Amount (₹)</label>
+                    <label className="text-[13px] font-medium text-[var(--muted-foreground)] pl-1">Amount (₹)</label>
                     <NumericInput
                       value={formData.amount}
                       onValueChange={(v) => setFormData({ ...formData, amount: v })}
-                      className="h-[44px] bg-[var(--fill-tertiary)] border-transparent rounded-[12px] font-semibold text-[17px] text-[var(--ios-green)] focus-visible:ring-[var(--ios-green)]"
+                      className="h-[44px] bg-[var(--muted)] border-transparent rounded-[12px] font-semibold text-[17px] text-[var(--erp-success)] focus-visible:ring-[var(--erp-success)]"
                       placeholder="0.00"
                       prefix="₹"
                       allowDecimal={true}
@@ -360,7 +369,7 @@ export default function PaymentsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[13px] font-medium text-[var(--label-secondary)] pl-1">Mode</label>
+                    <label className="text-[13px] font-medium text-[var(--muted-foreground)] pl-1">Mode</label>
                     <IOSSelect
                       value={formData.paymentMethod}
                       onChange={(e: any) => setFormData({ ...formData, paymentMethod: e.target.value })}
@@ -377,7 +386,7 @@ export default function PaymentsPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[13px] font-medium text-[var(--label-secondary)] pl-1">Date</label>
+                    <label className="text-[13px] font-medium text-[var(--muted-foreground)] pl-1">Date</label>
                     <IOSInput
                       type="date"
                       value={formData.paymentDate}
@@ -386,7 +395,7 @@ export default function PaymentsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[13px] font-medium text-[var(--label-secondary)] pl-1">Ref / ID</label>
+                    <label className="text-[13px] font-medium text-[var(--muted-foreground)] pl-1">Ref / ID</label>
                     <IOSInput
                       placeholder="TXN..."
                       value={formData.referenceId}
@@ -396,7 +405,7 @@ export default function PaymentsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[13px] font-medium text-[var(--label-secondary)] pl-1">Remarks</label>
+                  <label className="text-[13px] font-medium text-[var(--muted-foreground)] pl-1">Remarks</label>
                   <IOSInput
                     placeholder="Note about the payment..."
                     value={formData.notes}
@@ -404,7 +413,7 @@ export default function PaymentsPage() {
                   />
                 </div>
               </div>
-              <DialogFooter className="pt-4 border-t border-[var(--border-card)]">
+              <DialogFooter className="pt-4 border-t border-[var(--border)]">
                 <IOSButton type="submit" variant="filled" className="w-full" disabled={isMutating}>
                   {createPayment.isPending ? "Posting..." : "Post Entry"}
                 </IOSButton>
@@ -449,11 +458,11 @@ export default function PaymentsPage() {
 
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center p-1 bg-[var(--fill-tertiary)] rounded-[12px] w-full sm:w-auto h-[44px]">
+          <div className="flex items-center p-1 bg-[var(--muted)] rounded-[12px] w-full sm:w-auto h-[44px]">
             <button
               className={cn(
                 "flex-1 sm:flex-none h-full px-5 text-[15px] font-semibold transition-all rounded-[10px]",
-                viewType === "receivables" ? "bg-white dark:bg-[rgba(255,255,255,0.1)] text-[var(--label-primary)] shadow-[var(--shadow-sm)]" : "text-[var(--label-secondary)] hover:text-[var(--label-primary)]"
+                viewType === "receivables" ? "bg-white dark:bg-[rgba(255,255,255,0.1)] text-[var(--foreground)] shadow-[var(--shadow-sm)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
               )}
               onClick={() => setViewType("receivables")}
             >
@@ -462,7 +471,7 @@ export default function PaymentsPage() {
             <button
               className={cn(
                 "flex-1 sm:flex-none h-full px-5 text-[15px] font-semibold transition-all rounded-[10px]",
-                viewType === "clients" ? "bg-white dark:bg-[rgba(255,255,255,0.1)] text-[var(--label-primary)] shadow-[var(--shadow-sm)]" : "text-[var(--label-secondary)] hover:text-[var(--label-primary)]"
+                viewType === "clients" ? "bg-white dark:bg-[rgba(255,255,255,0.1)] text-[var(--foreground)] shadow-[var(--shadow-sm)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
               )}
               onClick={() => setViewType("clients")}
             >
@@ -471,7 +480,7 @@ export default function PaymentsPage() {
             <button
               className={cn(
                 "flex-1 sm:flex-none h-full px-5 text-[15px] font-semibold transition-all rounded-[10px]",
-                viewType === "history" ? "bg-white dark:bg-[rgba(255,255,255,0.1)] text-[var(--label-primary)] shadow-[var(--shadow-sm)]" : "text-[var(--label-secondary)] hover:text-[var(--label-primary)]"
+                viewType === "history" ? "bg-white dark:bg-[rgba(255,255,255,0.1)] text-[var(--foreground)] shadow-[var(--shadow-sm)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
               )}
               onClick={() => setViewType("history")}
             >
@@ -482,17 +491,48 @@ export default function PaymentsPage() {
           <div className="w-full sm:max-w-xs">
             <IOSSearchBar
               value={searchTerm}
-              onSearch={setSearchTerm}
+              onValueChange={setSearchTerm}
               placeholder="Search financials..."
             />
           </div>
         </div>
 
         {viewType === "receivables" && (
-          <IOSCard className="overflow-hidden bg-white dark:bg-[var(--bg-card)]">
+          <>
+          {/* Mobile Cards */}
+          <div className="flex flex-col gap-3 md:hidden">
+            {orders.filter((o: any) => o.paymentStatus !== 'paid').length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '48px 20px', borderRadius: 16, background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)' }}>
+                <CheckCircle2 className="h-10 w-10 mx-auto mb-3" style={{ color: '#34d399' }} />
+                <p style={{ fontSize: 15, fontWeight: 600, color: '#34d399' }}>All orders fully settled! 🥳</p>
+              </div>
+            ) : orders.filter((o: any) => o.paymentStatus !== 'paid' && (o.client?.name.toLowerCase().includes(searchTerm.toLowerCase()) || o.productName.toLowerCase().includes(searchTerm.toLowerCase()))).map((order: any) => {
+              const paid = payments.filter((p: any) => p.orderId === order.id).reduce((acc: number, p: any) => acc + Number(p.amount), 0);
+              const due = Number(order.totalAmount) - paid;
+              return (
+                <div key={order.id} style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)', border: '1px solid rgba(255,255,255,0.07)', boxShadow: '0 4px 24px rgba(0,0,0,0.4)', borderRadius: 12, padding: 16, position: 'relative', overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: order.paymentStatus === 'partial' ? '#3b82f6' : '#f59e0b' }} />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: 18, fontWeight: 700, color: '#e6e0e9', letterSpacing: '-0.5px' }}>{order.client?.name}</span>
+                    <span style={{ fontSize: 18, fontWeight: 700, color: '#f59e0b' }}>₹{due.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
+                    <span style={{ fontSize: 14, color: '#948e9c' }}>{order.productName}</span>
+                    <span style={{ fontSize: 12, color: '#64748b' }}>Billed: ₹{Number(order.totalAmount).toLocaleString('en-IN')}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                    <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', background: 'rgba(16,185,129,0.1)', color: '#34d399', border: '1px solid rgba(16,185,129,0.2)' }}>Paid: ₹{paid.toLocaleString('en-IN')}</span>
+                    <IOSBadge variant={order.paymentStatus === 'partial' ? 'tinted' : 'outline'} color={order.paymentStatus === 'partial' ? 'blue' : 'orange'} className="uppercase text-[10px] tracking-wider">{order.paymentStatus === 'partial' ? 'Partial' : 'Pending'}</IOSBadge>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {/* Desktop Table */}
+          <IOSCard className="overflow-hidden bg-white dark:bg-[var(--card)] hidden md:block">
             <div className="w-full overflow-x-auto">
               <table className="w-full text-sm text-left">
-                <thead className="text-[11px] uppercase tracking-wider text-[var(--label-secondary)] bg-[var(--fill-quaternary)] border-b border-[var(--border-card)]">
+                <thead className="text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] bg-[var(--muted)] border-b border-[var(--border)]">
                   <tr>
                     <th scope="col" className="px-6 py-4 font-semibold rounded-tl-[16px]">Client / Order</th>
                     <th scope="col" className="px-6 py-4 font-semibold">Total Billed</th>
@@ -503,13 +543,13 @@ export default function PaymentsPage() {
                   </tr>
                 </thead>
                 <motion.tbody
-                  className="divide-y divide-[var(--border-card)]"
+                  className="divide-y divide-[var(--border)]"
                   variants={staggerContainer}
                   initial="initial"
                   animate="animate"
                 >
                   {orders.filter((o: any) => o.paymentStatus !== 'paid').length === 0 ? (
-                    <tr><td colSpan={6} className="text-center py-24 text-[var(--ios-green)] font-semibold bg-[var(--ios-green)]/10">All orders fully settled! 🥳</td></tr>
+                    <tr><td colSpan={6} className="text-center py-24 text-[var(--erp-success)] font-semibold bg-[var(--erp-success)]/10">All orders fully settled! 🥳</td></tr>
                   ) : orders.filter((o: any) =>
                     o.paymentStatus !== 'paid' && (o.client?.name.toLowerCase().includes(searchTerm.toLowerCase()) || o.productName.toLowerCase().includes(searchTerm.toLowerCase()))
                   ).map((order: any) => {
@@ -519,18 +559,18 @@ export default function PaymentsPage() {
                       <motion.tr
                         variants={staggerItem}
                         key={order.id}
-                        className="group hover:bg-[var(--fill-quaternary)]/50 transition-colors"
+                        className="group hover:bg-[var(--muted)]/50 transition-colors"
                       >
                         <td className="px-6 py-4">
                           <div className="flex flex-col">
-                            <span className="font-semibold text-[15px] text-[var(--label-primary)]">{order.client?.name}</span>
-                            <span className="text-[13px] text-[var(--label-secondary)]">{order.productName}</span>
+                            <span className="font-semibold text-[15px] text-[var(--foreground)]">{order.client?.name}</span>
+                            <span className="text-[13px] text-[var(--muted-foreground)]">{order.productName}</span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 font-semibold text-[var(--label-secondary)]">₹{Number(order.totalAmount).toLocaleString()}</td>
-                        <td className="px-6 py-4 font-semibold text-[var(--ios-green)]">₹{paid.toLocaleString()}</td>
+                        <td className="px-6 py-4 font-semibold text-[var(--muted-foreground)]">₹{Number(order.totalAmount).toLocaleString()}</td>
+                        <td className="px-6 py-4 font-semibold text-[var(--erp-success)]">₹{paid.toLocaleString()}</td>
                         <td className="px-6 py-4 text-right">
-                          <span className="font-bold text-[var(--ios-orange)]">₹{due.toLocaleString()}</span>
+                          <span className="font-bold text-[var(--erp-warning)]">₹{due.toLocaleString()}</span>
                         </td>
                         <td className="px-6 py-4 text-center">
                           <IOSBadge
@@ -550,7 +590,7 @@ export default function PaymentsPage() {
                               setIsDialogOpen(true);
                             }}
                           >
-                            <ArrowUpRight className="h-5 w-5 text-[var(--ios-green)]" />
+                            <ArrowUpRight className="h-5 w-5 text-[var(--erp-success)]" />
                           </IOSButton>
                         </td>
                       </motion.tr>
@@ -560,11 +600,12 @@ export default function PaymentsPage() {
               </table>
             </div>
           </IOSCard>
+          </>
         )}
 
         {viewType === "clients" && (
           <motion.div
-            className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6"
             variants={staggerContainer}
             initial="initial"
             animate="animate"
@@ -575,18 +616,18 @@ export default function PaymentsPage() {
                   <IOSCardHeader
                     title={summary.name}
                     className="[&_h3]:text-[17px] [&_h3]:font-semibold mb-2"
-                    action={<User className="h-5 w-5 text-[var(--label-tertiary)]" />}
+                    action={<User className="h-5 w-5 text-[var(--muted-foreground)]" />}
                   />
                   <IOSCardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-2 text-[13px]">
-                      <div className="text-[var(--label-secondary)]">Orders Billed</div>
-                      <div className="text-right font-semibold text-[var(--label-primary)]">₹{summary.billed.toLocaleString()}</div>
-                      <div className="text-[var(--label-secondary)]">Payments Recv.</div>
-                      <div className="text-right font-semibold text-[var(--ios-green)]">₹{summary.received.toLocaleString()}</div>
+                      <div className="text-[var(--muted-foreground)]">Orders Billed</div>
+                      <div className="text-right font-semibold text-[var(--foreground)]">₹{summary.billed.toLocaleString()}</div>
+                      <div className="text-[var(--muted-foreground)]">Payments Recv.</div>
+                      <div className="text-right font-semibold text-[var(--erp-success)]">₹{summary.received.toLocaleString()}</div>
                     </div>
-                    <div className="pt-3 border-t border-[var(--border-card)] flex items-center justify-between">
+                    <div className="pt-3 border-t border-[var(--border)] flex items-center justify-between">
                       <div>
-                        <span className="text-[10px] font-semibold uppercase text-[var(--label-tertiary)] block tracking-wider mb-1">Status</span>
+                        <span className="text-[10px] font-semibold uppercase text-[var(--muted-foreground)] block tracking-wider mb-1">Status</span>
                         <IOSBadge
                           variant="tinted"
                           color={summary.outstanding > 0 ? "orange" : (summary.outstanding < 0 ? "green" : "gray")}
@@ -596,12 +637,12 @@ export default function PaymentsPage() {
                         </IOSBadge>
                       </div>
                       <div className="text-right">
-                        <span className="text-[10px] font-semibold uppercase text-[var(--label-tertiary)] block tracking-wider mb-0.5">
+                        <span className="text-[10px] font-semibold uppercase text-[var(--muted-foreground)] block tracking-wider mb-0.5">
                           {summary.outstanding >= 0 ? 'Outstanding' : 'Credit Balance'}
                         </span>
                         <span className={cn(
                           "font-bold text-[20px] tracking-tight",
-                          summary.outstanding > 0 ? "text-[var(--ios-orange)]" : (summary.outstanding < 0 ? "text-[var(--ios-green)]" : "text-[var(--label-secondary)]")
+                          summary.outstanding > 0 ? "text-[var(--erp-warning)]" : (summary.outstanding < 0 ? "text-[var(--erp-success)]" : "text-[var(--muted-foreground)]")
                         )}>
                           ₹{Math.abs(summary.outstanding).toLocaleString()}
                         </span>
@@ -627,10 +668,53 @@ export default function PaymentsPage() {
         )}
 
         {viewType === "history" && (
-          <IOSCard className="overflow-hidden bg-white dark:bg-[var(--bg-card)]">
+          <>
+          {/* Mobile Cards */}
+          <div className="flex flex-col gap-3 md:hidden">
+            {filteredHistory.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '48px 20px', borderRadius: 16, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <p style={{ fontSize: 15, color: '#948e9c' }}>No payment records found.</p>
+              </div>
+            ) : filteredHistory.map((p: any) => {
+              const methodColors: Record<string, string> = { 'Bank Transfer': '#3b82f6', 'Cash': '#10b981', 'UPI': '#a855f7', 'Cheque': '#f59e0b', 'Credit/Due': '#ef4444' };
+              const color = methodColors[p.paymentMethod] || '#6366f1';
+              const MethodIcon = ({ method }: { method: string }) => {
+                const icons: Record<string, any> = { 'Bank Transfer': Landmark, 'Cash': Banknote, 'UPI': QrCode, 'Cheque': FileText, 'Credit/Due': CreditCard };
+                const Icon = icons[method] || Banknote;
+                return <Icon className="h-3.5 w-3.5" />;
+              };
+              return (
+                <div key={p.id} style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)', border: '1px solid rgba(255,255,255,0.07)', boxShadow: '0 4px 24px rgba(0,0,0,0.4)', borderRadius: 12, padding: 16, position: 'relative', overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: color }} />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: 18, fontWeight: 700, color: '#e6e0e9', letterSpacing: '-0.5px' }}>{p.client?.name || 'Unknown'}</span>
+                    <span style={{ fontSize: 18, fontWeight: 700, color: '#34d399' }}>+₹{Number(p.amount).toLocaleString('en-IN')}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
+                    <span style={{ fontSize: 14, color: '#948e9c' }}>{p.order?.productName || p.referenceId || 'General'}</span>
+                    <span style={{ fontSize: 12, color: '#64748b' }}>{new Date(p.paymentDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', background: `${color}15`, color, border: `1px solid ${color}30`, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <MethodIcon method={p.paymentMethod} />
+                        {p.paymentMethod}
+                      </span>
+                      <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', background: 'rgba(16,185,129,0.1)', color: '#34d399', border: '1px solid rgba(16,185,129,0.2)' }}>Completed</span>
+                    </div>
+                    <button onClick={() => { setPaymentToDeleteId(p.id); setIsDeleteDialogOpenConfirm(true); }} style={{ width: 28, height: 28, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.04)', border: 'none', cursor: 'pointer', color: '#64748b' }}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {/* Desktop Table */}
+          <IOSCard className="overflow-hidden bg-white dark:bg-[var(--card)] hidden md:block">
             <div className="w-full overflow-x-auto">
               <table className="w-full text-sm text-left">
-                <thead className="text-[11px] uppercase tracking-wider text-[var(--label-secondary)] bg-[var(--fill-quaternary)] border-b border-[var(--border-card)]">
+                <thead className="text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] bg-[var(--muted)] border-b border-[var(--border)]">
                   <tr>
                     <th scope="col" className="px-6 py-4 font-semibold rounded-tl-[16px]">Date</th>
                     <th scope="col" className="px-6 py-4 font-semibold">Client</th>
@@ -640,29 +724,29 @@ export default function PaymentsPage() {
                   </tr>
                 </thead>
                 <motion.tbody
-                  className="divide-y divide-[var(--border-card)]"
+                  className="divide-y divide-[var(--border)]"
                   variants={staggerContainer}
                   initial="initial"
                   animate="animate"
                 >
                   {filteredHistory.length === 0 ? (
-                    <tr><td colSpan={5} className="text-center py-20 text-[var(--label-secondary)]">No payment records found.</td></tr>
+                    <tr><td colSpan={5} className="text-center py-20 text-[var(--muted-foreground)]">No payment records found.</td></tr>
                   ) : filteredHistory.map((p: any) => (
                     <motion.tr
                       variants={staggerItem}
                       key={p.id}
-                      className="group hover:bg-[var(--fill-quaternary)]/50 transition-colors"
+                      className="group hover:bg-[var(--muted)]/50 transition-colors"
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-[var(--label-tertiary)]" />
-                          <span className="font-medium text-[15px] text-[var(--label-primary)]">{new Date(p.paymentDate).toLocaleDateString()}</span>
+                          <Calendar className="h-4 w-4 text-[var(--muted-foreground)]" />
+                          <span className="font-medium text-[15px] text-[var(--foreground)]">{new Date(p.paymentDate).toLocaleDateString()}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col">
-                          <span className="font-semibold text-[15px] text-[var(--label-primary)]">{p.client?.name}</span>
-                          <span className="text-[13px] text-[var(--label-secondary)]">{p.order?.productName || 'General Payment'}</span>
+                          <span className="font-semibold text-[15px] text-[var(--foreground)]">{p.client?.name}</span>
+                          <span className="text-[13px] text-[var(--muted-foreground)]">{p.order?.productName || 'General Payment'}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -672,16 +756,16 @@ export default function PaymentsPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col">
-                          <span className="font-mono text-[12px] text-[var(--label-secondary)] bg-[var(--fill-quaternary)] px-2 py-0.5 rounded w-fit">{p.referenceId || '-'}</span>
-                          <span className="text-[13px] text-[var(--label-tertiary)] truncate max-w-[150px] mt-1 pr-4">{p.notes}</span>
+                          <span className="font-mono text-[12px] text-[var(--muted-foreground)] bg-[var(--muted)] px-2 py-0.5 rounded w-fit">{p.referenceId || '-'}</span>
+                          <span className="text-[13px] text-[var(--muted-foreground)] truncate max-w-[150px] mt-1 pr-4">{p.notes}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-3">
-                          <span className="font-bold text-[17px] text-[var(--ios-green)] tracking-tight">₹{Number(p.amount).toLocaleString()}</span>
+                          <span className="font-bold text-[17px] text-[var(--erp-success)] tracking-tight">₹{Number(p.amount).toLocaleString()}</span>
                           <IOSButton
                             variant="plain"
-                            className="h-8 w-8 !p-0 opacity-0 group-hover:opacity-100 text-[var(--label-tertiary)] hover:text-[var(--ios-red)]"
+                            className="h-8 w-8 !p-0 opacity-0 group-hover:opacity-100 text-[var(--muted-foreground)] hover:text-[var(--destructive)]"
                             onClick={() => {
                               setPaymentToDeleteId(p.id);
                               setIsDeleteDialogOpenConfirm(true);
@@ -697,18 +781,22 @@ export default function PaymentsPage() {
               </table>
             </div>
           </IOSCard>
+          </>
         )}
       </div>
 
       <Dialog open={isDeleteDialogOpenConfirm} onOpenChange={setIsDeleteDialogOpenConfirm}>
         <DialogContent className="max-w-[350px] bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px]">
-          <DialogHeader>
-            <DialogTitle className="text-[20px] font-semibold text-[var(--label-primary)]">Delete Payment</DialogTitle>
-            <DialogDescription className="text-[15px] text-[var(--label-secondary)]">
-              Are you sure you want to delete this payment record? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex gap-2 pt-4 border-t border-[var(--border-card)]">
+          <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, rgba(239,68,68,0.4), rgba(255,255,255,0.06))", border: "1px solid rgba(255,255,255,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Trash2 className="h-[18px] w-[18px] text-[#f87171]" />
+            </div>
+            <div>
+              <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "#f1f5f9", lineHeight: "22px", margin: 0 }}>Delete Payment</DialogTitle>
+              <DialogDescription style={{ fontSize: 13, color: "#64748b", lineHeight: "18px", margin: "2px 0 0" }}>This action cannot be undone.</DialogDescription>
+            </div>
+          </div>
+          <DialogFooter className="flex gap-2 pt-4 border-t border-[var(--border)]">
             <IOSButton variant="gray" onClick={() => setIsDeleteDialogOpenConfirm(false)} className="flex-1">
               Cancel
             </IOSButton>

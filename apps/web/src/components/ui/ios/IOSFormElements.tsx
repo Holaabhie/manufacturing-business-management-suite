@@ -30,13 +30,13 @@ export const IOSInput = React.forwardRef<HTMLInputElement, IOSInputProps>(
         return (
             <div className="space-y-1.5">
                 {label && (
-                    <label className="block text-[13px] font-normal text-[var(--label-secondary)] leading-[18px] px-1">
+                    <label className="block text-[13px] font-normal text-[var(--muted-foreground)] leading-[18px] px-1">
                         {label}
                     </label>
                 )}
                 <div className="relative">
                     {leftIcon && (
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--label-tertiary)]">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]">
                             {leftIcon}
                         </span>
                     )}
@@ -44,13 +44,13 @@ export const IOSInput = React.forwardRef<HTMLInputElement, IOSInputProps>(
                         ref={ref}
                         className={cn(
                             'w-full h-[44px] rounded-[10px]',
-                            'bg-[var(--fill-tertiary)] dark:bg-[var(--fill-quaternary)]',
-                            'text-[17px] text-[var(--label-primary)]',
-                            'placeholder:text-[var(--label-tertiary)]',
+                            'bg-[var(--muted)] dark:bg-[var(--muted)]',
+                            'text-[17px] text-[var(--foreground)]',
+                            'placeholder:text-[var(--muted-foreground)]',
                             'outline-none border-none',
                             'transition-shadow duration-200',
-                            'focus:ring-2 focus:ring-[var(--ios-blue)]',
-                            error && 'ring-2 ring-[var(--ios-red)]',
+                            'focus:ring-2 focus:ring-[var(--primary)]',
+                            error && 'ring-2 ring-[var(--destructive)]',
                             leftIcon ? 'pl-10' : 'pl-4',
                             rightIcon ? 'pr-10' : 'pr-4',
                             'disabled:opacity-40',
@@ -59,16 +59,16 @@ export const IOSInput = React.forwardRef<HTMLInputElement, IOSInputProps>(
                         {...props}
                     />
                     {rightIcon && (
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--label-tertiary)]">
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]">
                             {rightIcon}
                         </span>
                     )}
                 </div>
                 {error && (
-                    <p className="text-[13px] text-[var(--ios-red)] leading-[18px] px-1">{error}</p>
+                    <p className="text-[13px] text-[var(--destructive)] leading-[18px] px-1">{error}</p>
                 )}
                 {helperText && !error && (
-                    <p className="text-[13px] text-[var(--label-secondary)] leading-[18px] px-1">
+                    <p className="text-[13px] text-[var(--muted-foreground)] leading-[18px] px-1">
                         {helperText}
                     </p>
                 )}
@@ -92,7 +92,7 @@ export const IOSTextarea = React.forwardRef<HTMLTextAreaElement, IOSTextareaProp
         return (
             <div className="space-y-1.5">
                 {label && (
-                    <label className="block text-[13px] font-normal text-[var(--label-secondary)] leading-[18px] px-1">
+                    <label className="block text-[13px] font-normal text-[var(--muted-foreground)] leading-[18px] px-1">
                         {label}
                     </label>
                 )}
@@ -100,23 +100,23 @@ export const IOSTextarea = React.forwardRef<HTMLTextAreaElement, IOSTextareaProp
                     ref={ref}
                     className={cn(
                         'w-full min-h-[88px] rounded-[10px] p-4',
-                        'bg-[var(--fill-tertiary)] dark:bg-[var(--fill-quaternary)]',
-                        'text-[17px] text-[var(--label-primary)]',
-                        'placeholder:text-[var(--label-tertiary)]',
+                        'bg-[var(--muted)] dark:bg-[var(--muted)]',
+                        'text-[17px] text-[var(--foreground)]',
+                        'placeholder:text-[var(--muted-foreground)]',
                         'outline-none border-none resize-y',
                         'transition-shadow duration-200',
-                        'focus:ring-2 focus:ring-[var(--ios-blue)]',
-                        error && 'ring-2 ring-[var(--ios-red)]',
+                        'focus:ring-2 focus:ring-[var(--primary)]',
+                        error && 'ring-2 ring-[var(--destructive)]',
                         'disabled:opacity-40',
                         className
                     )}
                     {...props}
                 />
                 {error && (
-                    <p className="text-[13px] text-[var(--ios-red)] leading-[18px] px-1">{error}</p>
+                    <p className="text-[13px] text-[var(--destructive)] leading-[18px] px-1">{error}</p>
                 )}
                 {helperText && !error && (
-                    <p className="text-[13px] text-[var(--label-secondary)] leading-[18px] px-1">
+                    <p className="text-[13px] text-[var(--muted-foreground)] leading-[18px] px-1">
                         {helperText}
                     </p>
                 )}
@@ -146,7 +146,7 @@ export const IOSSelect = React.forwardRef<HTMLSelectElement, IOSSelectProps>(
         return (
             <div className="space-y-1.5">
                 {label && (
-                    <label className="block text-[13px] font-normal text-[var(--label-secondary)] leading-[18px] px-1">
+                    <label className="block text-[13px] font-normal text-[var(--muted-foreground)] leading-[18px] px-1">
                         {label}
                     </label>
                 )}
@@ -155,13 +155,13 @@ export const IOSSelect = React.forwardRef<HTMLSelectElement, IOSSelectProps>(
                         ref={ref}
                         className={cn(
                             'w-full h-[44px] rounded-[10px] appearance-none',
-                            'bg-[var(--fill-tertiary)] dark:bg-[var(--fill-quaternary)]',
-                            'text-[17px] text-[var(--label-primary)]',
+                            'bg-[var(--muted)] dark:bg-[var(--muted)]',
+                            'text-[17px] text-[var(--foreground)]',
                             'outline-none border-none',
                             'pl-4 pr-10',
                             'transition-shadow duration-200',
-                            'focus:ring-2 focus:ring-[var(--ios-blue)]',
-                            error && 'ring-2 ring-[var(--ios-red)]',
+                            'focus:ring-2 focus:ring-[var(--primary)]',
+                            error && 'ring-2 ring-[var(--destructive)]',
                             'disabled:opacity-40 cursor-pointer',
                             className
                         )}
@@ -180,11 +180,11 @@ export const IOSSelect = React.forwardRef<HTMLSelectElement, IOSSelectProps>(
                     </select>
                     <ChevronDown
                         size={20}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--label-tertiary)] pointer-events-none"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] pointer-events-none"
                     />
                 </div>
                 {error && (
-                    <p className="text-[13px] text-[var(--ios-red)] leading-[18px] px-1">{error}</p>
+                    <p className="text-[13px] text-[var(--destructive)] leading-[18px] px-1">{error}</p>
                 )}
             </div>
         );
@@ -222,10 +222,10 @@ export function IOSCheckbox({
                 className={cn(
                     'w-[22px] h-[22px] rounded-[6px] flex items-center justify-center',
                     'transition-colors duration-200 cursor-pointer',
-                    'outline-none focus-visible:ring-2 focus-visible:ring-[var(--ios-blue)] focus-visible:ring-offset-2',
+                    'outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2',
                     checked
-                        ? 'bg-[var(--ios-blue)]'
-                        : 'bg-transparent border-2 border-[var(--ios-gray3)] dark:border-[var(--ios-gray4)]',
+                        ? 'bg-[var(--primary)]'
+                        : 'bg-transparent border-2 border-[var(--muted-foreground)] dark:border-[var(--border)]',
                     disabled && 'opacity-40 cursor-not-allowed'
                 )}
                 whileTap={!disabled ? { scale: 0.85 } : undefined}
@@ -237,7 +237,7 @@ export function IOSCheckbox({
                 <label
                     htmlFor={id}
                     className={cn(
-                        'text-[17px] text-[var(--label-primary)] leading-[22px] cursor-pointer select-none',
+                        'text-[17px] text-[var(--foreground)] leading-[22px] cursor-pointer select-none',
                         disabled && 'opacity-40 cursor-not-allowed'
                     )}
                 >
@@ -275,11 +275,11 @@ export function IOSRadioGroup({
     return (
         <div className={cn('space-y-1.5', className)}>
             {label && (
-                <label className="block text-[13px] font-normal text-[var(--label-secondary)] leading-[18px] px-1">
+                <label className="block text-[13px] font-normal text-[var(--muted-foreground)] leading-[18px] px-1">
                     {label}
                 </label>
             )}
-            <div className="bg-[var(--bg-card)] rounded-[10px] border border-[var(--border-card)] overflow-hidden divide-y divide-[rgba(60,60,67,0.08)] dark:divide-[rgba(84,84,88,0.2)]">
+            <div className="bg-[var(--card)] rounded-[10px] border border-[var(--border)] overflow-hidden divide-y divide-[rgba(60,60,67,0.08)] dark:divide-[rgba(84,84,88,0.2)]">
                 {options.map((opt) => (
                     <motion.button
                         key={opt.value}
@@ -297,8 +297,8 @@ export function IOSRadioGroup({
                                 'w-[22px] h-[22px] rounded-full border-2 flex items-center justify-center flex-shrink-0',
                                 'transition-colors duration-200',
                                 value === opt.value
-                                    ? 'border-[var(--ios-blue)] bg-[var(--ios-blue)]'
-                                    : 'border-[var(--ios-gray3)] dark:border-[var(--ios-gray4)]'
+                                    ? 'border-[var(--primary)] bg-[var(--primary)]'
+                                    : 'border-[var(--muted-foreground)] dark:border-[var(--border)]'
                             )}
                         >
                             {value === opt.value && (
@@ -306,11 +306,11 @@ export function IOSRadioGroup({
                             )}
                         </span>
                         <div className="flex-1 min-w-0">
-                            <span className="text-[17px] text-[var(--label-primary)] leading-[22px] block">
+                            <span className="text-[17px] text-[var(--foreground)] leading-[22px] block">
                                 {opt.label}
                             </span>
                             {opt.description && (
-                                <span className="text-[13px] text-[var(--label-secondary)] leading-[18px] block">
+                                <span className="text-[13px] text-[var(--muted-foreground)] leading-[18px] block">
                                     {opt.description}
                                 </span>
                             )}

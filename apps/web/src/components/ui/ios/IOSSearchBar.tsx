@@ -69,13 +69,13 @@ export const IOSSearchBar = React.forwardRef<HTMLInputElement, IOSSearchBarProps
                     className={cn(
                         'relative flex items-center flex-1',
                         'h-[36px] rounded-[10px]',
-                        'bg-[var(--fill-tertiary)]',
+                        'bg-[var(--muted)]',
                         'transition-all duration-200',
-                        isFocused && 'ring-2 ring-[var(--ios-blue)]'
+                        isFocused && 'ring-2 ring-[var(--primary)]'
                     )}
                 >
                     <Search
-                        className="absolute left-[8px] text-[var(--label-tertiary)]"
+                        className="absolute left-[8px] text-[var(--muted-foreground)]"
                         size={17}
                     />
                     <input
@@ -90,8 +90,8 @@ export const IOSSearchBar = React.forwardRef<HTMLInputElement, IOSSearchBarProps
                         className={cn(
                             'w-full h-full bg-transparent',
                             'pl-[32px] pr-[32px]',
-                            'text-[17px] text-[var(--label-primary)]',
-                            'placeholder:text-[var(--label-tertiary)]',
+                            'text-[17px] text-[var(--foreground)]',
+                            'placeholder:text-[var(--muted-foreground)]',
                             'outline-none border-none',
                             'leading-[22px]'
                         )}
@@ -107,13 +107,13 @@ export const IOSSearchBar = React.forwardRef<HTMLInputElement, IOSSearchBarProps
                                 className={cn(
                                     'absolute right-[8px]',
                                     'w-[18px] h-[18px] rounded-full',
-                                    'bg-[var(--fill-secondary)] flex items-center justify-center',
+                                    'bg-[var(--accent)] flex items-center justify-center',
                                     'hover:bg-[var(--fill-primary)]',
                                     'cursor-pointer'
                                 )}
                                 aria-label="Clear search"
                             >
-                                <X size={12} className="text-[var(--label-secondary)]" />
+                                <X size={12} className="text-[var(--muted-foreground)]" />
                             </motion.button>
                         )}
                     </AnimatePresence>
@@ -128,7 +128,7 @@ export const IOSSearchBar = React.forwardRef<HTMLInputElement, IOSSearchBarProps
                             transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                             onClick={handleCancel}
                             className={cn(
-                                'text-[17px] font-normal text-[var(--ios-blue)]',
+                                'text-[17px] font-normal text-[var(--primary)]',
                                 'whitespace-nowrap cursor-pointer',
                                 'hover:opacity-70 transition-opacity'
                             )}

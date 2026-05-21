@@ -46,7 +46,7 @@ export const IOSSwitch = React.forwardRef<HTMLButtonElement, IOSSwitchProps>(
                 {label && (
                     <label
                         htmlFor={id}
-                        className="text-[17px] text-[var(--label-primary)] cursor-pointer select-none"
+                        className="text-[17px] text-[var(--foreground)] cursor-pointer select-none"
                     >
                         {label}
                     </label>
@@ -63,14 +63,14 @@ export const IOSSwitch = React.forwardRef<HTMLButtonElement, IOSSwitchProps>(
                         'relative inline-flex flex-shrink-0',
                         'w-[51px] h-[31px] rounded-full',
                         'transition-colors duration-200',
-                        'outline-none focus-visible:ring-2 focus-visible:ring-[var(--ios-blue)] focus-visible:ring-offset-2',
+                        'outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2',
                         disabled && 'opacity-40 cursor-not-allowed',
                         !disabled && 'cursor-pointer'
                     )}
                     style={{
                         backgroundColor: checked
-                            ? 'var(--ios-green)'
-                            : 'var(--ios-gray5)',
+                            ? 'var(--erp-success)'
+                            : 'var(--muted-foreground)',
                     }}
                 >
                     <motion.span

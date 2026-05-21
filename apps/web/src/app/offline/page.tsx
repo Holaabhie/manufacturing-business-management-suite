@@ -6,7 +6,7 @@ import { spring, staggerContainer, staggerItem } from '@/styles/animations';
 export default function OfflinePage() {
     return (
         <div className="min-h-screen flex items-center justify-center p-6"
-            style={{ background: 'var(--bg-page)' }}
+            style={{ background: 'var(--background)' }}
         >
             <motion.div
                 className="w-full max-w-md text-center"
@@ -27,7 +27,7 @@ export default function OfflinePage() {
                         height="64"
                         viewBox="0 0 24 24"
                         fill="none"
-                        stroke="var(--ios-gray)"
+                        stroke="var(--muted-foreground)"
                         strokeWidth="1.5"
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -36,9 +36,9 @@ export default function OfflinePage() {
                         <path d="M1.42 9a16 16 0 0 1 21.16 0" opacity="0.2" />
                         <path d="M5 12.55a11 11 0 0 1 14.08 0" opacity="0.35" />
                         <path d="M8.53 16.11a6 6 0 0 1 6.95 0" opacity="0.55" />
-                        <circle cx="12" cy="20" r="1" fill="var(--ios-gray)" stroke="none" />
+                        <circle cx="12" cy="20" r="1" fill="var(--muted-foreground)" stroke="none" />
                         {/* Slash line */}
-                        <line x1="2" y1="2" x2="22" y2="22" stroke="var(--ios-red)" strokeWidth="2" />
+                        <line x1="2" y1="2" x2="22" y2="22" stroke="var(--destructive)" strokeWidth="2" />
                     </svg>
                 </motion.div>
 
@@ -49,7 +49,7 @@ export default function OfflinePage() {
                     style={{
                         fontSize: '28px',
                         fontWeight: 700,
-                        color: 'var(--text-heading)',
+                        color: 'var(--foreground)',
                         letterSpacing: '0.36px',
                         lineHeight: '34px',
                     }}
@@ -63,7 +63,7 @@ export default function OfflinePage() {
                     className="mb-8"
                     style={{
                         fontSize: '17px',
-                        color: 'var(--text-secondary)',
+                        color: 'var(--muted-foreground)',
                         lineHeight: '22px',
                         letterSpacing: '-0.41px',
                     }}
@@ -77,9 +77,9 @@ export default function OfflinePage() {
                     variants={staggerItem}
                     className="mb-8 p-5 rounded-2xl text-left"
                     style={{
-                        background: 'var(--bg-card)',
-                        border: '1px solid var(--border-card)',
-                        boxShadow: 'var(--shadow-card)',
+                        background: 'var(--card)',
+                        border: '1px solid var(--border)',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
                     }}
                 >
                     <div className="flex items-start gap-3 mb-4">
@@ -87,27 +87,27 @@ export default function OfflinePage() {
                             className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
                             style={{ background: 'rgba(0, 122, 255, 0.1)' }}
                         >
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ios-blue)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <circle cx="12" cy="12" r="10" />
                                 <line x1="12" y1="16" x2="12" y2="12" />
                                 <line x1="12" y1="8" x2="12.01" y2="8" />
                             </svg>
                         </div>
                         <div>
-                            <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-heading)', marginBottom: '4px' }}>
+                            <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--foreground)', marginBottom: '4px' }}>
                                 What you can try
                             </p>
-                            <ul className="space-y-2" style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: '20px' }}>
+                            <ul className="space-y-2" style={{ fontSize: '15px', color: 'var(--muted-foreground)', lineHeight: '20px' }}>
                                 <li className="flex items-center gap-2">
-                                    <span style={{ color: 'var(--ios-blue)' }}>•</span>
+                                    <span style={{ color: 'var(--primary)' }}>•</span>
                                     Check your Wi-Fi or mobile data
                                 </li>
                                 <li className="flex items-center gap-2">
-                                    <span style={{ color: 'var(--ios-blue)' }}>•</span>
+                                    <span style={{ color: 'var(--primary)' }}>•</span>
                                     Toggle airplane mode off
                                 </li>
                                 <li className="flex items-center gap-2">
-                                    <span style={{ color: 'var(--ios-blue)' }}>•</span>
+                                    <span style={{ color: 'var(--primary)' }}>•</span>
                                     Restart your router
                                 </li>
                             </ul>
@@ -123,14 +123,14 @@ export default function OfflinePage() {
                         transition={spring.snappy}
                         className="w-full cursor-pointer"
                         style={{
-                            background: 'var(--color-primary-brand)',
+                            background: 'var(--primary)',
                             color: '#FFFFFF',
                             border: 'none',
                             borderRadius: '14px',
                             padding: '14px 24px',
                             fontSize: '17px',
                             fontWeight: 600,
-                            boxShadow: 'var(--shadow-colored)',
+                            boxShadow: '0 4px 14px rgba(37, 99, 235, 0.3)',
                         }}
                     >
                         Try Again
@@ -141,7 +141,7 @@ export default function OfflinePage() {
                 <motion.p
                     variants={staggerItem}
                     className="mt-4"
-                    style={{ fontSize: '13px', color: 'var(--text-muted)' }}
+                    style={{ fontSize: '13px', color: 'var(--muted-foreground)' }}
                 >
                     Some features may still work offline
                 </motion.p>

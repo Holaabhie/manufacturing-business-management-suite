@@ -31,8 +31,8 @@ export function EmptyState({ icon, title, description, actionLabel, onAction, cl
       >
         {icon}
       </motion.div>
-      <h3 className="text-lg font-bold text-[var(--label-primary)] mb-2">{title}</h3>
-      <p className="text-sm text-[var(--label-tertiary)] mb-6 max-w-xs leading-relaxed">{description}</p>
+      <h3 className="text-lg font-bold text-[var(--foreground)] mb-2">{title}</h3>
+      <p className="text-sm text-[var(--muted-foreground)] mb-6 max-w-xs leading-relaxed">{description}</p>
       {actionLabel && onAction && (
         <motion.button
           onClick={onAction}

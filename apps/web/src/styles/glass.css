@@ -1,49 +1,54 @@
 /* ============================================
-   GLASSMORPHISM DESIGN SYSTEM
-   Dark navy/black base — consistent across
-   every modal, dialog, drawer, sheet, popup,
-   dropdown, and overlay component.
+   OVERLAY + MODAL DESIGN SYSTEM
+   Enterprise-grade modal, dialog, drawer, sheet
+   styling with blur ONLY on overlay backdrop.
    ============================================ */
 
-/* ── Google Fonts: DM Sans + DM Mono ──── */
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
-
 :root {
-  /* ── Glass Surface ──────────────────── */
-  --glass-bg: linear-gradient(160deg, rgba(14, 22, 44, 0.97) 0%, rgba(8, 16, 36, 0.99) 100%);
-  --glass-bg-solid: rgba(14, 22, 44, 0.97);
-  --glass-surface: rgba(255, 255, 255, 0.06);
-  --glass-border: rgba(255, 255, 255, 0.10);
-  --glass-border-active: rgba(99, 210, 255, 0.45);
-  --glass-blur: blur(24px) saturate(180%);
-  --glass-shadow: 0 -8px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  --glass-input-bg: rgba(255, 255, 255, 0.06);
+  /* ── Modal Surface ──────────────────── */
+  --glass-bg: #FFFFFF;
+  --glass-bg-solid: #FFFFFF;
+  --glass-surface: rgba(0, 0, 0, 0.03);
+  --glass-border: rgba(15, 23, 42, 0.08);
+  --glass-border-active: rgba(37, 99, 235, 0.45);
+  --glass-shadow: 0 8px 40px rgba(15, 23, 42, 0.12), 0 1px 3px rgba(15, 23, 42, 0.06);
+  --glass-input-bg: rgba(15, 23, 42, 0.04);
 
   /* ── Overlay ────────────────────────── */
-  --glass-overlay-bg: rgba(0, 0, 0, 0.70);
+  --glass-overlay-bg: rgba(0, 0, 0, 0.45);
   --glass-overlay-blur: blur(8px);
   --glass-overlay-z: 1000;
   --glass-modal-z: 1001;
 
-  /* ── Glass Radii ────────────────────── */
-  --glass-radius-modal: 28px 28px 0 0;
-  --glass-radius-card: 20px;
-  --glass-radius-input: 14px;
-  --glass-radius-btn: 12px;
+  /* ── Radii ──────────────────────────── */
+  --glass-radius-modal: 24px 24px 0 0;
+  --glass-radius-card: 12px;
+  --glass-radius-input: 8px;
+  --glass-radius-btn: 8px;
 
-  /* ── Accent Colors ──────────────────── */
-  --g-accent-blue: rgba(99, 210, 255, 0.9);
-  --g-accent-blue-glow: rgba(0, 150, 255, 0.4);
-  --g-accent-warn: rgba(255, 200, 80, 0.85);
+  /* ── Text ───────────────────────────── */
+  --g-text-primary: #0F172A;
+  --g-text-secondary: #475569;
+  --g-text-label: #94A3B8;
+}
 
-  /* ── Text Hierarchy ─────────────────── */
-  --g-text-primary: #ffffff;
-  --g-text-secondary: rgba(255, 255, 255, 0.45);
-  --g-text-label: rgba(255, 255, 255, 0.35);
+.dark {
+  /* ── Modal Surface (Dark) ───────────── */
+  --glass-bg: #1E293B;
+  --glass-bg-solid: #1E293B;
+  --glass-surface: rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(241, 245, 249, 0.08);
+  --glass-border-active: rgba(59, 130, 246, 0.45);
+  --glass-shadow: 0 8px 40px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --glass-input-bg: rgba(255, 255, 255, 0.06);
 
-  /* ── Fonts ───────────────────────────── */
-  --font-glass: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-glass-mono: 'DM Mono', 'SF Mono', monospace;
+  /* ── Overlay (Dark) ─────────────────── */
+  --glass-overlay-bg: rgba(0, 0, 0, 0.70);
+
+  /* ── Text (Dark) ────────────────────── */
+  --g-text-primary: #F1F5F9;
+  --g-text-secondary: rgba(241, 245, 249, 0.6);
+  --g-text-label: rgba(241, 245, 249, 0.35);
 }
 
 /* ============================================
@@ -79,12 +84,9 @@
   position: relative !important;
   z-index: var(--glass-modal-z) !important;
   background: var(--glass-bg) !important;
-  backdrop-filter: var(--glass-blur) !important;
-  -webkit-backdrop-filter: var(--glass-blur) !important;
   border: 1px solid var(--glass-border) !important;
   box-shadow: var(--glass-shadow) !important;
   color: var(--g-text-primary) !important;
-  font-family: var(--font-glass) !important;
 }
 
 /* Mobile: bottom-sheet (max-width 768px) */
@@ -128,42 +130,33 @@
 /* Legacy .glass-dialog alias  */
 .glass-dialog {
   background: var(--glass-bg) !important;
-  backdrop-filter: var(--glass-blur) !important;
-  -webkit-backdrop-filter: var(--glass-blur) !important;
   border: 1px solid var(--glass-border) !important;
   box-shadow: var(--glass-shadow) !important;
   color: var(--g-text-primary) !important;
-  font-family: var(--font-glass) !important;
 }
 
 /* Sheet content */
 [data-slot="sheet-content"] {
   z-index: var(--glass-modal-z) !important;
   background: var(--glass-bg) !important;
-  backdrop-filter: var(--glass-blur) !important;
-  -webkit-backdrop-filter: var(--glass-blur) !important;
   border-color: var(--glass-border) !important;
   box-shadow: var(--glass-shadow) !important;
   color: var(--g-text-primary) !important;
-  font-family: var(--font-glass) !important;
 }
 
 /* Drawer content */
 [data-slot="drawer-content"] {
   z-index: var(--glass-modal-z) !important;
   background: var(--glass-bg) !important;
-  backdrop-filter: var(--glass-blur) !important;
-  -webkit-backdrop-filter: var(--glass-blur) !important;
   border-color: var(--glass-border) !important;
   box-shadow: var(--glass-shadow) !important;
   color: var(--g-text-primary) !important;
-  font-family: var(--font-glass) !important;
-  border-radius: 28px 28px 0 0 !important;
+  border-radius: 24px 24px 0 0 !important;
 }
 
 /* Drawer drag handle */
 [data-slot="drawer-content"] > div:first-child {
-  background: rgba(255, 255, 255, 0.15) !important;
+  background: var(--glass-border) !important;
 }
 
 /* ============================================
@@ -242,6 +235,26 @@
 .glass-modal input:focus,
 .glass-modal textarea:focus,
 .glass-modal select:focus {
+  border-color: var(--g-accent-blue) !important;
+  box-shadow: 0 0 0 4px rgba(0, 102, 214, 0.12) !important;
+  outline: none !important;
+}
+
+.dark [data-slot="dialog-content"] input:focus,
+.dark [data-slot="dialog-content"] textarea:focus,
+.dark [data-slot="dialog-content"] select:focus,
+.dark [data-slot="sheet-content"] input:focus,
+.dark [data-slot="sheet-content"] textarea:focus,
+.dark [data-slot="sheet-content"] select:focus,
+.dark [data-slot="drawer-content"] input:focus,
+.dark [data-slot="drawer-content"] textarea:focus,
+.dark [data-slot="drawer-content"] select:focus,
+.dark [data-slot="alert-dialog-content"] input:focus,
+.dark [data-slot="alert-dialog-content"] textarea:focus,
+.dark [data-slot="alert-dialog-content"] select:focus,
+.dark .glass-modal input:focus,
+.dark .glass-modal textarea:focus,
+.dark .glass-modal select:focus {
   border-color: rgba(99, 210, 255, 0.8) !important;
   box-shadow: 0 0 0 4px rgba(99, 210, 255, 0.15) !important;
   outline: none !important;
@@ -378,7 +391,7 @@
    ============================================ */
 .glass-divider {
   height: 1px !important;
-  background: rgba(255, 255, 255, 0.07) !important;
+  background: var(--glass-border) !important;
   border: none !important;
 }
 
@@ -387,7 +400,7 @@
 [data-slot="sheet-content"] [data-slot*="separator"],
 [data-slot="drawer-content"] [data-slot*="separator"],
 [data-slot="command-separator"] {
-  background: rgba(255, 255, 255, 0.07) !important;
+  background: var(--glass-border) !important;
   border: none !important;
 }
 
@@ -397,7 +410,7 @@
 [data-slot="dialog-close"],
 [data-slot="dialog-content"] > [data-slot="dialog-close"],
 [data-slot="sheet-content"] > button:last-of-type {
-  background: rgba(255, 255, 255, 0.06) !important;
+  background: rgba(120, 120, 128, 0.08) !important;
   border: 1px solid var(--glass-border) !important;
   border-radius: 10px !important;
   width: 36px !important;
@@ -413,7 +426,7 @@
 [data-slot="dialog-close"]:hover,
 [data-slot="dialog-content"] > [data-slot="dialog-close"]:hover,
 [data-slot="sheet-content"] > button:last-of-type:hover {
-  background: rgba(255, 80, 80, 0.2) !important;
+  background: rgba(255, 80, 80, 0.15) !important;
 }
 
 /* ============================================

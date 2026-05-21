@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import {
     Users, Search, Plus, Shield, ShieldAlert, UserCog, Mail, Calendar,
     ChevronRight, MoreHorizontal, Power, PowerOff, KeyRound, Copy, Check,
-    AlertTriangle, Clock, Activity, BadgeCheck, Building2, Phone,
+    AlertTriangle, Clock, Activity, BadgeCheck, Building2, Phone, CheckCircle,
     Filter, ArrowUpDown, Eye, EyeOff, Trash2, Loader2, Hash, X,
 } from "lucide-react";
 import {
@@ -440,7 +440,7 @@ export default function EmployeeManagementPage() {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
                 <div className="flex flex-col items-center gap-3">
-                    <Loader2 className="h-8 w-8 animate-spin" style={{ color: "var(--color-primary-brand)" }} />
+                    <Loader2 className="h-8 w-8 animate-spin" style={{ color: "var(--primary)" }} />
                     <p className="text-sm text-muted-foreground">Loading employee management...</p>
                 </div>
             </div>
@@ -462,13 +462,13 @@ export default function EmployeeManagementPage() {
                 {/* ─── Header ──────────────────────────────────────── */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
-                        <h1 className="text-[28px] font-bold tracking-tight flex items-center gap-3 text-[var(--label-primary)]">
+                        <h1 className="text-[28px] font-bold tracking-tight flex items-center gap-3 text-[var(--foreground)]">
                             <div className="h-10 w-10 rounded-[12px] bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center shadow-lg shadow-[#007AFF]/30">
                                 <Users className="h-5 w-5 text-white" />
                             </div>
                             Employee Management
                         </h1>
-                        <p className="text-[13px] text-[var(--label-secondary)] mt-1.5">Create, manage, and monitor your workforce.</p>
+                        <p className="text-[13px] text-[var(--muted-foreground)] mt-1.5">Create, manage, and monitor your workforce.</p>
                     </div>
 
                     <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -538,10 +538,10 @@ export default function EmployeeManagementPage() {
                 {/* ─── Toolbar ─────────────────────────────────────── */}
                 <div className="flex flex-col md:flex-row gap-3 items-start md:items-center w-full">
                     <div className="relative flex-1 w-full md:max-w-md">
-                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--label-tertiary)] z-10" />
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--muted-foreground)] z-10" />
                         <IOSInput
                             placeholder="Search by name, ID, email, dept..."
-                            className="pl-9 h-11 bg-[var(--fill-quaternary)] dark:bg-[var(--fill-tertiary)] text-[15px]"
+                            className="pl-9 h-11 bg-[var(--muted)] dark:bg-[var(--muted)] text-[15px]"
                             value={searchTerm}
                             onChange={(e: any) => setSearchTerm(e.target.value)}
                         />
@@ -577,7 +577,7 @@ export default function EmployeeManagementPage() {
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <button
-                                    className="h-[44px] w-[44px] flex items-center justify-center rounded-[10px] bg-[var(--fill-quaternary)] dark:bg-[var(--fill-tertiary)] hover:bg-[var(--fill-tertiary)] transition-colors border border-[var(--border-card)] flex-shrink-0 text-[var(--label-secondary)] hover:text-[var(--ios-blue)]"
+                                    className="h-[44px] w-[44px] flex items-center justify-center rounded-[10px] bg-[var(--muted)] dark:bg-[var(--muted)] hover:bg-[var(--muted)] transition-colors border border-[var(--border)] flex-shrink-0 text-[var(--muted-foreground)] hover:text-[var(--primary)]"
                                     onClick={() => {
                                         if (sortField === "createdAt") { setSortField("fullName"); setSortDir("asc"); }
                                         else if (sortField === "fullName") { setSortField("lastActiveAt"); setSortDir("desc"); }
@@ -595,36 +595,36 @@ export default function EmployeeManagementPage() {
                 </div>
 
                 {/* ─── Employee Table ──────────────────────────────── */}
-                <IOSCard variant="elevated" className="border-0 shadow-[var(--shadow-sm)] overflow-hidden bg-[var(--fill-quaternary)] dark:bg-[var(--fill-tertiary)] p-0">
+                <IOSCard variant="elevated" className="border-0 shadow-[var(--shadow-sm)] overflow-hidden bg-[var(--muted)] dark:bg-[var(--muted)] p-0">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-[13px]">
                             <thead>
-                                <tr className="border-b border-[var(--border-card)]">
-                                    <th className="font-semibold text-[11px] text-[var(--label-tertiary)] uppercase tracking-wider px-6 py-3 min-w-[80px]">ID</th>
-                                    <th className="font-semibold text-[11px] text-[var(--label-tertiary)] uppercase tracking-wider px-6 py-3 w-full">Employee</th>
-                                    <th className="font-semibold text-[11px] text-[var(--label-tertiary)] uppercase tracking-wider px-6 py-3 hidden md:table-cell min-w-[120px]">Department</th>
-                                    <th className="font-semibold text-[11px] text-[var(--label-tertiary)] uppercase tracking-wider px-6 py-3 hidden lg:table-cell min-w-[140px]">Permissions</th>
-                                    <th className="font-semibold text-[11px] text-[var(--label-tertiary)] uppercase tracking-wider px-6 py-3 min-w-[120px]">Status</th>
-                                    <th className="font-semibold text-[11px] text-[var(--label-tertiary)] uppercase tracking-wider px-6 py-3 hidden md:table-cell min-w-[120px]">Last Active</th>
-                                    <th className="font-semibold text-[11px] text-[var(--label-tertiary)] uppercase tracking-wider px-6 py-3 text-right">Actions</th>
+                                <tr className="border-b border-[var(--border)]">
+                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 min-w-[80px]">ID</th>
+                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 w-full">Employee</th>
+                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 hidden md:table-cell min-w-[120px]">Department</th>
+                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 hidden lg:table-cell min-w-[140px]">Permissions</th>
+                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 min-w-[120px]">Status</th>
+                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 hidden md:table-cell min-w-[120px]">Last Active</th>
+                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {loading ? (
                                     <tr>
-                                        <td colSpan={7} className="h-48 text-center text-[var(--label-secondary)]">
-                                            <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-[var(--ios-blue)]" />
+                                        <td colSpan={7} className="h-48 text-center text-[var(--muted-foreground)]">
+                                            <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-[var(--primary)]" />
                                             <p className="text-[13px]">Loading employees...</p>
                                         </td>
                                     </tr>
                                 ) : filteredEmployees.length === 0 ? (
                                     <tr>
                                         <td colSpan={7} className="h-48 text-center">
-                                            <Users className="h-10 w-10 mx-auto mb-3 text-[var(--label-tertiary)]" />
-                                            <p className="font-semibold text-[var(--label-secondary)]">
+                                            <Users className="h-10 w-10 mx-auto mb-3 text-[var(--muted-foreground)]" />
+                                            <p className="font-semibold text-[var(--muted-foreground)]">
                                                 {employees.length === 0 ? "No employees yet" : "No employees match filters"}
                                             </p>
-                                            <p className="text-[13px] text-[var(--label-tertiary)] mt-1">
+                                            <p className="text-[13px] text-[var(--muted-foreground)] mt-1">
                                                 {employees.length === 0
                                                     ? "Click \"Add Employee\" to create your first staff member."
                                                     : "Try adjusting your search or filters."}
@@ -649,11 +649,11 @@ export default function EmployeeManagementPage() {
                                             initial={{ opacity: 0, y: 10 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             transition={{ delay: idx * 0.03, type: "spring", stiffness: 400, damping: 30 }}
-                                            className="group border-b border-[var(--border-card)] last:border-0 hover:bg-[var(--fill-tertiary)] transition-colors cursor-pointer"
+                                            className="group border-b border-[var(--border)] last:border-0 hover:bg-[var(--muted)] transition-colors cursor-pointer"
                                             onClick={() => router.push(`/dashboard/users/${emp.id}`)}
                                         >
                                             <td className="px-6 py-3.5">
-                                                <span className="font-mono text-[11px] text-[var(--label-secondary)] font-semibold bg-[var(--fill-tertiary)] px-1.5 py-0.5 rounded-[6px]">
+                                                <span className="font-mono text-[11px] text-[var(--muted-foreground)] font-semibold bg-[var(--muted)] px-1.5 py-0.5 rounded-[6px]">
                                                     {emp.employeeId}
                                                 </span>
                                             </td>
@@ -664,12 +664,12 @@ export default function EmployeeManagementPage() {
                                                     </div>
                                                     <div className="min-w-0">
                                                         <div className="flex items-center gap-1.5">
-                                                            <span className="font-semibold text-[15px] text-[var(--label-primary)] truncate">{emp.fullName}</span>
+                                                            <span className="font-semibold text-[15px] text-[var(--foreground)] truncate">{emp.fullName}</span>
                                                             {!emp.firstLoginCompleted && (
                                                                 <IOSBadge variant="outline" color="orange" className="text-[9px] px-1 py-0 border-amber-300">NEW</IOSBadge>
                                                             )}
                                                         </div>
-                                                        <div className="flex items-center gap-2 text-[12px] text-[var(--label-secondary)]">
+                                                        <div className="flex items-center gap-2 text-[12px] text-[var(--muted-foreground)]">
                                                             {emp.email && !emp.email.endsWith("@staff.local") && (
                                                                 <span className="flex items-center gap-0.5 truncate">
                                                                     <Mail className="h-3 w-3" />{emp.email}
@@ -682,7 +682,7 @@ export default function EmployeeManagementPage() {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-3.5 hidden md:table-cell text-[14px] text-[var(--label-secondary)]">
+                                            <td className="px-6 py-3.5 hidden md:table-cell text-[14px] text-[var(--muted-foreground)]">
                                                 {emp.department}
                                             </td>
                                             <td className="px-6 py-3.5 hidden lg:table-cell">
@@ -693,7 +693,7 @@ export default function EmployeeManagementPage() {
                                             <td className="px-6 py-3.5">
                                                 <StatusBadge status={emp.status} />
                                             </td>
-                                            <td className="px-6 py-3.5 hidden md:table-cell text-[12px] text-[var(--label-tertiary)]">
+                                            <td className="px-6 py-3.5 hidden md:table-cell text-[12px] text-[var(--muted-foreground)]">
                                                 <div className="flex items-center gap-1.5">
                                                     <Activity className="h-3 w-3" />
                                                     {timeAgo(emp.lastActiveAt)}
@@ -702,31 +702,31 @@ export default function EmployeeManagementPage() {
                                             <td className="px-6 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
-                                                        <button className="h-8 w-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[var(--fill-tertiary)] text-[var(--label-secondary)] focus:opacity-100">
+                                                        <button className="h-8 w-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[var(--muted)] text-[var(--muted-foreground)] focus:opacity-100">
                                                             <MoreHorizontal className="h-4 w-4" />
                                                         </button>
                                                     </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-[14px] shadow-[var(--shadow-lg)] border-[var(--border-card)]">
+                                                    <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-[14px] shadow-[var(--shadow-lg)] border-[var(--border)]">
                                                         <DropdownMenuItem className="text-[13px] rounded-[8px] cursor-pointer" onClick={() => router.push(`/dashboard/users/${emp.id}`)}>
                                                             <Eye className="mr-2 h-4 w-4" />View Details
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuSeparator className="bg-[var(--border-card)]" />
+                                                        <DropdownMenuSeparator className="bg-[var(--border)]" />
                                                         <DropdownMenuItem className="text-[13px] rounded-[8px] cursor-pointer" onClick={() => setChangePwdTarget(emp)}>
-                                                            <KeyRound className="mr-2 h-4 w-4 text-[var(--ios-orange)]" />Change Password
+                                                            <KeyRound className="mr-2 h-4 w-4 text-[var(--erp-warning)]" />Change Password
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem className="text-[13px] rounded-[8px] cursor-pointer" onClick={() => { setActionTarget(emp); setActionType("reset_password"); }}>
                                                             <KeyRound className="mr-2 h-4 w-4" />Auto-Reset Password
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem className="text-[13px] rounded-[8px] cursor-pointer" onClick={() => { setActionTarget(emp); setActionType(emp.status === "active" ? "deactivate" : "activate"); }}>
                                                             {emp.status === "active" ? (
-                                                                <><PowerOff className="mr-2 h-4 w-4 text-[var(--ios-red)]" /><span className="text-[var(--ios-red)]">Deactivate</span></>
+                                                                <><PowerOff className="mr-2 h-4 w-4 text-[var(--destructive)]" /><span className="text-[var(--destructive)]">Deactivate</span></>
                                                             ) : (
-                                                                <><Power className="mr-2 h-4 w-4 text-[var(--ios-green)]" /><span className="text-[var(--ios-green)]">Activate</span></>
+                                                                <><Power className="mr-2 h-4 w-4 text-[var(--erp-success)]" /><span className="text-[var(--erp-success)]">Activate</span></>
                                                             )}
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuSeparator className="bg-[var(--border-card)]" />
+                                                        <DropdownMenuSeparator className="bg-[var(--border)]" />
                                                         <DropdownMenuItem
-                                                            className="text-[13px] rounded-[8px] cursor-pointer text-[var(--ios-red)] focus:bg-[var(--ios-red)]/10 focus:text-[var(--ios-red)]"
+                                                            className="text-[13px] rounded-[8px] cursor-pointer text-[var(--destructive)] focus:bg-[var(--destructive)]/10 focus:text-[var(--destructive)]"
                                                             onClick={() => { setActionTarget(emp); setActionType("delete"); }}
                                                         >
                                                             <Trash2 className="mr-2 h-4 w-4" />Delete Employee
@@ -754,21 +754,19 @@ export default function EmployeeManagementPage() {
                 <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
                     <DialogContent className="sm:max-w-lg bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px] p-0 overflow-hidden">
                         <div className="p-6">
-                            <DialogHeader>
-                                <DialogTitle className="flex items-center gap-2 text-[20px] font-semibold text-[var(--label-primary)]">
-                                    <div className="h-8 w-8 rounded-[8px] flex items-center justify-center bg-[#007AFF]/10">
-                                        <Plus className="h-4 w-4 text-[#007AFF]" />
-                                    </div>
-                                    Add New Employee
-                                </DialogTitle>
-                                <DialogDescription className="text-[14px] text-[var(--label-secondary)] mt-1.5">
-                                    Create a staff account. An Employee ID and temporary password will be auto-generated.
-                                </DialogDescription>
-                            </DialogHeader>
+                            <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+                                <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, rgba(59,130,246,0.4), rgba(255,255,255,0.06))", border: "1px solid rgba(255,255,255,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                    <Plus className="h-[18px] w-[18px] text-[#60a5fa]" />
+                                </div>
+                                <div>
+                                    <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "#f1f5f9", lineHeight: "22px", margin: 0 }}>Add New Employee</DialogTitle>
+                                    <DialogDescription style={{ fontSize: 13, color: "#64748b", lineHeight: "18px", margin: "2px 0 0" }}>Auto-generated ID and temp password</DialogDescription>
+                                </div>
+                            </div>
 
                             <div className="grid gap-4 py-6">
                                 <div className="space-y-1.5">
-                                    <label className="text-[13px] font-medium text-[var(--label-secondary)] px-1">Full Name *</label>
+                                    <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">Full Name *</label>
                                     <IOSInput
                                         placeholder="e.g. Rajesh Kumar"
                                         value={newEmpName}
@@ -780,7 +778,7 @@ export default function EmployeeManagementPage() {
 
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-1.5">
-                                        <label className="text-[13px] font-medium text-[var(--label-secondary)] px-1">Email</label>
+                                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">Email</label>
                                         <IOSInput
                                             type="email"
                                             placeholder="employee@company.com"
@@ -790,7 +788,7 @@ export default function EmployeeManagementPage() {
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-[13px] font-medium text-[var(--label-secondary)] px-1">Phone</label>
+                                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">Phone</label>
                                         <IOSInput
                                             type="tel"
                                             placeholder="+91..."
@@ -811,7 +809,7 @@ export default function EmployeeManagementPage() {
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-[13px] font-medium text-[var(--label-secondary)] px-1">Designation</label>
+                                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">Designation</label>
                                         <IOSInput
                                             placeholder="e.g. Machine Operator"
                                             value={newEmpDesignation}
@@ -835,13 +833,13 @@ export default function EmployeeManagementPage() {
                                     />
                                 </div>
 
-                                <div className="p-4 rounded-[12px] bg-[var(--fill-quaternary)] dark:bg-[var(--fill-tertiary)] border border-[var(--border-card)]">
+                                <div className="p-4 rounded-[12px] bg-[var(--muted)] dark:bg-[var(--muted)] border border-[var(--border)]">
                                     <div className="flex items-start gap-3">
                                         <div className="h-6 w-6 rounded-full bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                                             <Shield className="h-3 w-3 text-[#007AFF]" />
                                         </div>
-                                        <div className="text-[13px] text-[var(--label-secondary)] space-y-2">
-                                            <p className="font-semibold text-[var(--label-primary)]">What happens next?</p>
+                                        <div className="text-[13px] text-[var(--muted-foreground)] space-y-2">
+                                            <p className="font-semibold text-[var(--foreground)]">What happens next?</p>
                                             <ul className="space-y-1">
                                                 <li>• A unique Employee ID (EMP-XXXX) will be generated</li>
                                                 <li>• A temp password will be created for first login</li>
@@ -852,7 +850,7 @@ export default function EmployeeManagementPage() {
                                 </div>
                             </div>
 
-                            <DialogFooter className="flex gap-2 pt-2 border-t border-[var(--border-card)] border-x-[-24px] mx-[-24px] px-6 pb-2">
+                            <DialogFooter className="flex gap-2 pt-2 border-t border-[var(--border)] border-x-[-24px] mx-[-24px] px-6 pb-2">
                                 <IOSButton variant="gray" onClick={() => setShowAddDialog(false)} className="flex-1">Cancel</IOSButton>
                                 <IOSButton
                                     variant="filled"
@@ -878,14 +876,15 @@ export default function EmployeeManagementPage() {
                             <div className="h-14 w-14 rounded-[16px] bg-[#34C759]/10 mx-auto flex items-center justify-center mb-2">
                                 <BadgeCheck className="h-7 w-7 text-[#34C759]" />
                             </div>
-                            <DialogHeader className="text-center">
-                                <DialogTitle className="text-[20px] font-semibold text-[var(--label-primary)]">
-                                    Employee Created Successfully
-                                </DialogTitle>
-                                <DialogDescription className="text-[14px] text-[var(--label-secondary)] mt-1.5 px-4">
-                                    Share these credentials with <span className="font-semibold text-[var(--label-primary)]">{createdEmployee?.fullName}</span> securely. The temporary password is shown only once.
-                                </DialogDescription>
-                            </DialogHeader>
+                            <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+                                <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, rgba(34,197,94,0.4), rgba(255,255,255,0.06))", border: "1px solid rgba(255,255,255,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                    <CheckCircle className="h-[18px] w-[18px] text-[#4ade80]" />
+                                </div>
+                                <div>
+                                    <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "#f1f5f9", lineHeight: "22px", margin: 0 }}>Employee Created</DialogTitle>
+                                    <DialogDescription style={{ fontSize: 13, color: "#64748b", lineHeight: "18px", margin: "2px 0 0" }}>Share credentials with {createdEmployee?.fullName}</DialogDescription>
+                                </div>
+                            </div>
 
                             {createdEmployee && (
                                 <div className="space-y-4 pt-2">
@@ -896,26 +895,26 @@ export default function EmployeeManagementPage() {
                                         </div>
 
                                         <div className="space-y-3">
-                                            <div className="flex items-center justify-between bg-white dark:bg-black rounded-[12px] px-3.5 py-3 shadow-sm border border-[var(--border-card)]">
+                                            <div className="flex items-center justify-between bg-white dark:bg-black rounded-[12px] px-3.5 py-3 shadow-sm border border-[var(--border)]">
                                                 <div>
-                                                    <p className="text-[10px] uppercase font-bold text-[var(--label-tertiary)] tracking-wider">Employee ID</p>
-                                                    <p className="font-mono font-bold text-[17px] text-[var(--label-primary)]">{createdEmployee.employeeId}</p>
+                                                    <p className="text-[10px] uppercase font-bold text-[var(--muted-foreground)] tracking-wider">Employee ID</p>
+                                                    <p className="font-mono font-bold text-[17px] text-[var(--foreground)]">{createdEmployee.employeeId}</p>
                                                 </div>
                                                 <button
-                                                    className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-[var(--fill-tertiary)] text-[var(--label-secondary)] transition-colors"
+                                                    className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-[var(--muted)] text-[var(--muted-foreground)] transition-colors"
                                                     onClick={() => copyToClipboard(createdEmployee.employeeId, "id")}
                                                 >
                                                     {copiedId ? <Check className="h-4 w-4 text-[#34C759]" /> : <Copy className="h-4 w-4" />}
                                                 </button>
                                             </div>
 
-                                            <div className="flex items-center justify-between bg-white dark:bg-black rounded-[12px] px-3.5 py-3 shadow-sm border border-[var(--border-card)]">
+                                            <div className="flex items-center justify-between bg-white dark:bg-black rounded-[12px] px-3.5 py-3 shadow-sm border border-[var(--border)]">
                                                 <div>
-                                                    <p className="text-[10px] uppercase font-bold text-[var(--label-tertiary)] tracking-wider">Temporary Password</p>
-                                                    <p className="font-mono font-bold text-[17px] text-[var(--label-primary)]">{createdEmployee.tempPassword}</p>
+                                                    <p className="text-[10px] uppercase font-bold text-[var(--muted-foreground)] tracking-wider">Temporary Password</p>
+                                                    <p className="font-mono font-bold text-[17px] text-[var(--foreground)]">{createdEmployee.tempPassword}</p>
                                                 </div>
                                                 <button
-                                                    className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-[var(--fill-tertiary)] text-[var(--label-secondary)] transition-colors"
+                                                    className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-[var(--muted)] text-[var(--muted-foreground)] transition-colors"
                                                     onClick={() => copyToClipboard(createdEmployee.tempPassword, "pwd")}
                                                 >
                                                     {copiedPwd ? <Check className="h-4 w-4 text-[#34C759]" /> : <Copy className="h-4 w-4" />}
@@ -924,7 +923,7 @@ export default function EmployeeManagementPage() {
                                         </div>
                                     </div>
 
-                                    <div className="text-[13px] text-[var(--label-tertiary)]">
+                                    <div className="text-[13px] text-[var(--muted-foreground)]">
                                         Employee will use the <strong>Staff Portal</strong> to log in.
                                     </div>
                                 </div>
@@ -962,14 +961,18 @@ export default function EmployeeManagementPage() {
                             {actionType === "reset_password" && <KeyRound className="h-7 w-7" />}
                         </div>
 
-                        <DialogHeader className="text-center">
-                            <DialogTitle className="text-[20px] font-semibold text-[var(--label-primary)]">
+                        <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+                            <div style={{ width: 40, height: 40, borderRadius: 12, background: actionType === "delete" ? "linear-gradient(135deg, rgba(239,68,68,0.4), rgba(255,255,255,0.06))" : actionType === "activate" ? "linear-gradient(135deg, rgba(34,197,94,0.4), rgba(255,255,255,0.06))" : "linear-gradient(135deg, rgba(245,158,11,0.4), rgba(255,255,255,0.06))", border: "1px solid rgba(255,255,255,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              {actionType === "delete" ? <Trash2 className="h-[18px] w-[18px] text-[#f87171]" /> : actionType === "activate" ? <CheckCircle className="h-[18px] w-[18px] text-[#4ade80]" /> : <AlertTriangle className="h-[18px] w-[18px] text-[#fbbf24]" />}
+                            </div>
+                            <div>
+                            <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "#f1f5f9", lineHeight: "22px", margin: 0 }}>
                                 {actionType === "delete" && "Delete Employee"}
                                 {actionType === "deactivate" && "Deactivate Employee"}
                                 {actionType === "activate" && "Activate Employee"}
                                 {actionType === "reset_password" && (resetPasswordResult ? "Password Reset Complete" : "Reset Password")}
                             </DialogTitle>
-                            <DialogDescription className="text-[15px] pt-1 text-[var(--label-secondary)]">
+                            <DialogDescription className="text-[15px] pt-1 text-[var(--muted-foreground)]">
                                 {actionType === "delete" && (
                                     <>This will permanently remove <strong>{actionTarget?.fullName}</strong> ({actionTarget?.employeeId}) and delete all their data. This cannot be undone.</>
                                 )}
@@ -983,24 +986,24 @@ export default function EmployeeManagementPage() {
                                     <>This will generate a new password for <strong>{actionTarget?.fullName}</strong> ({actionTarget?.employeeId}) and terminate all their active sessions.</>
                                 )}
                             </DialogDescription>
-                        </DialogHeader>
+                        </div></div>
 
                         {/* Reset Password Result */}
                         {actionType === "reset_password" && resetPasswordResult && (
                             <div className="py-5">
-                                <div className="flex items-center justify-between bg-white dark:bg-black rounded-[12px] px-3.5 py-3 shadow-[var(--shadow-sm)] border border-[var(--border-card)] mx-2">
+                                <div className="flex items-center justify-between bg-white dark:bg-black rounded-[12px] px-3.5 py-3 shadow-[var(--shadow-sm)] border border-[var(--border)] mx-2">
                                     <div className="text-left">
-                                        <p className="text-[10px] uppercase font-bold text-[var(--label-tertiary)] tracking-wider">New Password</p>
-                                        <p className="font-mono font-bold text-[18px] text-[var(--label-primary)]">{resetPasswordResult}</p>
+                                        <p className="text-[10px] uppercase font-bold text-[var(--muted-foreground)] tracking-wider">New Password</p>
+                                        <p className="font-mono font-bold text-[18px] text-[var(--foreground)]">{resetPasswordResult}</p>
                                     </div>
                                     <button
-                                        className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-[var(--fill-tertiary)] text-[var(--label-secondary)] transition-colors"
+                                        className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-[var(--muted)] text-[var(--muted-foreground)] transition-colors"
                                         onClick={() => copyToClipboard(resetPasswordResult, "pwd")}
                                     >
                                         {copiedPwd ? <Check className="h-4 w-4 text-[#34C759]" /> : <Copy className="h-4 w-4" />}
                                     </button>
                                 </div>
-                                <p className="text-[13px] text-[var(--label-tertiary)] mt-3">
+                                <p className="text-[13px] text-[var(--muted-foreground)] mt-3">
                                     Share this password securely with the employee.
                                 </p>
                             </div>
@@ -1044,27 +1047,23 @@ export default function EmployeeManagementPage() {
             CHANGE PASSWORD DIALOG
         ═══════════════════════════════════════════════════════ */}
                 <Dialog open={!!changePwdTarget} onOpenChange={(open) => { if (!open) resetChangePwdDialog(); }}>
-                    <DialogContent className="sm:max-w-lg bg-[var(--fill-quaternary)] dark:bg-[var(--fill-tertiary)] backdrop-blur-[40px] border border-[var(--border-card)] shadow-[var(--shadow-lg)] rounded-[24px] p-0 overflow-hidden">
+                    <DialogContent className="sm:max-w-lg bg-[var(--muted)] dark:bg-[var(--muted)] backdrop-blur-[40px] border border-[var(--border)] shadow-[var(--shadow-lg)] rounded-[24px] p-0 overflow-hidden">
                         <div className="p-6">
-                            <DialogHeader>
-                                <DialogTitle className="flex items-center gap-2 text-[20px] font-semibold text-[var(--label-primary)]">
-                                    <div className="h-8 w-8 rounded-[8px] flex items-center justify-center" style={{ background: "#FF950015" }}>
-                                        <KeyRound className="h-4 w-4 text-[#FF9500]" />
-                                    </div>
-                                    {changePwdStep === "success" ? "Password Changed" : "Change Password"}
-                                </DialogTitle>
-                                <DialogDescription className="text-[14px] text-[var(--label-secondary)] mt-1.5 pt-1">
-                                    {changePwdStep === "success"
-                                        ? `Password updated successfully for ${changePwdTarget?.fullName}. All sessions have been terminated.`
-                                        : `Set a new admin-enforced password for ${changePwdTarget?.fullName}. Active sessions will terminate immediately.`}
-                                </DialogDescription>
-                            </DialogHeader>
+                            <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+                                <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, rgba(245,158,11,0.4), rgba(255,255,255,0.06))", border: "1px solid rgba(255,255,255,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                    <KeyRound className="h-[18px] w-[18px] text-[#fbbf24]" />
+                                </div>
+                                <div>
+                                    <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "#f1f5f9", lineHeight: "22px", margin: 0 }}>{changePwdStep === "success" ? "Password Changed" : "Change Password"}</DialogTitle>
+                                    <DialogDescription style={{ fontSize: 13, color: "#64748b", lineHeight: "18px", margin: "2px 0 0" }}>{changePwdStep === "success" ? `Updated for ${changePwdTarget?.fullName}` : `Set new password for ${changePwdTarget?.fullName}`}</DialogDescription>
+                                </div>
+                            </div>
 
                             {changePwdStep === "form" ? (
                                 <div className="space-y-5 py-4">
                                     {/* New Password */}
                                     <div className="space-y-1.5">
-                                        <label className="text-[13px] font-medium text-[var(--label-secondary)] px-1">New Password</label>
+                                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">New Password</label>
                                         <div className="relative">
                                             <IOSInput
                                                 type={changePwdShowNew ? "text" : "password"}
@@ -1074,14 +1073,14 @@ export default function EmployeeManagementPage() {
                                                 className="h-[44px] pr-10"
                                                 autoFocus
                                             />
-                                            <button type="button" onClick={() => setChangePwdShowNew(!changePwdShowNew)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--label-tertiary)] hover:text-[var(--label-primary)] transition-colors">
+                                            <button type="button" onClick={() => setChangePwdShowNew(!changePwdShowNew)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors">
                                                 {changePwdShowNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                             </button>
                                         </div>
                                         {changePwdNewPassword && (
                                             <div className="space-y-1.5 px-1 pb-1 pt-1 opacity-90">
                                                 <div className="flex items-center gap-2">
-                                                    <div className="flex-1 h-1.5 bg-[var(--fill-tertiary)] rounded-full overflow-hidden">
+                                                    <div className="flex-1 h-1.5 bg-[var(--muted)] rounded-full overflow-hidden">
                                                         <div className={`h-full rounded-full transition-all ${changePwdStrength.color.replace('bg-', '') === 'red-500' ? 'bg-[#FF3B30]' : changePwdStrength.color.replace('bg-', '') === 'amber-500' ? 'bg-[#FF9500]' : changePwdStrength.color.replace('bg-', '') === 'blue-500' ? 'bg-[#5AC8FA]' : 'bg-[#34C759]'}`} style={{ width: `${changePwdStrength.score}%` }} />
                                                     </div>
                                                     <span className={`text-[11px] font-bold uppercase tracking-wider ${changePwdStrength.score < 30 ? "text-[#FF3B30]" : changePwdStrength.score < 55 ? "text-[#FF9500]" : changePwdStrength.score < 80 ? "text-[#5AC8FA]" : "text-[#34C759]"}`}>
@@ -1089,16 +1088,16 @@ export default function EmployeeManagementPage() {
                                                     </span>
                                                 </div>
                                                 <div className="flex flex-wrap gap-x-3 gap-y-1 pt-0.5">
-                                                    <span className={`text-[10px] flex items-center gap-0.5 font-medium ${changePwdNewPassword.length >= 8 ? "text-[#34C759]" : "text-[var(--label-tertiary)]"}`}>
+                                                    <span className={`text-[10px] flex items-center gap-0.5 font-medium ${changePwdNewPassword.length >= 8 ? "text-[#34C759]" : "text-[var(--muted-foreground)]"}`}>
                                                         {changePwdNewPassword.length >= 8 ? <Check className="h-3 w-3" /> : <span className="h-2 w-2 rounded-full border border-current opacity-50 ml-0.5 mr-0.5" />} 8+ chars
                                                     </span>
-                                                    <span className={`text-[10px] flex items-center gap-0.5 font-medium ${/[A-Z]/.test(changePwdNewPassword) ? "text-[#34C759]" : "text-[var(--label-tertiary)]"}`}>
+                                                    <span className={`text-[10px] flex items-center gap-0.5 font-medium ${/[A-Z]/.test(changePwdNewPassword) ? "text-[#34C759]" : "text-[var(--muted-foreground)]"}`}>
                                                         {/[A-Z]/.test(changePwdNewPassword) ? <Check className="h-3 w-3" /> : <span className="h-2 w-2 rounded-full border border-current opacity-50 ml-0.5 mr-0.5" />} Uppercase
                                                     </span>
-                                                    <span className={`text-[10px] flex items-center gap-0.5 font-medium ${/[a-z]/.test(changePwdNewPassword) ? "text-[#34C759]" : "text-[var(--label-tertiary)]"}`}>
+                                                    <span className={`text-[10px] flex items-center gap-0.5 font-medium ${/[a-z]/.test(changePwdNewPassword) ? "text-[#34C759]" : "text-[var(--muted-foreground)]"}`}>
                                                         {/[a-z]/.test(changePwdNewPassword) ? <Check className="h-3 w-3" /> : <span className="h-2 w-2 rounded-full border border-current opacity-50 ml-0.5 mr-0.5" />} Lowercase
                                                     </span>
-                                                    <span className={`text-[10px] flex items-center gap-0.5 font-medium ${/[0-9]/.test(changePwdNewPassword) ? "text-[#34C759]" : "text-[var(--label-tertiary)]"}`}>
+                                                    <span className={`text-[10px] flex items-center gap-0.5 font-medium ${/[0-9]/.test(changePwdNewPassword) ? "text-[#34C759]" : "text-[var(--muted-foreground)]"}`}>
                                                         {/[0-9]/.test(changePwdNewPassword) ? <Check className="h-3 w-3" /> : <span className="h-2 w-2 rounded-full border border-current opacity-50 ml-0.5 mr-0.5" />} Number
                                                     </span>
                                                 </div>
@@ -1108,7 +1107,7 @@ export default function EmployeeManagementPage() {
 
                                     {/* Confirm Password */}
                                     <div className="space-y-1.5">
-                                        <label className="text-[13px] font-medium text-[var(--label-secondary)] px-1">Confirm New Password</label>
+                                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">Confirm New Password</label>
                                         <div className="relative">
                                             <IOSInput
                                                 type={changePwdShowConfirm ? "text" : "password"}
@@ -1117,7 +1116,7 @@ export default function EmployeeManagementPage() {
                                                 placeholder="Re-enter new password"
                                                 className="h-[44px] pr-10"
                                             />
-                                            <button type="button" onClick={() => setChangePwdShowConfirm(!changePwdShowConfirm)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--label-tertiary)] hover:text-[var(--label-primary)] transition-colors">
+                                            <button type="button" onClick={() => setChangePwdShowConfirm(!changePwdShowConfirm)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors">
                                                 {changePwdShowConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                             </button>
                                         </div>
@@ -1130,10 +1129,10 @@ export default function EmployeeManagementPage() {
                                     </div>
 
                                     {/* Admin Password Confirmation */}
-                                    <div className="space-y-2 p-4 rounded-[16px] border border-[var(--border-card)] bg-white/40 dark:bg-black/20">
+                                    <div className="space-y-2 p-4 rounded-[16px] border border-[var(--border)] bg-white/40 dark:bg-black/20">
                                         <div className="flex items-center gap-2 mb-1">
                                             <Shield className="h-4 w-4 text-[#007AFF]" />
-                                            <label className="text-[13px] font-semibold text-[var(--label-primary)]">Admin Verification</label>
+                                            <label className="text-[13px] font-semibold text-[var(--foreground)]">Admin Verification</label>
                                         </div>
                                         <div className="relative">
                                             <IOSInput
@@ -1143,11 +1142,11 @@ export default function EmployeeManagementPage() {
                                                 placeholder="Enter YOUR admin password"
                                                 className="h-[44px] pr-10"
                                             />
-                                            <button type="button" onClick={() => setChangePwdShowAdmin(!changePwdShowAdmin)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--label-tertiary)] hover:text-[var(--label-primary)] transition-colors">
+                                            <button type="button" onClick={() => setChangePwdShowAdmin(!changePwdShowAdmin)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors">
                                                 {changePwdShowAdmin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                             </button>
                                         </div>
-                                        <p className="text-[12px] text-[var(--label-secondary)] pl-1">Required to authorize this high-privilege action.</p>
+                                        <p className="text-[12px] text-[var(--muted-foreground)] pl-1">Required to authorize this high-privilege action.</p>
                                     </div>
                                 </div>
                             ) : (
@@ -1156,15 +1155,15 @@ export default function EmployeeManagementPage() {
                                         <BadgeCheck className="h-8 w-8 text-[#34C759]" />
                                     </div>
                                     <div className="space-y-1">
-                                        <p className="text-[18px] font-semibold text-[var(--label-primary)]">Password Updated Successfully</p>
-                                        <p className="text-[14px] text-[var(--label-secondary)] max-w-[280px] mx-auto">
+                                        <p className="text-[18px] font-semibold text-[var(--foreground)]">Password Updated Successfully</p>
+                                        <p className="text-[14px] text-[var(--muted-foreground)] max-w-[280px] mx-auto">
                                             The password has been changed and existing sessions terminated.
                                         </p>
                                     </div>
                                 </div>
                             )}
 
-                            <DialogFooter className="flex gap-2 pt-2 border-t border-[var(--border-card)] border-x-[-24px] mx-[-24px] px-6 pb-2">
+                            <DialogFooter className="flex gap-2 pt-2 border-t border-[var(--border)] border-x-[-24px] mx-[-24px] px-6 pb-2">
                                 {changePwdStep === "success" ? (
                                     <IOSButton variant="filled" color="blue" onClick={resetChangePwdDialog} className="w-full text-[15px] font-semibold">Done</IOSButton>
                                 ) : (

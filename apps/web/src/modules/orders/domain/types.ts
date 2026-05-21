@@ -37,6 +37,14 @@ export interface LegacyDeductionItem {
     quantity_deducted: number;
 }
 
+/** Material selected during order creation (Step 3 — Materials Required) */
+export interface OrderMaterial {
+    inventoryItemId: string;
+    itemName: string;
+    quantityRequired: number;
+    unit: string;
+}
+
 export interface OrderClientInfo {
     name: string;
     email?: string;
@@ -70,12 +78,22 @@ export interface Order {
     materialSource?: "own" | "client";
     rate: number;        // fallback
     totalAmount: number; // fallback grand total
+    materialCost: number;
+    labourCost: number;
+    overheadCost: number;
+    machineryCost: number;
     totalPaid: number;
     balanceDue: number;
     deliveryDate: string | null;
     status: OrderStatus;
     paymentStatus: PaymentStatus;
     client: OrderClientInfo | null;
+    materials?: OrderMaterial[];
+    estimatedMaterialCost?: number;
+    estimatedGrossProfit?: number;
+    estimatedMargin?: number;
+    priority?: 'low' | 'normal' | 'high' | 'urgent';
+    notes?: string;
     createdAt: Date;
     updatedAt: Date;
     processedAt?: Date | null;
@@ -115,8 +133,18 @@ export interface CreateOrderDTO {
     material_source?: "own" | "client";
     rate?: number;
     total_amount?: number;
+    material_cost?: number;
+    labour_cost?: number;
+    overhead_cost?: number;
+    machinery_cost?: number;
     status?: string;
     payment_status?: string;
+    materials?: OrderMaterial[];
+    estimated_material_cost?: number;
+    estimated_gross_profit?: number;
+    estimated_margin?: number;
+    priority?: 'low' | 'normal' | 'high' | 'urgent';
+    notes?: string;
 }
 
 export interface UpdateOrderDTO extends Partial<CreateOrderDTO> { }

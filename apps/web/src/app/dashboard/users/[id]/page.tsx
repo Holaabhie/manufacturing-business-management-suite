@@ -419,7 +419,7 @@ export default function EmployeeDetailPage() {
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
-                <Loader2 className="h-8 w-8 animate-spin" style={{ color: "var(--color-primary-brand)" }} />
+                <Loader2 className="h-8 w-8 animate-spin" style={{ color: "var(--primary)" }} />
             </div>
         );
     }
@@ -460,7 +460,7 @@ export default function EmployeeDetailPage() {
                     <div className="flex items-center gap-4">
                         <div
                             className="h-16 w-16 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-lg"
-                            style={{ background: "var(--color-primary-brand)", boxShadow: "0 4px 14px rgba(74,58,255,0.3)" }}
+                            style={{ background: "var(--primary)", boxShadow: "0 4px 14px rgba(74,58,255,0.3)" }}
                         >
                             {employee.fullName.charAt(0).toUpperCase()}
                         </div>
@@ -565,7 +565,7 @@ export default function EmployeeDetailPage() {
                                             <X className="mr-1 h-3.5 w-3.5" />Cancel
                                         </Button>
                                         <Button size="sm" onClick={handleSaveProfile} disabled={saving}
-                                            className="text-white" style={{ background: "var(--color-primary-brand)" }}
+                                            className="text-white" style={{ background: "var(--primary)" }}
                                         >
                                             {saving ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1 h-3.5 w-3.5" />}
                                             Save
@@ -579,7 +579,7 @@ export default function EmployeeDetailPage() {
                                         <div>
                                             <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Employee ID</Label>
                                             <div className="mt-1 flex items-center gap-2">
-                                                <span className="font-mono text-lg font-bold" style={{ color: "var(--color-primary-brand)" }}>
+                                                <span className="font-mono text-lg font-bold" style={{ color: "var(--primary)" }}>
                                                     {employee.employeeId}
                                                 </span>
                                                 <Tooltip>
@@ -711,7 +711,7 @@ export default function EmployeeDetailPage() {
                                     <div className="flex gap-2">
                                         <Button variant="ghost" size="sm" onClick={() => setEditingPerms(false)}>Cancel</Button>
                                         <Button size="sm" onClick={handleUpdatePermissions} disabled={permSaving}
-                                            className="text-white" style={{ background: "var(--color-primary-brand)" }}
+                                            className="text-white" style={{ background: "var(--primary)" }}
                                         >
                                             {permSaving ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1 h-3.5 w-3.5" />}
                                             Apply
@@ -957,7 +957,7 @@ export default function EmployeeDetailPage() {
                                 {/* Admin Password Confirmation */}
                                 <div className="space-y-2 p-3 rounded-lg border border-border bg-muted/20">
                                     <div className="flex items-center gap-2 mb-1">
-                                        <Shield className="h-3.5 w-3.5" style={{ color: "var(--color-primary-brand)" }} />
+                                        <Shield className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
                                         <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Admin Password (Recommended)</Label>
                                     </div>
                                     <div className="relative">
@@ -986,7 +986,7 @@ export default function EmployeeDetailPage() {
                                 </p>
                                 <div className="p-3 rounded-lg bg-muted/50 border text-xs text-muted-foreground">
                                     <p className="flex items-center justify-center gap-1.5">
-                                        <Shield className="h-3.5 w-3.5" style={{ color: "var(--color-primary-brand)" }} />
+                                        <Shield className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
                                         This action has been recorded in the audit trail.
                                     </p>
                                 </div>
@@ -995,7 +995,7 @@ export default function EmployeeDetailPage() {
 
                         <DialogFooter>
                             {changePwdStep === "success" ? (
-                                <Button className="w-full text-white" style={{ background: "var(--color-primary-brand)" }} onClick={resetChangePwdDialog}>Done</Button>
+                                <Button className="w-full text-white" style={{ background: "var(--primary)" }} onClick={resetChangePwdDialog}>Done</Button>
                             ) : (
                                 <>
                                     <Button variant="outline" onClick={resetChangePwdDialog}>Cancel</Button>

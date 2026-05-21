@@ -20,6 +20,7 @@ import {
   CheckCircle2,
   Package,
   Eye,
+  FileText,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -133,6 +134,14 @@ export default function PurchasingPage() {
   // Inventory items for PO creation
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
 
+  // Server-side stats
+  const [stats, setStats] = useState<{
+    totalSpent: number;
+    pendingCount: number;
+    orderedCount: number;
+    receivedCount: number;
+  } | null>(null);
+
   // Dialogs
   const [isVendorDialogOpen, setIsVendorDialogOpen] = useState(false);
   const [isPODialogOpen, setIsPODialogOpen] = useState(false);
@@ -198,12 +207,23 @@ export default function PurchasingPage() {
     }
   }, []);
 
+  const fetchStats = useCallback(async () => {
+    try {
+      const res = await fetch("/api/purchasing/stats");
+      const data = await res.json();
+      if (data.success) setStats(data.data);
+    } catch {
+      // Fall back to client-side computation
+    }
+  }, []);
+
   useEffect(() => {
     setMounted(true);
     fetchOrders();
     fetchVendors();
     fetchInventory();
-  }, [fetchOrders, fetchVendors, fetchInventory]);
+    fetchStats();
+  }, [fetchOrders, fetchVendors, fetchInventory, fetchStats]);
 
   // ─── Vendor Actions ───────────────────────────────────────────
 
@@ -331,6 +351,7 @@ export default function PurchasingPage() {
             : "Order marked as sent",
         );
         fetchOrders();
+        fetchStats();
         if (newStatus === "Received") fetchInventory();
       } else {
         toast.error(data.error || "Failed to update status");
@@ -378,13 +399,14 @@ export default function PurchasingPage() {
       v.contactPerson.toLowerCase().includes(vendorSearch.toLowerCase()),
   );
 
-  const totalSpend = orders
+  // Use server-side stats if available, otherwise fall back to client-side
+  const totalSpend = stats?.totalSpent ?? orders
     .filter((o) => o.status === "Received")
     .reduce((acc, o) => acc + o.totalAmount, 0);
 
-  const pendingCount = orders.filter((o) => o.status === "Pending").length;
-  const orderedCount = orders.filter((o) => o.status === "Ordered").length;
-  const receivedCount = orders.filter((o) => o.status === "Received").length;
+  const pendingCount = stats?.pendingCount ?? orders.filter((o) => o.status === "Pending").length;
+  const orderedCount = stats?.orderedCount ?? orders.filter((o) => o.status === "Ordered").length;
+  const receivedCount = stats?.receivedCount ?? orders.filter((o) => o.status === "Received").length;
 
   const formatCurrency = (n: number) => `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
@@ -394,8 +416,8 @@ export default function PurchasingPage() {
     return (
       <div className="space-y-6">
         <div>
-          <div className="h-[34px] w-[160px] rounded-[10px] bg-[var(--fill-tertiary)] shimmer" />
-          <div className="h-[20px] w-[280px] rounded-[8px] bg-[var(--fill-tertiary)] shimmer mt-2" />
+          <div className="h-[34px] w-[160px] rounded-[10px] bg-[var(--muted)] shimmer" />
+          <div className="h-[20px] w-[280px] rounded-[8px] bg-[var(--muted)] shimmer mt-2" />
         </div>
         <div className="kpi-panel">
           <div className="kpi-panel__glow" />
@@ -403,11 +425,11 @@ export default function PurchasingPage() {
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="kpi-card flex flex-col justify-center min-h-[140px]">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="h-[48px] w-[48px] rounded-[14px] bg-[var(--fill-tertiary)] shimmer" />
-                  <div className="h-[24px] w-[50px] rounded-full bg-[var(--fill-tertiary)] shimmer" />
+                  <div className="h-[48px] w-[48px] rounded-[14px] bg-[var(--muted)] shimmer" />
+                  <div className="h-[24px] w-[50px] rounded-full bg-[var(--muted)] shimmer" />
                 </div>
-                <div className="h-[34px] w-[120px] rounded-[8px] bg-[var(--fill-tertiary)] shimmer mb-2" />
-                <div className="h-[16px] w-[90px] rounded-[6px] bg-[var(--fill-tertiary)] shimmer" />
+                <div className="h-[34px] w-[120px] rounded-[8px] bg-[var(--muted)] shimmer mb-2" />
+                <div className="h-[16px] w-[90px] rounded-[6px] bg-[var(--muted)] shimmer" />
               </div>
             ))}
           </div>
@@ -421,10 +443,10 @@ export default function PurchasingPage() {
       {/* ── Header ── */}
       <motion.div variants={staggerItem} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-[34px] font-bold text-[var(--label-primary)] leading-[41px] tracking-[0.37px]">
+          <h1 className="text-[34px] font-bold text-[var(--foreground)] leading-[41px] tracking-[0.37px]">
             Purchasing
           </h1>
-          <p className="text-[15px] text-[var(--label-secondary)] mt-1 leading-[20px]">
+          <p className="text-[15px] text-[var(--muted-foreground)] mt-1 leading-[20px]">
             Manage vendors, create purchase orders, and track deliveries.
           </p>
         </div>
@@ -463,7 +485,7 @@ export default function PurchasingPage() {
       </div>
 
       {/* ── Tabs ── */}
-      <motion.div variants={staggerItem} className="flex items-center gap-1 p-1 rounded-[12px] bg-[var(--fill-tertiary)] max-w-fit">
+      <motion.div variants={staggerItem} className="flex items-center gap-1 p-1 rounded-[12px] bg-[var(--muted)] max-w-fit">
         {(["orders", "vendors"] as TabKey[]).map((tab) => (
           <button
             key={tab}
@@ -471,15 +493,15 @@ export default function PurchasingPage() {
             className={cn(
               "px-4 py-2 rounded-[10px] text-[14px] font-medium transition-all duration-200 cursor-pointer",
               activeTab === tab
-                ? "bg-[var(--bg-card)] text-[var(--label-primary)] shadow-[var(--shadow-sm)]"
-                : "text-[var(--label-secondary)] hover:text-[var(--label-primary)]",
+                ? "bg-[var(--card)] text-[var(--foreground)] shadow-[var(--shadow-sm)]"
+                : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
             )}
           >
             {tab === "orders" ? (
               <span className="flex items-center gap-2">
                 <ClipboardList className="h-4 w-4" /> Purchase Orders
                 {orders.length > 0 && (
-                  <span className="text-[11px] bg-[var(--ios-blue)] text-white px-1.5 py-0.5 rounded-full font-bold">
+                  <span className="text-[11px] bg-[var(--primary)] text-white px-1.5 py-0.5 rounded-full font-bold">
                     {orders.length}
                   </span>
                 )}
@@ -488,7 +510,7 @@ export default function PurchasingPage() {
               <span className="flex items-center gap-2">
                 <Building2 className="h-4 w-4" /> Vendors
                 {vendors.length > 0 && (
-                  <span className="text-[11px] bg-[var(--fill-secondary)] text-[var(--label-secondary)] px-1.5 py-0.5 rounded-full font-bold">
+                  <span className="text-[11px] bg-[var(--accent)] text-[var(--muted-foreground)] px-1.5 py-0.5 rounded-full font-bold">
                     {vendors.length}
                   </span>
                 )}
@@ -501,17 +523,17 @@ export default function PurchasingPage() {
       {/* ── Search Bar ── */}
       <motion.div variants={staggerItem} className="flex items-center space-x-2">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-[10px] top-1/2 -translate-y-1/2 h-[17px] w-[17px] text-[var(--label-tertiary)]" />
+          <Search className="absolute left-[10px] top-1/2 -translate-y-1/2 h-[17px] w-[17px] text-[var(--muted-foreground)]" />
           <input
             placeholder={activeTab === "orders" ? "Search PO# or vendor..." : "Search vendors..."}
-            className="w-full h-[36px] rounded-[10px] bg-[var(--fill-tertiary)] pl-[34px] pr-4 text-[15px] text-[var(--label-primary)] placeholder:text-[var(--label-tertiary)] outline-none border-none focus:ring-2 focus:ring-[var(--ios-blue)] transition-shadow"
+            className="w-full h-[36px] rounded-[10px] bg-[var(--muted)] pl-[34px] pr-4 text-[15px] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] outline-none border-none focus:ring-2 focus:ring-[var(--primary)] transition-shadow"
             value={activeTab === "orders" ? orderSearch : vendorSearch}
             onChange={(e) =>
               activeTab === "orders" ? setOrderSearch(e.target.value) : setVendorSearch(e.target.value)
             }
           />
         </div>
-        <span className="text-[13px] text-[var(--label-tertiary)]">
+        <span className="text-[13px] text-[var(--muted-foreground)]">
           {activeTab === "orders" ? `${filteredOrders.length} orders` : `${filteredVendors.length} vendors`}
         </span>
       </motion.div>
@@ -530,19 +552,19 @@ export default function PurchasingPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="glass-table-header hover:bg-transparent border-b border-white/[0.07]">
-                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--label-secondary)] uppercase tracking-wide pl-5">
+                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide pl-5">
                       PO # & Vendor
                     </TableHead>
-                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--label-secondary)] uppercase tracking-wide">
+                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">
                       Items
                     </TableHead>
-                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--label-secondary)] uppercase tracking-wide">
+                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">
                       Amount
                     </TableHead>
-                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--label-secondary)] uppercase tracking-wide">
+                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">
                       Status
                     </TableHead>
-                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--label-secondary)] uppercase tracking-wide">
+                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">
                       Date
                     </TableHead>
                     <TableHead className="w-[100px] py-3" />
@@ -552,23 +574,23 @@ export default function PurchasingPage() {
                   {ordersLoading ? (
                     Array.from({ length: 4 }).map((_, i) => (
                       <TableRow key={i}>
-                        <TableCell><div className="h-12 w-full rounded-[10px] bg-[var(--fill-tertiary)] shimmer" /></TableCell>
-                        <TableCell><div className="h-12 w-full rounded-[10px] bg-[var(--fill-tertiary)] shimmer" /></TableCell>
-                        <TableCell><div className="h-12 w-full rounded-[10px] bg-[var(--fill-tertiary)] shimmer" /></TableCell>
-                        <TableCell><div className="h-8 w-20 rounded-[6px] bg-[var(--fill-tertiary)] shimmer" /></TableCell>
-                        <TableCell><div className="h-8 w-16 rounded-[6px] bg-[var(--fill-tertiary)] shimmer" /></TableCell>
-                        <TableCell><div className="h-8 w-8 rounded-full bg-[var(--fill-tertiary)] shimmer ml-auto" /></TableCell>
+                        <TableCell><div className="h-12 w-full rounded-[10px] bg-[var(--muted)] shimmer" /></TableCell>
+                        <TableCell><div className="h-12 w-full rounded-[10px] bg-[var(--muted)] shimmer" /></TableCell>
+                        <TableCell><div className="h-12 w-full rounded-[10px] bg-[var(--muted)] shimmer" /></TableCell>
+                        <TableCell><div className="h-8 w-20 rounded-[6px] bg-[var(--muted)] shimmer" /></TableCell>
+                        <TableCell><div className="h-8 w-16 rounded-[6px] bg-[var(--muted)] shimmer" /></TableCell>
+                        <TableCell><div className="h-8 w-8 rounded-full bg-[var(--muted)] shimmer ml-auto" /></TableCell>
                       </TableRow>
                     ))
                   ) : filteredOrders.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-16">
                         <div className="flex flex-col items-center gap-3">
-                          <div className="w-[56px] h-[56px] rounded-[14px] bg-[var(--fill-tertiary)] flex items-center justify-center">
-                            <ShoppingCart className="h-6 w-6 text-[var(--label-tertiary)]" />
+                          <div className="w-[56px] h-[56px] rounded-[14px] bg-[var(--muted)] flex items-center justify-center">
+                            <ShoppingCart className="h-6 w-6 text-[var(--muted-foreground)]" />
                           </div>
-                          <p className="text-[17px] font-medium text-[var(--label-secondary)]">No purchase orders yet</p>
-                          <p className="text-[13px] text-[var(--label-tertiary)]">
+                          <p className="text-[17px] font-medium text-[var(--muted-foreground)]">No purchase orders yet</p>
+                          <p className="text-[13px] text-[var(--muted-foreground)]">
                             Create your first purchase order to get started
                           </p>
                           <IOSButton variant="filled" size="small" onClick={openNewPO} icon={<Plus className="h-3.5 w-3.5" />}>
@@ -587,33 +609,33 @@ export default function PurchasingPage() {
                           initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: index * 0.03, duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                          className="group glass-table-row hover:bg-[var(--fill-quaternary)] border-b border-[var(--border-card)] transition-colors"
+                          className="group glass-table-row hover:bg-[var(--muted)] border-b border-[var(--border)] transition-colors"
                         >
                           <TableCell className="py-3.5 pl-5">
                             <div className="flex items-center gap-3">
-                              <div className="w-[40px] h-[40px] rounded-[10px] bg-[var(--fill-tertiary)] flex items-center justify-center flex-shrink-0">
-                                <ShoppingCart className="h-[18px] w-[18px] text-[var(--label-secondary)]" />
+                              <div className="w-[40px] h-[40px] rounded-[10px] bg-[var(--muted)] flex items-center justify-center flex-shrink-0">
+                                <ShoppingCart className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
                               </div>
                               <div>
-                                <span className="text-[15px] font-bold text-[var(--ios-blue)] block leading-[20px]">
+                                <span className="text-[15px] font-bold text-[var(--primary)] block leading-[20px]">
                                   {order.poNumber}
                                 </span>
-                                <span className="text-[13px] text-[var(--label-secondary)] mt-0.5 block">
+                                <span className="text-[13px] text-[var(--muted-foreground)] mt-0.5 block">
                                   {order.vendorName}
                                 </span>
                               </div>
                             </div>
                           </TableCell>
                           <TableCell className="py-3.5">
-                            <span className="text-[15px] font-medium text-[var(--label-primary)]">
+                            <span className="text-[15px] font-medium text-[var(--foreground)]">
                               {order.items.length} item{order.items.length !== 1 ? "s" : ""}
                             </span>
                           </TableCell>
                           <TableCell className="py-3.5">
-                            <span className="text-[15px] font-semibold text-[var(--label-primary)]">
+                            <span className="text-[15px] font-semibold text-[var(--foreground)]">
                               {formatCurrency(order.totalAmount)}
                             </span>
-                            <span className="text-[11px] text-[var(--label-tertiary)] block">
+                            <span className="text-[11px] text-[var(--muted-foreground)] block">
                               Tax: {formatCurrency(order.taxAmount)}
                             </span>
                           </TableCell>
@@ -623,7 +645,7 @@ export default function PurchasingPage() {
                             </IOSBadge>
                           </TableCell>
                           <TableCell className="py-3.5">
-                            <span className="text-[13px] text-[var(--label-secondary)]">
+                            <span className="text-[13px] text-[var(--muted-foreground)]">
                               {new Date(order.createdAt).toLocaleDateString("en-IN", {
                                 day: "2-digit",
                                 month: "short",
@@ -636,9 +658,9 @@ export default function PurchasingPage() {
                               <DropdownMenuTrigger asChild>
                                 <motion.button
                                   whileTap={{ scale: 0.9 }}
-                                  className="h-[36px] w-[36px] rounded-[10px] flex items-center justify-center hover:bg-[var(--fill-tertiary)] transition-colors cursor-pointer"
+                                  className="h-[36px] w-[36px] rounded-[10px] flex items-center justify-center hover:bg-[var(--muted)] transition-colors cursor-pointer"
                                 >
-                                  <MoreVertical className="h-[18px] w-[18px] text-[var(--label-secondary)]" />
+                                  <MoreVertical className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
                                 </motion.button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="rounded-[12px]">
@@ -651,7 +673,7 @@ export default function PurchasingPage() {
                                 {order.status === "Pending" && (
                                   <DropdownMenuItem
                                     onClick={() => handleStatusChange(order.id, "Ordered")}
-                                    className="rounded-[8px] text-[var(--ios-blue)]"
+                                    className="rounded-[8px] text-[var(--primary)]"
                                   >
                                     <Send className="mr-2 h-4 w-4" /> Mark as Ordered
                                   </DropdownMenuItem>
@@ -659,14 +681,14 @@ export default function PurchasingPage() {
                                 {(order.status === "Pending" || order.status === "Ordered") && (
                                   <DropdownMenuItem
                                     onClick={() => handleStatusChange(order.id, "Received")}
-                                    className="rounded-[8px] text-[var(--ios-green)]"
+                                    className="rounded-[8px] text-[var(--erp-success)]"
                                   >
                                     <CheckCircle2 className="mr-2 h-4 w-4" /> Mark as Received
                                   </DropdownMenuItem>
                                 )}
                                 {order.status !== "Received" && isAdmin && (
                                   <DropdownMenuItem
-                                    className="text-[var(--ios-red)] rounded-[8px]"
+                                    className="text-[var(--destructive)] rounded-[8px]"
                                     onClick={() => {
                                       setDeleteTarget({ type: "order", id: order.id });
                                       setIsDeleteDialogOpen(true);
@@ -701,16 +723,16 @@ export default function PurchasingPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="glass-table-header hover:bg-transparent border-b border-white/[0.07]">
-                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--label-secondary)] uppercase tracking-wide pl-5">
+                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide pl-5">
                       Vendor & Contact
                     </TableHead>
-                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--label-secondary)] uppercase tracking-wide">
+                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">
                       Phone
                     </TableHead>
-                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--label-secondary)] uppercase tracking-wide">
+                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">
                       Email
                     </TableHead>
-                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--label-secondary)] uppercase tracking-wide">
+                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">
                       GSTIN
                     </TableHead>
                     <TableHead className="w-[80px] py-3" />
@@ -720,22 +742,22 @@ export default function PurchasingPage() {
                   {vendorsLoading ? (
                     Array.from({ length: 3 }).map((_, i) => (
                       <TableRow key={i}>
-                        <TableCell><div className="h-12 w-full rounded-[10px] bg-[var(--fill-tertiary)] shimmer" /></TableCell>
-                        <TableCell><div className="h-12 w-full rounded-[10px] bg-[var(--fill-tertiary)] shimmer" /></TableCell>
-                        <TableCell><div className="h-12 w-full rounded-[10px] bg-[var(--fill-tertiary)] shimmer" /></TableCell>
-                        <TableCell><div className="h-8 w-20 rounded-[6px] bg-[var(--fill-tertiary)] shimmer" /></TableCell>
-                        <TableCell><div className="h-8 w-8 rounded-full bg-[var(--fill-tertiary)] shimmer" /></TableCell>
+                        <TableCell><div className="h-12 w-full rounded-[10px] bg-[var(--muted)] shimmer" /></TableCell>
+                        <TableCell><div className="h-12 w-full rounded-[10px] bg-[var(--muted)] shimmer" /></TableCell>
+                        <TableCell><div className="h-12 w-full rounded-[10px] bg-[var(--muted)] shimmer" /></TableCell>
+                        <TableCell><div className="h-8 w-20 rounded-[6px] bg-[var(--muted)] shimmer" /></TableCell>
+                        <TableCell><div className="h-8 w-8 rounded-full bg-[var(--muted)] shimmer" /></TableCell>
                       </TableRow>
                     ))
                   ) : filteredVendors.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center py-16">
                         <div className="flex flex-col items-center gap-3">
-                          <div className="w-[56px] h-[56px] rounded-[14px] bg-[var(--fill-tertiary)] flex items-center justify-center">
-                            <Building2 className="h-6 w-6 text-[var(--label-tertiary)]" />
+                          <div className="w-[56px] h-[56px] rounded-[14px] bg-[var(--muted)] flex items-center justify-center">
+                            <Building2 className="h-6 w-6 text-[var(--muted-foreground)]" />
                           </div>
-                          <p className="text-[17px] font-medium text-[var(--label-secondary)]">No vendors added</p>
-                          <p className="text-[13px] text-[var(--label-tertiary)]">Add your first vendor to start purchasing</p>
+                          <p className="text-[17px] font-medium text-[var(--muted-foreground)]">No vendors added</p>
+                          <p className="text-[13px] text-[var(--muted-foreground)]">Add your first vendor to start purchasing</p>
                           <IOSButton
                             variant="filled"
                             size="small"
@@ -754,31 +776,31 @@ export default function PurchasingPage() {
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.03, duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                        className="group glass-table-row hover:bg-[var(--fill-quaternary)] border-b border-[var(--border-card)] transition-colors"
+                        className="group glass-table-row hover:bg-[var(--muted)] border-b border-[var(--border)] transition-colors"
                       >
                         <TableCell className="py-3.5 pl-5">
                           <div className="flex items-center gap-3">
                             <div className="w-[40px] h-[40px] rounded-[10px] bg-[rgba(88,86,214,0.1)] flex items-center justify-center flex-shrink-0">
-                              <Building2 className="h-[18px] w-[18px] text-[var(--ios-indigo)]" />
+                              <Building2 className="h-[18px] w-[18px] text-[var(--chart-5)]" />
                             </div>
                             <div>
-                              <span className="text-[15px] font-semibold text-[var(--label-primary)] block leading-[20px]">
+                              <span className="text-[15px] font-semibold text-[var(--foreground)] block leading-[20px]">
                                 {vendor.name}
                               </span>
-                              <span className="text-[13px] text-[var(--label-secondary)] block mt-0.5">
+                              <span className="text-[13px] text-[var(--muted-foreground)] block mt-0.5">
                                 {vendor.contactPerson}
                               </span>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell className="py-3.5">
-                          <span className="text-[15px] text-[var(--ios-blue)] font-medium">{vendor.phone}</span>
+                          <span className="text-[15px] text-[var(--primary)] font-medium">{vendor.phone}</span>
                         </TableCell>
                         <TableCell className="py-3.5">
-                          <span className="text-[13px] text-[var(--label-secondary)]">{vendor.email || "—"}</span>
+                          <span className="text-[13px] text-[var(--muted-foreground)]">{vendor.email || "—"}</span>
                         </TableCell>
                         <TableCell className="py-3.5">
-                          <span className="text-[13px] text-[var(--label-secondary)] font-mono">{vendor.gstin || "—"}</span>
+                          <span className="text-[13px] text-[var(--muted-foreground)] font-mono">{vendor.gstin || "—"}</span>
                         </TableCell>
                         <TableCell className="py-3.5 text-right pr-4">
                           {isAdmin && (
@@ -786,14 +808,14 @@ export default function PurchasingPage() {
                               <DropdownMenuTrigger asChild>
                                 <motion.button
                                   whileTap={{ scale: 0.9 }}
-                                  className="h-[36px] w-[36px] rounded-[10px] flex items-center justify-center hover:bg-[var(--fill-tertiary)] transition-colors cursor-pointer"
+                                  className="h-[36px] w-[36px] rounded-[10px] flex items-center justify-center hover:bg-[var(--muted)] transition-colors cursor-pointer"
                                 >
-                                  <MoreVertical className="h-[18px] w-[18px] text-[var(--label-secondary)]" />
+                                  <MoreVertical className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
                                 </motion.button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="rounded-[12px]">
                                 <DropdownMenuItem
-                                  className="text-[var(--ios-red)] rounded-[8px]"
+                                  className="text-[var(--destructive)] rounded-[8px]"
                                   onClick={() => {
                                     setDeleteTarget({ type: "vendor", id: vendor.id });
                                     setIsDeleteDialogOpen(true);
@@ -823,17 +845,21 @@ export default function PurchasingPage() {
           if (!open) setVendorForm(emptyVendorForm);
         }}
       >
-        <DialogContent className="max-w-md p-0 overflow-hidden rounded-[24px] border-white/10 glass-dialog">
+        <DialogContent className="max-w-md md:max-w-lg p-0 overflow-hidden rounded-[24px] border-[var(--glass-border)] glass-dialog">
           <ScrollArea className="max-h-[90vh]">
             <div className="p-6">
-              <DialogHeader>
-                <DialogTitle className="text-[20px] font-bold text-[var(--label-primary)]">
-                  New Vendor
-                </DialogTitle>
-              </DialogHeader>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid var(--glass-border)" }}>
+                <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, rgba(59,130,246,0.4), rgba(255,255,255,0.06))", border: "1px solid var(--glass-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Building2 className="h-[18px] w-[18px] text-[#60a5fa]" />
+                </div>
+                <div>
+                  <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "var(--g-text-primary)", lineHeight: "22px", margin: 0 }}>New Vendor</DialogTitle>
+                  <p style={{ fontSize: 13, color: "var(--g-text-secondary)", lineHeight: "18px", margin: "2px 0 0" }}>Add supplier details</p>
+                </div>
+              </div>
               <form onSubmit={handleVendorSubmit} className="space-y-4 pt-4">
                 <div className="space-y-1.5">
-                  <Label className="text-[13px] text-[var(--label-secondary)]">Vendor Name *</Label>
+                  <Label className="text-[13px] text-[var(--muted-foreground)]">Vendor Name *</Label>
                   <Input
                     value={vendorForm.name}
                     onChange={(e) => setVendorForm({ ...vendorForm, name: e.target.value })}
@@ -844,7 +870,7 @@ export default function PurchasingPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label className="text-[13px] text-[var(--label-secondary)]">Contact Person *</Label>
+                    <Label className="text-[13px] text-[var(--muted-foreground)]">Contact Person *</Label>
                     <Input
                       value={vendorForm.contactPerson}
                       onChange={(e) => setVendorForm({ ...vendorForm, contactPerson: e.target.value })}
@@ -854,7 +880,7 @@ export default function PurchasingPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[13px] text-[var(--label-secondary)]">Phone *</Label>
+                    <Label className="text-[13px] text-[var(--muted-foreground)]">Phone *</Label>
                     <Input
                       value={vendorForm.phone}
                       onChange={(e) => setVendorForm({ ...vendorForm, phone: e.target.value })}
@@ -866,7 +892,7 @@ export default function PurchasingPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label className="text-[13px] text-[var(--label-secondary)]">Email</Label>
+                    <Label className="text-[13px] text-[var(--muted-foreground)]">Email</Label>
                     <Input
                       value={vendorForm.email}
                       onChange={(e) => setVendorForm({ ...vendorForm, email: e.target.value })}
@@ -875,7 +901,7 @@ export default function PurchasingPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[13px] text-[var(--label-secondary)]">GSTIN</Label>
+                    <Label className="text-[13px] text-[var(--muted-foreground)]">GSTIN</Label>
                     <Input
                       value={vendorForm.gstin}
                       onChange={(e) => setVendorForm({ ...vendorForm, gstin: e.target.value })}
@@ -885,7 +911,7 @@ export default function PurchasingPage() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-[13px] text-[var(--label-secondary)]">Address</Label>
+                  <Label className="text-[13px] text-[var(--muted-foreground)]">Address</Label>
                   <Input
                     value={vendorForm.address}
                     onChange={(e) => setVendorForm({ ...vendorForm, address: e.target.value })}
@@ -906,23 +932,27 @@ export default function PurchasingPage() {
 
       {/* ════════════ NEW PURCHASE ORDER DIALOG ════════════ */}
       <Dialog open={isPODialogOpen} onOpenChange={setIsPODialogOpen}>
-        <DialogContent className="max-w-lg p-0 overflow-hidden rounded-[24px] border-white/10 glass-dialog">
+        <DialogContent className="w-full max-w-[420px] sm:max-w-[560px] md:max-w-[680px] lg:max-w-[750px] p-0 overflow-hidden rounded-[24px] border-[var(--glass-border)] glass-dialog">
           <ScrollArea className="max-h-[90vh]">
-            <div className="p-6">
-              <DialogHeader>
-                <DialogTitle className="text-[20px] font-bold text-[var(--label-primary)]">
-                  New Purchase Order
-                </DialogTitle>
-              </DialogHeader>
+            <div className="p-4 sm:p-6 md:p-8">
+              <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid var(--glass-border)" }}>
+                <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, rgba(34,197,94,0.4), rgba(255,255,255,0.06))", border: "1px solid var(--glass-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <ShoppingCart className="h-[18px] w-[18px] text-[#4ade80]" />
+                </div>
+                <div>
+                  <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "var(--g-text-primary)", lineHeight: "22px", margin: 0 }}>New Purchase Order</DialogTitle>
+                  <p style={{ fontSize: 13, color: "var(--g-text-secondary)", lineHeight: "18px", margin: "2px 0 0" }}>Create a purchase order</p>
+                </div>
+              </div>
               <form onSubmit={handlePOSubmit} className="space-y-5 pt-4">
                 {/* Vendor Select */}
                 <div className="space-y-1.5">
-                  <Label className="text-[13px] text-[var(--label-secondary)]">Select Vendor *</Label>
+                  <Label className="text-[13px] text-[var(--muted-foreground)]">Select Vendor *</Label>
                   <select
                     value={poVendorId}
                     onChange={(e) => setPoVendorId(e.target.value)}
                     required
-                    className="w-full h-[44px] rounded-[10px] bg-[var(--fill-tertiary)] px-3 text-[15px] text-[var(--label-primary)] outline-none border-none focus:ring-2 focus:ring-[var(--ios-blue)] transition-shadow appearance-none cursor-pointer"
+                    className="w-full h-[44px] rounded-[10px] bg-[var(--muted)] px-3 text-[15px] text-[var(--foreground)] outline-none border-none focus:ring-2 focus:ring-[var(--primary)] transition-shadow appearance-none cursor-pointer"
                   >
                     <option value="">Choose vendor...</option>
                     {vendors.map((v) => (
@@ -932,7 +962,7 @@ export default function PurchasingPage() {
                     ))}
                   </select>
                   {vendors.length === 0 && (
-                    <p className="text-[12px] text-[var(--ios-orange)]">
+                    <p className="text-[12px] text-[var(--erp-warning)]">
                       No vendors found. Add a vendor first.
                     </p>
                   )}
@@ -941,36 +971,36 @@ export default function PurchasingPage() {
                 {/* Line Items */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <Label className="text-[13px] font-semibold text-[var(--label-primary)]">Materials *</Label>
+                    <Label className="text-[13px] font-semibold text-[var(--foreground)]">Materials *</Label>
                     <button
                       type="button"
                       onClick={addPOItem}
-                      className="text-[13px] text-[var(--ios-blue)] font-medium hover:underline cursor-pointer"
+                      className="text-[13px] text-[var(--primary)] font-medium hover:underline cursor-pointer"
                     >
                       + Add Item
                     </button>
                   </div>
 
                   {poItems.map((item, idx) => (
-                    <div key={idx} className="p-3 rounded-[12px] bg-[var(--fill-quaternary)] space-y-3">
+                    <div key={idx} className="p-3 rounded-[12px] bg-[var(--muted)] space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-[12px] font-bold text-[var(--label-tertiary)] uppercase">
+                        <span className="text-[12px] font-bold text-[var(--muted-foreground)] uppercase">
                           Item {idx + 1}
                         </span>
                         {poItems.length > 1 && (
                           <button
                             type="button"
                             onClick={() => removePOItem(idx)}
-                            className="p-1 hover:bg-[var(--fill-tertiary)] rounded-[6px] cursor-pointer"
+                            className="p-1 hover:bg-[var(--muted)] rounded-[6px] cursor-pointer"
                           >
-                            <X className="h-3.5 w-3.5 text-[var(--ios-red)]" />
+                            <X className="h-3.5 w-3.5 text-[var(--destructive)]" />
                           </button>
                         )}
                       </div>
                       <select
                         value={item.inventoryItemId}
                         onChange={(e) => updatePOItem(idx, "inventoryItemId", e.target.value)}
-                        className="w-full h-[40px] rounded-[8px] bg-[var(--fill-tertiary)] px-3 text-[14px] text-[var(--label-primary)] outline-none border-none focus:ring-2 focus:ring-[var(--ios-blue)] appearance-none cursor-pointer"
+                        className="w-full h-[40px] rounded-[8px] bg-[var(--muted)] px-3 text-[14px] text-[var(--foreground)] outline-none border-none focus:ring-2 focus:ring-[var(--primary)] appearance-none cursor-pointer"
                       >
                         <option value="">Select material...</option>
                         {inventoryItems.map((inv) => (
@@ -979,9 +1009,9 @@ export default function PurchasingPage() {
                           </option>
                         ))}
                       </select>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-3 gap-2 md:gap-4">
                         <div>
-                          <Label className="text-[11px] text-[var(--label-tertiary)]">Qty</Label>
+                          <Label className="text-[11px] text-[var(--muted-foreground)]">Qty</Label>
                           <NumericInput
                             value={item.quantity}
                             onValueChange={(v) => updatePOItem(idx, "quantity", v)}
@@ -991,7 +1021,7 @@ export default function PurchasingPage() {
                           />
                         </div>
                         <div>
-                          <Label className="text-[11px] text-[var(--label-tertiary)]">Unit</Label>
+                          <Label className="text-[11px] text-[var(--muted-foreground)]">Unit</Label>
                           <Input
                             value={item.unit}
                             onChange={(e) => updatePOItem(idx, "unit", e.target.value)}
@@ -999,7 +1029,7 @@ export default function PurchasingPage() {
                           />
                         </div>
                         <div>
-                          <Label className="text-[11px] text-[var(--label-tertiary)]">₹/Unit</Label>
+                          <Label className="text-[11px] text-[var(--muted-foreground)]">₹/Unit</Label>
                           <NumericInput
                             value={item.unitPrice}
                             onValueChange={(v) => updatePOItem(idx, "unitPrice", v)}
@@ -1011,7 +1041,7 @@ export default function PurchasingPage() {
                         </div>
                       </div>
                       {item.quantity && item.unitPrice && (
-                        <div className="text-right text-[13px] font-semibold text-[var(--ios-blue)]">
+                        <div className="text-right text-[13px] font-semibold text-[var(--primary)]">
                           Line Total: {formatCurrency(parseNumericValue(item.quantity) * parseNumericValue(item.unitPrice))}
                         </div>
                       )}
@@ -1022,7 +1052,7 @@ export default function PurchasingPage() {
                 {/* Tax & Notes */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label className="text-[13px] text-[var(--label-secondary)]">Tax %</Label>
+                    <Label className="text-[13px] text-[var(--muted-foreground)]">Tax %</Label>
                     <NumericInput
                       value={poTaxPercent}
                       onValueChange={setPoTaxPercent}
@@ -1032,7 +1062,7 @@ export default function PurchasingPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[13px] text-[var(--label-secondary)]">Notes</Label>
+                    <Label className="text-[13px] text-[var(--muted-foreground)]">Notes</Label>
                     <Input
                       value={poNotes}
                       onChange={(e) => setPoNotes(e.target.value)}
@@ -1044,8 +1074,8 @@ export default function PurchasingPage() {
 
                 {/* Grand Total Preview */}
                 {poItems.some((i) => i.quantity && i.unitPrice) && (
-                  <div className="p-3 rounded-[12px] bg-[rgba(0,122,255,0.06)] border border-[var(--ios-blue)]/20">
-                    <div className="flex justify-between text-[13px] text-[var(--label-secondary)]">
+                  <div className="p-3 rounded-[12px] bg-[rgba(0,122,255,0.06)] border border-[var(--primary)]/20">
+                    <div className="flex justify-between text-[13px] text-[var(--muted-foreground)]">
                       <span>Subtotal</span>
                       <span>
                         {formatCurrency(
@@ -1053,7 +1083,7 @@ export default function PurchasingPage() {
                         )}
                       </span>
                     </div>
-                    <div className="flex justify-between text-[13px] text-[var(--label-secondary)] mt-1">
+                    <div className="flex justify-between text-[13px] text-[var(--muted-foreground)] mt-1">
                       <span>Tax ({poTaxPercent}%)</span>
                       <span>
                         {formatCurrency(
@@ -1062,9 +1092,9 @@ export default function PurchasingPage() {
                         )}
                       </span>
                     </div>
-                    <div className="flex justify-between text-[17px] font-bold text-[var(--label-primary)] mt-2 pt-2 border-t border-[var(--border-card)]">
+                    <div className="flex justify-between text-[17px] font-bold text-[var(--foreground)] mt-2 pt-2 border-t border-[var(--border)]">
                       <span>Total</span>
-                      <span className="text-[var(--ios-blue)]">
+                      <span className="text-[var(--primary)]">
                         {formatCurrency(
                           poItems.reduce((a, i) => a + parseNumericValue(i.quantity) * parseNumericValue(i.unitPrice), 0) *
                             (1 + parseNumericValue(poTaxPercent, 18) / 100),
@@ -1087,50 +1117,51 @@ export default function PurchasingPage() {
 
       {/* ════════════ ORDER DETAIL DIALOG ════════════ */}
       <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-        <DialogContent className="max-w-md p-0 overflow-hidden rounded-[24px] border-white/10 glass-dialog">
+        <DialogContent className="max-w-md md:max-w-lg p-0 overflow-hidden rounded-[24px] border-[var(--glass-border)] glass-dialog">
           {detailOrder && (
             <ScrollArea className="max-h-[90vh]">
               <div className="p-6 space-y-4">
-                <DialogHeader>
-                  <DialogTitle className="text-[20px] font-bold text-[var(--label-primary)]">
-                    {detailOrder.poNumber}
-                  </DialogTitle>
-                  <DialogDescription className="text-[15px] text-[var(--label-secondary)]">
-                    Vendor: {detailOrder.vendorName}
-                  </DialogDescription>
-                </DialogHeader>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid var(--glass-border)" }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, rgba(168,85,247,0.4), rgba(255,255,255,0.06))", border: "1px solid var(--glass-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <FileText className="h-[18px] w-[18px] text-[#c084fc]" />
+                  </div>
+                  <div>
+                    <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "var(--g-text-primary)", lineHeight: "22px", margin: 0 }}>{detailOrder.poNumber}</DialogTitle>
+                    <DialogDescription style={{ fontSize: 13, color: "var(--g-text-secondary)", lineHeight: "18px", margin: "2px 0 0" }}>Vendor: {detailOrder.vendorName}</DialogDescription>
+                  </div>
+                </div>
 
                 <div className="flex items-center gap-2">
                   <IOSBadge color={STATUS_CONFIG[detailOrder.status].color} variant="tinted" size="medium">
                     {detailOrder.status}
                   </IOSBadge>
-                  <span className="text-[13px] text-[var(--label-tertiary)]">
+                  <span className="text-[13px] text-[var(--muted-foreground)]">
                     Created: {new Date(detailOrder.createdAt).toLocaleDateString("en-IN")}
                   </span>
                 </div>
 
                 {/* Items list */}
                 <div className="space-y-2">
-                  <h4 className="text-[13px] font-semibold text-[var(--label-secondary)] uppercase tracking-wide">
+                  <h4 className="text-[13px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">
                     Materials
                   </h4>
                   {detailOrder.items.map((item, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center justify-between p-3 rounded-[10px] bg-[var(--fill-quaternary)]"
+                      className="flex items-center justify-between p-3 rounded-[10px] bg-[var(--muted)]"
                     >
                       <div className="flex items-center gap-2">
-                        <Package className="h-4 w-4 text-[var(--label-tertiary)]" />
+                        <Package className="h-4 w-4 text-[var(--muted-foreground)]" />
                         <div>
-                          <span className="text-[14px] font-medium text-[var(--label-primary)] block">
+                          <span className="text-[14px] font-medium text-[var(--foreground)] block">
                             {item.materialName}
                           </span>
-                          <span className="text-[12px] text-[var(--label-tertiary)]">
+                          <span className="text-[12px] text-[var(--muted-foreground)]">
                             {item.quantity} {item.unit} × {formatCurrency(item.unitPrice)}
                           </span>
                         </div>
                       </div>
-                      <span className="text-[14px] font-semibold text-[var(--label-primary)]">
+                      <span className="text-[14px] font-semibold text-[var(--foreground)]">
                         {formatCurrency(item.totalPrice)}
                       </span>
                     </div>
@@ -1138,34 +1169,34 @@ export default function PurchasingPage() {
                 </div>
 
                 {/* Totals */}
-                <div className="p-3 rounded-[12px] bg-[var(--fill-quaternary)] space-y-1">
-                  <div className="flex justify-between text-[13px] text-[var(--label-secondary)]">
+                <div className="p-3 rounded-[12px] bg-[var(--muted)] space-y-1">
+                  <div className="flex justify-between text-[13px] text-[var(--muted-foreground)]">
                     <span>Subtotal</span>
                     <span>{formatCurrency(detailOrder.subtotal)}</span>
                   </div>
-                  <div className="flex justify-between text-[13px] text-[var(--label-secondary)]">
+                  <div className="flex justify-between text-[13px] text-[var(--muted-foreground)]">
                     <span>Tax</span>
                     <span>{formatCurrency(detailOrder.taxAmount)}</span>
                   </div>
-                  <div className="flex justify-between text-[17px] font-bold text-[var(--label-primary)] pt-2 border-t border-[var(--border-card)]">
+                  <div className="flex justify-between text-[17px] font-bold text-[var(--foreground)] pt-2 border-t border-[var(--border)]">
                     <span>Total</span>
-                    <span className="text-[var(--ios-blue)]">{formatCurrency(detailOrder.totalAmount)}</span>
+                    <span className="text-[var(--primary)]">{formatCurrency(detailOrder.totalAmount)}</span>
                   </div>
                 </div>
 
                 {detailOrder.notes && (
-                  <div className="text-[13px] text-[var(--label-tertiary)]">
+                  <div className="text-[13px] text-[var(--muted-foreground)]">
                     <span className="font-medium">Notes:</span> {detailOrder.notes}
                   </div>
                 )}
 
                 {detailOrder.orderedAt && (
-                  <div className="text-[13px] text-[var(--label-tertiary)]">
+                  <div className="text-[13px] text-[var(--muted-foreground)]">
                     Ordered: {new Date(detailOrder.orderedAt).toLocaleDateString("en-IN")}
                   </div>
                 )}
                 {detailOrder.receivedAt && (
-                  <div className="text-[13px] text-[var(--ios-green)] font-medium">
+                  <div className="text-[13px] text-[var(--erp-success)] font-medium">
                     ✓ Received: {new Date(detailOrder.receivedAt).toLocaleDateString("en-IN")}
                   </div>
                 )}
@@ -1177,15 +1208,16 @@ export default function PurchasingPage() {
 
       {/* ════════════ DELETE CONFIRM ════════════ */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="max-w-[350px] rounded-[24px] border-white/10 glass-dialog">
-          <DialogHeader>
-            <DialogTitle className="text-[20px] font-bold text-[var(--label-primary)]">
-              Delete {deleteTarget?.type === "order" ? "Purchase Order" : "Vendor"}
-            </DialogTitle>
-            <DialogDescription className="text-[15px] text-[var(--label-secondary)]">
-              Are you sure? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="max-w-[350px] rounded-[24px] border-[var(--glass-border)] glass-dialog">
+          <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid var(--glass-border)" }}>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, rgba(239,68,68,0.4), rgba(255,255,255,0.06))", border: "1px solid var(--glass-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Trash2 className="h-[18px] w-[18px] text-[#f87171]" />
+            </div>
+            <div>
+              <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "var(--g-text-primary)", lineHeight: "22px", margin: 0 }}>Delete {deleteTarget?.type === "order" ? "Purchase Order" : "Vendor"}</DialogTitle>
+              <DialogDescription style={{ fontSize: 13, color: "var(--g-text-secondary)", lineHeight: "18px", margin: "2px 0 0" }}>This action cannot be undone.</DialogDescription>
+            </div>
+          </div>
           <DialogFooter className="flex gap-2">
             <IOSButton variant="gray" size="large" onClick={() => setIsDeleteDialogOpen(false)} fullWidth>
               Cancel

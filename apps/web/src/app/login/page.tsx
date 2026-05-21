@@ -29,6 +29,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { cn } from "@/lib/utils";
+import { GoogleOneTap } from "@/components/auth/GoogleOneTap";
 
 type AuthMode = "login" | "register";
 type Portal = "admin" | "staff";
@@ -341,6 +342,9 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen bg-background text-foreground overflow-hidden font-sans">
+      {/* ─── Google One Tap (floating prompt) ─── */}
+      {portal === "admin" && step === "credentials" && <GoogleOneTap />}
+
       {/* ─── Left Panel ────────────────────────────────────────── */}
       <div className="hidden lg:flex flex-1 relative items-center justify-center bg-gradient-to-br from-muted to-background dark:from-slate-900 dark:to-black border-r border-border">
         <div className="absolute inset-0 overflow-hidden opacity-30 dark:opacity-20 pointer-events-none">
@@ -351,14 +355,14 @@ export default function LoginPage() {
         <div className="relative z-10 px-12 max-w-xl">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <div className="flex items-center gap-3 mb-8">
-              <div className="p-3 rounded-2xl shadow-lg" style={{ background: 'var(--color-primary-brand)', boxShadow: '0 4px 12px rgba(74, 58, 255, 0.3)' }}>
+              <div className="p-3 rounded-2xl shadow-lg" style={{ background: 'var(--primary)', boxShadow: '0 4px 12px rgba(74, 58, 255, 0.3)' }}>
                 <Factory className="h-8 w-8 text-white" />
               </div>
               <h1 className="text-3xl font-extrabold tracking-tight">IND Manager</h1>
             </div>
             <h2 className="text-5xl font-bold leading-tight mb-6">
               Intelligent Business <br />
-              <span style={{ color: 'var(--color-primary-brand)' }}>Management Suite</span>
+              <span style={{ color: 'var(--primary)' }}>Management Suite</span>
             </h2>
             <p className="text-xl text-muted-foreground mb-10 leading-relaxed">
               Harness the power of AI to streamline your business operations, automate workflows, and gain actionable insights.
@@ -374,7 +378,7 @@ export default function LoginPage() {
                   className={`flex items-start gap-4 p-4 rounded-xl border border-border bg-gradient-to-r ${item.gradient} backdrop-blur-sm hover:border-accent/30 transition-all duration-300 hover:scale-[1.02] cursor-default`}
                 >
                   <div className="p-2 bg-card/50 dark:bg-white/10 rounded-lg shrink-0">
-                    <item.icon className="h-5 w-5" style={{ color: 'var(--color-primary-brand)' }} />
+                    <item.icon className="h-5 w-5" style={{ color: 'var(--primary)' }} />
                   </div>
                   <div>
                     <h4 className="font-semibold text-foreground">{item.label}</h4>
@@ -400,7 +404,7 @@ export default function LoginPage() {
             {/* Mobile Logo */}
             <div className="lg:hidden flex justify-center mb-8">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg" style={{ background: 'var(--color-primary-brand)' }}>
+                <div className="p-2 rounded-lg" style={{ background: 'var(--primary)' }}>
                   <Factory className="h-5 w-5 text-white" />
                 </div>
                 <span className="font-bold text-xl tracking-tight">IND Manager</span>
@@ -488,7 +492,7 @@ export default function LoginPage() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="admin-password" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Password</Label>
-                      <a href="/forgot-password" className="text-xs hover:underline font-medium" style={{ color: 'var(--color-primary-brand)' }}>Forgot password?</a>
+                      <a href="/forgot-password" className="text-xs hover:underline font-medium" style={{ color: 'var(--primary)' }}>Forgot password?</a>
                     </div>
                     <div className="relative group">
                       <Input id="admin-password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} required className="h-12 bg-muted/50 dark:bg-white/5 border-border rounded-xl pr-12 group-hover:border-indigo-500/30" />

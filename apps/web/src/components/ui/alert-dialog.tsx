@@ -36,9 +36,14 @@ function AlertDialogOverlay({
     <AlertDialogPrimitive.Overlay
       data-slot="alert-dialog-overlay"
       className={cn(
-        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-[1000] bg-black/50",
+        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-[1000]",
         className
       )}
+      style={{
+        background: "var(--overlay-backdrop)",
+        backdropFilter: "var(--overlay-backdrop-blur)",
+        WebkitBackdropFilter: "var(--overlay-backdrop-blur)",
+      }}
       {...props}
     />
   )
@@ -54,9 +59,19 @@ function AlertDialogContent({
       <AlertDialogPrimitive.Content
         data-slot="alert-dialog-content"
         className={cn(
-          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-[1001] grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg",
+          "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-[0.96] data-[state=open]:zoom-in-[0.96] fixed top-[50%] left-[50%] z-[1001] grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 sm:max-w-[480px]",
           className
         )}
+        style={{
+          background: "var(--overlay-sheet-bg)",
+          color: "var(--overlay-text-primary)",
+          border: "1px solid var(--overlay-border)",
+          borderRadius: 24,
+          padding: 32,
+          boxShadow: "var(--overlay-shadow)",
+          animationDuration: "200ms",
+          animationTimingFunction: "ease",
+        }}
         {...props}
       />
     </AlertDialogPortal>
@@ -87,6 +102,7 @@ function AlertDialogFooter({
         "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
         className
       )}
+      style={{ gap: 8 }}
       {...props}
     />
   )
@@ -112,7 +128,8 @@ function AlertDialogDescription({
   return (
     <AlertDialogPrimitive.Description
       data-slot="alert-dialog-description"
-      className={cn("text-muted-foreground text-sm", className)}
+      className={cn("text-sm", className)}
+      style={{ color: "var(--overlay-text-secondary)" }}
       {...props}
     />
   )

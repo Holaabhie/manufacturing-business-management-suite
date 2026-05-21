@@ -1,209 +1,88 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { 
-  Bell, 
-  Package, 
-  ShoppingCart, 
-  AlertCircle, 
-  CheckCircle2, 
-  History,
-  Clock,
-  Circle,
-  IndianRupee,
-  Factory,
+import { useState, useEffect, useRef } from "react";
+import {
+  Bell,
   CheckCheck,
+  ArrowRight,
+  X,
 } from "lucide-react";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { NotificationIcon } from "@/components/notifications/NotificationIcon";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
+import { useAppNotifications } from "@/lib/hooks/use-app-notifications";
 
-interface Notification {
-  id: string;
-  type: "overdue" | "low_stock" | "payment_pending" | "completed" | "production_stuck";
-  title: string;
-  message: string;
-  read: boolean;
-  created_at: string;
-  icon: string;
-  borderColor: string;
-}
+/* ─── Layout constants ───────────────────────── */
+const HEADER_H = 72;   // 60px header + 8px top margin + 4px gap
+const BOTTOM_NAV_H = 80; // mobile bottom nav height
 
+/* ─── Component ──────────────────────────────── */
 export function NotificationDropdown() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const router = useRouter();
+  const {
+    notifications: allNotifications,
+    unreadCount,
+    markAsRead,
+    markAllAsRead: hookMarkAllAsRead,
+  } = useAppNotifications();
 
-  // Load read state from localStorage
+  // Dropdown only shows latest 20
+  const notifications = allNotifications.slice(0, 20);
+
+  const [isOpen, setIsOpen] = useState(false);
+  const [hasNewPulse, setHasNewPulse] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const prevUnreadRef = useRef(0);
+
+  // Pulse when new unread arrives
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("ind_notification_read_ids");
-      if (saved) setReadIds(new Set(JSON.parse(saved)));
-    } catch { /* ignore */ }
-  }, []);
-
-  const fetchNotifications = useCallback(async () => {
-    try {
-      const [ordersRes, inventoryRes, paymentsRes] = await Promise.all([
-        fetch("/api/orders").then(r => r.ok ? r.json() : []).catch(() => []),
-        fetch("/api/v1/inventory").then(r => r.ok ? r.json() : { data: [] }).catch(() => ({ data: [] })),
-        fetch("/api/payments").then(r => r.ok ? r.json() : []).catch(() => []),
-      ]);
-
-      const orders = Array.isArray(ordersRes) ? ordersRes : ordersRes?.orders || [];
-      const inventory = Array.isArray(inventoryRes?.data) ? inventoryRes.data : (Array.isArray(inventoryRes) ? inventoryRes : []);
-      const payments = Array.isArray(paymentsRes) ? paymentsRes : paymentsRes?.payments || [];
-
-      const generated: Notification[] = [];
-      const now = new Date();
-
-      // Overdue orders (past due date)
-      orders.forEach((o: any) => {
-        const dueDate = o.due_date || o.dueDate || o.delivery_date;
-        if (dueDate && new Date(dueDate) < now && o.status !== "completed" && o.status !== "delivered") {
-          generated.push({
-            id: `overdue-${o.id}`,
-            type: "overdue",
-            title: `🔴 Order ${(o.id || "").slice(-6).toUpperCase()} is overdue`,
-            message: `${o.product_name || "Order"} for ${o.clients?.name || o.client_name || "client"} — was due ${new Date(dueDate).toLocaleDateString("en-IN")}`,
-            read: false,
-            created_at: dueDate,
-            icon: "⚠️",
-            borderColor: "border-l-red-500",
-          });
-        }
-
-        // Production stuck > 3 days
-        if (o.status === "production" || o.status === "in_production") {
-          const startDate = o.production_start_date || o.updatedAt || o.createdAt;
-          if (startDate) {
-            const days = Math.floor((now.getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24));
-            if (days > 3) {
-              generated.push({
-                id: `stuck-${o.id}`,
-                type: "production_stuck",
-                title: `⏱️ ${o.product_name || "Order"} stuck in production`,
-                message: `In production for ${days} days — ${o.clients?.name || o.client_name || "client"}`,
-                read: false,
-                created_at: startDate,
-                icon: "⏱️",
-                borderColor: "border-l-orange-500",
-              });
-            }
-          }
-        }
-
-        // Completed orders
-        if (o.status === "completed" || o.status === "delivered") {
-          generated.push({
-            id: `completed-${o.id}`,
-            type: "completed",
-            title: `✅ ${o.product_name || "Order"} completed`,
-            message: `Order for ${o.clients?.name || o.client_name || "client"} — ${o.quantity || 0} units`,
-            read: false,
-            created_at: o.updatedAt || o.createdAt || now.toISOString(),
-            icon: "✅",
-            borderColor: "border-l-green-500",
-          });
-        }
-      });
-
-      // Low stock materials
-      inventory.forEach((item: any) => {
-        if (item.quantity <= item.min_stock_level) {
-          generated.push({
-            id: `lowstock-${item.id}`,
-            type: "low_stock",
-            title: `📦 ${item.name} is running low`,
-            message: `Current: ${item.quantity} ${item.unit} — Min: ${item.min_stock_level} ${item.unit}`,
-            read: false,
-            created_at: item.updatedAt || now.toISOString(),
-            icon: "📦",
-            borderColor: "border-l-amber-500",
-          });
-        }
-      });
-
-      // Unpaid payments
-      payments.forEach((p: any) => {
-        if (p.status === "pending" || p.status === "overdue") {
-          generated.push({
-            id: `payment-${p.id}`,
-            type: "payment_pending",
-            title: `💰 Payment pending from ${p.clients?.name || p.client_name || "client"}`,
-            message: `₹${Number(p.amount || 0).toLocaleString("en-IN")} — ${p.payment_method || "—"}`,
-            read: false,
-            created_at: p.due_date || p.createdAt || now.toISOString(),
-            icon: "💰",
-            borderColor: "border-l-blue-500",
-          });
-        }
-      });
-
-      // Sort by date (newest first), limit to 20
-      generated.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      const limited = generated.slice(0, 20);
-
-      // Apply read state from localStorage
-      const withReadState = limited.map(n => ({
-        ...n,
-        read: readIds.has(n.id),
-      }));
-
-      setNotifications(withReadState);
-      setUnreadCount(withReadState.filter(n => !n.read).length);
-    } catch {
-      setNotifications([]);
-      setUnreadCount(0);
+    if (unreadCount > prevUnreadRef.current && !isOpen) {
+      setHasNewPulse(true);
     }
-  }, [readIds]);
+    prevUnreadRef.current = unreadCount;
+  }, [unreadCount, isOpen]);
 
+  // Close on outside click
   useEffect(() => {
-    fetchNotifications();
-    // Refresh every 60 seconds
-    const interval = setInterval(fetchNotifications, 60000);
-    return () => clearInterval(interval);
-  }, [fetchNotifications]);
+    const handleClick = (e: MouseEvent) => {
+      if (
+        panelRef.current &&
+        !panelRef.current.contains(e.target as Node) &&
+        triggerRef.current &&
+        !triggerRef.current.contains(e.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [isOpen]);
 
-  const markAsRead = (id: string) => {
-    const newReadIds = new Set(readIds);
-    newReadIds.add(id);
-    setReadIds(newReadIds);
-    localStorage.setItem("ind_notification_read_ids", JSON.stringify([...newReadIds]));
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    setUnreadCount(prev => Math.max(0, prev - 1));
-  };
+  // Close on Escape
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsOpen(false);
+    };
+    if (isOpen) document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [isOpen]);
 
-  const markAllAsRead = () => {
-    const newReadIds = new Set(readIds);
-    notifications.forEach(n => newReadIds.add(n.id));
-    setReadIds(newReadIds);
-    localStorage.setItem("ind_notification_read_ids", JSON.stringify([...newReadIds]));
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    setUnreadCount(0);
+  // Stop pulse when opened
+  useEffect(() => {
+    if (isOpen) setHasNewPulse(false);
+  }, [isOpen]);
+
+  /* ─── Actions ────────────────────────────────── */
+  const handleMarkAllAsRead = () => {
+    hookMarkAllAsRead();
     toast.success("All notifications marked as read");
   };
 
-  const getIcon = (type: string) => {
-    switch (type) {
-      case "overdue": return <AlertCircle className="h-4 w-4 text-red-400" />;
-      case "low_stock": return <Package className="h-4 w-4 text-amber-400" />;
-      case "payment_pending": return <IndianRupee className="h-4 w-4 text-blue-400" />;
-      case "completed": return <CheckCircle2 className="h-4 w-4 text-green-400" />;
-      case "production_stuck": return <Clock className="h-4 w-4 text-orange-400" />;
-      default: return <Bell className="h-4 w-4 text-muted-foreground" />;
-    }
-  };
-
-  const timeAgo = (dateStr: string) => {
+  const timeAgo = (dateStr: string): string => {
     try {
       const diff = Date.now() - new Date(dateStr).getTime();
       const mins = Math.floor(diff / 60000);
@@ -217,110 +96,244 @@ export function NotificationDropdown() {
   };
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button className="relative h-[36px] w-[36px] rounded-[10px] flex items-center justify-center text-[var(--label-secondary)] hover:bg-[var(--fill-quaternary)] transition-colors cursor-pointer">
-          <Bell className="h-[18px] w-[18px]" />
-          {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white px-1 shadow-lg shadow-red-500/30">
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </span>
-          )}
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent 
-        align="end" 
-        className="w-[340px] p-0 overflow-hidden rounded-[16px] shadow-2xl"
-        style={{
-          background: "#0f1420",
-          border: "1px solid rgba(255,255,255,0.1)",
-        }}
+    <div className="relative">
+      {/* ── Bell Trigger ── */}
+      <button
+        ref={triggerRef}
+        onClick={() => setIsOpen((prev) => !prev)}
+        className="relative h-[36px] w-[36px] rounded-[10px] flex items-center justify-center text-[var(--muted-foreground)] hover:bg-[var(--muted)] transition-colors cursor-pointer"
       >
-        <div className="flex flex-col max-h-[400px]">
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.07]">
-            <div className="flex items-center gap-2">
-              <h3 className="font-bold text-sm text-white">Notifications</h3>
-              {unreadCount > 0 && (
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[rgba(167,139,250,0.15)] text-[#a78bfa]">
-                  {unreadCount} new
-                </span>
-              )}
-            </div>
-            {unreadCount > 0 && (
-              <button 
-                className="text-[11px] font-medium text-[#a78bfa] hover:text-[#c4b5fd] transition-colors flex items-center gap-1 cursor-pointer"
-                onClick={markAllAsRead}
-              >
-                <CheckCheck className="h-3 w-3" />
-                Mark all read
-              </button>
+        <Bell className="h-[18px] w-[18px]" />
+        {unreadCount > 0 && (
+          <span
+            className={cn(
+              "absolute -top-[6px] -right-[6px] flex items-center justify-center",
+              "min-w-[18px] h-[18px] rounded-full px-1",
+              "bg-[var(--accent-red,#EF4444)] text-white text-[10px] font-extrabold",
+              "border-2 border-[var(--bg-card,#fff)] dark:border-[var(--bg-page,#000)]",
+              "shadow-lg shadow-red-500/30"
             )}
-          </div>
+            style={{
+              animation: hasNewPulse ? "notif-pulse 2s ease-in-out infinite" : "none",
+            }}
+          >
+            {unreadCount > 9 ? "9+" : unreadCount}
+          </span>
+        )}
+      </button>
 
-          {/* Notifications List */}
-          <ScrollArea className="flex-1 max-h-[300px]">
-            <div className="flex flex-col">
-              {notifications.length > 0 ? (
-                notifications.map((notification) => (
-                  <div 
-                    key={notification.id}
-                    className={cn(
-                      "flex gap-3 px-4 py-3 transition-all hover:bg-white/[0.03] cursor-pointer border-l-2",
-                      notification.borderColor,
-                      !notification.read && "bg-white/[0.02]"
-                    )}
-                    onClick={() => !notification.read && markAsRead(notification.id)}
+      {/* ── Backdrop — only between header and bottom nav ── */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed left-0 right-0 z-30 bg-black/30 dark:bg-black/50"
+            style={{
+              top: `${HEADER_H}px`,
+              bottom: `${BOTTOM_NAV_H}px`,
+              backdropFilter: "blur(6px)",
+              WebkitBackdropFilter: "blur(6px)",
+            }}
+            onClick={() => setIsOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Notification Panel — TOP dropdown ── */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            ref={panelRef}
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{
+              opacity: { duration: 0.25, ease: "easeOut" },
+              y: { duration: 0.3, ease: [0.4, 0, 0.2, 1] },
+            }}
+            className={cn(
+              "fixed z-40 flex flex-col",
+              /* Rounded corners — all 4 */
+              "rounded-[16px]",
+              /* Glass surface — Light */
+              "bg-white/95 border-[0.5px] border-[var(--border-card,rgba(60,60,67,0.12))]",
+              "shadow-[0_8px_40px_rgba(0,0,0,0.10),0_2px_12px_rgba(0,0,0,0.06)]",
+              /* Glass surface — Dark */
+              "dark:bg-[#1C1C1E]/95 dark:border-white/[0.10]",
+              "dark:shadow-[0_8px_40px_rgba(0,0,0,0.5),0_2px_12px_rgba(0,0,0,0.3)]",
+            )}
+            style={{
+              top: `${HEADER_H}px`,
+              left: 12,
+              right: 12,
+              maxHeight: `calc(100vh - ${HEADER_H}px - ${BOTTOM_NAV_H}px - 16px)`,
+              backdropFilter: "blur(40px) saturate(180%)",
+              WebkitBackdropFilter: "blur(40px) saturate(180%)",
+            }}
+          >
+            {/* ── Sticky Header ── */}
+            <div className="sticky top-0 z-10 px-4 pt-3.5 pb-2.5 rounded-t-[16px] shrink-0 bg-white/90 dark:bg-[#1C1C1E]/90"
+              style={{
+                backdropFilter: "blur(20px)",
+                WebkitBackdropFilter: "blur(20px)",
+              }}
+            >
+              <div className="flex items-center justify-between">
+                {/* Left: Title + badge */}
+                <div className="flex items-center gap-2">
+                  <h3 className="text-[17px] font-bold tracking-[-0.02em] text-[var(--foreground)]">
+                    Notifications
+                  </h3>
+                  {unreadCount > 0 && (
+                    <span className="text-[10px] font-bold rounded-full min-w-[20px] h-[20px] flex items-center justify-center px-1.5 bg-[var(--accent-red,#EF4444)] text-white">
+                      {unreadCount}
+                    </span>
+                  )}
+                </div>
+                {/* Right: Actions */}
+                <div className="flex items-center gap-1">
+                  {unreadCount > 0 && (
+                    <button
+                      className="text-[12px] font-medium flex items-center gap-1 cursor-pointer text-[var(--accent-blue,#007AFF)] hover:opacity-70 transition-opacity px-2 py-1 rounded-lg hover:bg-[var(--muted)]"
+                      onClick={handleMarkAllAsRead}
+                    >
+                      <CheckCheck className="h-3.5 w-3.5" />
+                      Mark all read
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setIsOpen(false)}
+                    className="h-7 w-7 rounded-full flex items-center justify-center bg-[var(--muted)] hover:bg-[var(--accent)] transition-colors cursor-pointer"
                   >
-                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-white/[0.05]">
-                      {getIcon(notification.type)}
-                    </div>
-                    <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className={cn(
-                          "text-[13px] font-semibold leading-tight",
-                          !notification.read ? "text-white" : "text-white/50"
-                        )}>
-                          {notification.title}
-                        </p>
-                        {!notification.read && (
-                          <Circle className="h-2 w-2 fill-[#a78bfa] text-[#a78bfa] flex-shrink-0 mt-1" />
-                        )}
+                    <X className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />
+                  </button>
+                </div>
+              </div>
+              {/* Header bottom separator */}
+              <div className="h-px mt-2.5 bg-gradient-to-r from-transparent via-[var(--separator,rgba(60,60,67,0.15))] dark:via-white/[0.08] to-transparent" />
+            </div>
+
+            {/* ── Scrollable Notification List ── */}
+            <div
+              className="overflow-y-auto flex-1 min-h-0"
+              style={{
+                scrollbarWidth: "thin",
+                scrollbarColor: "var(--muted) transparent",
+              }}
+            >
+              {notifications.length > 0 ? (
+                notifications.map((n, idx) => {
+                  return (
+                    <div
+                      key={n.id}
+                      className={cn(
+                        "group relative cursor-pointer transition-all duration-150",
+                        "hover:bg-black/[0.02] dark:hover:bg-white/[0.03]",
+                        "active:scale-[0.998]",
+                        !n.isRead && [
+                          "bg-[rgba(37,99,235,0.04)]",
+                          "dark:bg-[rgba(59,130,246,0.06)]",
+                        ]
+                      )}
+                      style={{
+                        padding: "12px 16px",
+                        borderLeft: !n.isRead
+                          ? "2.5px solid var(--accent-blue, #007AFF)"
+                          : "2.5px solid transparent",
+                      }}
+                      onClick={() => {
+                        if (!n.isRead) {
+                          markAsRead(n.id);
+                        }
+                        if (n.url) {
+                          router.push(n.url);
+                          setIsOpen(false);
+                        }
+                      }}
+                    >
+                      <div className="flex gap-3">
+                        {/* Icon — centralized via NotificationIcon */}
+                        <NotificationIcon type={n.type} size={16} />
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className={cn(
+                              "text-[13px] leading-[1.35] tracking-[-0.01em]",
+                              !n.isRead
+                                ? "font-semibold text-[#0F172A] dark:text-[#F8FAFC]"
+                                : "font-normal text-[#64748B] dark:text-white/50"
+                            )}>
+                              {n.title}
+                            </p>
+                            {!n.isRead && (
+                              <div className="flex-shrink-0 mt-1.5 rounded-full w-2 h-2 bg-blue-500" />
+                            )}
+                          </div>
+                          <p className={cn(
+                            "text-[12px] mt-[2px] overflow-hidden text-ellipsis whitespace-nowrap",
+                            n.isRead
+                              ? "text-[#94A3B8] dark:text-white/30"
+                              : "text-[var(--muted-foreground)]"
+                          )}>
+                            {n.message}
+                          </p>
+                          <span className="text-[11px] mt-0.5 block text-[#94A3B8] dark:text-white/30 tracking-[0.02em]">
+                            {timeAgo(n.createdAt)}
+                          </span>
+                        </div>
                       </div>
-                      <p className="text-[11px] text-white/35 leading-relaxed line-clamp-1">
-                        {notification.message}
-                      </p>
-                      <span className="text-[10px] text-white/25 mt-0.5">
-                        {timeAgo(notification.created_at)}
-                      </span>
+
+                      {/* Separator */}
+                      {idx < notifications.length - 1 && (
+                        <div className="absolute bottom-0 left-[62px] right-4 h-px bg-[var(--separator,rgba(60,60,67,0.08))] dark:bg-white/[0.04]" />
+                      )}
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-center px-6">
-                  <div className="h-12 w-12 rounded-full bg-white/[0.05] flex items-center justify-center mb-3">
-                    <Bell className="h-5 w-5 text-white/20" />
+                /* ── Empty State ── */
+                <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+                  <div className="w-12 h-12 rounded-[14px] bg-[var(--muted)] flex items-center justify-center mb-3">
+                    <Bell className="h-5 w-5 text-[var(--muted-foreground)]" />
                   </div>
-                  <p className="text-sm font-medium text-white/60">All clear!</p>
-                  <p className="text-[11px] text-white/30 mt-1">No alerts right now. We&apos;ll notify you about important updates.</p>
+                  <p className="text-[14px] font-semibold text-[var(--muted-foreground)] tracking-[-0.01em]">
+                    All caught up!
+                  </p>
+                  <p className="text-[12px] mt-1 text-[var(--muted-foreground)]">
+                    No new notifications
+                  </p>
                 </div>
               )}
             </div>
-          </ScrollArea>
 
-          {/* Footer */}
-          {notifications.length > 0 && (
-            <div className="px-4 py-2.5 border-t border-white/[0.07]">
-              <Link 
-                href="/dashboard/notifications" 
-                className="text-[12px] font-semibold text-[#a78bfa] hover:text-[#c4b5fd] transition-colors cursor-pointer"
-              >
-                View all notifications →
-              </Link>
-            </div>
-          )}
-        </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
+            {/* ── Footer: "See all notifications →" ── */}
+            {notifications.length > 0 && (
+              <div className="shrink-0 border-t border-[var(--separator,rgba(60,60,67,0.08))] dark:border-white/[0.06]">
+                <Link
+                  href="/dashboard/notifications"
+                  className="flex items-center justify-center gap-1.5 px-4 py-3 text-[13px] font-semibold text-[var(--accent-blue,#007AFF)] hover:bg-[var(--muted)] transition-colors rounded-b-[16px]"
+                  onClick={() => setIsOpen(false)}
+                >
+                  See all notifications
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Pulse keyframe ── */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes notif-pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.2); }
+        }
+      ` }} />
+    </div>
   );
 }

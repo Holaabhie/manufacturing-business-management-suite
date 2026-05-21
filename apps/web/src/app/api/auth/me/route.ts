@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth-session";
 import { isDbUnavailableError } from "@/lib/mongodb";
+import { resolvePermissions, type FlatPermissionMap } from "@/lib/permissions";
 
 export async function GET() {
   try {
@@ -9,6 +10,12 @@ export async function GET() {
     if (!user) {
       return NextResponse.json({ user: null });
     }
+
+    // Resolve permissions based on role + custom overrides
+    const resolvedPermissions = resolvePermissions(
+      user.role,
+      user.customPermissions as FlatPermissionMap
+    );
 
     return NextResponse.json({
       user: {
@@ -29,8 +36,11 @@ export async function GET() {
         employeeId: user.employeeId,
         department: user.department,
         permissions: user.permissions,
+        customPermissions: user.customPermissions,
+        resolvedPermissions,
         permissionTemplateId: user.permissionTemplateId,
         status: user.status,
+        isActive: user.isActive !== false, // default true for existing users
         firstLoginCompleted: user.firstLoginCompleted,
         company_setup_complete: (user as any).company_setup_complete,
         otpDeliveryMethod: user.otpDeliveryMethod,

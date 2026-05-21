@@ -23,7 +23,7 @@ import {
     AlreadyExistsError,
     type FieldError,
 } from "@/shared/lib/errors";
-import { DEFAULT_TEMPLATES, EMPTY_PERMISSIONS, type PermissionMap } from "@/lib/permissions";
+import { ROLE_PRESETS, EMPTY_PERMISSIONS, type FlatPermissionMap as PermissionMap } from "@/lib/permissions";
 import { destroyAllUserSessions } from "@/lib/auth-session";
 
 // ─── Temp Password Generator ────────────────────────────────────
@@ -183,8 +183,9 @@ export class EmployeeService {
         let newPermissions: PermissionMap;
         let templateId: string;
 
-        if (data.templateId && DEFAULT_TEMPLATES[data.templateId]) {
-            newPermissions = DEFAULT_TEMPLATES[data.templateId].permissions;
+        const roleKey = data.templateId as keyof typeof ROLE_PRESETS;
+        if (data.templateId && ROLE_PRESETS[roleKey]) {
+            newPermissions = ROLE_PRESETS[roleKey].permissions;
             templateId = data.templateId;
         } else if (data.permissions) {
             newPermissions = data.permissions as PermissionMap;

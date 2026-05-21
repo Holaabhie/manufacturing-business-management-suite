@@ -43,6 +43,10 @@ export const updateBillSchema = z.object({
     notes: z.string().max(2000).optional(),
     terms: z.string().max(2000).optional(),
     status: z.enum(["draft", "sent", "paid", "overdue", "cancelled"]).optional(),
+    // Tally Prime sync
+    tallySynced: z.boolean().optional(),
+    tallyVoucherNumber: z.string().max(100).optional(),
+    tallySyncedAt: z.string().optional(),
 });
 
 export type CreateBillInput = z.infer<typeof createBillSchema>;

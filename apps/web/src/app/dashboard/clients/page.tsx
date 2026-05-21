@@ -19,18 +19,13 @@ import {
   ChevronRight,
   User,
   ExternalLink,
-  ShoppingCart
+  ShoppingCart,
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+  IndianRupee
 } from "lucide-react";
 
-
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -48,9 +43,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
-import { GlassCard, GlassInput, GlassButton, TogglePill } from "@/components/ui/glass";
-import { Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  IOSCard,
+  IOSCardHeader,
+  IOSCardContent,
+  IOSButton,
+  IOSInput,
+  IOSBadge,
+  IOSSearchBar,
+} from "@/components/ui/ios";
+import { motion } from "framer-motion";
+import { staggerContainer, staggerItem } from "@/styles/animations";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
@@ -89,9 +92,10 @@ export default function ClientsPage() {
   };
 
   const exportToPDF = () => {
-    const headers = ["Name", "Email", "Phone", "Address"];
+    const headers = ["Name", "Company", "Email", "Phone", "Address"];
     const rows = clients.map(client => [
       client.name || "—",
+      client.company || "—",
       client.email || "—",
       client.phone || "—",
       client.address || "—"
@@ -116,10 +120,10 @@ export default function ClientsPage() {
   const [loadingMaterials, setLoadingMaterials] = useState<Record<string, boolean>>({});
 
   // New Client Form
-  const [formData, setFormData] = useState({ name: "", email: "", phone: "", address: "", customerSince: new Date().toISOString().split("T")[0] });
+  const [formData, setFormData] = useState({ name: "", company: "", email: "", phone: "", address: "", customerSince: new Date().toISOString().split("T")[0] });
 
   // Edit Client Form
-  const [editData, setEditData] = useState({ name: "", email: "", phone: "", address: "", customerSince: "" });
+  const [editData, setEditData] = useState({ name: "", company: "", email: "", phone: "", address: "", customerSince: "" });
 
   // Product Form
   const [productForm, setProductForm] = useState({ name: "", defaultRate: "" });
@@ -216,7 +220,7 @@ export default function ClientsPage() {
         toast.success("Client created");
         fetchClients();
         setIsDialogOpen(false);
-        setFormData({ name: "", email: "", phone: "", address: "", customerSince: new Date().toISOString().split("T")[0] });
+        setFormData({ name: "", company: "", email: "", phone: "", address: "", customerSince: new Date().toISOString().split("T")[0] });
         handleSelectClient(data);
       }
     } catch (error) {
@@ -270,6 +274,7 @@ export default function ClientsPage() {
     setSelectedClient(client);
     setEditData({
       name: client.name, customerSince: client.createdAt ? new Date(client.createdAt).toISOString().split("T")[0] : "",
+      company: client.company || "",
       email: client.email || "",
       phone: client.phone || "",
       address: client.address || ""
@@ -353,82 +358,112 @@ export default function ClientsPage() {
     }
   };
 
-  const filteredClients = clients.filter(client =>
-    client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredClients = clients.filter((client) => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return true;
+    const name = String(client?.name || "").toLowerCase();
+    const company = String(client?.company || "").toLowerCase();
+    const email = String(client?.email || "").toLowerCase();
+    return name.includes(q) || company.includes(q) || email.includes(q);
+  });
+
+  const clientInitials = (nameLike: unknown) => {
+    const name = String(nameLike || "").trim();
+    if (!name) return "CL";
+    const parts = name.split(/\s+/).filter(Boolean);
+    const letters = parts.slice(0, 2).map((w) => w[0]).join("");
+    return (letters || name[0] || "C").toUpperCase();
+  };
+
+  const selectedOrdersTotal = clientOrders.reduce(
+    (acc, o) => acc + (Number(o?.totalAmount ?? o?.total_amount) || 0),
+    0
   );
 
   return (
-    <div className="flex h-[calc(100vh-120px)] gap-6 overflow-hidden">
+    <motion.div variants={staggerContainer} initial="initial" animate="animate" className="flex h-[calc(100vh-120px)] gap-6 overflow-hidden">
       {/* Sidebar List */}
-      <div className={cn(
+      <motion.div variants={staggerItem} className={cn(
         "flex-1 flex flex-col gap-4 min-w-0 transition-all duration-300",
-        selectedClient ? "hidden lg:flex max-w-[400px]" : "w-full"
+        "w-full"
       )}>
         <div className="flex justify-between items-center gap-2">
-          <h1 className="text-3xl font-bold tracking-tight">Clients</h1>
+          <h1 className="text-[28px] sm:text-[34px] font-bold tracking-tight text-[var(--foreground)]">Clients</h1>
           <div className="flex items-center gap-2">
-            <GlassButton variant="outline" size="icon" onClick={exportToPDF} className="hidden sm:flex">
+            <IOSButton variant="gray" size="small" onClick={exportToPDF} className="hidden sm:flex">
               <Download className="h-4 w-4" />
-            </GlassButton>
+            </IOSButton>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               {isAdmin && (
                 <DialogTrigger asChild>
-                  <GlassButton className="shadow-lg shadow-primary/20">
-                    <Plus className="mr-2 h-4 w-4" /> New Client
-                  </GlassButton>
+                  <IOSButton variant="filled" size="medium" icon={<Plus className="h-4 w-4" />}>
+                    New Client
+                  </IOSButton>
                 </DialogTrigger>
               )}
               <DialogContent className="max-w-md p-0 overflow-hidden">
                 <ScrollArea className="max-h-[90vh]">
                   <div className="p-6">
-                    <DialogHeader>
-                      <DialogTitle>Add New Client</DialogTitle>
-                    </DialogHeader>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 16, marginBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                      <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg, rgba(59,130,246,0.4), rgba(255,255,255,0.06))', border: '1px solid rgba(255,255,255,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <User className="h-[18px] w-[18px] text-[#60a5fa]" />
+                      </div>
+                      <div>
+                        <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', lineHeight: '22px', margin: 0 }}>Add New Client</DialogTitle>
+                        <p style={{ fontSize: 13, color: '#64748b', lineHeight: '18px', margin: '2px 0 0' }}>Create a new client profile</p>
+                      </div>
+                    </div>
                     <form onSubmit={handleAddClient} className="space-y-4 pt-4">
                       <div className="space-y-2">
-                        <Label htmlFor="name">Client Name *</Label>
-                        <GlassInput
+                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">Client Name *</label>
+                        <IOSInput
                           id="name"
                           value={formData.name}
-                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                          onChange={(e: any) => setFormData({ ...formData, name: e.target.value })}
                           placeholder="e.g. Acme Corp"
                           required
                         />
                       </div>
+                      <div className="space-y-2">
+                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">Company</label>
+                        <IOSInput
+                          id="company"
+                          value={formData.company}
+                          onChange={(e: any) => setFormData({ ...formData, company: e.target.value })}
+                          placeholder="e.g. Acme Manufacturing Pvt Ltd"
+                        />
+                      </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="email">Email</Label>
-                          <GlassInput
+                          <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">Email</label>
+                          <IOSInput
                             id="email"
                             type="email"
                             value={formData.email}
-                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                            onChange={(e: any) => setFormData({ ...formData, email: e.target.value })}
                             placeholder="client@example.com"
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="phone">WhatsApp / Phone</Label>
-                          <GlassInput
+                          <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">WhatsApp / Phone</label>
+                          <IOSInput
                             id="phone"
                             value={formData.phone}
-                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                            onChange={(e: any) => setFormData({ ...formData, phone: e.target.value })}
                             placeholder="+91..."
                           />
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="address">Address</Label>
-                        <GlassInput
+                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">Address</label>
+                        <IOSInput
                           id="address"
                           value={formData.address}
-                          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                          onChange={(e: any) => setFormData({ ...formData, address: e.target.value })}
                           placeholder="Full business address"
                         />
                       </div>
-                      <DialogFooter className="pt-4">
-                        <GlassButton type="submit" className="w-full">Create Client Profile</GlassButton>
-                      </DialogFooter>
+                      <button type="submit" style={{ width: '100%', height: 48, borderRadius: 14, background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', border: '1px solid rgba(16,185,129,0.3)', boxShadow: '0 4px 16px rgba(16,185,129,0.25)', marginTop: 16 }}>Create Client Profile</button>
                     </form>
                   </div>
                 </ScrollArea>
@@ -437,32 +472,28 @@ export default function ClientsPage() {
           </div>
         </div>
 
-        <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-500" />
-          <GlassInput
-            placeholder="Search by name or email..."
-            className="pl-8 bg-white dark:bg-zinc-900 shadow-sm"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
+        <IOSSearchBar
+          placeholder="Search by name, company, or email..."
+          value={searchTerm}
+          onValueChange={setSearchTerm}
+        />
 
-        <div className="flex-1 overflow-y-auto rounded-xl border bg-white dark:bg-zinc-950 shadow-sm">
+        <IOSCard variant="elevated" padding="none" className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="p-4 space-y-4">
               {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-20 w-full rounded-xl" />
+                <Skeleton key={i} className="h-20 w-full rounded-[12px]" />
               ))}
             </div>
           ) : filteredClients.length === 0 ? (
             searchTerm ? (
               <div className="flex flex-col items-center justify-center h-40 text-center p-4">
-                <User className="h-8 w-8 text-zinc-300 mb-2" />
-                <p className="text-zinc-500">No clients found matching "{searchTerm}"</p>
+                <User className="h-8 w-8 text-[var(--muted-foreground)] mb-2" />
+                <p className="text-[var(--muted-foreground)] text-[15px]">No clients found matching &quot;{searchTerm}&quot;</p>
               </div>
             ) : (
               <EmptyState
-                icon="👤"
+                icon="??"
                 title="No clients yet"
                 description="Add your first client to start managing orders, products, and materials"
                 actionLabel="+ Add First Client"
@@ -470,30 +501,31 @@ export default function ClientsPage() {
               />
             )
           ) : (
-            <div className="divide-y">
+            <div className="divide-y divide-[var(--border)]">
               {filteredClients.map((client) => (
                 <div
                   key={client.id}
                   onClick={() => handleSelectClient(client)}
                   className={cn(
-                    "group flex flex-col p-4 cursor-pointer transition-all hover:bg-zinc-50 dark:hover:bg-zinc-900/50",
-                    selectedClient?.id === client.id ? "bg-zinc-100 dark:bg-zinc-900 border-l-4 border-primary" : "border-l-4 border-transparent"
+                    "group flex flex-col p-4 cursor-pointer transition-all duration-200",
+                    "hover:bg-[var(--muted)]",
+                    selectedClient?.id === client.id ? "bg-[var(--muted)] border-l-4 border-[var(--primary)]" : "border-l-4 border-transparent"
                   )}
                 >
                   <div className="flex justify-between items-start">
-                    <h3 className="font-bold text-lg leading-none">{client.name}</h3>
+                    <h3 className="font-bold text-[17px] leading-[22px] text-[var(--foreground)]">{client.name}</h3>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <GlassButton variant="ghost" size="icon" className="h-10 w-10 opacity-0 group-hover:opacity-100 rounded-full">
-                          <MoreVertical className="h-5 w-5" />
-                        </GlassButton>
+                        <button className="h-8 w-8 opacity-0 group-hover:opacity-100 rounded-full flex items-center justify-center hover:bg-[var(--muted)] transition-all cursor-pointer">
+                          <MoreVertical className="h-4 w-4 text-[var(--muted-foreground)]" />
+                        </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleSelectClient(client)}>
                           <Edit2 className="mr-2 h-4 w-4" /> View Details
                         </DropdownMenuItem>
                         {isAdmin && (
-                          <DropdownMenuItem className="text-red-500" onClick={(e) => {
+                          <DropdownMenuItem className="text-[var(--destructive)]" onClick={(e) => {
                             e.stopPropagation();
                             setClientToDeleteId(client.id);
                             setIsDeleteDialogOpenConfirm(true);
@@ -504,7 +536,12 @@ export default function ClientsPage() {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                  <div className="flex items-center gap-4 mt-2 text-zinc-500 text-sm">
+                  {!!client.company && (
+                    <div className="mt-1 text-[12px] text-[var(--muted-foreground)] truncate">
+                      {client.company}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-4 mt-2 text-[var(--muted-foreground)] text-[13px]">
                     {client.phone && (
                       <div className="flex items-center">
                         <Phone className="mr-1 h-3 w-3" /> {client.phone}
@@ -520,130 +557,235 @@ export default function ClientsPage() {
               ))}
             </div>
           )}
-        </div>
-      </div>
+        </IOSCard>
+      </motion.div>
 
-      {/* Detailed View */}
-      {selectedClient ? (
-        <div className="flex-[2] flex flex-col gap-6 overflow-hidden bg-zinc-50 dark:bg-zinc-950/50 rounded-2xl border p-6 shadow-inner">
-          <div className="flex justify-between items-start">
-            <div className="space-y-1">
-              <h2 className="text-2xl font-bold flex items-center gap-2">
-                <User className="h-6 w-6 text-primary" />
-                {selectedClient.name}
-              </h2>
-              <p className="text-zinc-500 text-sm">Customer since {new Date(selectedClient.createdAt || selectedClient.created_at).toLocaleDateString('en-IN')}</p>
-            </div>
-            <GlassButton variant="ghost" size="icon" onClick={() => setSelectedClient(null)}>
-              <X className="h-5 w-5" />
-            </GlassButton>
-          </div>
+      {/* Client profile modal (name, company, profile, orders, sum) */}
+      <Dialog open={!!selectedClient} onOpenChange={(open) => { if (!open) setSelectedClient(null); }}>
+        <DialogContent className="max-w-[900px] p-0 overflow-hidden" aria-describedby={undefined} fullScreen>
+          <DialogTitle className="sr-only">Client Profile</DialogTitle>
+          {selectedClient && (
+            <div
+              className="flex flex-col overflow-hidden"
+              style={{
+                background: 'linear-gradient(180deg, rgba(13,17,28,0.97) 0%, rgba(10,13,22,0.99) 100%)',
+                border: '1px solid rgba(255,255,255,0.06)',
+                boxShadow: '0 8px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04)',
+              }}
+            >
+              {/* -- Header Bar -- */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <button onClick={() => setSelectedClient(null)} style={{ width: 38, height: 38, borderRadius: 12, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#94a3b8' }}>
+                  <X className="h-4 w-4" />
+                </button>
+                <h2 style={{ fontSize: 17, fontWeight: 700, color: '#f1f5f9', letterSpacing: '-0.2px' }}>
+                  {selectedClient?.name ? `Client: ${selectedClient.name}` : "Client Profile"}
+                </h2>
+                {isAdmin ? (
+                  <button onClick={handleUpdateClient} style={{ width: 38, height: 38, borderRadius: 12, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#94a3b8' }}>
+                    <Edit2 className="h-4 w-4" />
+                  </button>
+                ) : <div style={{ width: 38 }} />}
+              </div>
 
-          <Tabs defaultValue="profile" className="flex-1 flex flex-col overflow-hidden">
-            <TabsList className="bg-zinc-200/50 dark:bg-zinc-900 w-fit p-1 rounded-lg">
-              <TabsTrigger value="profile">Profile & Contact</TabsTrigger>
-              <TabsTrigger value="materials">Materials / Products</TabsTrigger>
-              <TabsTrigger value="orders">Order History</TabsTrigger>
+              <div className="flex-1 overflow-y-auto" style={{ padding: '0 20px 24px', maxHeight: '85vh' }}>
+                {/* -- Avatar + Name Hero -- */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '24px 0 16px' }}>
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <div style={{
+                      width: 72, height: 72, borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #007AFF, #5856D6)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      boxShadow: '0 4px 24px rgba(0,122,255,0.35), 0 0 0 3px rgba(10,13,22,1), 0 0 0 5px rgba(0,122,255,0.25)',
+                      fontSize: 24, fontWeight: 800, color: '#fff', letterSpacing: 1,
+                    }}>
+                      {clientInitials(selectedClient?.name)}
+                    </div>
+                    <div style={{ position: 'absolute', bottom: 2, left: 2, width: 14, height: 14, borderRadius: '50%', background: '#30D158', border: '3px solid rgba(10,13,22,1)', boxShadow: '0 0 8px rgba(48,209,88,0.5)' }} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <h3 style={{ fontSize: 22, fontWeight: 800, color: '#f1f5f9', letterSpacing: '-0.4px', margin: 0 }}>{selectedClient.name || "Unnamed Client"}</h3>
+                      {!!(selectedClient.company || editData.company) && (
+                        <span style={{ fontSize: 11, fontWeight: 800, color: '#93bbfd', background: 'rgba(0,122,255,0.12)', border: '1px solid rgba(0,122,255,0.2)', padding: '2px 10px', borderRadius: 20, letterSpacing: '0.4px', whiteSpace: 'nowrap' }}>
+                          {selectedClient.company || editData.company}
+                        </span>
+                      )}
+                    </div>
+                    <p style={{ fontSize: 13, color: '#64748b', marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <History className="h-3.5 w-3.5" style={{ opacity: 0.6 }} />
+                      Customer since {new Date(selectedClient.createdAt || selectedClient.created_at || Date.now()).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
+                    </p>
+                  </div>
+                </div>
+
+                {/* -- Orders summary -- */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+                  <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: '14px 14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <ShoppingCart className="h-4 w-4" style={{ color: '#34d399' }} />
+                      <span style={{ fontSize: 11, fontWeight: 800, color: '#6ee7b7', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Orders</span>
+                    </div>
+                    <div style={{ marginTop: 8, fontSize: 22, fontWeight: 900, color: '#e2e8f0' }}>{clientOrders.length}</div>
+                  </div>
+                  <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: '14px 14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <IndianRupee className="h-4 w-4" style={{ color: '#60a5fa' }} />
+                      <span style={{ fontSize: 11, fontWeight: 800, color: '#93bbfd', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total sum</span>
+                    </div>
+                    <div style={{ marginTop: 8, fontSize: 22, fontWeight: 900, color: '#e2e8f0' }}>?{selectedOrdersTotal.toLocaleString('en-IN')}</div>
+                  </div>
+                </div>
+
+                {/* -- Segmented Tabs -- */}
+                <Tabs defaultValue="profile" className="flex flex-col">
+            <TabsList style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: 3, display: 'flex', gap: 2, width: '100%' }}>
+              <TabsTrigger value="profile" style={{ flex: 1, borderRadius: 11, fontSize: 13, fontWeight: 600, padding: '8px 0', transition: 'all 0.2s' }} className="data-[state=active]:!bg-[#007AFF] data-[state=active]:!text-white data-[state=active]:!shadow-[0_2px_12px_rgba(0,122,255,0.35)] text-[#64748b]">Profile</TabsTrigger>
+              <TabsTrigger value="materials" style={{ flex: 1, borderRadius: 11, fontSize: 13, fontWeight: 600, padding: '8px 0', transition: 'all 0.2s' }} className="data-[state=active]:!bg-[#007AFF] data-[state=active]:!text-white data-[state=active]:!shadow-[0_2px_12px_rgba(0,122,255,0.35)] text-[#64748b]">Materials</TabsTrigger>
+              <TabsTrigger value="orders" style={{ flex: 1, borderRadius: 11, fontSize: 13, fontWeight: 600, padding: '8px 0', transition: 'all 0.2s' }} className="data-[state=active]:!bg-[#007AFF] data-[state=active]:!text-white data-[state=active]:!shadow-[0_2px_12px_rgba(0,122,255,0.35)] text-[#64748b]">Orders</TabsTrigger>
             </TabsList>
 
-            <div className="flex-1 overflow-y-auto mt-4 pr-1">
-              <TabsContent value="profile" className="m-0 space-y-6">
-                {!isAdmin && <ReadOnlyBanner feature="client management" />}
-                <GlassCard>
-                  <div className="p-4 border-b border-[var(--border-card)]">
-                    <h3 className="text-[17px] font-semibold text-[var(--label-primary)]">Contact Information</h3>
-                    <p className="text-[13px] text-[var(--label-secondary)] mt-1">Inline changes are saved when you click update</p>
-                  </div>
-                  <div className="p-4 pt-6 space-y-4">
-                    <fieldset disabled={!isAdmin} className="space-y-4 border-none p-0 m-0 min-w-0">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Display Name</Label>
-                          <GlassInput
-                            value={editData.name}
-                            onChange={(e) => setEditData({ ...editData, name: e.target.value })}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Email Address</Label>
-                          <GlassInput
-                            value={editData.email}
-                            onChange={(e) => setEditData({ ...editData, email: e.target.value })}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Phone / WhatsApp</Label>
-                          <GlassInput
-                            value={editData.phone}
-                            onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Business Address</Label>
-                        <GlassInput
-                          value={editData.address}
-                          onChange={(e) => setEditData({ ...editData, address: e.target.value })}
-                        />
-                      </div>
-                    </fieldset>
-                    {isAdmin && (
-                      <GlassButton onClick={handleUpdateClient} className="w-fit">
-                        <Save className="mr-2 h-4 w-4" /> Save Changes
-                      </GlassButton>
-                    )}
-                  </div>
-                </GlassCard>
+            {/* --- PROFILE TAB --- */}
+            <TabsContent value="profile" className="m-0 mt-5 space-y-5">
+              {!isAdmin && <ReadOnlyBanner feature="client management" />}
 
-                <div className="grid grid-cols-2 gap-4">
-                  <GlassCard className="border-emerald-200 dark:border-emerald-900 bg-emerald-50/30 dark:bg-emerald-950/10">
-                    <div className="p-4" className="pt-6">
-                      <div className="flex flex-col items-center text-center">
-                        <div className="h-10 w-10 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center mb-2">
-                          <Package className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                        </div>
-                        <p className="text-2xl font-bold">{clientOrders.length}</p>
-                        <p className="text-zinc-500 text-xs uppercase tracking-wider font-bold">Total Orders</p>
-                      </div>
-                    </div>
-                  </GlassCard>
-                  <GlassCard className="border-blue-200 dark:border-blue-900 bg-blue-50/30 dark:bg-blue-950/10">
-                    <div className="p-4" className="pt-6">
-                      <div className="flex flex-col items-center text-center">
-                        <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center mb-2">
-                          <History className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                        </div>
-                        <p className="text-2xl font-bold">
-                          ₹{clientOrders.reduce((acc, o) => acc + (Number(o.totalAmount || o.total_amount) || 0), 0).toLocaleString('en-IN')}
-                        </p>
-                        <p className="text-zinc-500 text-xs uppercase tracking-wider font-bold">Total Spent</p>
-                      </div>
-                    </div>
-                  </GlassCard>
+              {/* Contact Information Card */}
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 18, overflow: 'hidden' }}>
+                <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(0,122,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <User className="h-3.5 w-3.5" style={{ color: '#60a5fa' }} />
+                  </div>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9' }}>Contact Information</span>
                 </div>
-              </TabsContent>
+                <div style={{ padding: 16 }}>
+                  <fieldset disabled={!isAdmin} style={{ border: 'none', padding: 0, margin: 0 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      {/* Full Name */}
+                      <div>
+                        <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'block' }}>Full Name</label>
+                        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '10px 14px', fontSize: 14, color: '#e2e8f0' }}>
+                          <input value={editData.name} onChange={(e) => setEditData({ ...editData, name: e.target.value })} style={{ background: 'transparent', border: 'none', outline: 'none', color: 'inherit', fontSize: 'inherit', width: '100%' }} />
+                        </div>
+                      </div>
+                      {/* Company */}
+                      <div>
+                        <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'block' }}>Company</label>
+                        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '10px 14px', fontSize: 14, color: '#e2e8f0' }}>
+                          <input value={editData.company} onChange={(e) => setEditData({ ...editData, company: e.target.value })} style={{ background: 'transparent', border: 'none', outline: 'none', color: 'inherit', fontSize: 'inherit', width: '100%' }} />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+                      {/* Email */}
+                      <div>
+                        <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'block' }}>Email Address</label>
+                        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '10px 14px', fontSize: 14, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Mail className="h-4 w-4" style={{ color: '#64748b', flexShrink: 0 }} />
+                          <input value={editData.email} onChange={(e) => setEditData({ ...editData, email: e.target.value })} style={{ background: 'transparent', border: 'none', outline: 'none', color: 'inherit', fontSize: 'inherit', width: '100%', minWidth: 0 }} />
+                        </div>
+                      </div>
+                      {/* Phone */}
+                      <div>
+                        <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'block' }}>Phone Number</label>
+                        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '10px 14px', fontSize: 14, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Phone className="h-4 w-4" style={{ color: '#64748b', flexShrink: 0 }} />
+                          <input value={editData.phone} onChange={(e) => setEditData({ ...editData, phone: e.target.value })} style={{ background: 'transparent', border: 'none', outline: 'none', color: 'inherit', fontSize: 'inherit', width: '100%' }} />
+                        </div>
+                      </div>
+                    </div>
+                  </fieldset>
+                </div>
+              </div>
+
+              {/* Billing Address Card */}
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 18, overflow: 'hidden' }}>
+                <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Billing Address</span>
+                </div>
+                <div style={{ padding: 16 }}>
+                  <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '12px 14px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    <MapPin className="h-4 w-4" style={{ color: '#64748b', flexShrink: 0, marginTop: 2 }} />
+                    <textarea
+                      value={editData.address}
+                      onChange={(e) => setEditData({ ...editData, address: e.target.value })}
+                      disabled={!isAdmin}
+                      rows={2}
+                      style={{ background: 'transparent', border: 'none', outline: 'none', color: '#e2e8f0', fontSize: 14, lineHeight: '20px', width: '100%', resize: 'none' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {isAdmin && (
+                <button onClick={handleUpdateClient} style={{ width: '100%', height: 48, borderRadius: 14, background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', border: '1px solid rgba(16,185,129,0.3)', boxShadow: '0 4px 16px rgba(16,185,129,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <Save className="h-4 w-4" /> Save Changes
+                </button>
+              )}
+
+              {/* -- Stat Cards -- */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                {/* Total Orders */}
+                <div style={{
+                  background: 'linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(16,185,129,0.03) 100%)',
+                  border: '1px solid rgba(16,185,129,0.15)',
+                  borderRadius: 18, padding: '18px 16px',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                    <ShoppingCart className="h-4 w-4" style={{ color: '#34d399' }} />
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#6ee7b7', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Orders</span>
+                  </div>
+                  <p style={{ fontSize: 32, fontWeight: 800, color: '#34d399', letterSpacing: '-1px', lineHeight: 1 }}>{clientOrders.length}</p>
+                  {clientOrders.filter(o => { const d = new Date(o.createdAt); const now = new Date(); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).length > 0 && (
+                    <span style={{ display: 'inline-block', marginTop: 8, fontSize: 11, fontWeight: 600, color: '#6ee7b7', background: 'rgba(16,185,129,0.15)', padding: '3px 10px', borderRadius: 20 }}>
+                      +{clientOrders.filter(o => { const d = new Date(o.createdAt); const now = new Date(); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).length} this month
+                    </span>
+                  )}
+                </div>
+
+                {/* Total Spent */}
+                <div style={{
+                  background: 'linear-gradient(135deg, rgba(0,122,255,0.08) 0%, rgba(0,122,255,0.03) 100%)',
+                  border: '1px solid rgba(0,122,255,0.15)',
+                  borderRadius: 18, padding: '18px 16px',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                    <IndianRupee className="h-4 w-4" style={{ color: '#60a5fa' }} />
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#93bbfd', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Spent</span>
+                  </div>
+                  <p style={{ fontSize: 32, fontWeight: 800, color: '#60a5fa', letterSpacing: '-1px', lineHeight: 1 }}>
+                    ?{(() => { const total = clientOrders.reduce((acc, o) => acc + (Number(o.totalAmount || o.total_amount) || 0), 0); return total >= 100000 ? (total / 100000).toFixed(1) + 'L' : total.toLocaleString('en-IN'); })()}
+                  </p>
+                  {(() => { const thisMonth = clientOrders.filter(o => { const d = new Date(o.createdAt); const now = new Date(); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).reduce((acc, o) => acc + (Number(o.totalAmount || o.total_amount) || 0), 0); return thisMonth > 0 ? (
+                    <span style={{ display: 'inline-block', marginTop: 8, fontSize: 11, fontWeight: 600, color: '#93bbfd', background: 'rgba(0,122,255,0.15)', padding: '3px 10px', borderRadius: 20 }}>
+                      ?{thisMonth >= 1000 ? (thisMonth / 1000).toFixed(0) + 'K' : thisMonth.toLocaleString('en-IN')} this month
+                    </span>
+                  ) : null; })()}
+                </div>
+              </div>
+            </TabsContent>
 
               <TabsContent value="materials" className="m-0 space-y-6">
                 {isAdmin && (
-                  <GlassCard>
-                    <h3 className="text-[17px] font-semibold mb-4 border-b border-[var(--border-card)] pb-4 text-[var(--label-primary)]">Add Client Product</h3>
+                <IOSCard variant="elevated" padding="none">
+                    <h3 className="text-[17px] font-semibold mb-4 border-b border-[var(--border)] pb-4 text-[var(--foreground)]">Add Client Product</h3>
                     <div className="p-4">
                       <form onSubmit={handleAddProduct} className="grid sm:grid-cols-3 gap-4 items-end">
                         <div className="space-y-2 sm:col-span-1">
-                          <label className="text-[13px] font-medium text-[var(--label-secondary)] pl-1">Product Name</label>
-                          <GlassInput
+                          <label className="text-[13px] font-medium text-[var(--muted-foreground)] pl-1">Product Name</label>
+                          <IOSInput
                             value={productForm.name}
-                            onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
+                            onChange={(e: any) => setProductForm({ ...productForm, name: e.target.value })}
                             placeholder="e.g. Premium Widget"
                             required
                           />
                         </div>
                         <div className="space-y-2 sm:col-span-1">
-                          <label className="text-[13px] font-medium text-[var(--label-secondary)] pl-1">Default Rate (₹)</label>
-                          <GlassInput
+                          <label className="text-[13px] font-medium text-[var(--muted-foreground)] pl-1">Default Rate (?)</label>
+                          <IOSInput
                             type="number"
                             value={productForm.defaultRate}
-                            onChange={(e) => setProductForm({ ...productForm, defaultRate: e.target.value })}
+                            onChange={(e: any) => setProductForm({ ...productForm, defaultRate: e.target.value })}
                             className="w-full"
                             placeholder="0.00"
                             min="0"
@@ -651,75 +793,75 @@ export default function ClientsPage() {
                           />
                         </div>
                         <div className="sm:col-span-1">
-                          <GlassButton type="submit" variant="primary" className="w-full h-[40px]">
-                            <Plus className="h-4 w-4 mr-2" /> Add Product
-                          </GlassButton>
+                          <IOSButton type="submit" variant="filled" size="small" className="w-full h-[40px]" icon={<Plus className="h-4 w-4" />}>
+                            Add Product
+                          </IOSButton>
                         </div>
                       </form>
                     </div>
-                  </GlassCard>
+                </IOSCard>
                 )}
 
                 <div className="space-y-4">
                   {loadingDetails ? (
-                    <div className="text-center py-10 text-[var(--label-secondary)]"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></div>
+                    <div className="text-center py-10 text-[var(--muted-foreground)]"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></div>
                   ) : clientProducts.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-40 text-center p-4 glass-section rounded-[16px]">
-                      <Package className="h-8 w-8 text-[var(--label-tertiary)] mx-auto mb-2 opacity-50" />
-                      <p className="text-[15px] text-[var(--label-secondary)]">No products mapped for this client.</p>
+                      <Package className="h-8 w-8 text-[var(--muted-foreground)] mx-auto mb-2 opacity-50" />
+                      <p className="text-[15px] text-[var(--muted-foreground)]">No products mapped for this client.</p>
                     </div>
                   ) : (
                     clientProducts.map((product) => (
-                      <GlassCard key={product.id} className="overflow-hidden p-0 mb-4">
-                        <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-[var(--fill-quaternary)] transition-colors" onClick={() => toggleProductExpand(product.id)}>
+                      <IOSCard key={product.id} variant="elevated" padding="none" className="mb-4">
+                        <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-[var(--muted)] transition-colors" onClick={() => toggleProductExpand(product.id)}>
                           <div>
-                            <h4 className="font-bold text-[16px] text-[var(--label-primary)] select-none">{product.name}</h4>
-                            <p className="text-[13px] text-[var(--label-secondary)] select-none">Rate: <span className="font-semibold text-[var(--label-primary)]">₹{Number(product.defaultRate).toLocaleString()}</span></p>
+                            <h4 className="font-bold text-[16px] text-[var(--foreground)] select-none">{product.name}</h4>
+                            <p className="text-[13px] text-[var(--muted-foreground)] select-none">Rate: <span className="font-semibold text-[var(--foreground)]">?{Number(product.defaultRate).toLocaleString()}</span></p>
                           </div>
                           <div className="flex items-center gap-3">
                             {isAdmin && (
-                              <GlassButton variant="ghost" size="sm" className="text-[var(--ios-red)] hover:bg-[var(--ios-red)] hover:text-white" onClick={(e) => { e.stopPropagation(); handleDeleteProduct(product.id); }}>
+                              <button className="h-7 w-7 rounded-full flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--destructive)] hover:bg-[var(--destructive)]/10 transition-all cursor-pointer" onClick={(e) => { e.stopPropagation(); handleDeleteProduct(product.id); }}>
                                 <Trash2 className="h-4 w-4" />
-                              </GlassButton>
+                              </button>
                             )}
-                            {expandedProducts.includes(product.id) ? <ChevronUp className="h-5 w-5 text-[var(--label-tertiary)]" /> : <ChevronDown className="h-5 w-5 text-[var(--label-tertiary)]" />}
+                            {expandedProducts.includes(product.id) ? <ChevronUp className="h-5 w-5 text-[var(--muted-foreground)]" /> : <ChevronDown className="h-5 w-5 text-[var(--muted-foreground)]" />}
                           </div>
                         </div>
 
                         {expandedProducts.includes(product.id) && (
-                          <div className="overflow-hidden border-t border-[var(--border-card)]">
-                            <div className="p-4 bg-[var(--fill-quaternary)]/30 space-y-4">
+                          <div className="overflow-hidden border-t border-[var(--border)]">
+                            <div className="p-4 bg-[var(--muted)]/30 space-y-4">
                               
                               {isAdmin && (
                                 <form onSubmit={(e) => handleAddMaterial(e, product.id)} className="flex items-end gap-3 glass-section p-3 rounded-[12px]">
                                   <div className="flex-1 space-y-1">
-                                    <label className="text-[11px] font-semibold text-[var(--label-secondary)] uppercase">New Material Name / Ref</label>
-                                    <GlassInput value={materialForm.productId === product.id ? materialForm.name : ""} onChange={(e) => setMaterialForm({ productId: product.id, name: e.target.value, type: materialForm.type, defaultQty: materialForm.defaultQty })} placeholder="e.g. Aluminium Sheet" className="h-9 text-[13px]" required />
+                                    <label className="text-[11px] font-semibold text-[var(--muted-foreground)] uppercase">New Material Name / Ref</label>
+                                    <IOSInput value={materialForm.productId === product.id ? materialForm.name : ""} onChange={(e: any) => setMaterialForm({ productId: product.id, name: e.target.value, type: materialForm.type, defaultQty: materialForm.defaultQty })} placeholder="e.g. Aluminium Sheet" className="h-9 text-[13px]" required />
                                   </div>
                                   <div className="w-1/4 space-y-1">
-                                    <label className="text-[11px] font-semibold text-[var(--label-secondary)] uppercase">Category</label>
-                                    <GlassInput value={materialForm.productId === product.id ? materialForm.type : ""} onChange={(e) => setMaterialForm({ ...materialForm, productId: product.id, type: e.target.value })} placeholder="Type" className="h-9 text-[13px]" />
+                                    <label className="text-[11px] font-semibold text-[var(--muted-foreground)] uppercase">Category</label>
+                                    <IOSInput value={materialForm.productId === product.id ? materialForm.type : ""} onChange={(e: any) => setMaterialForm({ ...materialForm, productId: product.id, type: e.target.value })} placeholder="Type" className="h-9 text-[13px]" />
                                   </div>
-                                  <GlassButton type="submit" variant="primary" size="sm" className="h-9 px-4 whitespace-nowrap"><Plus className="h-3 w-3 mr-1" /> Add</GlassButton>
+                                  <IOSButton type="submit" variant="filled" size="small" className="h-9 px-4 whitespace-nowrap" icon={<Plus className="h-3 w-3" />}>Add</IOSButton>
                                 </form>
                               )}
 
                               <div className="space-y-2">
                                 {loadingMaterials[product.id] ? (
-                                  <div className="py-4 text-center text-[var(--label-tertiary)]"><Loader2 className="h-4 w-4 animate-spin mx-auto" /></div>
+                                  <div className="py-4 text-center text-[var(--muted-foreground)]"><Loader2 className="h-4 w-4 animate-spin mx-auto" /></div>
                                 ) : !productMaterials[product.id] || productMaterials[product.id].length === 0 ? (
-                                  <div className="py-4 text-center text-[13px] text-[var(--label-secondary)] italic">No specific materials added to this product.</div>
+                                  <div className="py-4 text-center text-[13px] text-[var(--muted-foreground)] italic">No specific materials added to this product.</div>
                                 ) : (
                                   productMaterials[product.id].map((mat: any) => (
-                                    <div key={mat.id} className="flex justify-between items-center p-3 rounded-[10px] bg-[var(--bg-card)] border border-[var(--border-card)] hover:border-white/20 transition-all">
+                                    <div key={mat.id} className="flex justify-between items-center p-3 rounded-[10px] bg-[var(--card)] border border-[var(--border)] hover:border-white/20 transition-all">
                                       <div>
-                                        <p className="font-semibold text-[14px] text-[var(--label-primary)] leading-tight">{mat.name}</p>
-                                        {mat.type && <p className="text-[11px] text-[var(--label-tertiary)] mt-0.5">{mat.type}</p>}
+                                        <p className="font-semibold text-[14px] text-[var(--foreground)] leading-tight">{mat.name}</p>
+                                        {mat.type && <p className="text-[11px] text-[var(--muted-foreground)] mt-0.5">{mat.type}</p>}
                                       </div>
                                       {isAdmin && (
-                                        <GlassButton variant="ghost" size="sm" className="h-7 w-7 !p-0 text-[var(--label-tertiary)] hover:text-[var(--ios-red)]" onClick={() => handleDeleteMaterial(product.id, mat.id)}>
+                                        <button className="h-7 w-7 rounded-full flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--destructive)] transition-colors cursor-pointer" onClick={() => handleDeleteMaterial(product.id, mat.id)}>
                                           <Trash2 className="h-3.5 w-3.5" />
-                                        </GlassButton>
+                                        </button>
                                       )}
                                     </div>
                                   ))
@@ -728,91 +870,79 @@ export default function ClientsPage() {
                             </div>
                           </div>
                         )}
-                      </GlassCard>
+                      </IOSCard>
                     ))
                   )}
                 </div>
               </TabsContent>
 
-              <TabsContent value="orders" className="m-0 space-y-4">
+              <TabsContent value="orders" className="m-0 mt-5 space-y-4">
                 <div className="flex justify-between items-center px-1">
-                  <h3 className="font-bold text-zinc-500 uppercase text-xs tracking-widest">Historical Records</h3>
+                  <h3 style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Historical Records</h3>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: '#93bbfd' }}>
+                    Total: ?{selectedOrdersTotal.toLocaleString('en-IN')}
+                  </div>
                 </div>
                 {loadingDetails ? (
-                  <div className="text-center py-10">Loading orders...</div>
+                  <div className="text-center py-10" style={{ color: '#64748b' }}><Loader2 className="h-6 w-6 animate-spin mx-auto" /></div>
                 ) : clientOrders.length === 0 ? (
-                  <div className="text-center py-12 bg-white dark:bg-zinc-900 rounded-2xl border shadow-sm">
-                    <Package className="h-10 w-10 text-zinc-200 mx-auto mb-3" />
-                    <p className="text-zinc-500">No previous orders found for this client.</p>
+                  <div style={{ textAlign: 'center', padding: '48px 20px', borderRadius: 16, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <Package className="h-10 w-10 mx-auto mb-3" style={{ color: '#334155' }} />
+                    <p style={{ fontSize: 15, color: '#64748b' }}>No previous orders found for this client.</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {clientOrders.map((order) => (
                       <div
                         key={order.id}
-                        className="flex items-center justify-between p-4 bg-white dark:bg-zinc-900 rounded-xl border shadow-sm hover:shadow-md transition-shadow"
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14 }}
                       >
-                        <div className="flex items-center gap-4">
-                          <div className="h-10 w-10 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
-                            <ShoppingCart className="h-5 w-5 text-zinc-500" />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                          <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(10,132,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <ShoppingCart className="h-5 w-5" style={{ color: '#60a5fa' }} />
                           </div>
                           <div>
-                            <p className="font-bold text-zinc-900 dark:text-zinc-100">{order.productName || order.product_name || 'Unnamed Order'}</p>
-                            <p className="text-xs text-zinc-500">{order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}</p>
+                            <p style={{ fontWeight: 700, color: '#f1f5f9', fontSize: 15 }}>{order.productName || order.product_name || 'Unnamed Order'}</p>
+                            <p style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>{order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}</p>
                           </div>
                         </div>
-                        <div className="text-right flex flex-col items-end gap-1">
-                          <span className="font-bold text-primary">₹{(Number(order.totalAmount || order.total_amount) || 0).toLocaleString('en-IN')}</span>
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "text-[10px] uppercase font-bold",
-                              order.status === 'completed' ? "text-emerald-500 border-emerald-500 bg-emerald-50/50" :
-                                order.status === 'pending' ? "text-amber-500 border-amber-500 bg-amber-50/50" :
-                                  "text-blue-500 border-blue-500 bg-blue-50/50"
-                            )}
-                          >
+                        <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                          <span style={{ fontWeight: 700, color: '#60a5fa', fontSize: 15 }}>?{(Number(order.totalAmount || order.total_amount) || 0).toLocaleString('en-IN')}</span>
+                          <IOSBadge color={order.status === 'completed' ? 'green' : order.status === 'pending' ? 'orange' : 'blue'}>
                             {order.status}
-                          </Badge>
+                          </IOSBadge>
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
               </TabsContent>
+                </Tabs>
+              </div>
             </div>
-          </Tabs>
-        </div >
-      ) : (
-        <div className="hidden lg:flex flex-[2] flex-col items-center justify-center text-center p-8 bg-zinc-50 dark:bg-zinc-950/20 rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-800">
-          <div className="h-20 w-20 bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center mb-4">
-            <User className="h-10 w-10 text-zinc-400" />
-          </div>
-          <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Client Detailed View</h2>
-          <p className="text-zinc-500 max-w-sm mt-2">Select a client from the list to manage their profile, specific material rates, and view full transaction history.</p>
-        </div>
-      )}
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isDeleteDialogOpenConfirm} onOpenChange={setIsDeleteDialogOpenConfirm}>
         <DialogContent className="max-w-[350px]">
-          <DialogHeader>
-            <DialogTitle>Delete Client</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this client? All their materials and order history will be affected. This cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex gap-2">
-            <GlassButton variant="outline" onClick={() => setIsDeleteDialogOpenConfirm(false)} className="flex-1">Cancel</GlassButton>
-            <GlassButton
-              variant="destructive"
-              onClick={() => clientToDeleteId && handleDeleteClient(clientToDeleteId)}
-              className="flex-1"
-            >
-              Delete
-            </GlassButton>
-          </DialogFooter>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px 12px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg, rgba(239,68,68,0.4), rgba(255,255,255,0.06))', border: '1px solid rgba(255,255,255,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Trash2 className="h-[18px] w-[18px] text-[#f87171]" />
+            </div>
+            <div>
+              <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', lineHeight: '22px', margin: 0 }}>Delete Client</DialogTitle>
+              <DialogDescription style={{ fontSize: 13, color: '#64748b', lineHeight: '18px', margin: '2px 0 0' }}>This action cannot be undone.</DialogDescription>
+            </div>
+          </div>
+          <div style={{ padding: '16px 20px 20px' }}>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setIsDeleteDialogOpenConfirm(false)} style={{ flex: 1, height: 48, borderRadius: 14, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.10)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={() => clientToDeleteId && handleDeleteClient(clientToDeleteId)} style={{ flex: 1, height: 48, borderRadius: 14, background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: '#fff', border: '1px solid rgba(239,68,68,0.3)', boxShadow: '0 4px 16px rgba(239,68,68,0.25)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Delete</button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
-    </div >
+    </motion.div>
   );
 }

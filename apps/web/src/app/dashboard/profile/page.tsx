@@ -259,8 +259,8 @@ function ProfileContent() {
       className="max-w-4xl mx-auto space-y-6 sm:space-y-8 pb-12 px-4 sm:px-0"
     >
       <div className="flex flex-col gap-1.5 pt-4 sm:pt-6">
-        <h1 className="text-[28px] sm:text-[34px] font-bold tracking-tight text-[var(--label-primary)]">Profile</h1>
-        <p className="text-[15px] sm:text-[17px] text-[var(--label-secondary)]">Manage your account and personal details.</p>
+        <h1 className="text-[28px] sm:text-[34px] font-bold tracking-tight text-[var(--foreground)]">Profile</h1>
+        <p className="text-[15px] sm:text-[17px] text-[var(--muted-foreground)]">Manage your account and personal details.</p>
       </div>
 
       <div className="grid gap-6 sm:gap-8 md:grid-cols-4">
@@ -272,7 +272,7 @@ function ProfileContent() {
               <div className="relative inline-block group mb-3">
                 <Avatar className="h-20 w-20 sm:h-24 sm:w-24 border-4 border-white dark:border-[#1C1C1E] shadow-[var(--shadow-sm)] group-hover:opacity-90 transition-all duration-300">
                   <AvatarImage src={profile?.avatar_url} />
-                  <AvatarFallback className="bg-[var(--fill-tertiary)] text-[var(--label-primary)] text-3xl font-bold">
+                  <AvatarFallback className="bg-[var(--muted)] text-[var(--foreground)] text-3xl font-bold">
                     {formData.full_name?.substring(0, 1).toUpperCase() || user?.email?.substring(0, 1).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
@@ -292,13 +292,13 @@ function ProfileContent() {
                 />
               </div>
               <div className="space-y-0.5">
-                <h3 className="text-[17px] font-semibold text-[var(--label-primary)] truncate px-2">{formData.full_name || "Admin User"}</h3>
+                <h3 className="text-[17px] font-semibold text-[var(--foreground)] truncate px-2">{formData.full_name || "Admin User"}</h3>
                 <div className="pt-1">
                   <IOSBadge variant="blue" className="bg-[#007AFF]/10 text-[#007AFF] dark:bg-[#0A84FF]/20 dark:text-[#5AC8FA]">
                     {formData.role}
                   </IOSBadge>
                 </div>
-                <p className="text-[13px] text-[var(--label-secondary)] pt-1 truncate px-2">{user?.email}</p>
+                <p className="text-[13px] text-[var(--muted-foreground)] pt-1 truncate px-2">{user?.email}</p>
               </div>
             </div>
           </IOSCard>
@@ -306,14 +306,14 @@ function ProfileContent() {
           <IOSCard className="p-2 sm:p-2.5">
             <div className="space-y-1">
               <button
-                className={`w-full flex items-center gap-3 rounded-[12px] px-3.5 py-2.5 text-[15px] font-medium transition-colors ${activeTab === "profile" ? "bg-[var(--fill-tertiary)] text-[var(--label-primary)]" : "text-[var(--label-secondary)] hover:bg-[var(--fill-quaternary)]"}`}
+                className={`w-full flex items-center gap-3 rounded-[12px] px-3.5 py-2.5 text-[15px] font-medium transition-colors ${activeTab === "profile" ? "bg-[var(--muted)] text-[var(--foreground)]" : "text-[var(--muted-foreground)] hover:bg-[var(--muted)]"}`}
                 onClick={() => setActiveTab("profile")}
               >
                 <User size={18} className={activeTab === "profile" ? "text-[#007AFF]" : "opacity-70"} />
                 Profile details
               </button>
 
-              <div className="pt-2 mt-2 border-t border-[var(--border-card)]">
+              <div className="pt-2 mt-2 border-t border-[var(--border)]">
                 <button
                   className="w-full flex items-center gap-3 rounded-[12px] px-3.5 py-2.5 text-[15px] font-medium text-[#FF3B30] hover:bg-[#FF3B30]/10 transition-colors"
                   onClick={() => handleLogout()}
@@ -338,17 +338,17 @@ function ProfileContent() {
                 className="space-y-6"
               >
                 <div className="flex flex-col gap-1.5 mb-6">
-                  <h2 className="text-[22px] font-semibold text-[var(--label-primary)]">Personal Information</h2>
-                  <p className="text-[15px] text-[var(--label-secondary)]">Update your personal details and contact info.</p>
+                  <h2 className="text-[22px] font-semibold text-[var(--foreground)]">Personal Information</h2>
+                  <p className="text-[15px] text-[var(--muted-foreground)]">Update your personal details and contact info.</p>
                 </div>
 
                 <IOSCard className="p-1 sm:p-2">
                   <form onSubmit={handleUpdateProfile} className="p-4 sm:p-5">
                     <div className="grid gap-6 sm:grid-cols-2">
                       <div className="space-y-2">
-                        <label htmlFor="full_name" className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">Full Name</label>
+                        <label htmlFor="full_name" className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">Full Name</label>
                         <div className="relative">
-                          <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--label-tertiary)]" />
+                          <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--muted-foreground)]" />
                           <IOSInput
                             id="full_name"
                             placeholder="e.g. John Doe"
@@ -359,22 +359,22 @@ function ProfileContent() {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <label htmlFor="email" className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">Email Address</label>
+                        <label htmlFor="email" className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">Email Address</label>
                         <div className="relative">
-                          <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--label-tertiary)]" />
+                          <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--muted-foreground)]" />
                           <IOSInput
                             id="email"
                             type="email"
                             disabled
                             value={formData.email}
-                            className="pl-11 h-[48px] bg-[var(--fill-quaternary)] opacity-60 cursor-not-allowed"
+                            className="pl-11 h-[48px] bg-[var(--muted)] opacity-60 cursor-not-allowed"
                           />
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <label htmlFor="phone_number" className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">Phone Number</label>
+                        <label htmlFor="phone_number" className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">Phone Number</label>
                         <div className="relative">
-                          <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--label-tertiary)]" />
+                          <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--muted-foreground)]" />
                           <IOSInput
                             id="phone_number"
                             placeholder="+91 9876543210"
@@ -385,14 +385,14 @@ function ProfileContent() {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <label htmlFor="role" className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">Role</label>
+                        <label htmlFor="role" className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">Role</label>
                         <div className="relative">
-                          <Briefcase className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--label-tertiary)] pointer-events-none" />
+                          <Briefcase className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--muted-foreground)] pointer-events-none" />
                           <select
                             id="role"
                             value={formData.role}
                             onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                            className="w-full h-[48px] pl-11 pr-4 rounded-[12px] bg-white dark:bg-[#1C1C1E] border border-[var(--border-card)] text-[17px] text-[var(--label-primary)] focus:ring-[3px] focus:ring-[#007AFF]/30 focus:border-[#007AFF] outline-none transition-all appearance-none"
+                            className="w-full h-[48px] pl-11 pr-4 rounded-[12px] bg-white dark:bg-[#1C1C1E] border border-[var(--border)] text-[17px] text-[var(--foreground)] focus:ring-[3px] focus:ring-[#007AFF]/30 focus:border-[#007AFF] outline-none transition-all appearance-none"
                           >
                             <option value="Admin">Admin (Owner)</option>
                             <option value="Staff">Staff</option>
@@ -418,8 +418,8 @@ function ProfileContent() {
 
                 {/* ── Account Management Section ── */}
                 <div className="flex flex-col gap-1.5 mb-6 mt-8">
-                  <h2 className="text-[22px] font-semibold text-[var(--label-primary)]">Account Management</h2>
-                  <p className="text-[15px] text-[var(--label-secondary)]">Add or switch between linked accounts.</p>
+                  <h2 className="text-[22px] font-semibold text-[var(--foreground)]">Account Management</h2>
+                  <p className="text-[15px] text-[var(--muted-foreground)]">Add or switch between linked accounts.</p>
                 </div>
 
                 <IOSCard className="p-1 sm:p-2">
@@ -427,14 +427,14 @@ function ProfileContent() {
                     {/* Add Account */}
                     <Dialog open={isAddAccountOpen} onOpenChange={setIsAddAccountOpen}>
                       <DialogTrigger asChild>
-                        <div className="flex items-center justify-between p-4 rounded-[16px] bg-[var(--fill-quaternary)] border border-[var(--border-card)] hover:bg-[var(--fill-tertiary)] transition-all cursor-pointer group active:scale-[0.99]">
+                        <div className="flex items-center justify-between p-4 rounded-[16px] bg-[var(--muted)] border border-[var(--border)] hover:bg-[var(--muted)] transition-all cursor-pointer group active:scale-[0.99]">
                           <div className="flex items-center gap-4">
                             <div className="w-10 h-10 rounded-[12px] bg-[#34C759]/10 flex items-center justify-center group-hover:scale-105 transition-transform">
                               <UserPlus className="h-5 w-5 text-[#34C759]" />
                             </div>
                             <div>
-                              <p className="text-[15px] font-semibold text-[var(--label-primary)]">Add Account</p>
-                              <p className="text-[13px] text-[var(--label-secondary)] pt-0.5">Link a new account to switch between.</p>
+                              <p className="text-[15px] font-semibold text-[var(--foreground)]">Add Account</p>
+                              <p className="text-[13px] text-[var(--muted-foreground)] pt-0.5">Link a new account to switch between.</p>
                             </div>
                           </div>
                           <IOSButton variant="gray" className="rounded-full px-4 text-[13px] font-semibold">Add</IOSButton>
@@ -442,15 +442,20 @@ function ProfileContent() {
                       </DialogTrigger>
                       <DialogContent className="sm:max-w-md bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px] p-0 overflow-hidden">
                         <div className="p-6">
-                          <DialogHeader>
-                            <DialogTitle className="text-[20px] font-semibold text-[var(--label-primary)]">Add Account</DialogTitle>
-                            <DialogDescription className="text-[14px] text-[var(--label-secondary)] mt-1.5">Link a new account to your profile for quick switching.</DialogDescription>
-                          </DialogHeader>
+                          <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+                            <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, rgba(59,130,246,0.4), rgba(255,255,255,0.06))", border: "1px solid rgba(255,255,255,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <UserPlus className="h-[18px] w-[18px] text-[#60a5fa]" />
+                            </div>
+                            <div>
+                              <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "#f1f5f9", lineHeight: "22px", margin: 0 }}>Add Account</DialogTitle>
+                              <DialogDescription style={{ fontSize: 13, color: "#64748b", lineHeight: "18px", margin: "2px 0 0" }}>Link a new account for quick switching</DialogDescription>
+                            </div>
+                          </div>
                           <div className="space-y-4 py-6">
                             <div className="space-y-1.5">
-                              <label htmlFor="add-email" className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">Email Address</label>
+                              <label htmlFor="add-email" className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">Email Address</label>
                               <div className="relative">
-                                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--label-tertiary)]" />
+                                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--muted-foreground)]" />
                                 <IOSInput
                                   id="add-email"
                                   type="email"
@@ -462,9 +467,9 @@ function ProfileContent() {
                               </div>
                             </div>
                             <div className="space-y-1.5">
-                              <label htmlFor="add-password" className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">Password</label>
+                              <label htmlFor="add-password" className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">Password</label>
                               <div className="relative">
-                                <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--label-tertiary)]" />
+                                <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--muted-foreground)]" />
                                 <IOSInput
                                   id="add-password"
                                   type="password"
@@ -476,14 +481,14 @@ function ProfileContent() {
                               </div>
                             </div>
                             <div className="space-y-1.5">
-                              <label htmlFor="add-role" className="text-[13px] font-medium text-[var(--label-secondary)] ml-1">Role</label>
+                              <label htmlFor="add-role" className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">Role</label>
                               <div className="relative">
-                                <Briefcase className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--label-tertiary)] pointer-events-none" />
+                                <Briefcase className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--muted-foreground)] pointer-events-none" />
                                 <select
                                   id="add-role"
                                   value={addAccountData.role}
                                   onChange={(e) => setAddAccountData({ ...addAccountData, role: e.target.value })}
-                                  className="w-full h-[44px] pl-11 pr-4 rounded-[12px] bg-white dark:bg-[#1C1C1E] border border-[var(--border-card)] text-[15px] text-[var(--label-primary)] focus:ring-[3px] focus:ring-[#007AFF]/30 focus:border-[#007AFF] outline-none transition-all appearance-none"
+                                  className="w-full h-[44px] pl-11 pr-4 rounded-[12px] bg-white dark:bg-[#1C1C1E] border border-[var(--border)] text-[15px] text-[var(--foreground)] focus:ring-[3px] focus:ring-[#007AFF]/30 focus:border-[#007AFF] outline-none transition-all appearance-none"
                                 >
                                   <option value="Admin">Admin</option>
                                   <option value="Staff">Staff</option>
@@ -491,7 +496,7 @@ function ProfileContent() {
                               </div>
                             </div>
                           </div>
-                          <DialogFooter className="flex gap-2 pt-2 border-t border-[var(--border-card)] border-x-[-24px] mx-[-24px] px-6 pb-2">
+                          <DialogFooter className="flex gap-2 pt-2 border-t border-[var(--border)] border-x-[-24px] mx-[-24px] px-6 pb-2">
                             <IOSButton
                               variant="filled"
                               color="blue"
@@ -510,14 +515,14 @@ function ProfileContent() {
                     {/* Switch Account */}
                     <Dialog open={isSwitchAccountOpen} onOpenChange={setIsSwitchAccountOpen}>
                       <DialogTrigger asChild>
-                        <div className="flex items-center justify-between p-4 rounded-[16px] bg-[var(--fill-quaternary)] border border-[var(--border-card)] hover:bg-[var(--fill-tertiary)] transition-all cursor-pointer group active:scale-[0.99]">
+                        <div className="flex items-center justify-between p-4 rounded-[16px] bg-[var(--muted)] border border-[var(--border)] hover:bg-[var(--muted)] transition-all cursor-pointer group active:scale-[0.99]">
                           <div className="flex items-center gap-4">
                             <div className="w-10 h-10 rounded-[12px] bg-[#5856D6]/10 flex items-center justify-center group-hover:scale-105 transition-transform">
                               <ArrowLeftRight className="h-5 w-5 text-[#5856D6]" />
                             </div>
                             <div>
-                              <p className="text-[15px] font-semibold text-[var(--label-primary)]">Switch Account</p>
-                              <p className="text-[13px] text-[var(--label-secondary)] pt-0.5">Switch between your linked accounts.</p>
+                              <p className="text-[15px] font-semibold text-[var(--foreground)]">Switch Account</p>
+                              <p className="text-[13px] text-[var(--muted-foreground)] pt-0.5">Switch between your linked accounts.</p>
                             </div>
                           </div>
                           <IOSButton variant="gray" className="rounded-full px-4 text-[13px] font-semibold">Switch</IOSButton>
@@ -525,23 +530,28 @@ function ProfileContent() {
                       </DialogTrigger>
                       <DialogContent className="sm:max-w-md bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px] p-0 overflow-hidden">
                         <div className="p-6">
-                          <DialogHeader>
-                            <DialogTitle className="text-[20px] font-semibold text-[var(--label-primary)]">Switch Account</DialogTitle>
-                            <DialogDescription className="text-[14px] text-[var(--label-secondary)] mt-1.5">Select an account to switch to.</DialogDescription>
-                          </DialogHeader>
+                          <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+                            <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, rgba(168,85,247,0.4), rgba(255,255,255,0.06))", border: "1px solid rgba(255,255,255,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <Users className="h-[18px] w-[18px] text-[#c084fc]" />
+                            </div>
+                            <div>
+                              <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "#f1f5f9", lineHeight: "22px", margin: 0 }}>Switch Account</DialogTitle>
+                              <DialogDescription style={{ fontSize: 13, color: "#64748b", lineHeight: "18px", margin: "2px 0 0" }}>Select an account to switch to</DialogDescription>
+                            </div>
+                          </div>
                           <div className="py-6 space-y-2">
                             {/* Current account */}
                             <div className="flex items-center justify-between p-3.5 rounded-[14px] bg-[#007AFF]/5 border border-[#007AFF]/20">
                               <div className="flex items-center gap-3">
                                 <Avatar className="h-10 w-10">
                                   <AvatarImage src={profile?.avatar_url} />
-                                  <AvatarFallback className="bg-[var(--fill-tertiary)] text-[var(--label-primary)] text-sm font-bold">
+                                  <AvatarFallback className="bg-[var(--muted)] text-[var(--foreground)] text-sm font-bold">
                                     {formData.full_name?.substring(0, 1).toUpperCase() || user?.email?.substring(0, 1).toUpperCase()}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                  <p className="text-[15px] font-semibold text-[var(--label-primary)]">{formData.full_name || user?.email?.split("@")[0]}</p>
-                                  <p className="text-[12px] text-[var(--label-secondary)]">{user?.email}</p>
+                                  <p className="text-[15px] font-semibold text-[var(--foreground)]">{formData.full_name || user?.email?.split("@")[0]}</p>
+                                  <p className="text-[12px] text-[var(--muted-foreground)]">{user?.email}</p>
                                 </div>
                               </div>
                               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#34C759]/10 text-[#34C759]">
@@ -552,9 +562,9 @@ function ProfileContent() {
                             {/* Linked accounts */}
                             {linkedAccounts.length === 0 ? (
                               <div className="text-center py-8">
-                                <Users className="mx-auto h-10 w-10 text-[var(--label-tertiary)] mb-3" />
-                                <p className="text-[15px] font-medium text-[var(--label-secondary)]">No linked accounts yet</p>
-                                <p className="text-[13px] text-[var(--label-tertiary)] mt-1">Use "Add Account" to link additional accounts.</p>
+                                <Users className="mx-auto h-10 w-10 text-[var(--muted-foreground)] mb-3" />
+                                <p className="text-[15px] font-medium text-[var(--muted-foreground)]">No linked accounts yet</p>
+                                <p className="text-[13px] text-[var(--muted-foreground)] mt-1">Use "Add Account" to link additional accounts.</p>
                               </div>
                             ) : (
                               linkedAccounts.map((account) => {
@@ -564,7 +574,7 @@ function ProfileContent() {
                                     key={account.id}
                                     disabled={switchingAccountId !== null}
                                     onClick={() => handleSwitchAccount(account.id, account.email, account.role)}
-                                    className="w-full flex items-center justify-between p-3.5 rounded-[14px] bg-[var(--fill-quaternary)] border border-[var(--border-card)] hover:bg-[var(--fill-tertiary)] transition-all cursor-pointer active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
+                                    className="w-full flex items-center justify-between p-3.5 rounded-[14px] bg-[var(--muted)] border border-[var(--border)] hover:bg-[var(--muted)] transition-all cursor-pointer active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
                                   >
                                     <div className="flex items-center gap-3">
                                       <Avatar className="h-10 w-10">
@@ -576,14 +586,14 @@ function ProfileContent() {
                                         </AvatarFallback>
                                       </Avatar>
                                       <div className="text-left">
-                                        <p className="text-[15px] font-semibold text-[var(--label-primary)]">{account.fullName || account.email}</p>
-                                        <p className="text-[12px] text-[var(--label-secondary)]">{account.email} · {account.role}</p>
+                                        <p className="text-[15px] font-semibold text-[var(--foreground)]">{account.fullName || account.email}</p>
+                                        <p className="text-[12px] text-[var(--muted-foreground)]">{account.email} · {account.role}</p>
                                       </div>
                                     </div>
                                     {isSwitching ? (
                                       <Loader2 className="h-4 w-4 text-[#007AFF] animate-spin" />
                                     ) : (
-                                      <ArrowLeftRight className="h-4 w-4 text-[var(--label-tertiary)]" />
+                                      <ArrowLeftRight className="h-4 w-4 text-[var(--muted-foreground)]" />
                                     )}
                                   </button>
                                 );

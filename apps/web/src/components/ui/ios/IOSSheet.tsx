@@ -1,9 +1,14 @@
 /**
- * IOSSheet — iOS-style modal sheet with drag-to-dismiss
+ * IOSSheet — Enterprise modal sheet with drag-to-dismiss
  *
- * Features: backdrop blur, drag handle pill, spring animation,
- * 4 sizes (small/medium/large/full), body scroll lock,
- * portaled to document.body for z-index safety
+ * Phase 1 Enterprise Design System:
+ * - Uses --overlay-* CSS tokens for automatic light/dark mode
+ * - No spring physics — cubic-bezier [0.4, 0, 0.2, 1]
+ * - Handle pill: 48×5, centered, 16px top margin
+ * - Border radius: 32px 32px 0 0
+ * - No gradients, no glassmorphism, no neon
+ *
+ * Delegates all backdrop/animation/scroll-lock to MobileSheet.
  *
  * @example
  * <IOSSheet isOpen={true} onClose={() => {}} title="New Order" size="medium">
@@ -12,11 +17,10 @@
  */
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { motion, AnimatePresence, useDragControls, PanInfo } from 'framer-motion';
+import React from 'react';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { MobileSheet } from '@/components/ui/MobileSheet';
 
 export interface IOSSheetProps {
     isOpen: boolean;
@@ -40,7 +44,7 @@ export interface IOSSheetProps {
 const sizeMap = {
     small: '40vh',
     medium: '60vh',
-    large: '80vh',
+    large: '88vh',
     full: '100vh',
 };
 
@@ -55,191 +59,108 @@ export function IOSSheet({
     children,
     className,
 }: IOSSheetProps) {
-    const dragControls = useDragControls();
-    const [mounted, setMounted] = useState(false);
-
-    // Ensure portal only after client mount
-    useEffect(() => { setMounted(true); }, []);
-
-    // Prevent body scroll when open
-    useEffect(() => {
-        if (isOpen) {
-            document.body.style.overflow = 'hidden';
-        }
-        return () => {
-            document.body.style.overflow = '';
-        };
-    }, [isOpen]);
-
-    const handleDragEnd = (_: unknown, info: PanInfo) => {
-        if (info.offset.y > 100 || info.velocity.y > 300) {
-            onClose();
-        }
-    };
-
-    if (!mounted) return null;
-
-    const sheetJSX = (
-        <AnimatePresence>
-            {isOpen && (
-                <>
-                    {/* ── Backdrop overlay ── */}
-                    <motion.div
-                        style={{
-                            position: 'fixed',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            width: '100%',
-                            height: '100%',
-                            zIndex: 1000,
-                            background: 'rgba(0, 0, 0, 0.70)',
-                            backdropFilter: 'blur(8px)',
-                            WebkitBackdropFilter: 'blur(8px)',
-                        }}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        onClick={onClose}
-                    />
-
-                    {/* ── Sheet container ── */}
-                    <motion.div
-                        className={cn(className)}
-                        style={{
-                            position: 'fixed',
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            zIndex: 1001,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            maxHeight: sizeMap[size],
-                            background: 'linear-gradient(160deg, rgba(14, 22, 44, 0.97) 0%, rgba(8, 16, 36, 0.99) 100%)',
-                            backdropFilter: 'blur(24px) saturate(180%)',
-                            WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-                            border: '1px solid rgba(255, 255, 255, 0.10)',
-                            borderBottom: 'none',
-                            boxShadow: '0 -8px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
-                            borderRadius: '28px 28px 0 0',
-                            fontFamily: 'var(--font-glass)',
-                        }}
-                        initial={{ y: '100%' }}
-                        animate={{ y: 0 }}
-                        exit={{ y: '100%' }}
-                        transition={{
-                            type: 'spring',
-                            damping: 30,
-                            stiffness: 300,
-                        }}
-                        drag="y"
-                        dragControls={dragControls}
-                        dragConstraints={{ top: 0 }}
-                        dragElastic={{ top: 0, bottom: 0.5 }}
-                        onDragEnd={handleDragEnd}
-                    >
-                        {/* Drag Handle */}
-                        <div
-                            className="flex justify-center pt-2 pb-1 cursor-grab active:cursor-grabbing"
-                            onPointerDown={(e) => dragControls.start(e)}
-                        >
-                            <div
-                                className="w-[36px] h-[5px] rounded-full"
-                                style={{ background: 'rgba(255,255,255,0.15)' }}
-                            />
-                        </div>
-
-                        {/* Header */}
-                        {(title || showClose || action) && (
-                            <div
-                                className="flex items-center justify-between px-4 py-2"
-                                style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}
+    return (
+        <MobileSheet
+            open={isOpen}
+            onClose={onClose}
+            maxHeight={sizeMap[size]}
+            className={cn(className)}
+            showHandle={true}
+            dragToClose={true}
+        >
+            {/* Header */}
+            {(title || showClose || action) && (
+                <div
+                    className="flex items-center justify-between px-4 py-2"
+                    style={{ borderBottom: '1px solid var(--overlay-border)' }}
+                >
+                    <div className="w-[70px]">
+                        {showClose && (
+                            <button
+                                onClick={onClose}
+                                className="flex items-center justify-center cursor-pointer active:scale-[0.98] transition-transform duration-100"
+                                style={{
+                                    width: '36px',
+                                    height: '36px',
+                                    borderRadius: '50%',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: 'var(--overlay-text-muted)',
+                                    transition: 'background 0.15s ease, transform 0.1s ease',
+                                }}
+                                onMouseEnter={e => (e.currentTarget.style.background = 'var(--overlay-hover)')}
+                                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                             >
-                                <div className="w-[70px]">
-                                    {showClose && (
-                                        <motion.button
-                                            onClick={onClose}
-                                            className="flex items-center justify-center cursor-pointer"
-                                            style={{
-                                                width: '36px',
-                                                height: '36px',
-                                                borderRadius: '10px',
-                                                background: 'rgba(255,255,255,0.06)',
-                                                border: '1px solid var(--glass-border)',
-                                            }}
-                                            whileTap={{ scale: 0.9 }}
-                                            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,80,80,0.2)')}
-                                            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
-                                        >
-                                            <X size={16} style={{ color: 'var(--g-text-primary)' }} />
-                                        </motion.button>
-                                    )}
-                                </div>
-
-                                <div className="text-center flex-1">
-                                    {title && (
-                                        <h2
-                                            className="text-[17px] font-semibold leading-[22px]"
-                                            style={{ color: 'var(--g-text-primary)', fontFamily: 'var(--font-glass)' }}
-                                        >
-                                            {title}
-                                        </h2>
-                                    )}
-                                    {subtitle && (
-                                        <p
-                                            className="text-[13px] leading-[18px]"
-                                            style={{ color: 'var(--g-text-secondary)' }}
-                                        >
-                                            {subtitle}
-                                        </p>
-                                    )}
-                                </div>
-
-                                <div className="w-[70px] flex justify-end">
-                                    {action && (
-                                        <motion.button
-                                            onClick={action.onClick}
-                                            disabled={action.disabled}
-                                            className={cn(
-                                                'text-[17px] font-semibold cursor-pointer',
-                                                action.disabled && 'opacity-40'
-                                            )}
-                                            style={
-                                                action.variant === 'filled'
-                                                    ? {
-                                                          background: 'linear-gradient(135deg, rgba(99,210,255,0.9), rgba(0,160,255,0.8), rgba(0,100,220,0.85))',
-                                                          color: '#fff',
-                                                          padding: '4px 12px',
-                                                          borderRadius: 'var(--glass-radius-btn)',
-                                                          border: 'none',
-                                                          boxShadow: '0 4px 16px var(--g-accent-blue-glow)',
-                                                      }
-                                                    : {
-                                                          color: 'var(--g-accent-blue)',
-                                                          background: 'transparent',
-                                                          border: 'none',
-                                                      }
-                                            }
-                                            whileTap={{ scale: 0.95 }}
-                                        >
-                                            {action.label}
-                                        </motion.button>
-                                    )}
-                                </div>
-                            </div>
+                                <X size={16} />
+                            </button>
                         )}
+                    </div>
 
-                        {/* Content */}
-                        <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4">
-                            {children}
-                        </div>
-                    </motion.div>
-                </>
+                    <div className="text-center flex-1">
+                        {title && (
+                            <h2
+                                style={{
+                                    fontSize: 18,
+                                    fontWeight: 600,
+                                    lineHeight: '22px',
+                                    color: 'var(--overlay-text-primary)',
+                                    margin: 0,
+                                }}
+                            >
+                                {title}
+                            </h2>
+                        )}
+                        {subtitle && (
+                            <p
+                                style={{
+                                    fontSize: 13,
+                                    lineHeight: '18px',
+                                    color: 'var(--overlay-text-secondary)',
+                                    margin: '2px 0 0',
+                                }}
+                            >
+                                {subtitle}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="w-[70px] flex justify-end">
+                        {action && (
+                            <button
+                                onClick={action.onClick}
+                                disabled={action.disabled}
+                                className={cn(
+                                    'text-[14px] font-medium cursor-pointer active:scale-[0.98] transition-transform duration-100',
+                                    action.disabled && 'opacity-45 cursor-not-allowed'
+                                )}
+                                style={
+                                    action.variant === 'filled'
+                                        ? {
+                                              background: 'var(--overlay-accent)',
+                                              color: '#fff',
+                                              padding: '6px 16px',
+                                              borderRadius: 12,
+                                              border: 'none',
+                                              height: 36,
+                                          }
+                                        : {
+                                              color: 'var(--overlay-accent)',
+                                              background: 'transparent',
+                                              border: 'none',
+                                          }
+                                }
+                            >
+                                {action.label}
+                            </button>
+                        )}
+                    </div>
+                </div>
             )}
-        </AnimatePresence>
-    );
 
-    return createPortal(sheetJSX, document.body);
+            {/* Content — scrollable */}
+            <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4">
+                {children}
+            </div>
+        </MobileSheet>
+    );
 }

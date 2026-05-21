@@ -1,321 +1,422 @@
 /**
- * Enterprise RBAC Permission System
+ * Enterprise RBAC Permission System — Flat Dot-Notation Schema
  * 
- * Defines the granular permission structure used throughout the application.
- * Permissions follow the pattern: module.action
+ * Permissions follow the pattern: "module.action" → boolean
+ * Role presets: Owner, Manager, Staff, Accountant
  * 
- * Modules: orders, production, inventory, clients, finance, assistant, team, settings, audit
- * Actions: view, create, edit, delete, approve, export
+ * Resolution order:
+ *   1. Start with role preset
+ *   2. Apply user.customPermissions on top (merge)
+ *   3. customPermissions override role defaults
+ *   4. Owner always has all permissions regardless
  */
 
-// ─── Permission Actions per Module ──────────────────────────────
-export const PERMISSION_MODULES = {
-    orders: ['view', 'create', 'edit', 'delete', 'approve', 'export'] as const,
-    production: ['view', 'create', 'edit', 'delete', 'export'] as const,
-    inventory: ['view', 'create', 'edit', 'delete', 'export'] as const,
-    clients: ['view', 'create', 'edit', 'delete', 'export'] as const,
-    finance: ['view', 'create', 'edit', 'delete', 'export'] as const,
-    assistant: ['view'] as const,
-    team: ['view', 'create', 'edit', 'delete'] as const,
-    settings: ['view', 'edit'] as const,
-    audit: ['view', 'export'] as const,
-} as const;
+// ─── Role Types ─────────────────────────────────────────────────
+export type RoleType = "Owner" | "Manager" | "Staff" | "Accountant";
 
-export type PermissionModule = keyof typeof PERMISSION_MODULES;
-export type PermissionAction<M extends PermissionModule> = (typeof PERMISSION_MODULES)[M][number];
-
-// Flat permission string format: "module.action"
-export type PermissionString = {
-    [M in PermissionModule]: `${M}.${PermissionAction<M>}`;
-}[PermissionModule];
-
-// ─── Permission Map (used in User/Template models) ──────────────
-export interface ModulePermissions {
-    view: boolean;
-    create: boolean;
-    edit: boolean;
-    delete: boolean;
-    approve?: boolean;
-    export: boolean;
+/** Map legacy "Admin" to "Owner" at runtime */
+export function normalizeRoleType(role: string | null | undefined): RoleType | null {
+    if (!role) return null;
+    const lower = role.toLowerCase();
+    if (lower === "admin" || lower === "owner") return "Owner";
+    if (lower === "manager") return "Manager";
+    if (lower === "staff") return "Staff";
+    if (lower === "accountant") return "Accountant";
+    return null;
 }
 
-export interface PermissionMap {
-    orders: ModulePermissions & { approve: boolean };
-    production: Omit<ModulePermissions, 'approve'>;
-    inventory: Omit<ModulePermissions, 'approve'>;
-    clients: Omit<ModulePermissions, 'approve'>;
-    finance: Omit<ModulePermissions, 'approve'>;
-    assistant: { view: boolean };
-    team: Omit<ModulePermissions, 'approve' | 'export'>;
-    settings: { view: boolean; edit: boolean };
-    audit: { view: boolean; export: boolean };
+export function isOwnerRole(role: string | null | undefined): boolean {
+    if (!role) return false;
+    const lower = role.toLowerCase();
+    return lower === "admin" || lower === "owner";
 }
 
-// ─── Admin Full Permissions (immutable) ─────────────────────────
-export const ADMIN_PERMISSIONS: PermissionMap = {
-    orders: { view: true, create: true, edit: true, delete: true, approve: true, export: true },
-    production: { view: true, create: true, edit: true, delete: true, export: true },
-    inventory: { view: true, create: true, edit: true, delete: true, export: true },
-    clients: { view: true, create: true, edit: true, delete: true, export: true },
-    finance: { view: true, create: true, edit: true, delete: true, export: true },
-    assistant: { view: true },
-    team: { view: true, create: true, edit: true, delete: true },
-    settings: { view: true, edit: true },
-    audit: { view: true, export: true },
+// ─── Flat Permission Map Type ───────────────────────────────────
+export type FlatPermissionMap = Record<string, boolean>;
+
+// ─── Base Permission Keys (defines all possible permissions) ────
+export const BASE_PERMISSIONS: FlatPermissionMap = {
+    // Orders
+    "orders.view": true,
+    "orders.create": true,
+    "orders.edit": true,
+    "orders.delete": false,
+    "orders.export": false,
+
+    // Production
+    "production.view": true,
+    "production.create": true,
+    "production.complete": true,
+    "production.delete": false,
+
+    // Clients
+    "clients.view": true,
+    "clients.create": true,
+    "clients.edit": true,
+    "clients.delete": false,
+
+    // Inventory
+    "inventory.view": true,
+    "inventory.create": false,
+    "inventory.edit": false,
+    "inventory.delete": false,
+    "inventory.restock": false,
+
+    // Invoices
+    "invoices.view": true,
+    "invoices.create": false,
+    "invoices.send": false,
+    "invoices.delete": false,
+    "invoices.markPaid": false,
+
+    // Staff
+    "staff.view": false,
+    "staff.manage": false,
+    "staff.salary": false,
+
+    // Reports
+    "reports.view": false,
+    "reports.export": false,
+    "reports.gst": false,
+
+    // Settings
+    "settings.view": false,
+    "settings.edit": false,
+    "settings.billing": false,
+
+    // Team
+    "team.view": false,
+    "team.invite": false,
+    "team.removeUser": false,
+    "team.editPermissions": false,
 };
 
-// ─── Default Permission Templates ───────────────────────────────
-export const DEFAULT_TEMPLATES: Record<string, { name: string; description: string; permissions: PermissionMap }> = {
-    full_access: {
-        name: 'Full Access Staff',
-        description: 'Full access to all operational modules. No access to Finance, Settings, or Team management.',
+// ─── All Permission Keys ────────────────────────────────────────
+export const ALL_PERMISSION_KEYS = Object.keys(BASE_PERMISSIONS);
+
+// ─── Permission Sections (for UI grouping) ──────────────────────
+export interface PermissionSection {
+    id: string;
+    label: string;
+    icon?: string;
+    permissions: { key: string; label: string }[];
+}
+
+export const PERMISSION_SECTIONS: PermissionSection[] = [
+    {
+        id: "orders",
+        label: "Orders",
+        icon: "ShoppingCart",
+        permissions: [
+            { key: "orders.view", label: "View orders" },
+            { key: "orders.create", label: "Create orders" },
+            { key: "orders.edit", label: "Edit orders" },
+            { key: "orders.delete", label: "Delete orders" },
+            { key: "orders.export", label: "Export orders" },
+        ],
+    },
+    {
+        id: "production",
+        label: "Production",
+        icon: "Factory",
+        permissions: [
+            { key: "production.view", label: "View production runs" },
+            { key: "production.create", label: "Create production runs" },
+            { key: "production.complete", label: "Complete production runs" },
+            { key: "production.delete", label: "Delete production runs" },
+        ],
+    },
+    {
+        id: "clients",
+        label: "Clients",
+        icon: "Users",
+        permissions: [
+            { key: "clients.view", label: "View clients" },
+            { key: "clients.create", label: "Create clients" },
+            { key: "clients.edit", label: "Edit clients" },
+            { key: "clients.delete", label: "Delete clients" },
+        ],
+    },
+    {
+        id: "inventory",
+        label: "Inventory",
+        icon: "Package",
+        permissions: [
+            { key: "inventory.view", label: "View inventory" },
+            { key: "inventory.create", label: "Add materials" },
+            { key: "inventory.edit", label: "Edit materials" },
+            { key: "inventory.delete", label: "Delete materials" },
+            { key: "inventory.restock", label: "Restock inventory" },
+        ],
+    },
+    {
+        id: "invoices",
+        label: "Invoices",
+        icon: "FileText",
+        permissions: [
+            { key: "invoices.view", label: "View invoices" },
+            { key: "invoices.create", label: "Create invoices" },
+            { key: "invoices.send", label: "Send invoices" },
+            { key: "invoices.delete", label: "Delete invoices" },
+            { key: "invoices.markPaid", label: "Mark as paid" },
+        ],
+    },
+    {
+        id: "staff",
+        label: "Staff",
+        icon: "UserCog",
+        permissions: [
+            { key: "staff.view", label: "View staff" },
+            { key: "staff.manage", label: "Manage staff" },
+            { key: "staff.salary", label: "View salaries" },
+        ],
+    },
+    {
+        id: "reports",
+        label: "Reports",
+        icon: "BarChart3",
+        permissions: [
+            { key: "reports.view", label: "View reports" },
+            { key: "reports.export", label: "Export reports" },
+            { key: "reports.gst", label: "GST reports" },
+        ],
+    },
+    {
+        id: "settings",
+        label: "Settings",
+        icon: "Settings",
+        permissions: [
+            { key: "settings.view", label: "View settings" },
+            { key: "settings.edit", label: "Edit settings" },
+            { key: "settings.billing", label: "Manage billing" },
+        ],
+    },
+    {
+        id: "team",
+        label: "Team",
+        icon: "Users2",
+        permissions: [
+            { key: "team.view", label: "View team members" },
+            { key: "team.invite", label: "Invite members" },
+            { key: "team.removeUser", label: "Remove members" },
+            { key: "team.editPermissions", label: "Edit permissions" },
+        ],
+    },
+];
+
+// ─── Role Presets ────────────────────────────────────────────────
+
+function allTrue(): FlatPermissionMap {
+    const map: FlatPermissionMap = {};
+    for (const key of ALL_PERMISSION_KEYS) {
+        map[key] = true;
+    }
+    return map;
+}
+
+function allFalse(): FlatPermissionMap {
+    const map: FlatPermissionMap = {};
+    for (const key of ALL_PERMISSION_KEYS) {
+        map[key] = false;
+    }
+    return map;
+}
+
+export const ROLE_PRESETS: Record<RoleType, { label: string; description: string; permissions: FlatPermissionMap }> = {
+    Owner: {
+        label: "Owner",
+        description: "Full access to everything. Cannot be restricted.",
+        permissions: allTrue(),
+    },
+    Manager: {
+        label: "Manager",
+        description: "Full access to orders, production, clients, and inventory.",
         permissions: {
-            orders: { view: true, create: true, edit: true, delete: true, approve: false, export: true },
-            production: { view: true, create: true, edit: true, delete: true, export: true },
-            inventory: { view: true, create: true, edit: true, delete: true, export: true },
-            clients: { view: true, create: true, edit: true, delete: true, export: true },
-            finance: { view: false, create: false, edit: false, delete: false, export: false },
-            assistant: { view: true },
-            team: { view: true, create: false, edit: false, delete: false },
-            settings: { view: false, edit: false },
-            audit: { view: false, export: false },
+            ...allFalse(),
+            // Orders — full
+            "orders.view": true,
+            "orders.create": true,
+            "orders.edit": true,
+            "orders.delete": true,
+            "orders.export": true,
+            // Production — full
+            "production.view": true,
+            "production.create": true,
+            "production.complete": true,
+            "production.delete": true,
+            // Clients — full
+            "clients.view": true,
+            "clients.create": true,
+            "clients.edit": true,
+            "clients.delete": true,
+            // Inventory — full
+            "inventory.view": true,
+            "inventory.create": true,
+            "inventory.edit": true,
+            "inventory.delete": true,
+            "inventory.restock": true,
         },
     },
-    operations: {
-        name: 'Operations Staff',
-        description: 'Access to Orders, Production, and Inventory modules.',
+    Staff: {
+        label: "Staff",
+        description: "View orders, create and complete production runs.",
         permissions: {
-            orders: { view: true, create: true, edit: true, delete: false, approve: false, export: true },
-            production: { view: true, create: true, edit: true, delete: false, export: true },
-            inventory: { view: true, create: true, edit: true, delete: false, export: true },
-            clients: { view: true, create: false, edit: false, delete: false, export: false },
-            finance: { view: false, create: false, edit: false, delete: false, export: false },
-            assistant: { view: true },
-            team: { view: false, create: false, edit: false, delete: false },
-            settings: { view: false, edit: false },
-            audit: { view: false, export: false },
+            ...allFalse(),
+            "orders.view": true,
+            "production.view": true,
+            "production.create": true,
+            "production.complete": true,
         },
     },
-    sales: {
-        name: 'Sales Executive',
-        description: 'Full access to Orders and Clients. Read-only Production and Inventory.',
+    Accountant: {
+        label: "Accountant",
+        description: "Full access to invoices and reports. View-only orders.",
         permissions: {
-            orders: { view: true, create: true, edit: true, delete: false, approve: false, export: true },
-            production: { view: true, create: false, edit: false, delete: false, export: false },
-            inventory: { view: true, create: false, edit: false, delete: false, export: false },
-            clients: { view: true, create: true, edit: true, delete: false, export: true },
-            finance: { view: false, create: false, edit: false, delete: false, export: false },
-            assistant: { view: true },
-            team: { view: false, create: false, edit: false, delete: false },
-            settings: { view: false, edit: false },
-            audit: { view: false, export: false },
-        },
-    },
-    view_only: {
-        name: 'View Only',
-        description: 'Read-only access across all allowed operational modules.',
-        permissions: {
-            orders: { view: true, create: false, edit: false, delete: false, approve: false, export: false },
-            production: { view: true, create: false, edit: false, delete: false, export: false },
-            inventory: { view: true, create: false, edit: false, delete: false, export: false },
-            clients: { view: true, create: false, edit: false, delete: false, export: false },
-            finance: { view: false, create: false, edit: false, delete: false, export: false },
-            assistant: { view: true },
-            team: { view: false, create: false, edit: false, delete: false },
-            settings: { view: false, edit: false },
-            audit: { view: false, export: false },
+            ...allFalse(),
+            // Invoices — full
+            "invoices.view": true,
+            "invoices.create": true,
+            "invoices.send": true,
+            "invoices.delete": true,
+            "invoices.markPaid": true,
+            // Reports — full
+            "reports.view": true,
+            "reports.export": true,
+            "reports.gst": true,
+            // Orders — view only
+            "orders.view": true,
         },
     },
 };
 
-// ─── Empty Permissions (no access) ──────────────────────────────
-export const EMPTY_PERMISSIONS: PermissionMap = {
-    orders: { view: false, create: false, edit: false, delete: false, approve: false, export: false },
-    production: { view: false, create: false, edit: false, delete: false, export: false },
-    inventory: { view: false, create: false, edit: false, delete: false, export: false },
-    clients: { view: false, create: false, edit: false, delete: false, export: false },
-    finance: { view: false, create: false, edit: false, delete: false, export: false },
-    assistant: { view: false },
-    team: { view: false, create: false, edit: false, delete: false },
-    settings: { view: false, edit: false },
-    audit: { view: false, export: false },
-};
-
-// ─── Permission Checking Utilities ──────────────────────────────
+// ─── Permission Resolution ──────────────────────────────────────
 
 /**
- * Check if a user has a specific permission.
- * Admin always returns true.
+ * Resolve effective permissions for a user.
  * 
- * @param permissions - The user's permission map
- * @param module - The module to check (e.g., 'orders')
- * @param action - The action to check (e.g., 'create')
- * @param isAdmin - Whether the user is an Admin (bypasses all checks)
+ * 1. Start with role preset
+ * 2. Apply customPermissions on top (merge/override)
+ * 3. Owner always has all permissions regardless
  */
-export function hasPermission(
-    permissions: PermissionMap | null | undefined,
-    module: PermissionModule,
-    action: string,
-    isAdmin: boolean = false
-): boolean {
-    if (isAdmin) return true;
-    if (!permissions) return false;
+export function resolvePermissions(
+    role: string | null | undefined,
+    customPermissions?: FlatPermissionMap | null
+): FlatPermissionMap {
+    const normalizedRole = normalizeRoleType(role);
 
-    const modulePerms = permissions[module];
-    if (!modulePerms) return false;
+    // Owner/Admin always has everything
+    if (normalizedRole === "Owner") {
+        return { ...allTrue() };
+    }
 
-    return (modulePerms as Record<string, boolean>)[action] === true;
-}
+    // Start with role preset or base permissions
+    const rolePreset = normalizedRole
+        ? ROLE_PRESETS[normalizedRole]?.permissions
+        : BASE_PERMISSIONS;
 
-/**
- * Check if a user has ANY permission for a module (used for navigation visibility).
- */
-export function hasModuleAccess(
-    permissions: PermissionMap | null | undefined,
-    module: PermissionModule,
-    isAdmin: boolean = false
-): boolean {
-    if (isAdmin) return true;
-    if (!permissions) return false;
+    const base = { ...rolePreset };
 
-    const modulePerms = permissions[module];
-    if (!modulePerms) return false;
-
-    return Object.values(modulePerms).some(v => v === true);
-}
-
-/**
- * Check if a user has at least view permission for a module.
- */
-export function canView(
-    permissions: PermissionMap | null | undefined,
-    module: PermissionModule,
-    isAdmin: boolean = false
-): boolean {
-    return hasPermission(permissions, module, 'view', isAdmin);
-}
-
-/**
- * Check if a user can create items in a module.
- */
-export function canCreate(
-    permissions: PermissionMap | null | undefined,
-    module: PermissionModule,
-    isAdmin: boolean = false
-): boolean {
-    return hasPermission(permissions, module, 'create', isAdmin);
-}
-
-/**
- * Check if a user can edit items in a module.
- */
-export function canEdit(
-    permissions: PermissionMap | null | undefined,
-    module: PermissionModule,
-    isAdmin: boolean = false
-): boolean {
-    return hasPermission(permissions, module, 'edit', isAdmin);
-}
-
-/**
- * Check if a user can delete items in a module.
- */
-export function canDelete(
-    permissions: PermissionMap | null | undefined,
-    module: PermissionModule,
-    isAdmin: boolean = false
-): boolean {
-    return hasPermission(permissions, module, 'delete', isAdmin);
-}
-
-/**
- * Check if a user can export data from a module.
- */
-export function canExport(
-    permissions: PermissionMap | null | undefined,
-    module: PermissionModule,
-    isAdmin: boolean = false
-): boolean {
-    return hasPermission(permissions, module, 'export', isAdmin);
-}
-
-/**
- * Get a flat list of all permission strings the user has.
- * Useful for token embedding.
- */
-export function flattenPermissions(permissions: PermissionMap): PermissionString[] {
-    const result: PermissionString[] = [];
-
-    for (const [module, actions] of Object.entries(permissions)) {
-        for (const [action, granted] of Object.entries(actions)) {
-            if (granted) {
-                result.push(`${module}.${action}` as PermissionString);
+    // Merge custom permissions on top
+    if (customPermissions) {
+        for (const [key, value] of Object.entries(customPermissions)) {
+            if (key in base) {
+                base[key] = value;
             }
         }
     }
 
-    return result;
+    return base;
+}
+
+// ─── Permission Checking Utilities ──────────────────────────────
+
+/**
+ * Check if a user has a specific permission using flat key.
+ * 
+ * @param permissions - The user's resolved permission map
+ * @param key - Permission key (e.g., "orders.create")
+ * @param isOwner - Whether the user is Owner/Admin (bypasses all checks)
+ */
+export function hasPermission(
+    permissions: FlatPermissionMap | null | undefined,
+    key: string,
+    isOwner: boolean = false
+): boolean {
+    if (isOwner) return true;
+    if (!permissions) return false;
+    return permissions[key] === true;
 }
 
 /**
- * Reconstruct a PermissionMap from a flat list of permission strings.
+ * Check if a user has ANY permission in a module (used for navigation).
  */
-export function unflattenPermissions(permissionStrings: PermissionString[]): PermissionMap {
-    const result = JSON.parse(JSON.stringify(EMPTY_PERMISSIONS)) as PermissionMap;
+export function hasModuleAccess(
+    permissions: FlatPermissionMap | null | undefined,
+    moduleId: string,
+    isOwner: boolean = false
+): boolean {
+    if (isOwner) return true;
+    if (!permissions) return false;
 
-    for (const perm of permissionStrings) {
-        const [module, action] = perm.split('.') as [PermissionModule, string];
-        if (result[module] && action in result[module]) {
-            (result[module] as Record<string, boolean>)[action] = true;
-        }
-    }
-
-    return result;
+    const prefix = `${moduleId}.`;
+    return Object.entries(permissions).some(
+        ([key, value]) => key.startsWith(prefix) && value === true
+    );
 }
 
 /**
- * Merge two permission maps (union — if either grants, result grants).
+ * Check if a user has view permission for a module.
  */
-export function mergePermissions(a: PermissionMap, b: PermissionMap): PermissionMap {
-    const result = JSON.parse(JSON.stringify(EMPTY_PERMISSIONS)) as PermissionMap;
+export function canView(
+    permissions: FlatPermissionMap | null | undefined,
+    moduleId: string,
+    isOwner: boolean = false
+): boolean {
+    return hasPermission(permissions, `${moduleId}.view`, isOwner);
+}
 
-    for (const module of Object.keys(result) as PermissionModule[]) {
-        const aModule = (a[module] || {}) as Record<string, boolean>;
-        const bModule = (b[module] || {}) as Record<string, boolean>;
-        const rModule = result[module] as Record<string, boolean>;
+/**
+ * Count how many permissions are granted (true).
+ */
+export function countPermissions(permissions: FlatPermissionMap | null | undefined): number {
+    if (!permissions) return 0;
+    return Object.values(permissions).filter(v => v === true).length;
+}
 
-        for (const action of Object.keys(rModule)) {
-            rModule[action] = aModule[action] || bModule[action] || false;
-        }
-    }
-
-    return result;
+/**
+ * Get a flat list of all granted permission keys.
+ */
+export function getGrantedPermissions(permissions: FlatPermissionMap | null | undefined): string[] {
+    if (!permissions) return [];
+    return Object.entries(permissions)
+        .filter(([, value]) => value === true)
+        .map(([key]) => key);
 }
 
 // ─── Module to Route Mapping ────────────────────────────────────
-export const MODULE_ROUTE_MAP: Record<PermissionModule, string[]> = {
-    orders: ['/dashboard/orders'],
-    production: ['/dashboard/production'],
-    inventory: ['/dashboard/inventory'],
-    clients: ['/dashboard/clients'],
-    finance: ['/dashboard/billing', '/dashboard/payments'],
-    assistant: ['/dashboard/assistant'],
-    team: ['/dashboard/team', '/dashboard/users'],
-    settings: ['/dashboard/settings', '/dashboard/profile'],
-    audit: ['/dashboard/audit-log'],
+export const MODULE_ROUTE_MAP: Record<string, string[]> = {
+    orders: ["/dashboard/orders"],
+    production: ["/dashboard/production"],
+    inventory: ["/dashboard/inventory"],
+    clients: ["/dashboard/clients"],
+    invoices: ["/dashboard/billing", "/dashboard/payments"],
+    staff: ["/dashboard/users"],
+    reports: ["/dashboard/analytics"],
+    settings: ["/dashboard/settings", "/dashboard/profile"],
+    team: ["/dashboard/settings/team"],
 };
 
 /**
  * Get the required module for a given route.
  */
-export function getModuleForRoute(route: string): PermissionModule | null {
-    for (const [module, routes] of Object.entries(MODULE_ROUTE_MAP)) {
-        if (routes.some(r => route === r || route.startsWith(r + '/'))) {
-            return module as PermissionModule;
+export function getModuleForRoute(route: string): string | null {
+    for (const [moduleId, routes] of Object.entries(MODULE_ROUTE_MAP)) {
+        if (routes.some(r => route === r || route.startsWith(r + "/"))) {
+            return moduleId;
         }
     }
     // Dashboard home is accessible to all authenticated users
-    if (route === '/dashboard') return null;
+    if (route === "/dashboard") return null;
     return null;
 }
 
@@ -323,14 +424,27 @@ export function getModuleForRoute(route: string): PermissionModule | null {
  * Check if a user can access a route based on their permissions.
  */
 export function canAccessRoute(
-    permissions: PermissionMap | null | undefined,
+    permissions: FlatPermissionMap | null | undefined,
     route: string,
-    isAdmin: boolean = false
+    isOwner: boolean = false
 ): boolean {
-    if (isAdmin) return true;
+    if (isOwner) return true;
 
-    const module = getModuleForRoute(route);
-    if (!module) return true; // No specific module required (e.g., dashboard home)
+    const moduleId = getModuleForRoute(route);
+    if (!moduleId) return true; // No specific module required (e.g., dashboard home)
 
-    return canView(permissions, module, isAdmin);
+    return canView(permissions, moduleId, isOwner);
 }
+
+// ─── Backward Compatibility ─────────────────────────────────────
+// These types are kept so existing imports don't break immediately.
+// They delegate to the new flat format internally.
+
+export type PermissionModule = string;
+export type PermissionMap = FlatPermissionMap;
+
+/** @deprecated Use allTrue() */
+export const ADMIN_PERMISSIONS: FlatPermissionMap = allTrue();
+
+/** @deprecated Use allFalse() */
+export const EMPTY_PERMISSIONS: FlatPermissionMap = allFalse();

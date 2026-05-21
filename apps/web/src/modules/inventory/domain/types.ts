@@ -21,6 +21,9 @@ export interface InventoryItem {
     tax_rate?: number;
     track_inventory?: boolean;
     item_type?: string;
+    lastSourcePoId?: string;
+    lastSourcePoNumber?: string;
+    lastReceivedAt?: Date;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -75,4 +78,5 @@ export interface IInventoryRepository {
     delete(id: string, userId: string): Promise<boolean>;
     findLowStock(userId: string): Promise<StockLevel[]>;
     deductStock(id: string, userId: string, quantity: number): Promise<InventoryItem | null>;
+    addStockFromPO(id: string, userId: string, quantity: number, poId: string, poNumber: string): Promise<InventoryItem | null>;
 }

@@ -31,6 +31,9 @@ interface InventoryDocument {
     track_inventory?: boolean;
     item_type?: string;
     item_name?: string; // mapping for the Item mongoose schema just in case
+    last_source_po_id?: string;
+    last_source_po_number?: string;
+    last_received_at?: Date;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -51,6 +54,9 @@ function toDomainEntity(doc: InventoryDocument): InventoryItem {
         tax_rate: doc.tax_rate,
         track_inventory: doc.track_inventory,
         item_type: doc.item_type || "Goods",
+        lastSourcePoId: doc.last_source_po_id,
+        lastSourcePoNumber: doc.last_source_po_number,
+        lastReceivedAt: doc.last_received_at,
         createdAt: doc.createdAt,
         updatedAt: doc.updatedAt,
     };
@@ -201,6 +207,42 @@ export class MongoInventoryRepository implements IInventoryRepository {
             {
                 $inc: { quantity: -quantity },
                 $set: { updatedAt: new Date() },
+            },
+            { returnDocument: "after" },
+        );
+
+        return result ? toDomainEntity(result as unknown as InventoryDocument) : null;
+    }
+
+    /**
+     * Atomically add stock from a received purchase order.
+     * Increments quantity and records the source PO for traceability.
+     */
+    async addStockFromPO(
+        id: string,
+        userId: string,
+        quantity: number,
+        poId: string,
+        poNumber: string,
+    ): Promise<InventoryItem | null> {
+        const col = await this.collection();
+        let objectId: ObjectId;
+        try {
+            objectId = new ObjectId(id);
+        } catch {
+            return null;
+        }
+
+        const result = await col.findOneAndUpdate(
+            { _id: objectId, userId },
+            {
+                $inc: { quantity },
+                $set: {
+                    updatedAt: new Date(),
+                    last_source_po_id: poId,
+                    last_source_po_number: poNumber,
+                    last_received_at: new Date(),
+                },
             },
             { returnDocument: "after" },
         );

@@ -18,21 +18,22 @@ import {
   Settings,
   Bell,
   User,
-  Crown,
-  FileText,
-  Bot,
+  Zap,
+  Receipt,
+  Sparkles,
   Search,
   Sun,
   Moon,
   Monitor,
-  UserCog,
+  UsersRound,
   Cog,
-  Cpu,
+  Layers,
+  Gauge,
   BarChart3,
-  Shield,
   Truck,
-  Briefcase,
+  BookOpen,
   Download,
+  Plus,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -60,6 +61,7 @@ import {
 import { useTranslations } from "next-intl";
 import { LanguageSwitcherCompact } from "@/components/LanguageSwitcher";
 import { useModules, type ModuleConfig } from "@/hooks/useModules";
+import { MoreMenuSheet } from "@/components/MoreMenuSheet";
 
 // Map navigation nameKeys to module config keys
 // Items NOT in this map are always shown (e.g., dashboard, machines, folio)
@@ -83,8 +85,8 @@ const navigationGroups = [
     items: [
       { name: "Dashboard", nameKey: "dashboard", href: "/dashboard", icon: LayoutDashboard },
       { name: "Orders", nameKey: "orders", href: "/dashboard/orders", icon: ShoppingCart, badge: 0 },
-      { name: "Production", nameKey: "production", href: "/dashboard/production", icon: Cog },
-      { name: "Machines", nameKey: "machines", href: "/dashboard/machines", icon: Cpu },
+      { name: "Production", nameKey: "production", href: "/dashboard/production", icon: Layers },
+      { name: "Machines", nameKey: "machines", href: "/dashboard/machines", icon: Gauge },
       { name: "Inventory", nameKey: "inventory", href: "/dashboard/inventory", icon: Package },
       { name: "Purchasing", nameKey: "purchasing", href: "/dashboard/purchasing", icon: Truck },
     ],
@@ -93,7 +95,7 @@ const navigationGroups = [
     label: "FINANCE",
     labelKey: "finance",
     items: [
-      { name: "Billing", nameKey: "billing", href: "/dashboard/billing", icon: FileText },
+      { name: "Billing", nameKey: "billing", href: "/dashboard/billing", icon: Receipt },
       { name: "Payments", nameKey: "payments", href: "/dashboard/payments", icon: CreditCard },
     ],
   },
@@ -108,7 +110,7 @@ const navigationGroups = [
     label: "INTELLIGENCE",
     labelKey: "intelligence",
     items: [
-      { name: "AI Assistant", nameKey: "aiAssistant", href: "/dashboard/assistant", icon: Bot },
+      { name: "AI Assistant", nameKey: "aiAssistant", href: "/dashboard/assistant", icon: Sparkles },
       { name: "Analytics", nameKey: "analytics", href: "/dashboard/analytics", icon: BarChart3 },
       { name: "Notifications", nameKey: "notifications", href: "/dashboard/notifications", icon: Bell },
     ],
@@ -117,15 +119,15 @@ const navigationGroups = [
     label: "FOLIO",
     labelKey: "folio",
     items: [
-      { name: "Folio", nameKey: "folio", href: "/dashboard/folio", icon: Briefcase },
+      { name: "Folio", nameKey: "folio", href: "/dashboard/folio", icon: BookOpen },
     ],
   },
   {
     label: "SYSTEM",
     labelKey: "systemGroup",
     items: [
-      { name: "Users", nameKey: "users", href: "/dashboard/users", icon: UserCog },
-      { name: "Upgrade", nameKey: "upgrade", href: "/dashboard/upgrade", icon: Crown },
+      { name: "Users", nameKey: "users", href: "/dashboard/users", icon: UsersRound },
+      { name: "Upgrade", nameKey: "upgrade", href: "/dashboard/upgrade", icon: Zap },
     ],
   },
 ];
@@ -135,11 +137,59 @@ const mobileNavItems = [
   { name: "Orders", nameKey: "orders", href: "/dashboard/orders", icon: ShoppingCart },
   { name: "Production", nameKey: "production", href: "/dashboard/production", icon: Cog },
   { name: "Inventory", nameKey: "inventory", href: "/dashboard/inventory", icon: Package },
-  { name: "AI", nameKey: "ai", href: "/dashboard/assistant", icon: Bot },
   { name: "More", nameKey: "more", href: "#", icon: Menu, isMore: true },
 ];
 
-const SIDEBAR_STORAGE_KEY = "ios-sidebar-collapsed";
+// More sheet grouped modules (Zoho Books style)
+const moreSheetSections = [
+  {
+    label: "FINANCE",
+    color: "#16A34A",
+    items: [
+      { name: "Billing & Invoices", desc: "Create and manage invoices", icon: Receipt, emoji: "🧾", href: "/dashboard/billing" },
+      { name: "Payments", desc: "Track incoming payments", icon: CreditCard, emoji: "💳", href: "/dashboard/payments" },
+      { name: "Folio", desc: "Credit notes & ledger", icon: BookOpen, emoji: "📁", href: "/dashboard/folio" },
+    ],
+  },
+  {
+    label: "PEOPLE",
+    color: "#6366F1",
+    items: [
+      { name: "Clients", desc: "Manage your customers", icon: Users, emoji: "👥", href: "/dashboard/clients" },
+      { name: "Team & Users", desc: "Staff roles & access", icon: UsersRound, emoji: "🧑‍💼", href: "/dashboard/users" },
+      { name: "Purchasing", desc: "Vendors & purchase orders", icon: Truck, emoji: "🚚", href: "/dashboard/purchasing" },
+    ],
+  },
+  {
+    label: "REPORTS",
+    color: "#F59E0B",
+    items: [
+      { name: "Analytics", desc: "Revenue & performance", icon: BarChart3, emoji: "📊", href: "/dashboard/analytics" },
+      { name: "Machines", desc: "Equipment & maintenance", icon: Gauge, emoji: "⚙️", href: "/dashboard/machines" },
+      { name: "Tally Export", desc: "Export for Tally ERP", icon: Download, emoji: "📤", href: "/dashboard/billing" },
+    ],
+  },
+  {
+    label: "TOOLS",
+    color: "#2563EB",
+    items: [
+      { name: "AI Assistant", desc: "Smart business insights", icon: Sparkles, emoji: "🤖", href: "/dashboard/assistant" },
+      { name: "Notifications", desc: "Alerts & updates", icon: Bell, emoji: "🔔", href: "/dashboard/notifications" },
+      { name: "Settings", desc: "Company profile & config", icon: Settings, emoji: "⚙️", href: "/dashboard/settings" },
+      { name: "Upgrade", desc: "Unlock premium features", icon: Zap, emoji: "👑", href: "/dashboard/upgrade" },
+    ],
+  },
+];
+
+const quickActions = [
+  { label: "New Order", href: "/dashboard/orders/create", icon: ShoppingCart },
+  { label: "New Production", href: "/dashboard/production/create", icon: Factory },
+  { label: "Add Client", href: "/dashboard/clients", icon: Users },
+  { label: "Record Payment", href: "/dashboard/payments", icon: CreditCard },
+  { label: "Add Inventory", href: "/dashboard/inventory", icon: Package },
+];
+
+const SIDEBAR_STORAGE_KEY = "erp-sidebar-collapsed";
 
 export default function DashboardLayout({
   children,
@@ -249,23 +299,16 @@ export default function DashboardLayout({
   // ─── Loading Splash ────────────────────────────────────
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-[#F0F2F5] dark:bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <motion.div
-            className="w-12 h-12 rounded-[14px] flex items-center justify-center"
-            style={{
-              background: "linear-gradient(135deg, var(--ios-blue), var(--ios-indigo))",
-              boxShadow: "0 4px 20px rgba(0, 122, 255, 0.3)",
-            }}
-            animate={{ scale: [1, 1.05, 1] }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+          <div
+            className="w-10 h-10 rounded-lg flex items-center justify-center bg-primary"
           >
-            <Factory className="h-6 w-6 text-white" />
-          </motion.div>
-          <div className="h-1 w-32 bg-[var(--fill-tertiary)] rounded-full overflow-hidden">
+            <Factory className="h-5 w-5 text-white" />
+          </div>
+          <div className="h-1 w-32 bg-muted rounded-full overflow-hidden">
             <motion.div
-              className="h-full rounded-full"
-              style={{ background: "var(--ios-blue)" }}
+              className="h-full rounded-full bg-primary"
               animate={{ x: ["-100%", "200%"] }}
               transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
             />
@@ -276,46 +319,39 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-[#F0F2F5] dark:bg-[var(--bg-page)] selection:bg-[var(--ios-blue)]/10 selection:text-[var(--ios-blue)]">
-      {/* ════════════ DESKTOP SIDEBAR (Glassmorphism) ════════════ */}
+    <div className="min-h-screen bg-background selection:bg-primary/10 selection:text-primary">
+      {/* ════════════ DESKTOP SIDEBAR ════════════ */}
       <motion.aside
         initial={false}
         animate={{ width: isCollapsed ? "72px" : "240px" }}
-        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.2, ease: "easeInOut" }}
         className={cn(
           "hidden md:flex fixed inset-y-0 left-0 z-50 flex-col",
-          "glass border-r border-[var(--border-card)]"
+          "bg-[var(--erp-sidebar-bg,var(--sidebar))] border-r border-[var(--sidebar-border)]"
         )}
       >
         <div className="flex flex-col h-full">
           {/* ── Logo ── */}
-          <div className="h-[60px] flex items-center px-4">
+          <div className="h-[56px] flex items-center px-4">
             <Link href="/dashboard" className="flex items-center gap-3">
-              <motion.div
-                className="flex-shrink-0 w-[36px] h-[36px] rounded-[10px] flex items-center justify-center"
-                style={{
-                  background: "linear-gradient(135deg, var(--ios-blue), var(--ios-indigo))",
-                  boxShadow: "0 4px 14px rgba(0, 122, 255, 0.30), 0 0 0 1px rgba(255,255,255,0.1)",
-                }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              <div
+                className="flex-shrink-0 w-[34px] h-[34px] rounded-lg flex items-center justify-center bg-primary"
               >
-                <Factory className="h-[18px] w-[18px] text-white" />
-              </motion.div>
+                <Factory className="h-[17px] w-[17px] text-white" />
+              </div>
               <AnimatePresence mode="wait">
                 {!isCollapsed && (
                   <motion.div
                     initial={{ opacity: 0, width: 0 }}
                     animate={{ opacity: 1, width: "auto" }}
                     exit={{ opacity: 0, width: 0 }}
-                    transition={{ duration: 0.2 }}
+                    transition={{ duration: 0.15 }}
                     className="overflow-hidden"
                   >
-                    <span className="text-[17px] font-semibold text-[var(--label-primary)] whitespace-nowrap tracking-[-0.41px]">
+                    <span className="text-[14px] font-semibold text-foreground whitespace-nowrap">
                       {tSidebar("appName")}
                     </span>
-                    <span className="text-[11px] block -mt-0.5 text-[var(--label-tertiary)]">
+                    <span className="text-[11px] block -mt-0.5 text-muted-foreground">
                       {tSidebar("appSubtitle")}
                     </span>
                   </motion.div>
@@ -339,7 +375,7 @@ export default function DashboardLayout({
                   <>
                     <button
                       onClick={() => toggleGroup(group.label)}
-                      className="flex items-center justify-between w-full px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--label-tertiary)] hover:text-[var(--label-secondary)] transition-colors cursor-pointer"
+                      className="flex items-center justify-between w-full px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                     >
                       <span>{tSidebar(group.labelKey as any)}</span>
                       <ChevronDown
@@ -368,26 +404,30 @@ export default function DashboardLayout({
                                 key={item.name}
                                 href={item.href}
                                 className={cn(
-                                  "group relative flex items-center h-[40px] px-3 rounded-[8px] transition-all duration-200",
+                                  "group relative flex items-center h-[36px] px-3 rounded-lg transition-all duration-150",
                                   isActive
-                                    ? "text-white shadow-[0_2px_10px_rgba(0,122,255,0.35),0_0_0_1px_rgba(255,255,255,0.08)]"
-                                    : "text-[var(--label-secondary)] hover:bg-[var(--fill-quaternary)] hover:text-[var(--label-primary)]"
+                                    ? "bg-primary/10 text-primary border border-primary/10"
+                                    : "text-muted-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.05] hover:text-foreground"
                                 )}
-                                style={isActive ? {
-                                  background: "linear-gradient(135deg, var(--ios-blue) 0%, var(--ios-indigo) 100%)"
-                                } : undefined}
                               >
-                                <item.icon className="h-[20px] w-[20px] flex-shrink-0" />
-                                <span className="ml-3 text-[15px] font-medium leading-[20px]">
+                                <item.icon
+                                  size={18}
+                                  strokeWidth={isActive ? 2 : 1.8}
+                                  className={cn(
+                                    "flex-shrink-0",
+                                    isActive ? "text-primary" : "text-muted-foreground"
+                                  )}
+                                />
+                                <span className="ml-3 text-[13px] font-medium">
                                   {tNav(item.nameKey as any)}
                                 </span>
                                 {item.badge !== undefined && item.badge > 0 && (
                                   <span
                                     className={cn(
-                                      "ml-auto min-w-[20px] h-[20px] px-1.5 flex items-center justify-center rounded-full text-[11px] font-bold",
+                                      "ml-auto min-w-[18px] h-[18px] px-1.5 flex items-center justify-center rounded-full text-[10px] font-bold",
                                       isActive
-                                        ? "bg-white/25 text-white"
-                                        : "bg-[var(--ios-red)] text-white"
+                                        ? "bg-primary/20 text-primary"
+                                        : "bg-destructive text-white"
                                     )}
                                   >
                                     {item.badge}
@@ -412,18 +452,29 @@ export default function DashboardLayout({
                           <Link
                             href={item.href}
                             className={cn(
-                              "relative flex items-center justify-center h-[40px] w-full rounded-[8px] transition-all duration-200",
+                              "relative flex items-center justify-center h-[36px] w-full rounded-lg transition-all duration-150",
                               isActive
-                                ? "text-white shadow-[0_2px_10px_rgba(0,122,255,0.35)]"
-                                : "text-[var(--label-secondary)] hover:bg-[var(--fill-quaternary)]"
+                                ? "bg-primary/10 border border-primary/10"
+                                : "hover:bg-black/[0.04] dark:hover:bg-white/[0.05]"
                             )}
-                            style={isActive ? {
-                              background: "linear-gradient(135deg, var(--ios-blue) 0%, var(--ios-indigo) 100%)"
-                            } : undefined}
                           >
-                            <item.icon className="h-[20px] w-[20px]" />
+                            <div
+                              className={cn(
+                                "flex items-center justify-center w-9 h-9 rounded-lg",
+                                "bg-black/[0.04] dark:bg-white/[0.05]",
+                                "border border-black/[0.06] dark:border-white/[0.07]"
+                              )}
+                            >
+                              <item.icon
+                                size={18}
+                                strokeWidth={isActive ? 2 : 1.8}
+                                className={cn(
+                                  isActive ? "text-primary" : "text-muted-foreground"
+                                )}
+                              />
+                            </div>
                           </Link>
-                          <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[rgba(15,20,32,0.95)] text-white text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150 z-50 border border-white/10 shadow-lg backdrop-blur-sm">
+                          <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-popover text-popover-foreground text-xs font-medium px-3 py-1.5 rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150 z-50 border shadow-md">
                             {tNav(item.nameKey as any)}
                           </div>
                         </div>
@@ -436,23 +487,22 @@ export default function DashboardLayout({
           </nav>
 
           {/* ── Footer ── */}
-          <div className="p-2 mt-auto border-t border-[var(--border-card)] space-y-1">
+          <div className="p-2 mt-auto border-t border-[var(--sidebar-border)] space-y-1">
 
             {/* Collapse Toggle */}
-            <motion.button
+            <button
               onClick={toggleCollapsed}
-              className="hidden md:flex w-full items-center justify-center h-[36px] rounded-[8px] text-[var(--label-tertiary)] hover:bg-[var(--fill-quaternary)] hover:text-[var(--label-secondary)] transition-all cursor-pointer"
-              whileTap={{ scale: 0.95 }}
+              className="hidden md:flex w-full items-center justify-center h-[34px] rounded-md text-muted-foreground hover:bg-[var(--sidebar-accent)] hover:text-foreground transition-all cursor-pointer"
             >
               {isCollapsed ? (
                 <ChevronRight className="h-4 w-4" />
               ) : (
                 <div className="flex items-center gap-2">
                   <ChevronLeft className="h-4 w-4" />
-                  <span className="text-[13px] font-medium">{tCommon("collapse")}</span>
+                  <span className="text-[12px] font-medium">{tCommon("collapse")}</span>
                 </div>
               )}
-            </motion.button>
+            </button>
           </div>
         </div>
       </motion.aside>
@@ -460,17 +510,16 @@ export default function DashboardLayout({
       {/* ════════════ MAIN CONTENT AREA ════════════ */}
       <div
         className={cn(
-          "flex flex-col transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] pb-20 md:pb-0",
+          "flex flex-col transition-all duration-200 ease-in-out pb-20 md:pb-0",
           "md:pl-[240px]",
           isCollapsed && "md:pl-[72px]"
         )}
-        style={{ backgroundColor: theme === 'light' ? '#F0F2F5' : undefined }}
       >
-        {/* ── Glassmorphic Header ── */}
+        {/* ── Enterprise Header ── */}
         <header
           className={cn(
-            "sticky top-0 z-40 w-full h-[60px] flex items-center justify-between px-4 md:px-6 transition-all duration-300",
-            scrolled ? "glass-header shadow-sm" : "bg-transparent"
+            "sticky top-0 z-40 h-[56px] w-auto flex items-center justify-between px-4 md:px-5 transition-all duration-200",
+            scrolled ? "bg-[var(--erp-topbar-bg)] backdrop-blur-sm border-b border-border shadow-sm" : "bg-transparent border-b border-transparent"
           )}
         >
           {/* Left */}
@@ -478,34 +527,31 @@ export default function DashboardLayout({
             {/* Mobile Logo */}
             <div className="md:hidden flex items-center gap-2.5">
               <div
-                className="w-[32px] h-[32px] rounded-[8px] flex items-center justify-center"
-                style={{
-                  background: "linear-gradient(135deg, var(--ios-blue), var(--ios-indigo))",
-                }}
+                className="w-[30px] h-[30px] rounded-md flex items-center justify-center bg-primary"
               >
-                <Factory className="h-4 w-4 text-white" />
+                <Factory className="h-3.5 w-3.5 text-white" />
               </div>
-              <span className="font-semibold text-[17px] text-[var(--label-primary)] tracking-[-0.41px]">
+              <span className="font-semibold text-[14px] text-foreground">
                 {tSidebar("appName")}
               </span>
             </div>
 
             {/* Desktop Breadcrumbs */}
-            <div className="hidden md:flex items-center gap-2 text-[15px]">
+            <div className="hidden md:flex items-center gap-2 text-[13px]">
               {pathname === "/dashboard" ? (
-                <span className="font-medium text-[var(--label-primary)]">
+                <span className="font-medium text-foreground">
                   {tNav("dashboard")}
                 </span>
               ) : (
                 <>
                   <Link
                     href="/dashboard"
-                    className="text-[var(--label-secondary)] hover:text-[var(--label-primary)] transition-colors duration-200"
+                    className="text-muted-foreground hover:text-foreground transition-colors duration-150"
                   >
                     {tNav("dashboard")}
                   </Link>
-                  <ChevronRight className="h-3.5 w-3.5 text-[var(--label-quaternary)]" />
-                  <span className="font-medium text-[var(--label-primary)]">
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
+                  <span className="font-medium text-foreground">
                     {getPageName()}
                   </span>
                 </>
@@ -516,44 +562,67 @@ export default function DashboardLayout({
           {/* Right: Actions */}
           <div className="flex items-center gap-2">
             {/* Command Palette Trigger (⌘K) */}
-            <motion.button
+            <button
               onClick={() => setCommandPaletteOpen(true)}
               className={cn(
-                "hidden md:flex items-center gap-2 h-[36px] px-3",
-                "bg-[var(--fill-tertiary)] rounded-[10px]",
-                "text-[var(--label-tertiary)] text-[15px]",
-                "border border-[var(--border-card)] ring-1 ring-transparent",
-                "hover:bg-[var(--fill-secondary)] hover:ring-[var(--ios-blue)]/20 focus-within:ring-[var(--ios-blue)]/40 transition-all cursor-pointer"
+                "hidden md:flex items-center gap-2 h-[34px] px-3",
+                "bg-muted rounded-md",
+                "text-muted-foreground text-[13px]",
+                "border border-border",
+                "hover:bg-accent/10 hover:border-primary/20 transition-all cursor-pointer"
               )}
-              whileTap={{ scale: 0.97 }}
             >
               <Search className="h-4 w-4" />
               <span>{tCommon("search")}</span>
-              <kbd className="ml-3 inline-flex h-[20px] items-center gap-0.5 rounded-[4px] border border-[var(--border-card)] bg-[var(--bg-card)] px-1.5 font-mono text-[11px] text-[var(--label-tertiary)]">
+              <kbd className="ml-3 inline-flex h-[18px] items-center gap-0.5 rounded border border-border bg-background px-1.5 font-mono text-[10px] text-muted-foreground">
                 ⌘K
               </kbd>
-            </motion.button>
+            </button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="hidden md:flex h-[34px] px-3 items-center gap-2 text-[12px] font-medium text-muted-foreground rounded-md border border-border hover:bg-muted transition-colors cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Quick actions</span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52 rounded-lg p-1">
+                <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                  Actions
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {quickActions.map((action) => (
+                  <DropdownMenuItem key={action.href} asChild className="rounded-md h-8">
+                    <Link href={action.href} className="flex items-center gap-2.5">
+                      <action.icon className="h-4 w-4 text-primary" />
+                      <span className="text-[13px]">{action.label}</span>
+                    </Link>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             {/* Theme Toggle */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <motion.button
-                  className="h-[36px] w-[36px] rounded-[10px] flex items-center justify-center text-[var(--label-secondary)] hover:bg-[var(--fill-quaternary)] transition-colors cursor-pointer"
-                  whileTap={{ scale: 0.9 }}
+                <button
+                  className="h-[34px] w-[34px] flex items-center justify-center text-muted-foreground rounded-md border border-border hover:bg-muted transition-colors cursor-pointer"
                 >
-                  <Sun className="h-[18px] w-[18px] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                  <Moon className="absolute h-[18px] w-[18px] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                  <Sun className="h-[16px] w-[16px] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                  <Moon className="absolute h-[16px] w-[16px] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                   <span className="sr-only">{tCommon("toggleTheme")}</span>
-                </motion.button>
+                </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="rounded-[12px] min-w-[160px]">
-                <DropdownMenuItem onClick={() => setTheme("light")} className="rounded-[8px] gap-2">
+              <DropdownMenuContent align="end" className="rounded-lg min-w-[150px]">
+                <DropdownMenuItem onClick={() => setTheme("light")} className="rounded-md gap-2 text-[13px]">
                   <Sun className="h-4 w-4" /> {tCommon("light")}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTheme("dark")} className="rounded-[8px] gap-2">
+                <DropdownMenuItem onClick={() => setTheme("dark")} className="rounded-md gap-2 text-[13px]">
                   <Moon className="h-4 w-4" /> {tCommon("dark")}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTheme("system")} className="rounded-[8px] gap-2">
+                <DropdownMenuItem onClick={() => setTheme("system")} className="rounded-md gap-2 text-[13px]">
                   <Monitor className="h-4 w-4" /> {tCommon("system")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -565,147 +634,103 @@ export default function DashboardLayout({
 
             {/* Mobile Search */}
             <button
-              className="md:hidden h-[36px] w-[36px] rounded-[10px] flex items-center justify-center text-[var(--label-secondary)] hover:bg-[var(--fill-quaternary)] transition-colors"
+              className="md:hidden h-[34px] w-[34px] flex items-center justify-center text-muted-foreground rounded-md border border-border hover:bg-muted transition-colors"
               onClick={() => setCommandPaletteOpen(true)}
             >
-              <Search className="h-[18px] w-[18px]" />
+              <Search className="h-[16px] w-[16px]" />
             </button>
 
             {/* User Avatar Dropdown */}
             {user && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="cursor-pointer"
-                  >
-                    <Avatar className="h-[36px] w-[36px] ring-2 ring-[var(--border-card)] hover:ring-[var(--ios-blue)]/30 transition-all">
+                  <button className="cursor-pointer relative">
+                    <Avatar className="h-[34px] w-[34px] ring-2 ring-primary/20 hover:ring-primary/40 transition-all duration-150">
                       <AvatarImage src={user.user_metadata?.avatar_url} />
-                      <AvatarFallback
-                        className="text-white text-[13px] font-bold"
-                        style={{
-                          background:
-                            "linear-gradient(135deg, var(--ios-blue), var(--ios-indigo))",
-                        }}
-                      >
+                      <AvatarFallback className="text-white text-[12px] font-bold bg-primary">
                         {user.email?.substring(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                  </motion.button>
+                    <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-background" />
+                  </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56 rounded-[12px] p-1" align="end" forceMount>
-                  <DropdownMenuLabel className="font-normal px-3 py-2">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-[15px] font-semibold leading-none text-[var(--label-primary)]">
+                <DropdownMenuContent
+                  className="w-[220px] rounded-lg p-0 overflow-hidden"
+                  align="end"
+                  forceMount
+                >
+                  {/* Header Section */}
+                  <div className="p-3 flex items-center gap-3 border-b border-border">
+                    <Avatar className="h-[38px] w-[38px] flex-shrink-0">
+                      <AvatarImage src={user.user_metadata?.avatar_url} />
+                      <AvatarFallback className="text-white text-[13px] font-bold bg-primary">
+                        {user.email?.substring(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0 overflow-hidden">
+                      <p className="text-[13px] font-medium text-foreground truncate">
                         {user.user_metadata?.full_name || user.email?.split("@")[0]}
                       </p>
-                      <p className="text-[13px] leading-none text-[var(--label-secondary)]">
+                      <p className="text-[11px] text-muted-foreground truncate">
                         {user.email}
                       </p>
                     </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <div className="px-3 py-1.5">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-semibold bg-[var(--ios-blue)]/10 text-[var(--ios-blue)]">
-                      <Shield className="h-3 w-3" />
+                  </div>
+
+                  {/* Role badge */}
+                  <div className="px-3 py-2 border-b border-border">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-primary/10 text-primary">
                       {role || "User"}
                     </span>
                   </div>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild className="rounded-[8px]">
-                    <Link href="/dashboard/profile" className="cursor-pointer w-full">
-                      <User className="mr-2 h-4 w-4" /> {tCommon("profile")}
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild className="rounded-[8px]">
-                    <Link href="/dashboard/settings" className="cursor-pointer w-full">
-                      <Settings className="mr-2 h-4 w-4" /> {tCommon("settings")}
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="text-[var(--ios-red)] focus:text-[var(--ios-red)] cursor-pointer rounded-[8px]"
-                    onClick={handleLogout}
-                  >
-                    <LogOut className="mr-2 h-4 w-4" /> {tCommon("logout")}
-                  </DropdownMenuItem>
+
+                  {/* Menu Items */}
+                  <div className="p-1 flex flex-col gap-0.5">
+                    <DropdownMenuItem asChild className="h-[36px] rounded-md flex items-center gap-3 px-3 cursor-pointer">
+                      <Link href="/dashboard/profile" className="w-full">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-[13px]">{tCommon("profile")}</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="h-[36px] rounded-md flex items-center gap-3 px-3 cursor-pointer">
+                      <Link href="/dashboard/settings" className="w-full">
+                        <Settings className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-[13px]">{tCommon("settings")}</span>
+                      </Link>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuSeparator />
+
+                    <DropdownMenuItem
+                      className="h-[36px] rounded-md flex items-center gap-3 px-3 text-destructive hover:text-destructive cursor-pointer"
+                      onClick={handleLogout}
+                    >
+                      <LogOut className="h-4 w-4" />
+                      <span className="text-[13px]">{tCommon("logout")}</span>
+                    </DropdownMenuItem>
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
           </div>
         </header>
 
-        {/* ════════════ MORE BOTTOM SHEET (Mobile) ════════════ */}
-        {isMoreSheetOpen && (
-          <div
-            className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
-            onClick={() => setIsMoreSheetOpen(false)}
-          />
-        )}
-        <div
-          className={cn(
-            "md:hidden fixed bottom-0 left-0 right-0 z-[60] bg-white dark:bg-[#0f1623] rounded-t-2xl pb-8 pt-2 transition-transform duration-300 ease-out shadow-[0_-4px_30px_rgba(0,0,0,0.08)] dark:shadow-none border-t border-[#E4E7EC] dark:border-transparent",
-            isMoreSheetOpen ? "translate-y-0" : "translate-y-full"
-          )}
-        >
-          {/* Drag Handle */}
-          <div className="w-10 h-1 bg-gray-300 dark:bg-white/20 rounded-full mx-auto mb-4 mt-2" />
-
-          {/* Title */}
-          <p className="text-gray-400 dark:text-white/50 text-xs font-semibold tracking-widest uppercase text-center mb-3">
-            More Options
-          </p>
-
-          {/* 3-Column Grid — All pages missing from the bottom bar, filtered by role */}
-          <div className="grid grid-cols-3 gap-3 px-4 max-h-[60vh] overflow-y-auto">
-            {(() => {
-              // Items hidden from Staff role users (Admin sees all)
-              const STAFF_HIDDEN_ITEMS = ["Analytics", "Billing", "Payments", "Tally Export", "Upgrade"];
-
-              return [
-                { name: "Machines", icon: Cpu, href: "/dashboard/machines" },
-                { name: "Purchasing", icon: Truck, href: "/dashboard/purchasing" },
-                { name: "Billing", icon: FileText, href: "/dashboard/billing" },
-                { name: "Payments", icon: CreditCard, href: "/dashboard/payments" },
-                { name: "Clients", icon: Users, href: "/dashboard/clients" },
-                { name: "Analytics", icon: BarChart3, href: "/dashboard/analytics" },
-                { name: "Notifications", icon: Bell, href: "/dashboard/notifications" },
-                { name: "Folio", icon: Briefcase, href: "/dashboard/folio" },
-                { name: "Users", icon: UserCog, href: "/dashboard/users" },
-                { name: "Upgrade", icon: Crown, href: "/dashboard/upgrade" },
-                { name: "Tally Export", icon: Download, href: "/dashboard/billing" },
-                { name: "Settings", icon: Settings, href: "/dashboard/settings" },
-              ]
-              .filter((item) => {
-                // Role-based name filter: hide specific items for Staff
-                if (role === "Staff" && STAFF_HIDDEN_ITEMS.includes(item.name)) return false;
-                // Route-based permission filter
-                return isRouteAllowed(role, item.href);
-              })
-              .map((item) => (
-                <button
-                  key={item.name}
-                  className="bg-gray-100 dark:bg-[#1a1f2e] rounded-xl p-4 flex flex-col items-center gap-2 w-full active:scale-95 transition-transform"
-                  onClick={() => {
-                    router.push(item.href);
-                    setIsMoreSheetOpen(false);
-                  }}
-                >
-                  <item.icon className="text-blue-500 dark:text-blue-400 w-6 h-6" />
-                  <span className="text-gray-800 dark:text-white text-xs font-medium text-center">{item.name}</span>
-                </button>
-              ));
-            })()}
-          </div>
-        </div>
+        {/* ════════════ MORE MENU — Enterprise Operational Launcher ════════════ */}
+        <MoreMenuSheet
+          isOpen={isMoreSheetOpen}
+          onClose={() => setIsMoreSheetOpen(false)}
+          sections={moreSheetSections}
+          quickActions={quickActions}
+          role={role}
+          isRouteAllowed={isRouteAllowed}
+        />
 
         {/* Main Content */}
-        <main className="flex-1 p-4 md:p-6 lg:p-8" style={{ backgroundColor: theme === 'light' ? '#F0F2F5' : undefined }}>
+        <main className="flex-1 p-4 md:p-6 lg:p-8 pb-24 md:pb-8">
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
             className="max-w-[1400px] mx-auto"
           >
             {children}
@@ -713,11 +738,17 @@ export default function DashboardLayout({
         </main>
       </div>
 
-      {/* ════════════ MOBILE BOTTOM NAVIGATION (Glossy 3D Icons) ════════════ */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 glass-header border-t border-[#E4E7EC] dark:border-white/10 max-w-[369px] mx-auto">
+      {/* ════════════ MOBILE BOTTOM NAVIGATION — Floating Iconbar ════════════ */}
+      <div
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 pointer-events-none"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        {/* Gradient fade — NOT a visible bar */}
+        <div className="floating-nav-fade absolute inset-0 pointer-events-none" />
+
+        {/* Floating nav items */}
         <nav
-          className="flex items-center justify-around px-1 pt-2 pb-1"
-          style={{ paddingBottom: "max(env(safe-area-inset-bottom), 6px)" }}
+          className="relative flex items-end justify-around px-2 pt-4 pb-2 pointer-events-auto"
         >
           {filterMobileNavByRole(mobileNavItems, role).filter((item) => {
             const moduleKey = NAV_MODULE_MAP[item.nameKey];
@@ -731,40 +762,59 @@ export default function DashboardLayout({
 
             const IconComponent = item.icon;
 
-            const iconContainerStyle: React.CSSProperties = isActive
-              ? {
-                  background: "linear-gradient(145deg, #60A5FA 0%, #2563EB 60%, #1D4ED8 100%)",
-                  boxShadow: "0 4px 12px rgba(37,99,235,0.45), inset 0 1px 0 rgba(255,255,255,0.35)",
-                  borderRadius: "12px",
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  transition: "transform 0.15s ease, box-shadow 0.15s ease",
-                  filter: "drop-shadow(0 0 8px rgba(59,130,246,0.6))",
-                }
-              : {
-                  background: "linear-gradient(145deg, #374151 0%, #1F2937 100%)",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)",
-                  borderRadius: "12px",
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  transition: "transform 0.15s ease, box-shadow 0.15s ease",
-                };
+            const navContent = (
+              <div
+                className={cn(
+                  "flex flex-col items-center justify-center gap-0.5 relative px-3 py-1.5 rounded-2xl transition-all duration-200 nav-tap-ripple",
+                  isActive && "nav-item-active-pill"
+                )}
+              >
+                {/* Active dot indicator */}
+                {isActive && (
+                  <div className="nav-active-dot absolute -top-0.5 left-1/2 -translate-x-1/2" />
+                )}
+
+                {/* Icon */}
+                <div
+                  className={cn(
+                    "transition-all duration-200",
+                    isActive ? "scale-110 -translate-y-0.5" : "opacity-40"
+                  )}
+                >
+                  <IconComponent
+                    size={22}
+                    strokeWidth={isActive ? 2.2 : 1.8}
+                    className={cn(
+                      isActive
+                        ? "text-primary"
+                        : "text-muted-foreground"
+                    )}
+                  />
+                </div>
+
+                {/* Label */}
+                <span
+                  className={cn(
+                    "text-[10px] transition-all duration-200",
+                    isActive
+                      ? "text-primary font-semibold"
+                      : "text-muted-foreground font-medium opacity-40"
+                  )}
+                >
+                  {item.nameKey === "more" ? tCommon("more") : tNav(item.nameKey as any)}
+                </span>
+              </div>
+            );
 
             if (item.isMore) {
               return (
                 <button
                   key={item.name}
                   onClick={() => setIsMoreSheetOpen((prev) => !prev)}
-                  className="flex flex-col items-center justify-center gap-1 cursor-pointer"
+                  className="cursor-pointer"
                   style={{ WebkitTapHighlightColor: "transparent" }}
                 >
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center active:scale-[0.92]"
-                    style={iconContainerStyle}
-                  >
-                    <IconComponent size={18} color="white" strokeWidth={2} />
-                  </div>
-                  <span className="text-[10px] font-medium text-gray-500">
-                    {item.nameKey === "more" ? tCommon("more") : tNav(item.nameKey as any)}
-                  </span>
+                  {navContent}
                 </button>
               );
             }
@@ -773,23 +823,9 @@ export default function DashboardLayout({
               <Link
                 key={item.name}
                 href={item.href}
-                className="flex flex-col items-center justify-center gap-1"
                 style={{ WebkitTapHighlightColor: "transparent" }}
               >
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center active:scale-[0.92]"
-                  style={iconContainerStyle}
-                >
-                  <IconComponent size={18} color="white" strokeWidth={2} />
-                </div>
-                <span
-                  className={cn(
-                    "text-[10px] font-medium",
-                    isActive ? "text-blue-400" : "text-gray-500"
-                  )}
-                >
-                  {item.nameKey === "more" ? tCommon("more") : tNav(item.nameKey as any)}
-                </span>
+                {navContent}
               </Link>
             );
           })}

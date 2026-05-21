@@ -39,6 +39,9 @@ function toApiResponse(item: InventoryItem) {
         tax_rate: item.tax_rate ?? 18,
         track_inventory: item.track_inventory ?? true,
         item_type: item.item_type || "Goods",
+        last_source_po_id: item.lastSourcePoId ?? null,
+        last_source_po_number: item.lastSourcePoNumber ?? null,
+        last_received_at: item.lastReceivedAt ?? null,
         createdAt: item.createdAt,
         updatedAt: item.updatedAt,
     };

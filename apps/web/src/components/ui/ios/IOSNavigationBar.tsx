@@ -71,7 +71,7 @@ export function IOSNavigationBar({
                     {backButton && (
                         <motion.button
                             onClick={onBack}
-                            className="flex items-center gap-0.5 text-[var(--ios-blue)] cursor-pointer"
+                            className="flex items-center gap-0.5 text-[var(--primary)] cursor-pointer"
                             whileTap={{ scale: 0.95 }}
                             transition={{ type: 'spring', stiffness: 400, damping: 17 }}
                         >
@@ -84,11 +84,11 @@ export function IOSNavigationBar({
                 {/* Center Title (standard mode) */}
                 {!large && (
                     <div className="absolute left-1/2 -translate-x-1/2 text-center">
-                        <h1 className="text-[17px] font-semibold text-[var(--label-primary)] leading-[22px] tracking-[-0.41px]">
+                        <h1 className="text-[17px] font-semibold text-[var(--foreground)] leading-[22px] tracking-[-0.41px]">
                             {title}
                         </h1>
                         {subtitle && (
-                            <p className="text-[11px] text-[var(--label-secondary)] leading-[13px]">
+                            <p className="text-[11px] text-[var(--muted-foreground)] leading-[13px]">
                                 {subtitle}
                             </p>
                         )}
@@ -103,8 +103,8 @@ export function IOSNavigationBar({
                             className={cn(
                                 'flex items-center gap-1.5 cursor-pointer',
                                 rightButton.variant === 'filled'
-                                    ? 'bg-[var(--ios-blue)] text-white px-3 py-1.5 rounded-[8px] text-[15px] font-semibold'
-                                    : 'text-[var(--ios-blue)] text-[17px]'
+                                    ? 'bg-[var(--primary)] text-white px-3 py-1.5 rounded-[8px] text-[15px] font-semibold'
+                                    : 'text-[var(--primary)] text-[17px]'
                             )}
                             whileTap={{ scale: 0.95 }}
                             transition={{ type: 'spring', stiffness: 400, damping: 17 }}
@@ -120,11 +120,11 @@ export function IOSNavigationBar({
             {/* Large Title */}
             {large && (
                 <div className="px-4 pb-2">
-                    <h1 className="text-[34px] font-bold text-[var(--label-primary)] leading-[41px] tracking-[0.37px]">
+                    <h1 className="text-[34px] font-bold text-[var(--foreground)] leading-[41px] tracking-[0.37px]">
                         {title}
                     </h1>
                     {subtitle && (
-                        <p className="text-[15px] text-[var(--label-secondary)] mt-0.5 leading-[20px]">
+                        <p className="text-[15px] text-[var(--muted-foreground)] mt-0.5 leading-[20px]">
                             {subtitle}
                         </p>
                     )}

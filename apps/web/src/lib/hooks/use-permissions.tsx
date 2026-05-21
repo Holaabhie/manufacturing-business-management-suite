@@ -1,11 +1,20 @@
 "use client";
 
 import { useState, useEffect, useCallback, createContext, useContext, type ReactNode } from "react";
-import type { PermissionMap, PermissionModule } from "@/lib/permissions";
-import { ADMIN_PERMISSIONS, EMPTY_PERMISSIONS, hasPermission, hasModuleAccess, canAccessRoute } from "@/lib/permissions";
+import type { FlatPermissionMap } from "@/lib/permissions";
+import {
+    type RoleType,
+    resolvePermissions,
+    isOwnerRole,
+    hasPermission,
+    hasModuleAccess,
+    canAccessRoute,
+    ADMIN_PERMISSIONS,
+    EMPTY_PERMISSIONS,
+} from "@/lib/permissions";
 
 // ─── Types ──────────────────────────────────────────────────────
-export type UserRole = "Admin" | "Staff";
+export type UserRole = "Admin" | "Owner" | "Manager" | "Staff" | "Accountant";
 export type SubscriptionTier = "starter" | "pro";
 export type AccountStatus = "active" | "inactive" | "suspended" | "pending_setup";
 
@@ -21,7 +30,10 @@ export interface UserInfo {
     employeeId: string | null;
     department: string | null;
     status: AccountStatus;
-    permissions: PermissionMap | null;
+    permissions: FlatPermissionMap | null;
+    customPermissions: FlatPermissionMap | null;
+    resolvedPermissions: FlatPermissionMap | null;
+    isActive: boolean;
     firstLoginCompleted: boolean;
 }
 
@@ -31,11 +43,12 @@ interface PermissionContextValue {
     tier: SubscriptionTier;
     loading: boolean;
     isAdmin: boolean;
+    isOwner: boolean;
     isStaff: boolean;
     isPro: boolean;
-    permissions: PermissionMap;
-    can: (module: PermissionModule, action: string) => boolean;
-    canViewModule: (module: PermissionModule) => boolean;
+    permissions: FlatPermissionMap;
+    can: (permissionKey: string) => boolean;
+    canViewModule: (moduleId: string) => boolean;
     canAccessRoute: (route: string) => boolean;
     refreshPermissions: () => Promise<void>;
 }
@@ -72,28 +85,31 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
 
     const role = user?.role ?? null;
     const tier = user?.subscription_tier ?? "starter";
-    const isAdmin = role === "Admin";
+    const isOwner = isOwnerRole(role);
+    const isAdmin = isOwner; // backward compat
     const isStaff = role === "Staff";
     const isPro = tier === "pro";
 
-    const permissions: PermissionMap = isAdmin
+    // Resolve permissions: use resolvedPermissions from API if available,
+    // otherwise compute locally
+    const permissions: FlatPermissionMap = isOwner
         ? ADMIN_PERMISSIONS
-        : user?.permissions ?? EMPTY_PERMISSIONS;
+        : user?.resolvedPermissions ?? resolvePermissions(role, user?.customPermissions);
 
     const can = useCallback(
-        (module: PermissionModule, action: string) =>
-            hasPermission(permissions, module, action, isAdmin),
-        [permissions, isAdmin]
+        (permissionKey: string) =>
+            hasPermission(permissions, permissionKey, isOwner),
+        [permissions, isOwner]
     );
 
     const canViewModule = useCallback(
-        (module: PermissionModule) => hasModuleAccess(permissions, module, isAdmin),
-        [permissions, isAdmin]
+        (moduleId: string) => hasModuleAccess(permissions, moduleId, isOwner),
+        [permissions, isOwner]
     );
 
     const canAccessRouteFn = useCallback(
-        (route: string) => canAccessRoute(permissions, route, isAdmin),
-        [permissions, isAdmin]
+        (route: string) => canAccessRoute(permissions, route, isOwner),
+        [permissions, isOwner]
     );
 
     const value: PermissionContextValue = {
@@ -102,6 +118,7 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
         tier,
         loading,
         isAdmin,
+        isOwner,
         isStaff,
         isPro,
         permissions,
@@ -152,26 +169,27 @@ function useFallbackPermissions(): PermissionContextValue {
     }, [fetchUser]);
 
     const role = user?.role ?? null;
-    const isAdmin = role === "Admin";
-    const permissions: PermissionMap = isAdmin
+    const isOwner = isOwnerRole(role);
+    const permissions: FlatPermissionMap = isOwner
         ? ADMIN_PERMISSIONS
-        : user?.permissions ?? EMPTY_PERMISSIONS;
+        : user?.resolvedPermissions ?? resolvePermissions(role, user?.customPermissions);
 
     return {
         user,
         role,
         tier: user?.subscription_tier ?? "starter",
         loading,
-        isAdmin,
+        isAdmin: isOwner,
+        isOwner,
         isStaff: role === "Staff",
         isPro: user?.subscription_tier === "pro",
         permissions,
-        can: (module: PermissionModule, action: string) =>
-            hasPermission(permissions, module, action, isAdmin),
-        canViewModule: (module: PermissionModule) =>
-            hasModuleAccess(permissions, module, isAdmin),
+        can: (permissionKey: string) =>
+            hasPermission(permissions, permissionKey, isOwner),
+        canViewModule: (moduleId: string) =>
+            hasModuleAccess(permissions, moduleId, isOwner),
         canAccessRoute: (route: string) =>
-            canAccessRoute(permissions, route, isAdmin),
+            canAccessRoute(permissions, route, isOwner),
         refreshPermissions: fetchUser,
     };
 }
@@ -180,6 +198,6 @@ function useFallbackPermissions(): PermissionContextValue {
  * @deprecated Use usePermissions() instead
  */
 export function useRole() {
-    const { role, tier, isAdmin, isStaff, isPro, loading } = usePermissions();
-    return { role, tier, isAdmin, isStaff, isPro, loading };
+    const { role, tier, isAdmin, isOwner, isStaff, isPro, loading } = usePermissions();
+    return { role, tier, isAdmin, isOwner, isStaff, isPro, loading };
 }

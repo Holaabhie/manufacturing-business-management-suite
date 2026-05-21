@@ -55,6 +55,9 @@ export async function GET() {
 }
 
 // ─── POST: Create new production ────────────────────────────────────
+// NOTE: Inventory is NO LONGER deducted here.
+// Materials are saved to production_material_usage for memory/pre-fill.
+// Actual inventory deduction happens when the job is marked COMPLETED.
 export async function POST(request: Request) {
     try {
         const user = await getSessionUser();
@@ -72,32 +75,6 @@ export async function POST(request: Request) {
         const batchNumber =
             body.batchNumber ||
             `PRD-${new Date().getFullYear()}-${String(count + 1).padStart(4, "0")}`;
-
-        // Deduct inventory for materials
-        if (body.materials && Array.isArray(body.materials)) {
-            for (const mat of body.materials) {
-                if (!mat.inventoryId) continue;
-                const invItem = await db
-                    .collection("inventory")
-                    .findOne({ _id: new ObjectId(mat.inventoryId) });
-
-                if (!invItem) continue;
-
-                const newQty =
-                    Number(invItem.quantity) - Number(mat.quantityUsed);
-                if (newQty < 0) {
-                    return NextResponse.json(
-                        { error: `Insufficient stock for ${mat.name}` },
-                        { status: 400 }
-                    );
-                }
-
-                await db.collection("inventory").updateOne(
-                    { _id: new ObjectId(mat.inventoryId) },
-                    { $set: { quantity: newQty, updatedAt: new Date() } }
-                );
-            }
-        }
 
         const now = new Date();
         const userName =
@@ -142,9 +119,32 @@ export async function POST(request: Request) {
         };
 
         const result = await db.collection("productions").insertOne(production);
+        const jobId = result.insertedId.toString();
+
+        // ─── Save materials to production_material_usage ───
+        if (body.materials && Array.isArray(body.materials) && body.materials.length > 0) {
+            const materialDocs = body.materials
+                .filter((m: any) => m.inventoryId || m.inventoryItemId)
+                .map((m: any) => ({
+                    userId: getDataOwnerId(user),
+                    productionJobId: jobId,
+                    inventoryItemId: m.inventoryId || m.inventoryItemId,
+                    itemName: m.name || m.itemName || "",
+                    quantityUsed: Number(m.quantityUsed || m.quantity) || 0,
+                    unit: m.unit || "",
+                    wastagePercent: Number(m.wastagePercent) || 0,
+                    createdAt: now,
+                }));
+
+            if (materialDocs.length > 0) {
+                await db
+                    .collection("production_material_usage")
+                    .insertMany(materialDocs);
+            }
+        }
 
         return NextResponse.json({
-            id: result.insertedId.toString(),
+            id: jobId,
             ...production,
         });
     } catch (error: any) {

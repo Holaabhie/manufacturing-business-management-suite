@@ -2,17 +2,11 @@
 
 export default function DashboardLoading() {
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-6 animate-in fade-in duration-200">
       {/* Page Header Skeleton */}
       <div className="space-y-2">
-        <div
-          className="h-[34px] w-[200px] rounded-[10px] shimmer"
-          style={{ background: "var(--fill-tertiary)" }}
-        />
-        <div
-          className="h-[20px] w-[300px] rounded-[8px] shimmer"
-          style={{ background: "var(--fill-tertiary)" }}
-        />
+        <div className="h-7 w-[200px] rounded-md bg-muted animate-pulse" />
+        <div className="h-5 w-[300px] rounded-md bg-muted animate-pulse" />
       </div>
 
       {/* Stat Cards Skeleton */}
@@ -20,43 +14,22 @@ export default function DashboardLoading() {
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="h-[140px] rounded-[16px] shimmer"
-            style={{
-              background: "var(--fill-tertiary)",
-              animationDelay: `${i * 100}ms`,
-            }}
+            className="h-[120px] rounded-lg bg-muted animate-pulse"
+            style={{ animationDelay: `${i * 80}ms` }}
           />
         ))}
       </div>
 
       {/* Charts Skeleton */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div
-          className="lg:col-span-2 h-[340px] rounded-[16px] shimmer"
-          style={{ background: "var(--fill-tertiary)" }}
-        />
-        <div
-          className="h-[340px] rounded-[16px] shimmer"
-          style={{ background: "var(--fill-tertiary)" }}
-        />
+        <div className="lg:col-span-2 h-[300px] rounded-lg bg-muted animate-pulse" />
+        <div className="h-[300px] rounded-lg bg-muted animate-pulse" />
       </div>
 
       {/* Activity Skeleton */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div
-          className="h-[280px] rounded-[16px] shimmer"
-          style={{
-            background: "var(--fill-tertiary)",
-            animationDelay: "200ms",
-          }}
-        />
-        <div
-          className="lg:col-span-2 h-[280px] rounded-[16px] shimmer"
-          style={{
-            background: "var(--fill-tertiary)",
-            animationDelay: "300ms",
-          }}
-        />
+        <div className="h-[240px] rounded-lg bg-muted animate-pulse" style={{ animationDelay: "160ms" }} />
+        <div className="lg:col-span-2 h-[240px] rounded-lg bg-muted animate-pulse" style={{ animationDelay: "240ms" }} />
       </div>
     </div>
   );
