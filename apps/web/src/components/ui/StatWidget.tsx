@@ -49,6 +49,7 @@ export function AnimatedValue({
 export function StatWidget({
     label,
     value,
+    displayValue,
     change,
     icon: Icon,
     color,
@@ -59,6 +60,8 @@ export function StatWidget({
 }: {
     label: string;
     value: number;
+    /** When set, shown instead of animated numeric value (e.g. formatted currency) */
+    displayValue?: string;
     change?: number | null;
     icon: any;
     color: "blue" | "green" | "orange" | "purple" | "red" | "gray";
@@ -109,7 +112,11 @@ export function StatWidget({
 
                 {/* Metric + Label */}
                 <div className="kpi-card__value truncate">
-                    <AnimatedValue value={value} prefix={prefix} suffix={suffix} />
+                    {displayValue != null ? (
+                        <span>{displayValue}</span>
+                    ) : (
+                        <AnimatedValue value={value} prefix={prefix} suffix={suffix} />
+                    )}
                 </div>
                 <div className="kpi-card__label truncate">{label}</div>
 

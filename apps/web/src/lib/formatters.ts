@@ -19,9 +19,11 @@ export function toIntlLocale(locale?: Locale | string): string {
 
 // ─── Currency ────────────────────────────────────────────
 
+const RUPEE = "₹";
+
 /**
  * Format a number as Indian Rupees (₹1,23,456).
- * Uses Intl.NumberFormat for proper Indian grouping.
+ * Uses Intl.NumberFormat with an explicit ₹ symbol via formatToParts.
  */
 export function formatINR(
   amount: number,
@@ -29,22 +31,35 @@ export function formatINR(
   options?: { maximumFractionDigits?: number; compact?: boolean }
 ): string {
   const intlLocale = toIntlLocale(locale);
-  const fractionDigits = options?.maximumFractionDigits ?? 0;
+  const num = Number(amount) || 0;
+  const maxFrac = options?.maximumFractionDigits ?? 0;
 
   if (options?.compact) {
-    // Compact Indian notation: Cr, L, K
-    if (Math.abs(amount) >= 10000000) {
-      return `₹${(amount / 10000000).toLocaleString(intlLocale, { maximumFractionDigits: 1 })}Cr`;
+    if (Math.abs(num) >= 10_000_000) {
+      return `${RUPEE}${(num / 10_000_000).toFixed(1)}Cr`;
     }
-    if (Math.abs(amount) >= 100000) {
-      return `₹${(amount / 100000).toLocaleString(intlLocale, { maximumFractionDigits: 1 })}L`;
+    if (Math.abs(num) >= 100_000) {
+      return `${RUPEE}${(num / 100_000).toFixed(1)}L`;
     }
-    if (Math.abs(amount) >= 1000) {
-      return `₹${(amount / 1000).toLocaleString(intlLocale, { maximumFractionDigits: 1 })}K`;
+    if (Math.abs(num) >= 1_000) {
+      return `${RUPEE}${(num / 1_000).toFixed(1)}K`;
     }
   }
 
-  return `₹${amount.toLocaleString(intlLocale, { maximumFractionDigits: fractionDigits })}`;
+  try {
+    const parts = new Intl.NumberFormat(intlLocale, {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: maxFrac,
+    }).formatToParts(num);
+
+    return parts
+      .map((part) => (part.type === "currency" ? RUPEE : part.value))
+      .join("")
+      .trim();
+  } catch {
+    return `${RUPEE}${num.toLocaleString(intlLocale, { maximumFractionDigits: maxFrac })}`;
+  }
 }
 
 // ─── Numbers ─────────────────────────────────────────────

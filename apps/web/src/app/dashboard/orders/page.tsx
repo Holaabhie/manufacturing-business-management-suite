@@ -3,6 +3,12 @@
 import { useState, useMemo, useCallback, useRef, useEffect, Suspense } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useSearchParams, useRouter } from "next/navigation";
+import { usePaginatedSearch } from "@/hooks/usePaginatedSearch";
+import { useURLSyncedPagination } from "@/hooks/useURLSyncedPagination";
+import { useCachedPage } from "@/hooks/useCachedPage";
+import { SearchBar } from "@/components/ui/SearchBar";
+import { TablePagination } from "@/components/ui/TablePagination";
+import { TableEmptyState } from "@/components/ui/TableEmptyState";
 import {
   Plus,
   Search,
@@ -17,7 +23,6 @@ import {
   Factory,
   CheckCircle2,
   Clock,
-  ArrowRight,
   Loader2,
   ClipboardList,
   Timer,
@@ -61,11 +66,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
-  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { deriveOrderStatusFromOrder } from "@/lib/deriveOrderStatus";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -86,6 +88,7 @@ import { useRole } from "@/lib/hooks/use-role";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { NumericInput, parseNumericValue } from "@/components/ui/numeric-input";
 import { motion } from "framer-motion";
+import { useFormatters } from "@/hooks/useFormatters";
 import { exportToExcel } from "@/lib/excel-export";
 import { MobileSheet } from "@/components/ui/MobileSheet";
 import { IOSCard } from "@/components/ui/ios/IOSCard";
@@ -96,7 +99,7 @@ import { StatWidget } from "@/components/ui/StatWidget";
 import { TogglePill } from "@/components/ui/glass";
 import { CompletionConfirmationModal, InvoicePreviewModal } from "@/components/orders/CompletionModals";
 
-// ─── React Query Hooks ──────────────────────────────────
+// â”€â”€â”€ React Query Hooks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 import {
   useOrders,
   useClients,
@@ -111,8 +114,16 @@ import {
 function OrdersContent() {
   const router = useRouter();
   const { role, isAdmin, isStaff, isPro, loading: roleLoading } = useRole();
+  const { formatINR } = useFormatters();
 
-  // ─── React Query: data fetching ────────────────────────
+  const { initialPage, initialSearch, syncToURL } = useURLSyncedPagination();
+
+  // ─── Page-level UI state cache (search, filters, scroll) ───
+  const { restoreState, persist, scrollYRef, restoreScroll } = useCachedPage({
+    pageKey: "orders",
+  });
+
+  // â”€â”€â”€ React Query: data fetching â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const {
     data: orders = [],
     isLoading: ordersLoading,
@@ -122,22 +133,21 @@ function OrdersContent() {
   const { data: clients = [] } = useClients();
   const { data: inventory = [] } = useInventory();
 
-  // ─── React Query: mutations ────────────────────────────
+  // â”€â”€â”€ React Query: mutations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const createOrder = useCreateOrder();
   const updateOrder = useUpdateOrder();
   const deleteOrder = useDeleteOrder();
   const recordPayment = useRecordPayment();
   const updateOrderStatus = useUpdateOrderStatus();
 
-  // ─── Local UI state ────────────────────────────────────
+  // â”€â”€â”€ Local UI state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [clientProducts, setClientProducts] = useState<any[]>([]);
   const [clientProductMaterials, setClientProductMaterials] = useState<any[]>(
     [],
   );
   const [isLoadingMaterials, setIsLoadingMaterials] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
   const [currentOrder, setCurrentOrder] = useState<any>(null);
-  // ─── Strictly Isolated Modal Booleans ─────────────────
+  // â”€â”€â”€ Strictly Isolated Modal Booleans â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Each modal has its own [isOpen, setIsOpen] boolean.
   // open=true is ONLY set by explicit user actions (button clicks).
   // open=false is set by onOpenChange(false) or programmatic close.
@@ -150,7 +160,7 @@ function OrdersContent() {
   const [paymentOrder, setPaymentOrder] = useState<any>(null);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
 
-  // ─── Completion Confirmation Modal state ──────────────
+  // â”€â”€â”€ Completion Confirmation Modal state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [completionOrder, setCompletionOrder] = useState<any>(null);
   const [isCompletionModalOpen, setIsCompletionModalOpen] = useState(false);
   const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
@@ -158,7 +168,7 @@ function OrdersContent() {
   const [isInvoicePreviewOpen, setIsInvoicePreviewOpen] = useState(false);
   const [invoiceEditData, setInvoiceEditData] = useState<any>(null);
 
-  // ─── Long-press & Bottom Sheet state ─────────────────
+  // â”€â”€â”€ Long-press & Bottom Sheet state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [longPressedOrder, setLongPressedOrder] = useState<any>(null);
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
   const [pressedCardId, setPressedCardId] = useState<string | null>(null);
@@ -195,15 +205,14 @@ function OrdersContent() {
     setTimeout(() => setLongPressedOrder(null), 350);
   }, []);
 
-  // ─── URL-based status filtering ────────────────────────
+  // â”€â”€â”€ Status filter (React state, synced to URL via syncToURL) â”€â”€
   const searchParams = useSearchParams();
-  const statusFilter = searchParams.get("status");
+  const [statusFilter, setStatusFilter] = useState<string | null>(
+    () => searchParams.get("status") // seed from URL on mount
+  );
   const setStatusShortcut = useCallback((status: string | null) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (!status || status === "all") params.delete("status");
-    else params.set("status", status);
-    router.push(params.toString() ? `/dashboard/orders?${params.toString()}` : "/dashboard/orders");
-  }, [router, searchParams]);
+    setStatusFilter(!status || status === "all" ? null : status);
+  }, []);
 
   const [paymentFormData, setPaymentFormData] = useState({
     amount: "",
@@ -248,16 +257,16 @@ function OrdersContent() {
     ];
     const rows = orders.map((order: any) => [
       order.product_name || order.productName,
-      order.client?.name || order.clients?.name || "—",
+      order.client?.name || order.clients?.name || "â€”",
       String(order.quantity),
-      `₹${Number(order.rate).toLocaleString("en-IN")}`,
-      `₹${Number(order.total_amount || order.totalAmount).toLocaleString("en-IN")}`,
-      order.status,
+      formatINR(Number(order.rate)),
+      formatINR(Number(order.total_amount || order.totalAmount)),
+      getStatusLabel(deriveOrderStatusFromOrder(order)),
       order.delivery_date || order.deliveryDate
         ? new Date(
             order.delivery_date || order.deliveryDate,
           ).toLocaleDateString("en-IN")
-        : "—",
+        : "â€”",
     ]);
     generateDataExportPDF({
       title: "Orders & Production Report",
@@ -280,12 +289,12 @@ function OrdersContent() {
 
     const dataToExport = orders.map((order: any) => ({
       order_id: order?.id ?? "",
-      client_name: order?.client?.name || order?.clients?.name || "—",
+      client_name: order?.client?.name || order?.clients?.name || "â€”",
       status: order?.status ?? "",
       total_amount: order?.total_amount ?? order?.totalAmount ?? 0,
       date_formatted: order?.createdAt
         ? new Date(order.createdAt).toLocaleDateString("en-IN")
-        : "—",
+        : "â€”",
     }));
 
     exportToExcel(
@@ -373,7 +382,7 @@ function OrdersContent() {
     setCurrentOrder(null);
   };
 
-  // ─── Safe close helpers (prevent any state cascade) ────
+  // â”€â”€â”€ Safe close helpers (prevent any state cascade) â”€â”€â”€â”€
   const closeOrderDialog = () => {
     setIsDialogOpen(false);
     resetForm();
@@ -386,52 +395,7 @@ function OrdersContent() {
 
   const openEditDialog = (order: any) => {
     if (!order) return;
-    setCurrentOrder(order);
-    // Compute material cost from saved materials array
-    const savedMaterials: any[] = Array.isArray(order.materials) ? order.materials : [];
-    const computedFromSavedMaterials = savedMaterials.reduce((acc: number, mat: any) => {
-      const costPerUnit = Number(mat.purchase_cost_per_unit || 0);
-      const qty = Number(mat.quantityRequired || 0);
-      return acc + (costPerUnit * qty);
-    }, 0);
-    const effectiveMaterialCost = computedFromSavedMaterials > 0
-      ? String(computedFromSavedMaterials)
-      : order.materialCost ? String(order.materialCost)
-      : order.estimatedMaterialCost ? String(order.estimatedMaterialCost)
-      : "0";
-    setFormData({
-      client_id: order.clientId ?? "",
-      product_name: order.productName ?? order.product_name ?? "",
-      quantity: order.quantity ? String(order.quantity) : "",
-      unit: order.unit ?? "kg",
-      material_source: order.materialSource ?? "own",
-      rate: order.rate ? String(order.rate) : "",
-      delivery_date: order.deliveryDate
-        ? new Date(order.deliveryDate).toISOString().split("T")[0]
-        : "",
-      status: order.status,
-      payment_status: order.paymentStatus,
-      material_cost: effectiveMaterialCost,
-      labour_cost: order.labourCost ? String(order.labourCost) : "0",
-      overhead_cost: order.overheadCost ? String(order.overheadCost) : "0",
-      order_items: [],
-      priority: order.priority ?? "normal",
-      notes: order.notes ?? "",
-    });
-    if (order.clientId) {
-      fetchClientProducts(order.clientId).then(() => {
-        // Find if this product exists to fetch materials
-        fetch(`/api/v1/clients/${order.clientId}/products`)
-          .then((r) => r.ok ? r.json() : { data: [] })
-          .then((json) => {
-            const matched = (json.data || []).find(
-              (p: any) => p.name === order.productName,
-            );
-            if (matched) fetchMaterialsForProduct(order.clientId, matched.id);
-          });
-      });
-    }
-    setIsDialogOpen(true);
+    router.push(`/dashboard/orders/${order.id}/edit`);
   };
 
   const handleClientChange = (clientId: string) => {
@@ -632,38 +596,127 @@ function OrdersContent() {
     }
   };
 
-  const filteredOrders = useMemo(() => {
+  // â”€â”€ Status-only pre-filter (URL-based) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const statusFilteredOrders = useMemo(() => {
     if (!Array.isArray(orders)) return [];
-
-    const search = (searchTerm ?? "").trim().toLowerCase();
-
-    return orders.filter((order: any) => {
-      if (!order) return false;
-
-      // ── Status filter (from URL params) ───────────────
-      const status = String(order.status ?? "").toLowerCase();
-      if (statusFilter) {
-        if (statusFilter === "active" && status === "completed") return false;
-        if (statusFilter === "production" && status !== "processing") return false;
-        if (statusFilter === "completed" && status !== "completed") return false;
-      }
-
-      // ── Search filter ─────────────────────────────────
-      if (!search) return true; // no search term → keep all
-
-      const productName = String(order.productName ?? order.product_name ?? "").toLowerCase();
-      const clientName  = String(order.client?.name ?? order.clients?.name ?? "").toLowerCase();
-      const orderId     = String(order.id ?? "").toLowerCase();
-
-      return (
-        productName.includes(search) ||
-        clientName.includes(search) ||
-        orderId.includes(search)
+    // No filter active â†’ return all
+    if (!statusFilter) return orders;
+    const activeStatus = statusFilter.toLowerCase().trim();
+    // "active" = everything NOT completed
+    if (activeStatus === "active") {
+      return orders.filter(
+        (order: any) => deriveOrderStatusFromOrder(order) === "active",
       );
+    }
+    // "production" maps to "processing" in the DB
+    if (activeStatus === "production") {
+      return orders.filter(
+        (order: any) => deriveOrderStatusFromOrder(order) === "processing",
+      );
+    }
+    // Direct match for all other statuses (pending, processing, completed, cancelled)
+    return orders.filter((order: any) => {
+      const derived = deriveOrderStatusFromOrder(order);
+      return derived === activeStatus;
     });
-  }, [orders, searchTerm, statusFilter]);
+  }, [orders, statusFilter]);
 
-  // ─── Payment Status Color Helper ─────────────────────
+  // ─── Pagination + Search ─────────────────────────────────
+  const {
+    searchQuery,
+    handleSearch,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    totalFiltered,
+    totalItems,
+    paginatedData,
+    debouncedQuery,
+  } = usePaginatedSearch({
+    data: statusFilteredOrders,
+    searchFields: ["productName", "product_name", "id", "status"],
+    pageSize: 15,
+    initialPage,
+    initialSearch,
+    filterFn: (order: any, normalizedQuery: string) => {
+      const productName = String(order.productName ?? order.product_name ?? "").toLowerCase();
+      const clientName = String(order.client?.name ?? order.clients?.name ?? "").toLowerCase();
+      const orderId = String(order.id ?? "").toLowerCase();
+      return (
+        productName.includes(normalizedQuery) ||
+        clientName.includes(normalizedQuery) ||
+        orderId.includes(normalizedQuery)
+      );
+    },
+  });
+
+  // Keep filteredOrders name for backward compatibility with count displays
+  const filteredOrders = paginatedData;
+
+  // ─── Sync to URL on state change ──────────────────────────
+  useEffect(() => {
+    syncToURL({
+      page: currentPage,
+      search: debouncedQuery,
+      filters: { status: statusFilter },
+    });
+  }, [currentPage, debouncedQuery, statusFilter, syncToURL]);
+
+  // ─── Scroll-to-top on page change + Table scroll Ref ──────
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (currentPage > 1) {
+      tableContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [currentPage]);
+
+  // ─── Restore cached UI state on mount ────────────────────
+  // URL params win — cache is only used as a fallback
+  useEffect(() => {
+    const cached = restoreState();
+    if (cached) {
+      // Only apply cached search if URL didn't provide one
+      if (!initialSearch && cached.searchQuery) {
+        handleSearch(cached.searchQuery as string);
+      }
+      // Only apply cached page if URL is at default (page 1)
+      if (initialPage === 1 && typeof cached.currentPage === "number" && cached.currentPage > 1) {
+        setCurrentPage(cached.currentPage as number);
+      }
+      // Only apply cached status filter if URL didn't provide one
+      if (!searchParams.get("status") && cached.statusFilter !== undefined) {
+        setStatusFilter(cached.statusFilter as string | null);
+      }
+      // Restore scroll position
+      if (typeof cached.scrollY === "number" && cached.scrollY > 0) {
+        restoreScroll(cached.scrollY);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ─── Persist UI state on unmount ─────────────────────────
+  const cachedStateRef = useRef({ searchQuery, currentPage, statusFilter });
+  useEffect(() => {
+    cachedStateRef.current = { searchQuery, currentPage, statusFilter };
+  });
+  useEffect(() => {
+    return () => {
+      persist({ ...cachedStateRef.current, scrollY: scrollYRef.current });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ─── Track scroll position for cache ─────────────────────
+  useEffect(() => {
+    const el = tableContainerRef.current;
+    if (!el) return;
+    const handleScroll = () => { scrollYRef.current = el.scrollTop; };
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, [scrollYRef]);
+
+  // â”€â”€â”€ Payment Status Color Helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const getPaymentBadgeColor = (
     status: string,
   ): "green" | "orange" | "red" | "gray" => {
@@ -672,7 +725,7 @@ function OrdersContent() {
     return "orange";
   };
 
-  // ─── Mutation pending state (for disabling buttons) ───
+  // â”€â”€â”€ Mutation pending state (for disabling buttons) â”€â”€â”€
   const isMutating =
     createOrder.isPending ||
     updateOrder.isPending ||
@@ -680,45 +733,19 @@ function OrdersContent() {
     recordPayment.isPending ||
     updateOrderStatus.isPending;
 
-  // ─── Status helpers ───────────────────────────────────
-  const getStatusBadgeColor = (status: string): "green" | "orange" | "gray" => {
+  // â”€â”€â”€ Status helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const getStatusBadgeColor = (status: string): "green" | "orange" | "gray" | "blue" => {
     if (status === "completed") return "green";
     if (status === "processing") return "orange";
+    if (status === "active") return "blue";
     return "gray";
   };
 
   const getStatusLabel = (status: string): string => {
     if (status === "completed") return "COMPLETED";
     if (status === "processing") return "IN PRODUCTION";
+    if (status === "active") return "ACTIVE";
     return "PENDING";
-  };
-
-  const STATUS_OPTIONS = [
-    { value: "pending", label: "Pending", color: "var(--muted-foreground)" },
-    { value: "processing", label: "In Production", color: "var(--erp-warning)" },
-    { value: "completed", label: "Completed", color: "var(--erp-success)" },
-  ] as const;
-
-  const handleStatusChange = (
-    orderId: string,
-    currentStatus: string,
-    newStatus: string,
-  ) => {
-    if (currentStatus === "completed" || currentStatus === newStatus) return;
-    // ── Intercept "completed" → show confirmation modal ──
-    if (newStatus === "completed") {
-      const orderToComplete = (orders as any[]).find((o: any) => o.id === orderId);
-      if (orderToComplete) {
-        setCompletionOrder(orderToComplete);
-        setIsCompletionModalOpen(true);
-        return;
-      }
-    }
-    setUpdatingOrderId(orderId);
-    updateOrderStatus.mutate(
-      { id: orderId, status: newStatus },
-      { onSettled: () => setUpdatingOrderId(null) },
-    );
   };
 
   const handleCompleteOnly = () => {
@@ -775,20 +802,20 @@ function OrdersContent() {
     );
   };
 
-  // ─── Memoized KPI stats (prevent recalc on every render) ─────
+  // â”€â”€â”€ Memoized KPI stats (prevent recalc on every render) â”€â”€â”€â”€â”€
   const orderStats = useMemo(() => {
     if (!Array.isArray(orders)) return { total: 0, pending: 0, processing: 0, completed: 0, revenue: 0, pendingPayment: 0 };
     return {
       total: orders.length,
-      pending: orders.filter((o: any) => o?.status === "pending").length,
-      processing: orders.filter((o: any) => o?.status === "processing").length,
-      completed: orders.filter((o: any) => o?.status === "completed").length,
+      pending: orders.filter((o: any) => deriveOrderStatusFromOrder(o) === "pending").length,
+      processing: orders.filter((o: any) => deriveOrderStatusFromOrder(o) === "processing").length,
+      completed: orders.filter((o: any) => deriveOrderStatusFromOrder(o) === "completed").length,
       revenue: orders.reduce((acc: number, o: any) => acc + Number(o?.totalAmount || 0), 0),
       pendingPayment: orders.filter((o: any) => o?.paymentStatus !== "paid" && o?.paymentStatus !== "Paid").length,
     };
   }, [orders]);
 
-  // ─── Auto-computed Material Cost from Inventory ──────────
+  // â”€â”€â”€ Auto-computed Material Cost from Inventory â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const computedMaterialCost = useMemo(() => {
     const sourceMaterials = formData.material_source === "own" ? inventory : clientProductMaterials;
     let total = 0;
@@ -836,7 +863,7 @@ function OrdersContent() {
       animate="animate"
       className="space-y-6 overflow-x-hidden"
     >
-      {/* ── Header ── */}
+      {/* â”€â”€ Header â”€â”€ */}
       <motion.div
         variants={staggerItem}
         className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
@@ -850,135 +877,174 @@ function OrdersContent() {
             Integrated material flow
           </p>
         </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          {/* PDF Export — Owner only */}
-          {!isStaff && (
-            <button
-              onClick={exportToPDF}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/15 bg-[rgba(255,255,255,0.08)] hover:bg-white/15 text-white text-xs font-medium cursor-pointer transition-all duration-150"
-              title="Print PDF"
-            >
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
-                <rect width="24" height="24" rx="4" fill="#FF0000" />
-                <text
-                  x="12"
-                  y="15"
-                  textAnchor="middle"
-                  fontFamily="Arial"
-                  fontWeight="bold"
-                  fontSize="8"
-                  fill="#fff"
-                >
-                  PDF
-                </text>
-              </svg>
-              <span>PDF</span>
-            </button>
-          )}
-          {/* Excel Export — Owner only */}
-          {!isStaff && (
-            <button
-              onClick={exportToXLSX}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/15 bg-[rgba(255,255,255,0.08)] hover:bg-white/15 text-white text-xs font-medium cursor-pointer transition-all duration-150"
-              title="Excel Export"
-            >
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
-                <rect width="24" height="24" rx="4" fill="#217346" />
-                <path
-                  d="M14 3v5h4"
-                  fill="none"
-                  stroke="#fff"
-                  strokeWidth="1"
-                  opacity="0.5"
-                />
-                <text
-                  x="12"
-                  y="15"
-                  textAnchor="middle"
-                  fontFamily="Arial"
-                  fontWeight="bold"
-                  fontSize="8"
-                  fill="#fff"
-                >
-                  XLS
-                </text>
-              </svg>
-              <span>Export</span>
-            </button>
-          )}
-          <IOSButton
-            variant="filled"
-            color="blue"
-            size="medium"
-            onClick={handleAddNewClick}
-            className="shadow-[var(--shadow-sm)]"
-          >
-            <Plus className="h-4 w-4 mr-1.5" />
-            Add Order
-          </IOSButton>
-        </div>
       </motion.div>
 
-      {/* ── Search Bar (ALWAYS visible) ── */}
+      {/* â”€â”€ Enterprise Toolbar (3-Layer Hierarchy) â”€â”€ */}
       <motion.div
         variants={staggerItem}
-        className="workflow-command-bar mb-6"
-      >
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-[10px] top-1/2 -translate-y-1/2 h-[17px] w-[17px] text-[var(--muted-foreground)]" />
-          <input
-            placeholder="Filter by product or client..."
-            className="glass-input w-full h-[36px] pr-4 pl-[34px] text-[15px]"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          {[
-            { key: "pending", label: "Pending" },
-            { key: "processing", label: "Processing" },
-            { key: "completed", label: "Completed" },
-          ].map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              onClick={() => setStatusShortcut(item.key)}
-              className={cn(
-                "h-8 px-3 rounded-lg text-xs font-semibold transition-colors cursor-pointer",
-                statusFilter === item.key
-                  ? "bg-[var(--primary)] text-white"
-                  : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--accent)]"
-              )}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={handleAddNewClick}
-          className="h-8 px-3 rounded-lg bg-[var(--primary)] text-white text-xs font-semibold hover:opacity-90 cursor-pointer transition-opacity"
-        >
-          Quick add
-        </button>
-        {(searchTerm || statusFilter) && (
-          <button
-            type="button"
-            onClick={() => {
-              setSearchTerm("");
-              setStatusShortcut(null);
-            }}
-            className="h-8 px-3 rounded-lg text-xs font-medium text-[var(--muted-foreground)] bg-[var(--muted)] hover:bg-[var(--accent)] cursor-pointer"
-          >
-            Clear
-          </button>
+        className={cn(
+          // Normal flow on mobile, sticky on desktop
+          "md:sticky md:top-[56px] md:z-30",
+          "shrink-0 pb-4 -mx-1 px-1 mb-2",
+          // Glass surface â€” only needed on desktop where sticky is active
+          "md:bg-[rgba(243,245,249,0.88)] md:backdrop-blur-xl",
+          "md:dark:bg-[rgba(8,12,24,0.82)]",
+          // Bottom hairline
+          "border-b border-[rgba(15,23,42,0.06)] dark:border-[rgba(255,255,255,0.06)]",
         )}
-        <span className="text-[13px] text-[var(--muted-foreground)]">
-          {filteredOrders.length} orders
-        </span>
+      >
+        <div className="space-y-3">
+
+          {/* ROW 1 â€” Search + Primary Actions */}
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+            {/* Search Bar */}
+            <div className="flex-1 relative">
+              <Search
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#94A3B8] dark:text-[rgba(148,163,184,0.7)] pointer-events-none"
+                size={16}
+              />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => handleSearch(e.target.value)}
+                placeholder="Search orders, clients, IDs..."
+                id="orders-search"
+                className={cn(
+                  "w-full h-10 pl-10 pr-10 rounded-[12px] text-[14px] transition-all duration-200",
+                  // Light mode
+                  "bg-[rgba(255,255,255,0.72)] border border-[rgba(15,23,42,0.08)]",
+                  "text-foreground placeholder:text-[#94A3B8]",
+                  "shadow-[0_2px_8px_rgba(15,23,42,0.04)]",
+                  // Dark mode â€” deep navy glass surface
+                  "dark:bg-[rgba(15,23,42,0.50)] dark:border-[rgba(148,163,184,0.12)]",
+                  "dark:text-[#E2E8F0] dark:placeholder:text-[rgba(148,163,184,0.50)]",
+                  "dark:shadow-[0_2px_8px_rgba(0,0,0,0.15)]",
+                  // Focus
+                  "focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[rgba(37,99,235,0.15)]",
+                  "dark:focus:border-[rgba(96,165,250,0.50)] dark:focus:ring-[rgba(96,165,250,0.15)]",
+                  // Caret
+                  "caret-primary",
+                )}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => handleSearch("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-muted-foreground transition-colors duration-150 cursor-pointer"
+                  aria-label="Clear search"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            {/* Action Buttons â€” shrink-0 so they never wrap oddly */}
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Add Order â€” PRIMARY CTA */}
+              <button
+                type="button"
+                onClick={handleAddNewClick}
+                className="flex items-center gap-2 h-10 px-4 rounded-[12px] bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-[13px] font-semibold shadow-[0_2px_8px_rgba(37,99,235,0.25)] hover:shadow-[0_4px_16px_rgba(37,99,235,0.35)] transition-all duration-200 active:scale-[0.98] cursor-pointer"
+              >
+                <Plus size={15} />
+                <span className="hidden sm:inline">Add Order</span>
+                <span className="sm:hidden">Add</span>
+              </button>
+
+              {/* Export â€” SECONDARY */}
+              <button
+                type="button"
+                onClick={exportToXLSX}
+                className={cn(
+                  "flex items-center gap-2 h-10 px-3.5 rounded-[12px] text-[13px] font-medium transition-all duration-200 active:scale-[0.98] cursor-pointer",
+                  // Light
+                  "bg-[rgba(255,255,255,0.72)] hover:bg-[rgba(255,255,255,0.95)] border border-[rgba(15,23,42,0.08)] hover:border-[rgba(15,23,42,0.14)]",
+                  "text-[#64748B] hover:text-[#0F172A] shadow-[0_2px_8px_rgba(15,23,42,0.04)]",
+                  // Dark â€” deep navy glass surface
+                  "dark:bg-[rgba(15,23,42,0.50)] dark:hover:bg-[rgba(30,41,59,0.70)]",
+                  "dark:border-[rgba(148,163,184,0.12)] dark:hover:border-[rgba(148,163,184,0.20)]",
+                  "dark:text-[#94A3B8] dark:hover:text-[#E2E8F0] dark:shadow-[0_2px_8px_rgba(0,0,0,0.15)]",
+                )}
+              >
+                <Download size={14} />
+                <span className="hidden md:inline">Export</span>
+              </button>
+            </div>
+          </div>
+
+          {/* ROW 2 + ROW 3 â€” Filters + Result Count */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+            {/* Status Filter Pills */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {[
+                { key: null, label: "All" },
+                { key: "pending", label: "Pending" },
+                { key: "processing", label: "Processing" },
+                { key: "active", label: "Active" },
+                { key: "completed", label: "Completed" },
+              ].map((item) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => {
+                    setStatusShortcut(item.key);
+                    setCurrentPage(1);
+                  }}
+                  className={cn(
+                    "h-8 px-3.5 rounded-[10px] text-[12.5px] font-medium border transition-all duration-150 cursor-pointer",
+                    statusFilter === item.key
+                      ? "bg-[#2563EB] text-white border-transparent shadow-sm shadow-[rgba(37,99,235,0.25)]"
+                      : cn(
+                          // Light
+                          "bg-[rgba(255,255,255,0.60)] hover:bg-[rgba(255,255,255,0.90)] text-[#64748B] hover:text-[#0F172A]",
+                          "border-[rgba(15,23,42,0.08)] hover:border-[rgba(15,23,42,0.14)]",
+                          // Dark â€” deep navy glass surface
+                          "dark:bg-[rgba(15,23,42,0.50)] dark:hover:bg-[rgba(30,41,59,0.70)]",
+                          "dark:text-[#94A3B8] dark:hover:text-[#E2E8F0]",
+                          "dark:border-[rgba(148,163,184,0.12)] dark:hover:border-[rgba(148,163,184,0.20)]",
+                        )
+                  )}
+                >
+                  {item.label}
+                </button>
+              ))}
+
+              {/* Clear â€” only when filters/search active */}
+              {(searchQuery || statusFilter) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleSearch("");
+                    setStatusShortcut(null);
+                    setCurrentPage(1);
+                  }}
+                  className={cn(
+                    "h-8 px-3 rounded-[10px] text-[12.5px] font-medium transition-all duration-150 cursor-pointer",
+                    "text-muted-foreground/70 hover:text-muted-foreground",
+                    "border border-dashed",
+                    "border-[rgba(15,23,42,0.12)] hover:border-[rgba(15,23,42,0.20)]",
+                    "dark:border-[rgba(148,163,184,0.15)] dark:hover:border-[rgba(148,163,184,0.25)]",
+                    "bg-transparent hover:bg-[rgba(255,255,255,0.5)] dark:hover:bg-[rgba(30,41,59,0.50)]",
+                  )}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {/* Result Count â€” passive, right-aligned */}
+            <p className="text-[12.5px] text-muted-foreground/70 font-medium whitespace-nowrap shrink-0 sm:text-right tabular-nums">
+              {statusFilter
+                ? `Showing ${totalFiltered} ${statusFilter} orders`
+                : `Showing ${totalFiltered} of ${orders.length} orders`
+              }
+            </p>
+          </div>
+
+        </div>
       </motion.div>
 
-        {/* ─── Error State Banner ── */}
+        {/* â”€â”€â”€ Error State Banner â”€â”€ */}
         {ordersError && (
           <motion.div
             variants={staggerItem}
@@ -992,7 +1058,7 @@ function OrdersContent() {
                 Failed to load orders
               </p>
               <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5 truncate">
-                {ordersErrorObj?.message || "Unknown error — please try refreshing."}
+                {ordersErrorObj?.message || "Unknown error â€” please try refreshing."}
               </p>
             </div>
             <IOSButton
@@ -1006,9 +1072,9 @@ function OrdersContent() {
           </motion.div>
         )}
 
-        {/* ═══════════════════════════════════════════════════════
-        ── LOADING STATE ──
-        ═══════════════════════════════════════════════════════ */}
+        {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+        â”€â”€ LOADING STATE â”€â”€
+        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
         {roleLoading || ordersLoading ? (
           <div className="flex items-center justify-center py-20">
             <div className="flex flex-col items-center gap-3">
@@ -1024,7 +1090,7 @@ function OrdersContent() {
           <motion.div initial="initial" animate="animate" variants={staggerContainer} className="w-full">
             {/* 3-Column Grid: Orders (30%) | Widgets (40%) | Production (30%) */}
             <div className="grid grid-cols-1 lg:grid-cols-[30fr_40fr_30fr] gap-5">
-              {/* ── LEFT: Orders Panel ── */}
+              {/* â”€â”€ LEFT: Orders Panel â”€â”€ */}
               <motion.div variants={staggerItem} className="order-2 lg:order-1">
                 <IOSCard variant="elevated" padding="lg" className="h-full">
                   <div className="flex items-center justify-between mb-4">
@@ -1033,7 +1099,7 @@ function OrdersContent() {
                         Orders
                       </h3>
                       <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5">
-                        {filteredOrders.length} total
+                        {totalFiltered} total
                       </p>
                     </div>
                   </div>
@@ -1133,7 +1199,9 @@ function OrdersContent() {
                         <div className="space-y-0.5">
                           {filteredOrders
                             .slice(0, 5)
-                            .map((order: any, idx: number) => (
+                            .map((order: any, idx: number) => {
+                              const derived = deriveOrderStatusFromOrder(order);
+                              return (
                               <div key={order.id ?? idx}>
                                 <motion.div
                                   initial={{ opacity: 0, y: 4 }}
@@ -1148,33 +1216,37 @@ function OrdersContent() {
                                   <div
                                     className={cn(
                                       "w-[5px] h-[5px] rounded-full flex-shrink-0",
-                                      (order.status ?? "") === "completed"
+                                      derived === "completed"
                                         ? "bg-[var(--erp-success)]"
-                                        : (order.status ?? "") === "processing"
+                                        : derived === "processing"
                                           ? "bg-[var(--primary)]"
-                                          : "bg-[var(--erp-warning)]",
+                                          : derived === "active"
+                                            ? "bg-[var(--primary)]"
+                                            : "bg-[var(--erp-warning)]",
                                     )}
                                   />
                                   <div className="flex-1 min-w-0">
                                     <p className="text-[13px] font-medium text-[var(--foreground)] truncate">
-                                      {order.productName ?? order.product_name ?? "—"}
+                                      {order.productName ?? order.product_name ?? "â€”"}
                                     </p>
                                     <p className="text-[11px] text-[var(--muted-foreground)] truncate">
-                                      {order.client?.name ?? order.clients?.name ?? "—"} ·{" "}
+                                      {order.client?.name ?? order.clients?.name ?? "â€”"} Â·{" "}
                                       {order.quantity ?? 0} {order.unit ?? "kg"}
                                     </p>
                                   </div>
                                   <span
                                     className={cn(
                                       "text-[10px] font-medium px-1.5 py-0.5 rounded-full capitalize whitespace-nowrap",
-                                      order.status === "completed"
+                                      derived === "completed"
                                         ? "bg-[rgba(52,199,89,0.12)] text-[var(--erp-success)]"
-                                        : order.status === "processing"
+                                        : derived === "processing"
                                           ? "bg-[rgba(0,122,255,0.12)] text-[var(--primary)]"
-                                          : "bg-[rgba(255,149,0,0.12)] text-[var(--erp-warning)]",
+                                          : derived === "active"
+                                            ? "bg-[rgba(0,122,255,0.12)] text-[var(--primary)]"
+                                            : "bg-[rgba(255,149,0,0.12)] text-[var(--erp-warning)]",
                                     )}
                                   >
-                                    {getStatusLabel(order.status)}
+                                    {getStatusLabel(derived)}
                                   </span>
                                 </motion.div>
                                 {idx <
@@ -1182,7 +1254,8 @@ function OrdersContent() {
                                   <div className="h-px bg-[var(--border-divider)] mx-3" />
                                 )}
                               </div>
-                            ))}
+                            );
+                            })}
                         </div>
                       )}
                     </div>
@@ -1190,7 +1263,7 @@ function OrdersContent() {
                 </IOSCard>
               </motion.div>
 
-              {/* ── CENTER: Summary Widgets ── */}
+              {/* â”€â”€ CENTER: Summary Widgets â”€â”€ */}
               <motion.div
                 variants={staggerItem}
                 className="flex flex-col items-center justify-center gap-5 order-1 lg:order-2 py-2 lg:py-0"
@@ -1286,7 +1359,7 @@ function OrdersContent() {
                 </motion.div>
               </motion.div>
 
-              {/* ── RIGHT: Production Panel ── */}
+              {/* â”€â”€ RIGHT: Production Panel â”€â”€ */}
               <motion.div variants={staggerItem} className="order-3">
                 <IOSCard variant="elevated" padding="lg" className="h-full">
                   <div className="mb-4">
@@ -1497,9 +1570,9 @@ function OrdersContent() {
           </motion.div>
         ) : (
           <motion.div initial="initial" animate="animate" variants={staggerContainer} className="space-y-6">
-            {/* ═══════════════════════════════════════════════════════
-            ── ADMIN/OWNER VIEW: KPI Stats + Table ──
-            ═══════════════════════════════════════════════════════ */}
+            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+            â”€â”€ ADMIN/OWNER VIEW: KPI Stats + Table â”€â”€
+            â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
             {/* KPI Stats */}
             <div className="kpi-panel">
               <div className="kpi-panel__glow"></div>
@@ -1515,10 +1588,10 @@ function OrdersContent() {
                 <StatWidget
                   label="Total Revenue"
                   value={orderStats.revenue}
+                  displayValue={formatINR(orderStats.revenue)}
                   change={0}
                   icon={IndianRupee}
                   color="green"
-                  prefix="₹"
                   delay={1}
                 />
                 <StatWidget
@@ -1540,16 +1613,17 @@ function OrdersContent() {
               </div>
             </div>
 
-            {/* ── Table (Admin/Owner only) ── */}
+            {/* â”€â”€ Table (Admin/Owner only) â”€â”€ */}
             <motion.div variants={staggerItem}>
               <IOSCard
                 variant="elevated"
                 padding="none"
                 className="hidden md:block overflow-hidden glass-premium !rounded-[20px]"
               >
+              <div ref={tableContainerRef} className="max-h-[calc(100vh-320px)] overflow-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="glass-table-header hover:bg-transparent border-b border-white/[0.07] dark:border-white/[0.07]">
+                  <TableRow className="glass-table-header hover:bg-transparent border-b border-white/[0.07] dark:border-white/[0.07] sticky top-0 z-10 bg-white/90 dark:bg-[#0F1117]/90 backdrop-blur-sm">
                     <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide pl-5">
                       Order
                     </TableHead>
@@ -1588,23 +1662,20 @@ function OrdersContent() {
                     <TableRow>
                       <TableCell
                         colSpan={isStaff ? 3 : 4}
-                        className="text-center py-16"
+                        className="text-center"
                       >
-                        <div className="flex flex-col items-center gap-3">
-                          <div className="w-[56px] h-[56px] rounded-[14px] bg-[var(--muted)] flex items-center justify-center">
-                            <Factory className="h-6 w-6 text-[var(--muted-foreground)]" />
-                          </div>
-                          <p className="text-[17px] font-medium text-[var(--muted-foreground)]">
-                            No active orders
-                          </p>
-                          <p className="text-[13px] text-[var(--muted-foreground)]">
-                            Create your first order to start production
-                          </p>
-                        </div>
+                        <TableEmptyState
+                          variant={searchQuery ? "no-results" : "no-data"}
+                          title={searchQuery ? "No orders match your search" : "No active orders"}
+                          subtitle={searchQuery ? "Try adjusting your search or filters" : "Create your first order to start production"}
+                          action={!searchQuery ? { label: "+ New Order", onClick: handleAddNewClick } : undefined}
+                        />
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredOrders.map((order: any, index: number) => (
+                    filteredOrders.map((order: any, index: number) => {
+                      const derived = deriveOrderStatusFromOrder(order);
+                      return (
                       <motion.tr
                         key={order.id ?? index}
                         initial={{ opacity: 0, y: 8 }}
@@ -1619,10 +1690,10 @@ function OrdersContent() {
                         <TableCell className="pl-5 py-4">
                           <div className="flex flex-col">
                             <span className="text-[17px] font-bold text-[var(--foreground)] leading-[22px]">
-                              {order.productName ?? order.product_name ?? "—"}
+                              {order.productName ?? order.product_name ?? "â€”"}
                             </span>
                             <span className="text-[13px] text-[var(--muted-foreground)] mt-0.5">
-                              Client: {order.client?.name ?? order.clients?.name ?? "—"}
+                              Client: {order.client?.name ?? order.clients?.name ?? "â€”"}
                             </span>
                             <div className="flex items-center gap-2 mt-1.5">
                               <IOSBadge
@@ -1638,17 +1709,16 @@ function OrdersContent() {
                             </div>
                           </div>
                         </TableCell>
-                        {/* Financials column — Owner only */}
+                        {/* Financials column â€” Owner only */}
                         {!isStaff && (
                           <TableCell className="py-4">
                             <div className="flex flex-col gap-1">
                               <span className="text-[20px] font-bold text-[var(--primary)]">
-                                ₹{Number(order.totalAmount ?? order.total_amount ?? 0).toLocaleString()}
+                                {formatINR(Number(order.totalAmount ?? order.total_amount ?? 0))}
                               </span>
                               {(order.totalPaid ?? order.total_paid ?? 0) > 0 && (
                                 <span className="text-[13px] text-[var(--erp-success)] font-semibold">
-                                  Paid: ₹
-                                  {Number(order.totalPaid ?? order.total_paid ?? 0).toLocaleString()}
+                                  Paid: {formatINR(Number(order.totalPaid ?? order.total_paid ?? 0))}
                                 </span>
                               )}
                               {order.paymentStatus !== "Paid" &&
@@ -1656,11 +1726,7 @@ function OrdersContent() {
                                 order.totalAmount - (order.totalPaid || 0) >
                                   0 && (
                                   <span className="text-[13px] text-[var(--erp-warning)] font-semibold">
-                                    Due: ₹
-                                    {Number(
-                                      order.totalAmount -
-                                        (order.totalPaid || 0),
-                                    ).toLocaleString()}
+                                    Due: {formatINR(Number(order.totalAmount - (order.totalPaid || 0)))}
                                   </span>
                                 )}
                               <IOSBadge
@@ -1685,20 +1751,22 @@ function OrdersContent() {
                                 <div
                                   className={cn(
                                     "h-[8px] w-[8px] rounded-full",
-                                    order.status === "completed"
+                                    derived === "completed"
                                       ? "bg-[var(--erp-success)]"
-                                      : order.status === "processing"
+                                      : derived === "processing"
                                         ? "bg-[var(--erp-warning)] animate-pulse"
-                                        : "bg-[var(--muted-foreground)]",
+                                        : derived === "active"
+                                          ? "bg-[var(--primary)]"
+                                          : "bg-[var(--muted-foreground)]",
                                   )}
                                 />
                               )}
                               <IOSBadge
-                                color={getStatusBadgeColor(order.status)}
+                                color={getStatusBadgeColor(derived)}
                                 variant="tinted"
                                 size="small"
                               >
-                                {getStatusLabel(order.status)}
+                                {getStatusLabel(derived)}
                               </IOSBadge>
                             </div>
                             {/* Due Date */}
@@ -1714,7 +1782,7 @@ function OrdersContent() {
                         </TableCell>
                         <TableCell className="pr-5 text-right py-4">
                           <div className="flex items-center justify-end gap-1">
-                            {/* Invoice download — Owner only */}
+                            {/* Invoice download â€” Owner only */}
                             {!isStaff && (
                               <motion.button
                                 whileTap={{ scale: 0.9 }}
@@ -1737,57 +1805,8 @@ function OrdersContent() {
                                 align="end"
                                 className="w-52 rounded-[12px]"
                               >
-                                {/* Status Change Submenu */}
-                                <DropdownMenuSub>
-                                  <DropdownMenuSubTrigger className="rounded-[8px]">
-                                    <ArrowRight className="mr-2 h-4 w-4" />
-                                    Change Status
-                                  </DropdownMenuSubTrigger>
-                                  <DropdownMenuSubContent className="rounded-[12px]">
-                                    {STATUS_OPTIONS.map((opt) => (
-                                      <DropdownMenuItem
-                                        key={opt.value}
-                                        className="rounded-[8px] gap-2"
-                                        disabled={
-                                          order.status === "completed" ||
-                                          order.status === opt.value ||
-                                          updatingOrderId === order.id
-                                        }
-                                        onClick={() =>
-                                          handleStatusChange(
-                                            order.id,
-                                            order.status,
-                                            opt.value,
-                                          )
-                                        }
-                                      >
-                                        <div
-                                          className={cn(
-                                            "h-[8px] w-[8px] rounded-full",
-                                            opt.value === "completed"
-                                              ? "bg-[var(--erp-success)]"
-                                              : opt.value === "processing"
-                                                ? "bg-[var(--erp-warning)]"
-                                                : "bg-[var(--muted-foreground)]",
-                                          )}
-                                        />
-                                        <span
-                                          className={cn(
-                                            order.status === opt.value &&
-                                              "font-bold",
-                                          )}
-                                        >
-                                          {opt.label}
-                                        </span>
-                                        {order.status === opt.value && (
-                                          <CheckCircle2 className="ml-auto h-3.5 w-3.5 text-[var(--primary)]" />
-                                        )}
-                                      </DropdownMenuItem>
-                                    ))}
-                                  </DropdownMenuSubContent>
-                                </DropdownMenuSub>
-                                <DropdownMenuSeparator />
-                                {/* Edit Order — Owner only */}
+
+                                {/* Edit Order â€” Owner only */}
                                 {!isStaff && (
                                   <DropdownMenuItem
                                     onClick={() => openEditDialog(order)}
@@ -1797,7 +1816,7 @@ function OrdersContent() {
                                     Order
                                   </DropdownMenuItem>
                                 )}
-                                {/* Record Payment — Owner only */}
+                                {/* Record Payment â€” Owner only */}
                                 {!isStaff && (
                                   <DropdownMenuItem
                                     onClick={() => openPaymentDialog(order)}
@@ -1824,13 +1843,24 @@ function OrdersContent() {
                           </div>
                         </TableCell>
                       </motion.tr>
-                    ))
+                    );
+                    })
                   )}
                 </TableBody>
               </Table>
+              </div>
             </IOSCard>
 
-            {/* ═══ PREMIUM MOBILE ORDER CARDS ═══ */}
+            {/* â”€â”€ Pagination â”€â”€ */}
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalFiltered}
+              pageSize={15}
+              onPageChange={setCurrentPage}
+            />
+
+            {/* â•â•â• PREMIUM MOBILE ORDER CARDS â•â•â• */}
             <div style={{ padding: '0 2px' }} className="block md:hidden">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {ordersLoading ? (
@@ -1851,11 +1881,11 @@ function OrdersContent() {
                   <p style={{ color: '#94a3b8', fontSize: 14, fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif" }}>No active orders</p>
                 </div>
               ) : filteredOrders.map((order: any, idx: number) => {
-                const status = order.status ?? 'pending';
-                const accentColor = status === 'processing' ? '#f59e0b' : status === 'completed' ? '#10b981' : '#3b82f6';
+                const status = deriveOrderStatusFromOrder(order);
+                const accentColor = status === 'processing' ? '#f59e0b' : status === 'completed' ? '#10b981' : status === 'active' ? '#3b82f6' : '#64748b';
                 const statusLabel = getStatusLabel(status);
-                const statusBg = status === 'processing' ? 'rgba(245,158,11,0.15)' : status === 'completed' ? 'rgba(16,185,129,0.15)' : 'rgba(59,130,246,0.15)';
-                const statusBorder = status === 'processing' ? 'rgba(245,158,11,0.3)' : status === 'completed' ? 'rgba(16,185,129,0.3)' : 'rgba(59,130,246,0.3)';
+                const statusBg = status === 'processing' ? 'rgba(245,158,11,0.15)' : status === 'completed' ? 'rgba(16,185,129,0.15)' : status === 'active' ? 'rgba(59,130,246,0.15)' : 'rgba(100,116,139,0.15)';
+                const statusBorder = status === 'processing' ? 'rgba(245,158,11,0.3)' : status === 'completed' ? 'rgba(16,185,129,0.3)' : status === 'active' ? 'rgba(59,130,246,0.3)' : 'rgba(100,116,139,0.3)';
                 const paymentStatus = order.paymentStatus ?? 'pending';
                 const isPaid = paymentStatus === 'paid' || paymentStatus === 'Paid';
                 const isPressed = pressedCardId === order.id;
@@ -1899,11 +1929,11 @@ function OrdersContent() {
                     {/* Top row: Product + Status */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{
-                        color: '#ffffff', fontWeight: 600, fontSize: 16, maxWidth: '60%',
+                        color: 'var(--foreground)', fontWeight: 600, fontSize: 16, maxWidth: '60%',
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif",
                       }}>
-                        {order.productName ?? order.product_name ?? '—'}
+                        {order.productName ?? order.product_name ?? 'â€”'}
                       </span>
                       <span style={{
                         fontSize: 10, fontWeight: 700, letterSpacing: '0.05em',
@@ -1918,7 +1948,7 @@ function OrdersContent() {
 
                     {/* Client name */}
                     <div style={{ color: '#64748b', fontSize: 13, marginTop: 3, fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif" }}>
-                      {order.client?.name ?? order.clients?.name ?? '—'}
+                      {order.client?.name ?? order.clients?.name ?? 'â€”'}
                     </div>
 
                     {/* Divider */}
@@ -1930,7 +1960,7 @@ function OrdersContent() {
                         color: '#60a5fa', fontSize: 20, fontWeight: 700,
                         fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif",
                       }}>
-                        ₹{Number(order.totalAmount ?? order.total_amount ?? 0).toLocaleString('en-IN')}
+                        {formatINR(Number(order.totalAmount ?? order.total_amount ?? 0))}
                       </span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{ color: '#64748b', fontSize: 12, fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif" }}>
@@ -1957,7 +1987,7 @@ function OrdersContent() {
         </motion.div>
       )}
 
-      {/* ═══ LONG-PRESS BOTTOM SHEET — MobileSheet ═══ */}
+      {/* â•â•â• LONG-PRESS BOTTOM SHEET â€” MobileSheet â•â•â• */}
       <MobileSheet open={isBottomSheetOpen} onClose={closeBottomSheet}>
         {longPressedOrder && (
           <>
@@ -1967,12 +1997,40 @@ function OrdersContent() {
                 <h2 style={{ fontSize: 18, fontWeight: 700, color: '#e6e0e9', letterSpacing: '-0.5px', lineHeight: 1.3, margin: 0, fontFamily: "Inter, -apple-system, sans-serif" }}>
                   {longPressedOrder.productName ?? longPressedOrder.product_name ?? 'Order'}
                 </h2>
-                <span style={{ fontSize: 11, fontWeight: 600, padding: '4px 8px', borderRadius: 4, textTransform: 'uppercase', letterSpacing: '1px', background: longPressedOrder.status === 'completed' ? 'rgba(48,209,88,0.1)' : 'rgba(231,195,101,0.1)', color: longPressedOrder.status === 'completed' ? '#30D158' : '#e7c365', border: `1px solid ${longPressedOrder.status === 'completed' ? 'rgba(48,209,88,0.2)' : 'rgba(231,195,101,0.2)'}` }}>
-                  {getStatusLabel(longPressedOrder.status ?? 'pending')}
+                <span style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: '4px 8px',
+                  borderRadius: 4,
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px',
+                  background: (() => {
+                    const ds = deriveOrderStatusFromOrder(longPressedOrder);
+                    if (ds === 'completed') return 'rgba(48,209,88,0.1)';
+                    if (ds === 'processing') return 'rgba(255,149,0,0.1)';
+                    if (ds === 'active') return 'rgba(10,132,255,0.1)';
+                    return 'rgba(142,142,147,0.1)';
+                  })(),
+                  color: (() => {
+                    const ds = deriveOrderStatusFromOrder(longPressedOrder);
+                    if (ds === 'completed') return '#30D158';
+                    if (ds === 'processing') return '#FF9F0A';
+                    if (ds === 'active') return '#0A84FF';
+                    return '#8E8E93';
+                  })(),
+                  border: `1px solid ${(() => {
+                    const ds = deriveOrderStatusFromOrder(longPressedOrder);
+                    if (ds === 'completed') return 'rgba(48,209,88,0.2)';
+                    if (ds === 'processing') return 'rgba(255,149,0,0.2)';
+                    if (ds === 'active') return 'rgba(10,132,255,0.2)';
+                    return 'rgba(142,142,147,0.2)';
+                  })()}`
+                }}>
+                  {getStatusLabel(deriveOrderStatusFromOrder(longPressedOrder))}
                 </span>
               </div>
               <p style={{ fontSize: 14, color: '#948e9c', margin: 0, display: 'flex', alignItems: 'center', gap: 8, fontFamily: "Inter, sans-serif" }}>
-                <span>₹{Number(longPressedOrder.totalAmount ?? 0).toLocaleString('en-IN')}</span>
+                <span>{formatINR(Number(longPressedOrder.totalAmount ?? 0))}</span>
                 <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#494551', display: 'inline-block' }} />
                 <span>{longPressedOrder.quantity ?? 0} {longPressedOrder.unit ?? 'items'}</span>
               </p>
@@ -2018,7 +2076,7 @@ function OrdersContent() {
         )}
       </MobileSheet>
 
-      {/* ═══ TOAST NOTIFICATION ═══ */}
+      {/* â•â•â• TOAST NOTIFICATION â•â•â• */}
       {toastMessage && (
         <div style={{
           position: 'fixed', bottom: 90, left: '50%', transform: 'translateX(-50%)',
@@ -2036,535 +2094,10 @@ function OrdersContent() {
         </div>
       )}
 
-      {/* ═══════ DIALOGS ═══════ */}
+      {/* â•â•â•â•â•â•â• DIALOGS â•â•â•â•â•â•â• */}
 
-      {/* Create/Edit Order Dialog */}
-      <Dialog
-        open={isDialogOpen}
-        onOpenChange={(open) => {
-          // GUARD: only accept close — open is via explicit user actions only
-          if (!open) closeOrderDialog();
-        }}
-      >
-        <DialogContent className="max-w-[480px] md:max-w-[min(1100px,85vw)] flex flex-col max-h-[90vh] p-0 gap-0" aria-describedby={undefined} showCloseButton={false} fullScreen>
-          <DialogDescription className="sr-only">
-            Form to configure and issue a production order
-          </DialogDescription>
-          {/* Premium Header */}
-          <div style={{
-            flexShrink: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '14px 16px 12px',
-            borderBottom: '1px solid rgba(255,255,255,0.07)',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
-              <div style={{
-                width: 40, height: 40, borderRadius: 12,
-                background: 'linear-gradient(135deg, rgba(59,130,246,0.4), rgba(255,255,255,0.06))',
-                border: '1px solid rgba(255,255,255,0.10)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0,
-              }}>
-                <Factory className="h-[18px] w-[18px] text-[#60a5fa]" />
-              </div>
-              <div style={{ minWidth: 0 }}>
-                <DialogTitle style={{
-                  fontSize: 18, fontWeight: 700, color: '#f1f5f9',
-                  lineHeight: '22px', margin: 0,
-                }}>
-                  {currentOrder ? "Edit Order" : "New Production Order"}
-                </DialogTitle>
-                <p style={{ fontSize: 13, color: '#64748b', lineHeight: '18px', margin: '2px 0 0' }}>
-                  {currentOrder
-                    ? `Editing ${currentOrder.productName || 'order'}` 
-                    : 'Configure and issue a production order'}
-                </p>
-              </div>
-            </div>
-            <DialogClose asChild>
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                style={{
-                  width: 36, height: 36, borderRadius: 10,
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', flexShrink: 0, color: '#94a3b8',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,80,80,0.15)')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
-              >
-                <X size={16} />
-              </motion.button>
-            </DialogClose>
-          </div>
 
-          {/* Scrollable body */}
-          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 pt-3 pb-0" style={{ scrollbarWidth: 'thin' }}>
-            <form id="order-form" onSubmit={handleSubmit} className="space-y-6">
-                {/* Client & Product */}
-                <div className="grid grid-cols-2 gap-5 p-4 glass-section rounded-[16px]">
-                  <div className="col-span-2 space-y-1.5">
-                    <Label className="text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--muted-foreground)]">
-                      Target Client
-                    </Label>
-                    <Select
-                      value={formData.client_id}
-                      onValueChange={handleClientChange}
-                      required
-                    >
-                      <SelectTrigger className="h-[44px] glass-input rounded-[12px]">
-                        <SelectValue placeholder="Select from directory..." />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-[12px]">
-                        {clients.map((c: any) => (
-                          <SelectItem
-                            key={c.id}
-                            value={c.id}
-                            className="rounded-[8px]"
-                          >
-                            {c.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="col-span-2 space-y-1.5">
-                    <Label className="text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--muted-foreground)]">
-                      Product Name
-                    </Label>
-                    <Input
-                      list="client-products"
-                      placeholder="Enter product name..."
-                      value={formData.product_name}
-                      className="glass-input h-[44px] px-3"
-                      onChange={handleProductChange}
-                      required
-                    />
-                    <datalist id="client-products">
-                      {clientProducts.map((p) => (
-                        <option key={p.id} value={p.name} />
-                      ))}
-                    </datalist>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--muted-foreground)]">
-                      Ordered Quantity
-                    </Label>
-                    <div className="flex h-[44px]">
-                      <NumericInput
-                        value={formData.quantity}
-                        onValueChange={(v) =>
-                          setFormData({ ...formData, quantity: v })
-                        }
-                        className="h-full rounded-r-none border-r border-[#e5e5ea] focus:z-10 bg-[var(--card)] max-w-[120px]"
-                        placeholder="Qty"
-                        allowDecimal={true}
-                        min={0}
-                        required
-                      />
-                      <Select
-                        value={formData.unit}
-                        onValueChange={(v) =>
-                          setFormData({ ...formData, unit: v })
-                        }
-                      >
-                        <SelectTrigger className="h-full rounded-l-none border-none flex-1 bg-[var(--card)] focus:ring-0 focus:ring-offset-0 px-3">
-                          <SelectValue placeholder="Unit" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-[12px]">
-                          <SelectItem value="kg" className="rounded-[8px]">
-                            kg
-                          </SelectItem>
-                          <SelectItem value="pcs" className="rounded-[8px]">
-                            pcs
-                          </SelectItem>
-                          <SelectItem value="ltr" className="rounded-[8px]">
-                            ltr
-                          </SelectItem>
-                          <SelectItem value="mtr" className="rounded-[8px]">
-                            mtr
-                          </SelectItem>
-                          <SelectItem value="box" className="rounded-[8px]">
-                            box
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--muted-foreground)]">
-                      Rate (₹)
-                    </Label>
-                    <NumericInput
-                      value={formData.rate}
-                      onValueChange={(v) =>
-                        setFormData({ ...formData, rate: v })
-                      }
-                      className="h-[44px]"
-                      placeholder="Enter rate"
-                      prefix="₹"
-                      allowDecimal={true}
-                      min={0}
-                      required
-                    />
-                  </div>
-                  <div className="col-span-2 space-y-2 mt-1">
-                    <Label className="text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--muted-foreground)] flex items-center gap-1.5">
-                      Material Source{" "}
-                      <span className="text-[10px] lowercase font-normal text-[var(--muted-foreground)]">
-                        (optional)
-                      </span>
-                    </Label>
-                    <TogglePill
-                      options={[
-                        { value: "own", label: "Own Material" },
-                        { value: "client", label: "Client Material" },
-                      ]}
-                      value={formData.material_source}
-                      onChange={(v) => {
-                        const source = v as "own" | "client";
-                        setFormData((prev) => ({
-                          ...prev,
-                          material_source: source,
-                          order_items: [],
-                        }));
-                        if (source === "own") {
-                          setClientProductMaterials([]);
-                        } else {
-                          const matchedProduct = clientProducts.find(
-                            (p) => p.name === formData.product_name,
-                          );
-                          if (matchedProduct && formData.client_id) {
-                            fetchMaterialsForProduct(
-                              formData.client_id,
-                              matchedProduct.id,
-                            );
-                          } else {
-                            setClientProductMaterials([]);
-                          }
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
 
-                {/* Material Deduction */}
-                {!currentOrder && (
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-[17px] font-bold text-[var(--foreground)] flex items-center gap-2">
-                        <Box className="h-5 w-5 text-[var(--muted-foreground)]" />{" "}
-                        Material Deduction
-                      </h3>
-                      <IOSButton
-                        type="button"
-                        variant="gray"
-                        size="small"
-                        onClick={addDeductionRow}
-                        icon={<Plus className="h-3.5 w-3.5" />}
-                      >
-                        Add Component
-                      </IOSButton>
-                    </div>
-                    {formData.order_items.length === 0 && (
-                      <div className="py-6 text-center bg-[var(--muted)] rounded-[12px] border-2 border-dashed border-[var(--border)]">
-                        <AlertCircle className="h-5 w-5 mx-auto mb-2 text-[var(--muted-foreground)]" />
-                        <p className="text-[13px] text-[var(--muted-foreground)]">
-                          You must select which raw materials are used for this
-                          order.
-                        </p>
-                      </div>
-                    )}
-                    {formData.order_items.map((item, idx) => {
-                      const sourceMaterials =
-                        formData.material_source === "own"
-                          ? inventory
-                          : clientProductMaterials;
-                      const hasClientSelected =
-                        formData.material_source === "own" ||
-                        !!formData.client_id;
-
-                      return (
-                        <div key={idx} className="flex gap-3 items-end">
-                          <div className="flex-1 space-y-1">
-                            <Label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase flex items-center gap-2">
-                              Raw Material
-                              {isLoadingMaterials && (
-                                <Loader2 className="h-3 w-3 animate-spin text-[var(--primary)]" />
-                              )}
-                            </Label>
-                            <Select
-                              value={item.inventory_id}
-                              onValueChange={(v) =>
-                                updateDeductionRow(idx, "inventory_id", v)
-                              }
-                              disabled={
-                                !hasClientSelected || isLoadingMaterials
-                              }
-                            >
-                              <SelectTrigger className="h-[44px] glass-input rounded-[12px]">
-                                <SelectValue
-                                  placeholder={
-                                    !hasClientSelected
-                                      ? "Select target client first..."
-                                      : isLoadingMaterials
-                                        ? "Loading materials..."
-                                        : "Select stock..."
-                                  }
-                                />
-                              </SelectTrigger>
-                              <SelectContent className="rounded-[12px]">
-                                {sourceMaterials.length === 0 ? (
-                                  <div className="p-3 text-[13px] text-[var(--muted-foreground)] text-center">
-                                    No materials available
-                                  </div>
-                                ) : (
-                                  sourceMaterials.map((i: any) => (
-                                    <SelectItem
-                                      key={i.id}
-                                      value={i.id}
-                                      disabled={i.quantity <= 0}
-                                      className="rounded-[8px]"
-                                    >
-                                      {i.name} ({i.quantity} {i.unit || "unit"}{" "}
-                                      left)
-                                    </SelectItem>
-                                  ))
-                                )}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="w-36 space-y-1">
-                            <Label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase">
-                              Qty Used
-                            </Label>
-                            <NumericInput
-                              className="h-[44px]"
-                              value={item.quantity_deducted}
-                              onValueChange={(v) =>
-                                updateDeductionRow(idx, "quantity_deducted", v)
-                              }
-                              placeholder="0"
-                              allowDecimal={true}
-                              min={0}
-                            />
-                          </div>
-                          <motion.button
-                            type="button"
-                            whileTap={{ scale: 0.9 }}
-                            className="h-[44px] w-[44px] rounded-[10px] flex items-center justify-center text-[var(--destructive)] hover:bg-[rgba(255,59,48,0.08)] transition-colors cursor-pointer"
-                            onClick={() => removeDeductionRow(idx)}
-                          >
-                            <X className="h-5 w-5" />
-                          </motion.button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Cost Breakdown Section */}
-                <div className="mt-4 pt-5 border-t border-[var(--border)]">
-                  <p className="text-[11px] font-bold text-[var(--muted-foreground)] mb-3 uppercase tracking-[0.06em]">
-                    Cost Breakdown <span className="text-[10px] lowercase font-normal text-[var(--muted-foreground)]">(optional — used for profit margin analytics)</span>
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="space-y-1.5">
-                      <Label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase">
-                        Material Cost (₹) <span className="text-[10px] lowercase font-normal text-[var(--muted-foreground)]">(auto-computed)</span>
-                      </Label>
-                      <div
-                        className="h-[44px] flex items-center px-3 rounded-[10px] bg-[var(--muted)] text-[15px] font-semibold text-[var(--foreground)] tabular-nums"
-                        style={{ opacity: 0.85, cursor: 'not-allowed' }}
-                      >
-                        ₹{computedMaterialCost.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                      </div>
-                      {computedMaterialCost.warnings.map((name) => (
-                        <p key={name} className="text-[11px] text-[var(--erp-warning)] mt-1">
-                          ⚠ Landing cost missing for {name}
-                        </p>
-                      ))}
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase">
-                        Labour Cost (₹) <span className="text-[10px] lowercase font-normal text-[var(--muted-foreground)]">(optional)</span>
-                      </Label>
-                      <NumericInput
-                        value={formData.labour_cost}
-                        onValueChange={(v) => setFormData({ ...formData, labour_cost: v })}
-                        className="h-[44px]"
-                        placeholder="0"
-                        allowDecimal={true}
-                        min={0}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase">
-                        Overhead Cost (₹) <span className="text-[10px] lowercase font-normal text-[var(--muted-foreground)]">(optional)</span>
-                      </Label>
-                      <NumericInput
-                        value={formData.overhead_cost}
-                        onValueChange={(v) => setFormData({ ...formData, overhead_cost: v })}
-                        className="h-[44px]"
-                        placeholder="0"
-                        allowDecimal={true}
-                        min={0}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Delivery & Production Status */}
-                <div className="grid grid-cols-2 gap-4 border-t border-[var(--border)] pt-5">
-                  <div className="space-y-1.5">
-                    <Label className="text-[13px] text-[var(--muted-foreground)]">
-                      Expected Delivery
-                    </Label>
-                    <Input
-                      type="date"
-                      value={formData.delivery_date}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          delivery_date: e.target.value,
-                        })
-                      }
-                      className="h-[44px] rounded-[10px] bg-[var(--muted)] border-none"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[13px] text-[var(--muted-foreground)]">
-                      Production Status
-                    </Label>
-                    <Select
-                      value={formData.status}
-                      onValueChange={(v) =>
-                        setFormData({ ...formData, status: v })
-                      }
-                    >
-                      <SelectTrigger className="h-[44px] rounded-[10px] bg-[var(--muted)] border-none">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-[12px]">
-                        <SelectItem value="pending" className="rounded-[8px]">
-                          Pending
-                        </SelectItem>
-                        <SelectItem
-                          value="processing"
-                          className="rounded-[8px]"
-                        >
-                          In Production
-                        </SelectItem>
-                        <SelectItem value="completed" className="rounded-[8px]">
-                          Completed
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Payment Status Info (read-only) */}
-                {currentOrder && (
-                  <div className="flex items-center gap-2 p-3 rounded-[12px] bg-[var(--muted)]">
-                    <IndianRupee className="h-4 w-4 text-[var(--muted-foreground)]" />
-                    <span className="text-[13px] text-[var(--muted-foreground)]">
-                      Payment status is{" "}
-                      <strong className="text-[var(--foreground)]">
-                        {currentOrder.paymentStatus}
-                      </strong>{" "}
-                      — auto-updated when payments are recorded.
-                    </span>
-                  </div>
-                )}
-
-                {/* Total */}
-                <div className="bg-[rgba(0,122,255,0.06)] p-4 rounded-[14px] flex justify-between items-center border border-[rgba(0,122,255,0.15)]">
-                  <span className="text-[13px] font-bold text-[var(--muted-foreground)] uppercase">
-                    Calculated Total
-                  </span>
-                  <span className="text-[22px] font-bold text-[var(--primary)]">
-                    ₹
-                    {(
-                      parseNumericValue(formData.quantity) *
-                      parseNumericValue(formData.rate)
-                    ).toLocaleString()}
-                  </span>
-                </div>
-
-                {/* Cost & Profit Summary */}
-                {(() => {
-                  const sellingPrice = parseNumericValue(formData.quantity) * parseNumericValue(formData.rate);
-                  // When editing, order_items is [] so computedMaterialCost is 0 — fall back to stored cost
-                  const storedMaterialCost = currentOrder ? Number(currentOrder.materialCost ?? currentOrder.material_cost ?? 0) : 0;
-                  const effectiveMaterialCost = computedMaterialCost.total > 0 ? computedMaterialCost.total : storedMaterialCost;
-                  const totalCost = effectiveMaterialCost
-                    + parseNumericValue(formData.labour_cost)
-                    + parseNumericValue(formData.overhead_cost);
-                  const profit = sellingPrice - totalCost;
-                  const marginPct = sellingPrice > 0 ? (profit / sellingPrice) * 100 : 0;
-                  const hasData = totalCost > 0 || effectiveMaterialCost > 0;
-
-                  return (
-                    <div className="p-4 rounded-[14px] bg-[var(--muted)] border border-[var(--border)] mb-0">
-                      <p className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-[0.06em] mb-2">
-                        Cost & Profit Summary
-                      </p>
-                      {!hasData ? (
-                        <p className="text-[13px] text-[var(--muted-foreground)]">Add materials above to see margin</p>
-                      ) : (
-                        <div className="space-y-1.5 text-[14px]">
-                          <div className="flex justify-between">
-                            <span className="text-[var(--muted-foreground)]">Total Cost</span>
-                            <span className="text-[var(--foreground)] font-semibold tabular-nums">₹{totalCost.toLocaleString('en-IN')}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-[var(--muted-foreground)]">Profit</span>
-                            <span className={`font-semibold tabular-nums ${profit >= 0 ? 'text-[var(--erp-success)]' : 'text-[var(--destructive)]'}`}>
-                              ₹{profit.toLocaleString('en-IN')}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-[var(--muted-foreground)]">Margin</span>
-                            <span className={`font-semibold tabular-nums ${profit >= 0 ? 'text-[var(--erp-success)]' : 'text-[var(--destructive)]'}`}>
-                              {marginPct.toFixed(1)}%
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-
-                {/* Push Updates / Issue Order — inline at end of form */}
-                <div style={{ paddingTop: 32, paddingBottom: 'max(24px, env(safe-area-inset-bottom, 24px))' }}>
-                  <button
-                    type="submit"
-                    className="w-full cursor-pointer border-none"
-                    style={{
-                      height: 52,
-                      borderRadius: 18,
-                      background: '#1D9E75',
-                      color: '#FFFFFF',
-                      fontSize: 14,
-                      fontWeight: 500,
-                      transition: 'background 150ms ease',
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = '#178A65'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = '#1D9E75'; }}
-                  >
-                    {currentOrder
-                      ? "Push Updates"
-                      : "Issue Order & Deduct Materials"}
-                  </button>
-                </div>
-
-              </form>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Delete Dialog */}
       <Dialog
@@ -2763,7 +2296,7 @@ function OrdersContent() {
                   placeholder="e.g. UPI Ref #1234..."
                 />
               </div>
-              {/* Action buttons — inline at end of form */}
+              {/* Action buttons â€” inline at end of form */}
               <div style={{ paddingTop: 24, paddingBottom: 'max(20px, env(safe-area-inset-bottom, 20px))' }}>
                 <div className="flex gap-2">
                   <IOSButton
@@ -2789,7 +2322,7 @@ function OrdersContent() {
         </DialogContent>
       </Dialog>
 
-      {/* ═══ COMPLETION CONFIRMATION MODAL ═══ */}
+      {/* â•â•â• COMPLETION CONFIRMATION MODAL â•â•â• */}
       <CompletionConfirmationModal
         open={isCompletionModalOpen}
         order={completionOrder}
@@ -2799,7 +2332,7 @@ function OrdersContent() {
         isLoading={isGeneratingInvoice}
       />
 
-      {/* ═══ INVOICE PREVIEW MODAL ═══ */}
+      {/* â•â•â• INVOICE PREVIEW MODAL â•â•â• */}
       <InvoicePreviewModal
         open={isInvoicePreviewOpen}
         invoiceData={generatedInvoice}
@@ -2810,7 +2343,7 @@ function OrdersContent() {
         onSendWhatsApp={() => {}}
       />
 
-      {/* ═══ GENERATING INVOICE OVERLAY ═══ */}
+      {/* â•â•â• GENERATING INVOICE OVERLAY â•â•â• */}
       <AnimatePresence>
         {isGeneratingInvoice && (
           <motion.div
