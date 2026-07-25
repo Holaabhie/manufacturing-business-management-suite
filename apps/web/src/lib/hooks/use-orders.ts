@@ -18,10 +18,14 @@ export const queryKeys = {
     clients: ["clients"] as const,
     inventory: ["inventory"] as const,
     payments: ["payments"] as const,
+    production: ["production"] as const,
+    stats: ["dashboard-stats"] as const,
+    order: (id: string) => ["orders", id] as const,
+    ordersByClient: (clientId: string) => ["orders", "by-client", clientId] as const,
 };
 
 // ─── Generic fetcher (resilient) ─────────────────────────
-async function apiFetch<T>(url: string): Promise<T> {
+export async function apiFetch<T>(url: string): Promise<T> {
     const res = await fetch(url);
     if (!res.ok) {
         let errorMsg = `API ${url} → ${res.status}`;
@@ -94,6 +98,7 @@ export function useCreateOrder() {
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: queryKeys.orders });
             qc.invalidateQueries({ queryKey: queryKeys.inventory });
+            qc.invalidateQueries({ queryKey: queryKeys.stats });
             toast.success("Order created & stock deducted");
         },
         onError: (err: Error) => {
@@ -124,6 +129,7 @@ export function useUpdateOrder() {
         },
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: queryKeys.orders });
+            qc.invalidateQueries({ queryKey: queryKeys.stats });
             toast.success("Order updated successfully");
         },
         onError: (err: Error) => {
@@ -163,6 +169,7 @@ export function useDeleteOrder() {
         },
         onSettled: () => {
             qc.invalidateQueries({ queryKey: queryKeys.orders });
+            qc.invalidateQueries({ queryKey: queryKeys.stats });
         },
     });
 }
@@ -203,6 +210,11 @@ export function useRecordPayment() {
                 );
             }
             qc.invalidateQueries({ queryKey: queryKeys.orders });
+            qc.invalidateQueries({ queryKey: queryKeys.payments });
+            qc.invalidateQueries({ queryKey: queryKeys.stats });
+            if (typeof _variables.reference_id === "string") {
+                qc.invalidateQueries({ queryKey: queryKeys.order(_variables.reference_id) });
+            }
             toast.success("Payment recorded — status updated automatically");
         },
         onError: (err: Error) => {
@@ -234,7 +246,7 @@ export function useUpdateOrderStatus() {
             }
             return json.data ?? json;
         },
-        // ─── Optimistic status update ───
+        // ─── Optimistic status update (patches productionStatus, not legacy status) ───
         onMutate: async ({ id, status }: { id: string; status: string }) => {
             await qc.cancelQueries({ queryKey: queryKeys.orders });
             const previous = qc.getQueryData<any[]>(queryKeys.orders);
@@ -245,10 +257,15 @@ export function useUpdateOrderStatus() {
                         o.id === id
                             ? {
                                 ...o,
-                                status,
+                                productionStatus: status,
                                 updatedAt: now,
                                 ...(status === "processing" ? { processedAt: now } : {}),
-                                ...(status === "completed" ? { completedAt: now, processedAt: o.processedAt || now } : {}),
+                                ...(status === "completed" ? {
+                                    completedAt: now,
+                                    processedAt: o.processedAt || now,
+                                    productionStatusManualOverride: true,
+                                } : {}),
+                                ...(status === "cancelled" || status === "on_hold" ? { status } : {}),
                             }
                             : o,
                     )
@@ -276,6 +293,7 @@ export function useUpdateOrderStatus() {
             // Refresh orders + cross-module data (dashboard stats, inventory)
             qc.invalidateQueries({ queryKey: queryKeys.orders });
             qc.invalidateQueries({ queryKey: queryKeys.inventory });
+            qc.invalidateQueries({ queryKey: queryKeys.stats });
         },
     });
 }
@@ -385,10 +403,24 @@ export function useCreatePayment() {
         onSuccess: () => {
             toast.success("Payment recorded successfully");
         },
-        onSettled: () => {
+        onSettled: async (_data: any, _error: any, payload: any) => {
+            // Reconcile order payment status in DB if linked to an order
+            try {
+                const orderId = payload?.order_id;
+                if (orderId) {
+                    await fetch(`/api/v1/orders/${orderId}/reconcile-payment`, {
+                        method: "POST",
+                    });
+                }
+            } catch (err) {
+                // Reconciliation failure is non-blocking — payment is already saved
+                console.warn("[reconcile-payment] failed silently:", err);
+            }
+
             // Background re-validate for server truth
-            qc.invalidateQueries({ queryKey: queryKeys.payments });
-            qc.invalidateQueries({ queryKey: queryKeys.orders });
+            qc.invalidateQueries({ queryKey: queryKeys.payments, exact: false });
+            qc.invalidateQueries({ queryKey: queryKeys.orders, exact: false });
+            qc.invalidateQueries({ queryKey: queryKeys.clients, exact: false });
         },
     });
 }
@@ -455,9 +487,23 @@ export function useDeletePayment() {
         onSuccess: () => {
             toast.success("Payment deleted");
         },
-        onSettled: () => {
-            qc.invalidateQueries({ queryKey: queryKeys.payments });
-            qc.invalidateQueries({ queryKey: queryKeys.orders });
+        onSettled: async (_data: any, _error: any, _paymentId: string, context: any) => {
+            // Reconcile order payment status in DB if the deleted payment was linked to an order
+            try {
+                const deletedPayment = context?.prevPayments?.find((p: any) => p.id === _paymentId);
+                const orderId = deletedPayment?.orderId;
+                if (orderId) {
+                    await fetch(`/api/v1/orders/${orderId}/reconcile-payment`, {
+                        method: "POST",
+                    });
+                }
+            } catch (err) {
+                console.warn("[reconcile-payment] failed silently:", err);
+            }
+
+            qc.invalidateQueries({ queryKey: queryKeys.payments, exact: false });
+            qc.invalidateQueries({ queryKey: queryKeys.orders, exact: false });
+            qc.invalidateQueries({ queryKey: queryKeys.clients, exact: false });
         },
     });
 }

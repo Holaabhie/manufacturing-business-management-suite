@@ -26,6 +26,7 @@ import {
   Trash2,
   Download,
   FileSpreadsheet,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -52,6 +53,9 @@ import StaffWorkPanel from "@/components/StaffWorkPanel";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import type { ActivityItem } from "@/components/dashboard/activity-detail-types";
+import { useCachedPage } from "@/hooks/useCachedPage";
+import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/hooks/use-orders";
 
 const ActivityDetailPopup = dynamic(
   () => import("@/components/dashboard/ActivityDetailPopup"),
@@ -96,7 +100,7 @@ interface WidgetConfig {
 
 // Available widgets registry
 const AVAILABLE_WIDGETS: { id: string; icon: any; color: string; prefix?: string; }[] = [
-  { id: "Total Revenue", icon: IndianRupee, color: "blue", prefix: "₹" },
+  { id: "Total Revenue", icon: IndianRupee, color: "blue", prefix: "\u20B9" },
   { id: "Active Orders", icon: ShoppingCart, color: "green" },
   { id: "Total Clients", icon: Users, color: "purple" },
   { id: "Low Stock Items", icon: AlertTriangle, color: "orange" },
@@ -140,7 +144,7 @@ function CustomTooltip({ active, payload, label }: any) {
             style={{ backgroundColor: p.color || 'var(--primary)' }}
           />
           <p className="text-[13px] font-semibold text-foreground tabular-nums">
-            {p.name === "revenue" ? `₹${p.value.toLocaleString()}` : p.value}
+            {p.name === "revenue" ? `\u20B9${p.value.toLocaleString()}` : p.value}
           </p>
         </div>
       ))}
@@ -152,7 +156,14 @@ function CustomTooltip({ active, payload, label }: any) {
 // DASHBOARD PAGE
 // ═══════════════════════════════════════════════════
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const { restoreState, persist, restoreScroll } = useCachedPage({
+    pageKey: "dashboard",
+    maxAgeMs: 5 * 60 * 1000,
+  });
+
+  const stateRestoredRef = useRef(false);
+  const [hasRestored, setHasRestored] = useState(false);
+
   const [loading, setLoading] = useState(true);
   const [activities, setActivities] = useState<RecentActivity[]>([]);
   const [revenueData, setRevenueData] = useState<ChartDataPoint[]>([]);
@@ -163,6 +174,31 @@ export default function DashboardPage() {
   const t = useTranslations("dashboard");
   const tCommon = useTranslations("common");
   const tWidgets = useTranslations("widgets");
+
+  // ─── Stats via React Query (auto-refetch on window focus + mutation invalidation) ───
+  const { data: stats = null } = useQuery<DashboardStats | null>({
+    queryKey: queryKeys.stats,
+    queryFn: async (): Promise<DashboardStats> => {
+      const res = await fetch("/api/dashboard/stats");
+      if (!res.ok) throw new Error("Failed to fetch stats");
+      const statsRes = await res.json();
+      if (statsRes.error) throw new Error(statsRes.error);
+      return {
+        totalRevenue: statsRes.totalRevenue || 0,
+        totalOrders: statsRes.activeOrders || 0,
+        totalClients: statsRes.totalClients || 0,
+        lowStockItems: statsRes.lowStockItems || 0,
+        revenueGrowth: statsRes.revenueGrowth || 0,
+        pendingPayments: statsRes.pendingPayments || 0,
+        ordersInProduction: statsRes.ordersInProduction || 0,
+        ordersReady: statsRes.ordersReady || 0,
+        todaysProduction: statsRes.todaysProduction || 0,
+      };
+    },
+    staleTime: 60_000,
+    refetchOnWindowFocus: true,
+    enabled: userRole !== "Staff" && !roleLoading,
+  });
 
   // Widget State
   const [widgetLayout, setWidgetLayout] = useState<WidgetConfig[]>([]);
@@ -178,6 +214,37 @@ export default function DashboardPage() {
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const cached = restoreState();
+    if (cached) {
+      if (cached.activities) setActivities(cached.activities as RecentActivity[]);
+      if (cached.revenueData) setRevenueData(cached.revenueData as ChartDataPoint[]);
+      if (cached.weeklyData) setWeeklyData(cached.weeklyData as WeeklyDataPoint[]);
+      if (cached.widgetLayout) setWidgetLayout(cached.widgetLayout as WidgetConfig[]);
+      setLoading(false);
+      stateRestoredRef.current = true;
+      if (typeof cached.scrollY === "number") {
+        restoreScroll(cached.scrollY);
+      }
+    }
+    setHasRestored(true);
+  }, [restoreState, restoreScroll]);
+
+  useEffect(() => {
+    return () => {
+      if (stats || activities.length > 0 || revenueData.length > 0 || weeklyData.length > 0 || widgetLayout.length > 0) {
+        persist({
+          stats,
+          activities,
+          revenueData,
+          weeklyData,
+          widgetLayout,
+          scrollY: window.scrollY,
+        });
+      }
+    };
+  }, [stats, activities, revenueData, weeklyData, widgetLayout, persist]);
 
   // ─── Close export dropdown on outside click ──────────
   useEffect(() => {
@@ -229,31 +296,15 @@ export default function DashboardPage() {
     }
     // Wait until role is determined before fetching admin data
     if (roleLoading) return;
+    if (!hasRestored) return;
 
     const fetchDashboardData = async () => {
       try {
-        const [statsRes, revenueRes, activityRes, weeklyOrdersRes] = await Promise.all([
-          fetch("/api/dashboard/stats").then((r) => r.ok ? r.json() : null).catch(() => null),
+        const [revenueRes, activityRes, weeklyOrdersRes] = await Promise.all([
           fetch("/api/dashboard/revenue-chart?range=monthly").then((r) => r.ok ? r.json() : null).catch(() => null),
           fetch("/api/dashboard/activity").then((r) => r.ok ? r.json() : null).catch(() => null),
           fetch("/api/dashboard/weekly-orders").then((r) => r.ok ? r.json() : null).catch(() => null),
         ]);
-
-        if (statsRes && !statsRes.error) {
-          setStats({
-            totalRevenue: statsRes.totalRevenue || 0,
-            totalOrders: statsRes.activeOrders || 0,
-            totalClients: statsRes.totalClients || 0,
-            lowStockItems: statsRes.lowStockItems || 0,
-            revenueGrowth: statsRes.revenueGrowth || 0,
-            pendingPayments: statsRes.pendingPayments || 0,
-            ordersInProduction: statsRes.ordersInProduction || 0,
-            ordersReady: statsRes.ordersReady || 0,
-            todaysProduction: statsRes.todaysProduction || 0,
-          });
-        } else {
-          setStats({ totalRevenue: 0, totalOrders: 0, totalClients: 0, lowStockItems: 0, revenueGrowth: 0, pendingPayments: 0, ordersInProduction: 0, ordersReady: 0, todaysProduction: 0 });
-        }
 
         if (Array.isArray(revenueRes) && revenueRes.length > 0) {
           const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -295,7 +346,6 @@ export default function DashboardPage() {
         }
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
-        setStats({ totalRevenue: 0, totalOrders: 0, totalClients: 0, lowStockItems: 0, revenueGrowth: 0, pendingPayments: 0, ordersInProduction: 0, ordersReady: 0, todaysProduction: 0 });
       } finally {
         setLoading(false);
       }
@@ -360,7 +410,7 @@ export default function DashboardPage() {
   };
   const fmtCurrency = (v: any) => {
     const n = Number(v);
-    return isNaN(n) ? "₹0" : `₹${n.toLocaleString("en-IN")}`;
+    return isNaN(n) ? "\u20B90" : `\u20B9${n.toLocaleString("en-IN")}`;
   };
 
   const handleExportExcel = useCallback(async () => {
@@ -843,7 +893,7 @@ export default function DashboardPage() {
                       axisLine={false} 
                       tickLine={false} 
                       tick={{ fill: "var(--muted-foreground)", fontSize: 13, fontWeight: 500 }} 
-                      tickFormatter={(v) => `₹${v / 1000}K`} 
+                      tickFormatter={(v) => `\u20B9${v / 1000}K`} 
                       dx={-10} 
                     />
                     <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--border)', strokeWidth: 1, strokeDasharray: '3 3' }} />
@@ -1000,50 +1050,65 @@ export default function DashboardPage() {
       {/* ── Widget Selection Modal ── */}
       <Dialog open={isWidgetModalOpen} onOpenChange={setIsWidgetModalOpen}>
         <DialogContent
-          className="sm:max-w-[500px] overflow-hidden glass-dialog"
+          className="sm:max-w-[500px] md:max-w-2xl glass-dialog !p-0 !overflow-hidden"
         >
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold -tracking-[0.5px]">{t("selectWidget")}</DialogTitle>
+          {/* Fixed Header */}
+          <DialogHeader className="px-5 pt-5 pb-3 md:px-6 md:pt-6 md:pb-4 flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-xl md:text-2xl font-semibold -tracking-[0.5px]">{t("selectWidget")}</DialogTitle>
+              {/* Desktop X close button */}
+              <DialogClose asChild>
+                <button className="hidden md:flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 transition-colors text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300">
+                  <X className="h-5 w-5" />
+                </button>
+              </DialogClose>
+            </div>
           </DialogHeader>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 py-2">
-            {AVAILABLE_WIDGETS.map((widget) => {
-              const isUsed = widgetLayout.some((w) => w.widget_type === widget.id && w.is_visible);
-              return (
-                <button
-                  key={widget.id}
-                  onClick={() => handleAddWidget(widget.id)}
-                  disabled={isUsed || savingWidgets}
-                  className={cn(
-                    "flex flex-col items-start gap-2 p-4 rounded-[16px] text-left transition-all border",
-                    isUsed
-                      ? "bg-[var(--muted)] border-transparent opacity-50 cursor-not-allowed"
-                      : "bg-[var(--muted)] border-[var(--border)] hover:bg-[var(--accent)] hover:border-[var(--border)] hover:shadow-sm"
-                  )}
-                >
-                  <div className={cn(
-                    "h-10 w-10 flex items-center justify-center rounded-full",
-                    isUsed ? "bg-[var(--muted)] text-[var(--muted-foreground)]" : `kpi-card__icon--${widget.color} bg-[var(--muted)]`
-                  )}>
-                    <widget.icon className={cn("h-5 w-5", isUsed ? "" : ({
-                      blue: "text-primary",
-                      green: "text-green-500",
-                      orange: "text-amber-500",
-                      purple: "text-violet-500",
-                      red: "text-destructive",
-                      pink: "text-pink-500",
-                    } as Record<string, string>)[widget.color] || "text-primary")} />
-                  </div>
-                  <div>
-                    <span className="block font-medium text-[15px] text-[var(--foreground)]">{widget.id}</span>
-                    <span className="block mt-0.5 text-[12px] text-[var(--muted-foreground)]">
+
+          {/* Scrollable Cards Section */}
+          <div className="flex-1 overflow-y-auto px-5 pb-5 md:px-6 md:pb-6 md:max-h-[60vh]">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+              {AVAILABLE_WIDGETS.map((widget) => {
+                const isUsed = widgetLayout.some((w) => w.widget_type === widget.id && w.is_visible);
+                return (
+                  <button
+                    key={widget.id}
+                    onClick={() => handleAddWidget(widget.id)}
+                    disabled={isUsed || savingWidgets}
+                    className={cn(
+                      "flex flex-col items-start p-4 rounded-2xl text-left transition-all duration-150 border",
+                      isUsed
+                        ? "bg-gray-100 dark:bg-white/5 border-transparent opacity-50 cursor-not-allowed"
+                        : "bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/10 hover:bg-blue-50 dark:hover:bg-white/10 hover:border-blue-200 dark:hover:border-white/20 cursor-pointer"
+                    )}
+                  >
+                    <div className={cn(
+                      "w-10 h-10 flex items-center justify-center rounded-xl mb-3 shadow-sm",
+                      isUsed
+                        ? "bg-gray-200 dark:bg-white/10"
+                        : "bg-white dark:bg-white/10"
+                    )}>
+                      <widget.icon className={cn("h-5 w-5", isUsed ? "text-gray-400 dark:text-gray-500" : ({
+                        blue: "text-blue-500",
+                        green: "text-green-500",
+                        orange: "text-amber-500",
+                        purple: "text-violet-500",
+                        red: "text-red-500",
+                        pink: "text-pink-500",
+                      } as Record<string, string>)[widget.color] || "text-blue-500")} />
+                    </div>
+                    <span className="block text-sm font-semibold text-gray-900 dark:text-white">{widget.id}</span>
+                    <span className="block text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                       {isUsed ? t("alreadyAdded") : t("clickToAdd")}
                     </span>
-                  </div>
-                </button>
-              );
-            })}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <DialogFooter className="mt-4 pt-4 border-t border-[var(--border)]">
+
+          {/* Fixed Footer — mobile only (desktop uses X button in header) */}
+          <DialogFooter className="px-5 pb-5 pt-3 border-t border-gray-100 dark:border-white/10 flex-shrink-0 md:hidden">
             <DialogClose asChild>
               <IOSButton variant="gray" size="large" className="w-full sm:w-auto">{tCommon("cancel")}</IOSButton>
             </DialogClose>
