@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { AccessDenied } from "@/components/AccessDenied";
 import {
@@ -61,9 +61,12 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import { MobileSheet } from "@/components/ui/MobileSheet";
 import { Separator } from "@/components/ui/separator";
 import { NumericInput, parseNumericValue } from "@/components/ui/numeric-input";
 import TallyExportButton from "@/components/billing/TallyExportButton";
+import CreateInvoiceModal from "@/components/billing/CreateInvoiceModal";
+import { useCachedPage } from "@/hooks/useCachedPage";
 
 // --- iOS Components ---
 import {
@@ -152,6 +155,14 @@ export default function BillingPage() {
     const [clientSearch, setClientSearch] = useState("");
     const clientDropdownRef = useRef<HTMLDivElement>(null);
 
+    // ─── Long-press & Bottom Sheet state (Fix 3) ────────
+    const [longPressedBill, setLongPressedBill] = useState<Bill | null>(null);
+    const [isBillSheetOpen, setIsBillSheetOpen] = useState(false);
+    const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const touchStartX = useRef(0);
+    const touchStartY = useRef(0);
+    const longPressTriggered = useRef(false);
+
     // Role-based access control
     const [userRole, setUserRole] = useState<string | null>(null);
     const [roleLoading, setRoleLoading] = useState(true);
@@ -230,6 +241,25 @@ export default function BillingPage() {
             setRoleLoading(false);
         }
     };
+
+    // ── Page State Persistence ────────────────────────────
+    const { restoreState, persist, scrollYRef } = useCachedPage({ pageKey: "billing" });
+    const persistRef = useRef({ searchTerm, bills });
+    useEffect(() => { persistRef.current = { searchTerm, bills }; });
+    useEffect(() => {
+        const cached = restoreState();
+        if (cached) {
+            if (cached.searchTerm) setSearchTerm(cached.searchTerm as string);
+            if (Array.isArray(cached.bills) && (cached.bills as any[]).length > 0) {
+                setBills(cached.bills as Bill[]);
+                setLoading(false);
+            }
+        }
+        return () => {
+            persist({ ...persistRef.current, scrollY: scrollYRef.current });
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     useEffect(() => {
         fetchData();
@@ -456,6 +486,70 @@ export default function BillingPage() {
         }
     };
 
+    // ─── Long-press handlers (Fix 3) ─────────────────────
+    const handleBillLongPressStart = useCallback((bill: Bill, e: React.TouchEvent) => {
+        touchStartX.current = e.touches[0].clientX;
+        touchStartY.current = e.touches[0].clientY;
+        longPressTriggered.current = false;
+        longPressTimerRef.current = setTimeout(() => {
+            if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(50);
+            longPressTriggered.current = true;
+            setLongPressedBill(bill);
+            setIsBillSheetOpen(true);
+        }, 500);
+    }, []);
+
+    const handleBillLongPressMove = useCallback((e: React.TouchEvent) => {
+        const dx = Math.abs(e.touches[0].clientX - touchStartX.current);
+        const dy = Math.abs(e.touches[0].clientY - touchStartY.current);
+        if (dx > 10 || dy > 10) {
+            if (longPressTimerRef.current) {
+                clearTimeout(longPressTimerRef.current);
+                longPressTimerRef.current = null;
+            }
+        }
+    }, []);
+
+    const handleBillLongPressEnd = useCallback(() => {
+        if (longPressTimerRef.current) {
+            clearTimeout(longPressTimerRef.current);
+            longPressTimerRef.current = null;
+        }
+    }, []);
+
+    const closeBillSheet = useCallback(() => {
+        setIsBillSheetOpen(false);
+        setTimeout(() => setLongPressedBill(null), 350);
+    }, []);
+
+    // ─── WhatsApp Share (Fix 5) ──────────────────────────
+    const handleWhatsAppShare = useCallback(async (bill: Bill) => {
+        const message = `Invoice ${bill.billNumber}\nClient: ${bill.clientName}\nAmount: \u20B9${bill.totalAmount.toLocaleString('en-IN')}\nDue: ${new Date(bill.dueDate).toLocaleDateString('en-IN')}`;
+
+        const phoneNumber = bill.clientPhone?.replace(/[^0-9]/g, '') || '';
+        const waUrl = phoneNumber
+            ? `https://wa.me/${phoneNumber.startsWith('91') ? phoneNumber : '91' + phoneNumber}?text=${encodeURIComponent(message)}`
+            : `https://wa.me/?text=${encodeURIComponent(message)}`;
+
+        window.open(waUrl, '_blank');
+        toast.success("Opening WhatsApp...");
+
+        // Fire-and-forget notification log
+        try {
+            await fetch('/api/billing/share-log', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    billId: bill.id,
+                    billNumber: bill.billNumber,
+                    clientName: bill.clientName,
+                    totalAmount: bill.totalAmount,
+                    channel: 'whatsapp',
+                }),
+            });
+        } catch { /* non-critical */ }
+    }, []);
+
     const updateStatus = async (id: string, status: Bill['status']) => {
         try {
             const res = await fetch(`/api/v1/billing/${id}`, {
@@ -678,361 +772,17 @@ export default function BillingPage() {
                                 Create New Invoice
                             </IOSButton>
                         </DialogTrigger>
-                        <DialogContent className="max-w-4xl max-h-[95vh] p-0 bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px]">
-                        <ScrollArea className="max-h-[95vh]">
-                            <div className="p-6">
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 16, marginBottom: 0, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                                  <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg, rgba(16,185,129,0.4), rgba(255,255,255,0.06))', border: '1px solid rgba(255,255,255,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <Building2 className="h-[18px] w-[18px] text-[#34d399]" />
-                                  </div>
-                                  <div>
-                                    <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', lineHeight: '22px', margin: 0 }}>Create Tax Invoice</DialogTitle>
-                                    <DialogDescription style={{ fontSize: 13, color: '#64748b', lineHeight: '18px', margin: '2px 0 0' }}>GST compliant invoice with auto calculations</DialogDescription>
-                                  </div>
-                                </div>
+                    </Dialog>
 
-                                <form onSubmit={handleSubmit} className="space-y-6 mt-6">
-                                    {/* Client & Date Section */}
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-[var(--muted)] rounded-[16px] border border-[var(--border)]">
-                                        <div className="space-y-2">
-                                            <label className="flex items-center gap-2 text-[13px] font-medium text-[var(--muted-foreground)] pl-1">
-                                                <User className="h-4 w-4 text-[var(--muted-foreground)]" />
-                                                Bill To (Client)
-                                            </label>
-                                            <div className="relative" ref={clientDropdownRef}>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => { setClientDropdownOpen(!clientDropdownOpen); setClientSearch(""); }}
-                                                    className={cn(
-                                                        'w-full h-[44px] rounded-[10px] text-left flex items-center',
-                                                        'bg-[var(--muted)] dark:bg-[var(--muted)]',
-                                                        'text-[15px]',
-                                                        'outline-none border-none',
-                                                        'pl-4 pr-10',
-                                                        'transition-shadow duration-200 cursor-pointer',
-                                                        clientDropdownOpen && 'ring-2 ring-[var(--primary)]',
-                                                    )}
-                                                >
-                                                    {formData.client_id
-                                                        ? <span className="text-[var(--foreground)] truncate">{clients.find(c => c.id === formData.client_id)?.name || 'Select client...'}</span>
-                                                        : <span className="text-[var(--muted-foreground)]">Select client...</span>
-                                                    }
-                                                </button>
-                                                <ChevronDown
-                                                    size={20}
-                                                    className={cn(
-                                                        "absolute right-3 top-[22px] -translate-y-1/2 text-[var(--muted-foreground)] pointer-events-none transition-transform duration-200",
-                                                        clientDropdownOpen && "rotate-180"
-                                                    )}
-                                                />
-                                                {clientDropdownOpen && (
-                                                    <div className="absolute z-50 mt-1 w-full rounded-[12px] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-lg)] overflow-hidden">
-                                                        <div className="p-2 border-b border-[var(--border)]">
-                                                            <input
-                                                                type="text"
-                                                                placeholder="Search clients..."
-                                                                value={clientSearch}
-                                                                onChange={(e) => setClientSearch(e.target.value)}
-                                                                className="w-full h-[36px] rounded-[8px] bg-[var(--muted)] text-[14px] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] outline-none border-none px-3"
-                                                                autoFocus
-                                                            />
-                                                        </div>
-                                                        <div className="max-h-[200px] overflow-y-auto">
-                                                            {clients
-                                                                .filter(c => c.name?.toLowerCase().includes(clientSearch.toLowerCase()))
-                                                                .map(c => (
-                                                                    <button
-                                                                        key={c.id}
-                                                                        type="button"
-                                                                        onClick={() => {
-                                                                            setFormData({ ...formData, client_id: c.id });
-                                                                            setClientDropdownOpen(false);
-                                                                            setClientSearch("");
-                                                                        }}
-                                                                        className={cn(
-                                                                            "w-full text-left px-4 py-2.5 text-[15px] transition-colors duration-150",
-                                                                            formData.client_id === c.id
-                                                                                ? "bg-[var(--primary)]/20 text-[var(--primary)] font-medium"
-                                                                                : "text-[var(--foreground)] hover:bg-[var(--primary)]/10"
-                                                                        )}
-                                                                    >
-                                                                        {c.name}
-                                                                    </button>
-                                                                ))
-                                                            }
-                                                            {clients.filter(c => c.name?.toLowerCase().includes(clientSearch.toLowerCase())).length === 0 && (
-                                                                <div className="px-4 py-3 text-[13px] text-[var(--muted-foreground)] text-center">No clients found</div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <label className="flex items-center gap-2 text-[13px] font-medium text-[var(--muted-foreground)] pl-1">
-                                                <Calendar className="h-4 w-4 text-[var(--muted-foreground)]" />
-                                                Invoice Date
-                                            </label>
-                                            <IOSInput
-                                                type="date"
-                                                value={formData.billDate}
-                                                onChange={(e: any) => setFormData({ ...formData, billDate: e.target.value })}
-                                            />
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <label className="flex items-center gap-2 text-[13px] font-medium text-[var(--muted-foreground)] pl-1">
-                                                <Calendar className="h-4 w-4 text-[var(--muted-foreground)]" />
-                                                Due Date
-                                            </label>
-                                            <IOSInput
-                                                type="date"
-                                                value={formData.dueDate}
-                                                onChange={(e: any) => setFormData({ ...formData, dueDate: e.target.value })}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Quick Import from Orders */}
-                                    {formData.client_id && (
-                                        <div className="p-4 bg-[var(--primary)]/5 dark:bg-[var(--primary)]/10 rounded-[16px] border border-[var(--primary)]/20">
-                                            <label className="text-[var(--primary)] font-semibold text-[13px]">Quick Import from Orders</label>
-                                            <div className="flex flex-wrap gap-2 mt-2">
-                                                {orders.filter(o => (o.client_id || o.clientId || (o.client && o.client._id)) === formData.client_id).slice(0, 5).map(order => {
-                                                    const oId = order.id || order._id;
-                                                    const oDesc = order.productName ?? order.product_name ?? "Order Item";
-                                                    const oTotal = order.totalAmount ?? order.total_amount ?? 0;
-                                                    return (
-                                                    <IOSButton
-                                                        key={oId}
-                                                        type="button"
-                                                        variant="tinted"
-                                                        color="blue"
-                                                        className="text-[12px] !py-1 !px-2.5 h-auto truncate max-w-[220px]"
-                                                        onClick={() => importFromOrder(oId)}
-                                                        title={`${oDesc} (₹${oTotal})`}
-                                                    >
-                                                        <Package className="h-3 w-3 mr-1 flex-shrink-0" />
-                                                        <span className="truncate">{oDesc} (₹{oTotal})</span>
-                                                    </IOSButton>
-                                                )})}
-                                                {orders.filter(o => (o.client_id || o.clientId || (o.client && o.client._id)) === formData.client_id).length === 0 && (
-                                                    <span className="text-[13px] text-[var(--primary)] opacity-70">No orders found for this client</span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* GST Type Toggle */}
-                                    <div className="flex items-center gap-4 p-3 bg-[var(--muted)] rounded-[12px]">
-                                        <label className="font-semibold text-[13px] text-[var(--foreground)] pl-1">GST Type:</label>
-                                        <div className="flex gap-2">
-                                            <IOSButton
-                                                type="button"
-                                                variant={!formData.isIGST ? "filled" : "gray"}
-                                                className={cn("!py-1.5", !formData.isIGST && "!bg-[var(--erp-success)]")}
-                                                onClick={() => setFormData({ ...formData, isIGST: false })}
-                                            >
-                                                CGST + SGST (Intra-State)
-                                            </IOSButton>
-                                            <IOSButton
-                                                type="button"
-                                                variant={formData.isIGST ? "filled" : "gray"}
-                                                className={cn("!py-1.5", formData.isIGST && "!bg-[var(--erp-success)]")}
-                                                onClick={() => setFormData({ ...formData, isIGST: true })}
-                                            >
-                                                IGST (Inter-State)
-                                            </IOSButton>
-                                        </div>
-                                    </div>
-
-                                    {/* Items Section */}
-                                    <div className="space-y-4">
-                                        <div className="flex justify-between items-center">
-                                            <h3 className="font-bold text-lg flex items-center gap-2">
-                                                <Package className="h-5 w-5 text-[var(--muted-foreground)]" />
-                                                Line Items
-                                            </h3>
-                                            <Button type="button" variant="outline" size="sm" onClick={addItem}>
-                                                <Plus className="h-4 w-4 mr-1" />
-                                                Add Item
-                                            </Button>
-                                        </div>
-
-                                        {formData.items.length === 0 ? (
-                                            <div className="py-12 text-center bg-[var(--muted)] rounded-xl border-2 border-dashed border-[var(--border)]">
-                                                <Package className="h-10 w-10 mx-auto mb-3 text-[var(--muted-foreground)]" />
-                                                <p className="text-[var(--muted-foreground)]">No items added yet. Click "Add Item" or import from orders.</p>
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-3">
-                                                {formData.items.map((item, index) => (
-                                                    <div key={item.id} className="p-3 bg-[var(--card)] rounded-xl border border-[var(--border)] space-y-3">
-                                                        {/* Description — full width */}
-                                                        <div className="space-y-1">
-                                                            <label className="text-[10px] uppercase text-[var(--muted-foreground)] pl-1">Description</label>
-                                                            <IOSInput
-                                                                placeholder="Product/Service name"
-                                                                value={item.description}
-                                                                onChange={(e: any) => updateItem(item.id, 'description', e.target.value)}
-                                                                className="h-9"
-                                                            />
-                                                        </div>
-
-                                                        {/* HSN + QTY + Unit */}
-                                                        <div className="grid grid-cols-3 gap-2">
-                                                            <div className="space-y-1">
-                                                                <label className="text-[10px] uppercase text-[var(--muted-foreground)] pl-1">HSN</label>
-                                                                <IOSInput
-                                                                    placeholder="Code"
-                                                                    value={item.hsnCode}
-                                                                    onChange={(e: any) => updateItem(item.id, 'hsnCode', e.target.value)}
-                                                                    className="h-9"
-                                                                />
-                                                            </div>
-                                                            <div className="space-y-1">
-                                                                <label className="text-[10px] uppercase text-[var(--muted-foreground)] pl-1">QTY</label>
-                                                                <NumericInput
-                                                                    value={item.quantity || ""}
-                                                                    onValueChange={(v: string) => updateItem(item.id, 'quantity', parseNumericValue(v))}
-                                                                    className="h-9 bg-[var(--muted)] border-none text-[15px]"
-                                                                    placeholder="0"
-                                                                    allowDecimal={true}
-                                                                    min={0}
-                                                                />
-                                                            </div>
-                                                            <div className="space-y-1">
-                                                                <label className="text-[10px] uppercase text-[var(--muted-foreground)] pl-1">Unit</label>
-                                                                <IOSInput
-                                                                    placeholder="pcs"
-                                                                    value={item.unit}
-                                                                    onChange={(e: any) => updateItem(item.id, 'unit', e.target.value)}
-                                                                    className="h-9"
-                                                                />
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Rate (₹) + GST % */}
-                                                        <div className="grid grid-cols-2 gap-2">
-                                                            <div className="space-y-1">
-                                                                <label className="text-[10px] uppercase text-[var(--muted-foreground)] pl-1">Rate (₹)</label>
-                                                                <NumericInput
-                                                                    value={item.rate || ""}
-                                                                    onValueChange={(v: string) => updateItem(item.id, 'rate', parseNumericValue(v))}
-                                                                    className="h-9 bg-[var(--muted)] border-none text-[15px]"
-                                                                    placeholder="0.00"
-                                                                    allowDecimal={true}
-                                                                    min={0}
-                                                                />
-                                                            </div>
-                                                            <div className="space-y-1">
-                                                                <label className="text-[10px] uppercase text-[var(--muted-foreground)] pl-1">GST %</label>
-                                                                <IOSSelect
-                                                                    value={item.gstRate.toString()}
-                                                                    onChange={(e: any) => updateItem(item.id, 'gstRate', parseInt(e.target.value))}
-                                                                    options={[
-                                                                        { label: "0%", value: "0" },
-                                                                        { label: "5%", value: "5" },
-                                                                        { label: "12%", value: "12" },
-                                                                        { label: "18%", value: "18" },
-                                                                        { label: "28%", value: "28" }
-                                                                    ]}
-                                                                />
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Delete (left) + Amount (right) */}
-                                                        <div className="flex items-center justify-between pt-2 border-t border-[var(--border)]">
-                                                            <IOSButton
-                                                                type="button"
-                                                                variant="destructive"
-                                                                className="h-8 !px-3 !py-0 text-[12px]"
-                                                                onClick={() => removeItem(item.id)}
-                                                            >
-                                                                <X className="h-3.5 w-3.5 mr-1" />
-                                                                Remove
-                                                            </IOSButton>
-                                                            <div className="flex items-center gap-1.5">
-                                                                <span className="text-[11px] uppercase text-[var(--muted-foreground)] font-medium">Amount</span>
-                                                                <span className="text-[17px] font-bold text-[var(--erp-success)]">
-                                                                    ₹{item.amount.toLocaleString('en-IN')}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Totals Summary */}
-                                    <div className="flex justify-end">
-                                        <div className="w-80 space-y-2 p-4 bg-[var(--muted)] rounded-xl border border-[var(--border)]">
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-[var(--muted-foreground)]">Subtotal</span>
-                                                <span className="font-bold">₹{totals.subtotal.toLocaleString('en-IN')}</span>
-                                            </div>
-                                            {!formData.isIGST ? (
-                                                <>
-                                                    <div className="flex justify-between text-sm">
-                                                        <span className="text-[var(--muted-foreground)]">CGST</span>
-                                                        <span className="font-medium">₹{totals.cgstAmount.toLocaleString('en-IN')}</span>
-                                                    </div>
-                                                    <div className="flex justify-between text-sm">
-                                                        <span className="text-[var(--muted-foreground)]">SGST</span>
-                                                        <span className="font-medium">₹{totals.sgstAmount.toLocaleString('en-IN')}</span>
-                                                    </div>
-                                                </>
-                                            ) : (
-                                                <div className="flex justify-between text-sm">
-                                                    <span className="text-[var(--muted-foreground)]">IGST</span>
-                                                    <span className="font-medium">₹{totals.igstAmount.toLocaleString('en-IN')}</span>
-                                                </div>
-                                            )}
-                                            <Separator />
-                                            <div className="flex justify-between text-lg pt-2">
-                                                <span className="font-bold">Grand Total</span>
-                                                <span className="font-black text-[var(--erp-success)]">₹{totals.totalAmount.toLocaleString('en-IN')}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Notes & Terms */}
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="flex items-center gap-2 text-[13px] font-medium text-[var(--muted-foreground)] pl-1">Notes / Remarks</label>
-                                            <Textarea
-                                                placeholder="Additional notes for the client..."
-                                                value={formData.notes}
-                                                onChange={(e: any) => setFormData({ ...formData, notes: e.target.value })}
-                                                rows={4}
-                                                className="bg-[var(--muted)] border-none text-[15px]"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="flex items-center gap-2 text-[13px] font-medium text-[var(--muted-foreground)] pl-1">Terms & Conditions</label>
-                                            <Textarea
-                                                value={formData.terms}
-                                                onChange={(e: any) => setFormData({ ...formData, terms: e.target.value })}
-                                                rows={4}
-                                                className="bg-[var(--muted)] border-none text-[15px]"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div style={{ display: 'flex', gap: 10, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-                                        <button type="button" onClick={() => setIsDialogOpen(false)} style={{ flex: 1, height: 48, borderRadius: 14, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.10)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-                                        <button type="submit" style={{ flex: 1, height: 48, borderRadius: 14, background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', border: '1px solid rgba(16,185,129,0.3)', boxShadow: '0 4px 16px rgba(16,185,129,0.25)', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                                            <CheckCircle2 className="h-4 w-4" />
-                                            Create Invoice
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </ScrollArea>
-                    </DialogContent>
-                </Dialog>
+                    {/* New Redesigned Invoice Modal */}
+                    <CreateInvoiceModal
+                        open={isDialogOpen}
+                        onClose={() => { setIsDialogOpen(false); resetForm(); }}
+                        onSuccess={() => fetchData()}
+                        clients={clients}
+                        orders={orders}
+                        companyInfo={companyInfo}
+                    />
                 </div>
             </div>
 
@@ -1041,7 +791,7 @@ export default function BillingPage() {
                 <IOSCard variant="elevated" className="!bg-gradient-to-br from-[var(--erp-success)]/10 to-[var(--erp-success)]/5 dark:from-[var(--erp-success)]/20 dark:to-[var(--erp-success)]/10 border border-[var(--erp-success)]/20">
                     <IOSCardHeader title="Total Invoiced" className="[&_h3]:text-[11px] [&_h3]:uppercase [&_h3]:tracking-widest [&_h3]:text-[var(--erp-success)] pb-0" />
                     <IOSCardContent className="pt-2">
-                        <div className="text-[28px] font-bold tracking-tight text-[var(--foreground)]">₹{stats.totalValue.toLocaleString('en-IN')}</div>
+                        <div className="text-[28px] font-bold tracking-tight text-[var(--foreground)]">{"\u20B9"}{stats.totalValue.toLocaleString('en-IN')}</div>
                         <p className="text-[13px] text-[var(--muted-foreground)] font-medium mt-1">{stats.total} invoices generated</p>
                     </IOSCardContent>
                 </IOSCard>
@@ -1050,7 +800,7 @@ export default function BillingPage() {
                     <IOSCardHeader title="Paid" className="[&_h3]:text-[11px] [&_h3]:uppercase [&_h3]:tracking-widest [&_h3]:text-[var(--muted-foreground)] pb-0" />
                     <IOSCardContent className="pt-2">
                         <div className="text-[28px] font-bold tracking-tight text-[var(--foreground)]">{stats.paid}</div>
-                        <p className="text-[13px] text-[var(--erp-success)] font-medium mt-1">₹{stats.paidValue.toLocaleString('en-IN')} collected</p>
+                        <p className="text-[13px] text-[var(--erp-success)] font-medium mt-1">{"\u20B9"}{stats.paidValue.toLocaleString('en-IN')} collected</p>
                     </IOSCardContent>
                 </IOSCard>
 
@@ -1138,7 +888,7 @@ export default function BillingPage() {
                                     </div>
                                 </TableCell>
                                 <TableCell className="py-4 text-right pr-6">
-                                    <span className="font-semibold text-[17px] tracking-tight">₹{bill.totalAmount.toLocaleString('en-IN')}</span>
+                                    <span className="font-semibold text-[17px] tracking-tight">{"\u20B9"}{bill.totalAmount.toLocaleString('en-IN')}</span>
                                 </TableCell>
                                 <TableCell className="py-4 text-center">
                                     <div className="flex flex-col items-center gap-1">
@@ -1179,6 +929,10 @@ export default function BillingPage() {
                                             <DropdownMenuItem onClick={() => generatePDF(bill, 'print')}>
                                                 <Printer className="mr-2 h-4 w-4 text-[var(--erp-success)]" />
                                                 Print Invoice
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleWhatsAppShare(bill)}>
+                                                <Share2 className="mr-2 h-4 w-4 text-green-500" />
+                                                WhatsApp Share
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
                                             <DropdownMenuItem
@@ -1241,20 +995,30 @@ export default function BillingPage() {
                     ))
                 ) : filteredBills.length === 0 ? (
                     <div className="py-16 text-center">
-                        <FileText className="h-10 w-10 mx-auto mb-3 text-gray-500" />
-                        <p className="text-gray-400 text-sm">No invoices found. Create your first invoice to get started.</p>
+                        <FileText className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                        <p className="text-muted-foreground text-sm">No invoices found. Create your first invoice to get started.</p>
                     </div>
                 ) : filteredBills.map((bill) => (
                     <div
                         key={bill.id}
                         className={cn(
-                            "bg-[#1a1f2e] rounded-xl px-4 py-3 border-l-4",
+                            "bg-[#1a1f2e] rounded-xl px-4 py-3 border-l-4 select-none",
                             bill.status === 'paid' ? 'border-green-500'
                                 : bill.status === 'sent' ? 'border-blue-500'
                                 : bill.status === 'overdue' ? 'border-red-500'
                                 : 'border-gray-500'
                         )}
-                        onClick={() => { setSelectedBill(bill); setIsPreviewOpen(true); }}
+                        onClick={() => {
+                            if (longPressTriggered.current) {
+                                longPressTriggered.current = false;
+                                return; // Suppress click after long press
+                            }
+                            setSelectedBill(bill); setIsPreviewOpen(true);
+                        }}
+                        onTouchStart={(e) => handleBillLongPressStart(bill, e)}
+                        onTouchMove={handleBillLongPressMove}
+                        onTouchEnd={handleBillLongPressEnd}
+                        onTouchCancel={handleBillLongPressEnd}
                     >
                         {/* Row 1: Invoice number + Status badge */}
                         <div className="flex justify-between items-center">
@@ -1264,7 +1028,7 @@ export default function BillingPage() {
                                 bill.status === 'paid' ? 'bg-green-500/20 text-green-400'
                                     : bill.status === 'sent' ? 'bg-blue-500/20 text-blue-400'
                                     : bill.status === 'overdue' ? 'bg-red-500/20 text-red-400'
-                                    : 'bg-gray-500/20 text-gray-400'
+                                    : 'bg-muted text-muted-foreground'
                             )}>
                                 {bill.status.toUpperCase()}
                             </span>
@@ -1272,12 +1036,12 @@ export default function BillingPage() {
                         {/* Row 2: Client name + Amount */}
                         <div className="flex justify-between items-center mt-1">
                             <span className="text-white text-sm font-semibold truncate mr-2">{bill.clientName}</span>
-                            <span className="text-white text-sm font-bold whitespace-nowrap">₹{bill.totalAmount.toLocaleString('en-IN')}</span>
+                            <span className="text-white text-sm font-bold whitespace-nowrap">{"\u20B9"}{bill.totalAmount.toLocaleString('en-IN')}</span>
                         </div>
                         {/* Row 3: Dates */}
                         <div className="flex justify-between mt-1">
-                            <span className="text-gray-400 text-xs">{new Date(bill.billDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                            <span className="text-gray-400 text-xs">Due: {new Date(bill.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                            <span className="text-muted-foreground text-xs">{new Date(bill.billDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                            <span className="text-muted-foreground text-xs">Due: {new Date(bill.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
                         </div>
                     </div>
                 ))}
@@ -1399,9 +1163,9 @@ export default function BillingPage() {
                                                 <td className="p-2 text-sm font-medium">{item.description}</td>
                                                 <td className="p-2 text-sm">{item.hsnCode || '-'}</td>
                                                 <td className="p-2 text-sm text-right">{item.quantity} {item.unit}</td>
-                                                <td className="p-2 text-sm text-right">₹{item.rate.toLocaleString('en-IN')}</td>
+                                                <td className="p-2 text-sm text-right">{"\u20B9"}{item.rate.toLocaleString('en-IN')}</td>
                                                 <td className="p-2 text-sm text-right">{item.gstRate}%</td>
-                                                <td className="p-2 text-sm text-right font-bold">₹{item.amount.toLocaleString('en-IN')}</td>
+                                                <td className="p-2 text-sm text-right font-bold">{"\u20B9"}{item.amount.toLocaleString('en-IN')}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -1413,13 +1177,13 @@ export default function BillingPage() {
                                         <div key={`${item.id}-${idx}`} className="bg-white/5 rounded-lg px-3 py-2">
                                             <div className="flex justify-between items-start">
                                                 <span className="text-sm font-bold text-[var(--foreground)] break-words min-w-0 flex-1 mr-2">{item.description}</span>
-                                                <span className="text-sm font-bold text-[var(--foreground)] whitespace-nowrap">₹{item.amount.toLocaleString('en-IN')}</span>
+                                                <span className="text-sm font-bold text-[var(--foreground)] whitespace-nowrap">{"\u20B9"}{item.amount.toLocaleString('en-IN')}</span>
                                             </div>
                                             {item.hsnCode && (
-                                                <p className="text-xs text-gray-400 mt-0.5">HSN: {item.hsnCode}</p>
+                                                <p className="text-xs text-muted-foreground mt-0.5">HSN: {item.hsnCode}</p>
                                             )}
                                             <div className="flex items-center justify-between mt-1">
-                                                <span className="text-xs text-gray-400">{item.quantity} {item.unit} × ₹{item.rate.toLocaleString('en-IN')}</span>
+                                                <span className="text-xs text-muted-foreground">{item.quantity} {item.unit} × {"\u20B9"}{item.rate.toLocaleString('en-IN')}</span>
                                                 <span className="text-xs text-gray-400 bg-white/10 rounded px-1.5 py-0.5">{item.gstRate}% GST</span>
                                             </div>
                                         </div>
@@ -1431,28 +1195,28 @@ export default function BillingPage() {
                                     <div className="w-full md:w-64 space-y-1">
                                         <div className="flex justify-between text-sm">
                                             <span className="text-[var(--muted-foreground)]">Subtotal</span>
-                                            <span className="font-bold">₹{selectedBill.subtotal.toLocaleString('en-IN')}</span>
+                                            <span className="font-bold">{"\u20B9"}{selectedBill.subtotal.toLocaleString('en-IN')}</span>
                                         </div>
                                         {selectedBill.igstAmount > 0 ? (
                                             <div className="flex justify-between text-sm">
                                                 <span className="text-[var(--muted-foreground)]">IGST</span>
-                                                <span>₹{selectedBill.igstAmount.toLocaleString('en-IN')}</span>
+                                                <span>{"\u20B9"}{selectedBill.igstAmount.toLocaleString('en-IN')}</span>
                                             </div>
                                         ) : (
                                             <>
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-[var(--muted-foreground)]">CGST</span>
-                                                    <span>₹{selectedBill.cgstAmount.toLocaleString('en-IN')}</span>
+                                                    <span>{"\u20B9"}{selectedBill.cgstAmount.toLocaleString('en-IN')}</span>
                                                 </div>
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-[var(--muted-foreground)]">SGST</span>
-                                                    <span>₹{selectedBill.sgstAmount.toLocaleString('en-IN')}</span>
+                                                    <span>{"\u20B9"}{selectedBill.sgstAmount.toLocaleString('en-IN')}</span>
                                                 </div>
                                             </>
                                         )}
                                         <div className="flex justify-between text-base md:text-lg font-bold text-green-400 border-t border-white/20 pt-2 mt-1">
                                             <span>Total</span>
-                                            <span className="font-black text-[var(--erp-success)]">₹{selectedBill.totalAmount.toLocaleString('en-IN')}</span>
+                                            <span className="font-black text-[var(--erp-success)]">{"\u20B9"}{selectedBill.totalAmount.toLocaleString('en-IN')}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1529,6 +1293,90 @@ export default function BillingPage() {
                     </div>{/* end centering wrapper */}
                 </DialogContent>
             </Dialog>
+
+            {/* ─── Mobile Bottom Sheet (Fix 3) ─── */}
+            <MobileSheet open={isBillSheetOpen} onClose={closeBillSheet} maxHeight="65dvh">
+                {longPressedBill && (
+                    <div className="px-5 pb-4 space-y-1">
+                        {/* Header */}
+                        <div className="pb-3 mb-2 border-b border-white/10">
+                            <p className="text-[15px] font-semibold text-[var(--foreground)]">{longPressedBill.clientName}</p>
+                            <p className="text-[13px] text-[var(--muted-foreground)]">{longPressedBill.billNumber} · {"\u20B9"}{longPressedBill.totalAmount.toLocaleString('en-IN')}</p>
+                        </div>
+
+                        {/* Preview */}
+                        <button
+                            onClick={() => { closeBillSheet(); setSelectedBill(longPressedBill); setIsPreviewOpen(true); }}
+                            className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-left hover:bg-white/5 transition-colors cursor-pointer"
+                        >
+                            <Eye className="h-[18px] w-[18px] text-blue-400" />
+                            <span className="text-[15px] text-[var(--foreground)]">Preview Invoice</span>
+                        </button>
+
+                        {/* Download PDF */}
+                        <button
+                            onClick={() => { closeBillSheet(); generatePDF(longPressedBill, 'download'); }}
+                            className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-left hover:bg-white/5 transition-colors cursor-pointer"
+                        >
+                            <Download className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
+                            <span className="text-[15px] text-[var(--foreground)]">Download PDF</span>
+                        </button>
+
+                        {/* Print */}
+                        <button
+                            onClick={() => { closeBillSheet(); generatePDF(longPressedBill, 'print'); }}
+                            className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-left hover:bg-white/5 transition-colors cursor-pointer"
+                        >
+                            <Printer className="h-[18px] w-[18px] text-[var(--erp-success)]" />
+                            <span className="text-[15px] text-[var(--foreground)]">Print Invoice</span>
+                        </button>
+
+                        {/* WhatsApp Share */}
+                        <button
+                            onClick={() => { closeBillSheet(); handleWhatsAppShare(longPressedBill); }}
+                            className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-left hover:bg-white/5 transition-colors cursor-pointer"
+                        >
+                            <Share2 className="h-[18px] w-[18px] text-green-500" />
+                            <span className="text-[15px] text-[var(--foreground)]">Share via WhatsApp</span>
+                        </button>
+
+                        <div className="my-1 border-t border-white/10" />
+
+                        {/* Mark as Sent (draft only) */}
+                        {longPressedBill.status === 'draft' && (
+                            <button
+                                onClick={() => { closeBillSheet(); updateStatus(longPressedBill.id, 'sent'); }}
+                                className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-left hover:bg-white/5 transition-colors cursor-pointer"
+                            >
+                                <Send className="h-[18px] w-[18px] text-blue-400" />
+                                <span className="text-[15px] text-[var(--foreground)]">Mark as Sent</span>
+                            </button>
+                        )}
+
+                        {/* Mark as Paid (sent only) */}
+                        {longPressedBill.status === 'sent' && (
+                            <button
+                                onClick={() => { closeBillSheet(); updateStatus(longPressedBill.id, 'paid'); }}
+                                className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-left hover:bg-white/5 transition-colors cursor-pointer"
+                            >
+                                <CheckCircle2 className="h-[18px] w-[18px] text-green-400" />
+                                <span className="text-[15px] text-[var(--foreground)]">Mark as Paid</span>
+                            </button>
+                        )}
+
+                        <div className="my-1 border-t border-white/10" />
+
+                        {/* Delete */}
+                        <button
+                            onClick={() => { closeBillSheet(); setBillToDelete(longPressedBill.id); setIsDeleteDialogOpen(true); }}
+                            className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-left hover:bg-white/5 transition-colors cursor-pointer"
+                        >
+                            <Trash2 className="h-[18px] w-[18px] text-red-400" />
+                            <span className="text-[15px] text-red-400">Delete Invoice</span>
+                        </button>
+                    </div>
+                )}
+            </MobileSheet>
 
             {/* Delete Confirmation Dialog */}
             <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

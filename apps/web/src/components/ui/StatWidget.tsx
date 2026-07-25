@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 // Framer motion animation variants matching the dashboard's staggerItem
 const staggerItem = {
@@ -77,11 +78,14 @@ export function StatWidget({
     const isNeutral = !hasValidChange || change === 0;
 
     // Map color to the progress fill variant and badge variant
-    const badgeClass = !hasValidChange || change === 0
-        ? "kpi-card__badge kpi-card__badge--neutral"
-        : isPositive
-            ? "kpi-card__badge kpi-card__badge--positive"
-            : "kpi-card__badge kpi-card__badge--negative";
+    const badgeClass = cn(
+        "kpi-card__badge",
+        !hasValidChange || change === 0
+            ? "kpi-card__badge--neutral !bg-gray-100 !text-gray-800 dark:!bg-white/10 dark:!text-white/60"
+            : isPositive
+                ? "kpi-card__badge--positive !bg-[#EAF3DE] !text-[#27500A] dark:!bg-[rgba(48,209,88,0.15)] dark:!text-[#30d158]"
+                : "kpi-card__badge--negative !bg-red-100 !text-red-800 dark:!bg-[rgba(255,69,58,0.15)] dark:!text-[#ff453a]"
+    );
 
     return (
         <motion.div variants={staggerItem} custom={delay}>
@@ -111,14 +115,14 @@ export function StatWidget({
                 </div>
 
                 {/* Metric + Label */}
-                <div className="kpi-card__value truncate">
+                <div className="kpi-card__value truncate !text-gray-900 dark:!text-white">
                     {displayValue != null ? (
                         <span>{displayValue}</span>
                     ) : (
                         <AnimatedValue value={value} prefix={prefix} suffix={suffix} />
                     )}
                 </div>
-                <div className="kpi-card__label truncate">{label}</div>
+                <div className="kpi-card__label truncate !text-gray-500 dark:!text-[rgba(255,255,255,0.5)]">{label}</div>
 
                 {/* Stitch mini-progress bar (decorative, color-keyed) */}
                 <div className="kpi-card__progress">

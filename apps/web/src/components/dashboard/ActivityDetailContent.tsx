@@ -20,7 +20,7 @@ import type {
 
 /* ─── Helpers ────────────────────────────────────────── */
 const fmt = (v: number | undefined) =>
-  v == null ? "₹0" : `₹${Number(v).toLocaleString("en-IN")}`;
+  v == null ? "\u20B90" : `\u20B9${Number(v).toLocaleString("en-IN")}`;
 
 const fmtDate = (d: string | undefined) => {
   if (!d) return "—";
@@ -53,10 +53,10 @@ const s = {
     fontWeight: 600,
     letterSpacing: "0.05em",
     textTransform: "uppercase" as const,
-    color: "rgba(255,255,255,0.4)",
+    color: "var(--overlay-text-muted)",
     marginBottom: 4,
   },
-  val: { fontSize: 14, fontWeight: 500, color: "rgba(255,255,255,0.88)" },
+  val: { fontSize: 14, fontWeight: 500, color: "var(--overlay-text-primary)" },
   grid: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
@@ -67,9 +67,9 @@ const s = {
     display: "inline-block",
     padding: "5px 12px",
     borderRadius: 8,
-    background: "rgba(255,255,255,0.06)",
+    background: "var(--overlay-subtle-bg)",
     fontSize: 13,
-    color: "rgba(255,255,255,0.75)",
+    color: "var(--overlay-text-secondary)",
     marginRight: 6,
     marginBottom: 6,
   },
@@ -146,10 +146,10 @@ export function PopupHeader({ icon, iconBg, title, subtitle }: HeaderProps) {
         {icon}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <h3 style={{ fontSize: 18, fontWeight: 700, color: "#fff", margin: 0, lineHeight: 1.3 }}>
+        <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--overlay-text-primary)", margin: 0, lineHeight: 1.3 }}>
           {title}
         </h3>
-        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", margin: 0 }}>{subtitle}</p>
+        <p style={{ fontSize: 13, color: "var(--overlay-text-muted)", margin: 0 }}>{subtitle}</p>
       </div>
     </div>
   );
@@ -169,7 +169,7 @@ export function PopupFooter({ actions }: { actions: FooterAction[] }) {
         display: "flex",
         gap: 8,
         padding: "12px 24px 20px",
-        borderTop: "1px solid rgba(255,255,255,0.06)",
+        borderTop: "1px solid var(--overlay-border)",
         flexWrap: "wrap",
       }}
     >
@@ -178,7 +178,7 @@ export function PopupFooter({ actions }: { actions: FooterAction[] }) {
           key={a.label}
           onClick={a.onClick}
           style={s.actionBtn(a.color)}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "var(--overlay-hover)")}
           onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
         >
           {a.label} <ArrowRight size={14} />
@@ -196,7 +196,7 @@ export function DetailSkeleton() {
         width: w,
         height: h,
         borderRadius: 6,
-        background: "rgba(255,255,255,0.06)",
+        background: "var(--overlay-subtle-bg)",
         animation: "pulse 1.5s ease-in-out infinite",
       }}
     />
@@ -209,7 +209,7 @@ export function DetailSkeleton() {
             width: 44,
             height: 44,
             borderRadius: 12,
-            background: "rgba(255,255,255,0.06)",
+            background: "var(--overlay-subtle-bg)",
             animation: "pulse 1.5s ease-in-out infinite",
           }}
         />
@@ -238,7 +238,7 @@ export function DetailSkeleton() {
 export function DetailError({ onRetry }: { onRetry: () => void }) {
   return (
     <div style={{ padding: "40px 24px", textAlign: "center" }}>
-      <p style={{ fontSize: 15, color: "rgba(255,255,255,0.6)", marginBottom: 16 }}>
+      <p style={{ fontSize: 15, color: "var(--overlay-text-secondary)", marginBottom: 16 }}>
         Could not load details. Try again.
       </p>
       <button
@@ -314,7 +314,7 @@ export function OrderContent({
         {/* Dashed divider */}
         <div
           style={{
-            borderTop: "2px dashed rgba(255,255,255,0.08)",
+            borderTop: "2px dashed var(--overlay-border)",
             margin: "16px -24px",
           }}
         />
@@ -374,7 +374,7 @@ export function OrderContent({
         {/* Financials */}
         <div
           style={{
-            background: "rgba(255,255,255,0.03)",
+            background: "var(--overlay-faint-bg)",
             borderRadius: 8,
             padding: "12px 16px",
             marginTop: 16,
@@ -449,7 +449,7 @@ export function PaymentContent({
           <div style={{ fontSize: 36, fontWeight: 800, color: "#30D158" }}>
             {fmt(data.amount)}
           </div>
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginTop: 4 }}>
+          <div style={{ fontSize: 13, color: "var(--overlay-text-muted)", marginTop: 4 }}>
             received
           </div>
         </div>
@@ -480,7 +480,7 @@ export function PaymentContent({
               marginTop: 20,
               padding: "12px 16px",
               borderRadius: 8,
-              background: "rgba(255,255,255,0.03)",
+              background: "var(--overlay-faint-bg)",
               textAlign: "center",
             }}
           >
@@ -534,7 +534,7 @@ export function InventoryContent({
 
       <div style={s.section}>
         <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#fff" }}>{data.name || "—"}</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "var(--overlay-text-primary)" }}>{data.name || "—"}</div>
           {data.item_type && (
             <span style={{ ...s.pill, marginTop: 8 }}>{data.item_type}</span>
           )}
@@ -543,17 +543,17 @@ export function InventoryContent({
         {/* Stock display */}
         <div
           style={{
-            background: "rgba(255,255,255,0.04)",
+            background: "var(--overlay-subtle-bg)",
             borderRadius: 12,
             padding: 20,
             textAlign: "center",
             marginBottom: 20,
           }}
         >
-          <div style={{ fontSize: 28, fontWeight: 800, color: "#fff" }}>
-            {current} <span style={{ fontSize: 16, color: "rgba(255,255,255,0.5)" }}>{data.unit || "pcs"}</span>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "var(--overlay-text-primary)" }}>
+            {current} <span style={{ fontSize: 16, color: "var(--overlay-text-muted)" }}>{data.unit || "pcs"}</span>
           </div>
-          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 4 }}>
+          <div style={{ fontSize: 12, color: "var(--overlay-text-muted)", marginTop: 4 }}>
             Current Stock
           </div>
         </div>
@@ -585,7 +585,7 @@ export function InventoryContent({
             style={{
               height: 8,
               borderRadius: 4,
-              background: "rgba(255,255,255,0.06)",
+              background: "var(--overlay-subtle-bg)",
               overflow: "hidden",
             }}
           >
@@ -604,7 +604,7 @@ export function InventoryContent({
               display: "flex",
               justifyContent: "space-between",
               fontSize: 11,
-              color: "rgba(255,255,255,0.4)",
+              color: "var(--overlay-text-muted)",
               marginTop: 4,
             }}
           >
@@ -652,16 +652,16 @@ export function ProductionContent({
       <div style={s.section}>
         {/* Progress */}
         <div style={{ textAlign: "center", marginBottom: 24 }}>
-          <div style={{ fontSize: 32, fontWeight: 800, color: "#fff" }}>
+          <div style={{ fontSize: 32, fontWeight: 800, color: "var(--overlay-text-primary)" }}>
             {completed}{" "}
-            <span style={{ fontSize: 16, color: "rgba(255,255,255,0.4)" }}>/ {target}</span>{" "}
-            <span style={{ fontSize: 14, color: "rgba(255,255,255,0.4)" }}>{data.unit || "pcs"}</span>
+            <span style={{ fontSize: 16, color: "var(--overlay-text-muted)" }}>/ {target}</span>{" "}
+            <span style={{ fontSize: 14, color: "var(--overlay-text-muted)" }}>{data.unit || "pcs"}</span>
           </div>
           <div
             style={{
               height: 8,
               borderRadius: 4,
-              background: "rgba(255,255,255,0.06)",
+              background: "var(--overlay-subtle-bg)",
               margin: "12px 0 4px",
               overflow: "hidden",
             }}
@@ -763,7 +763,7 @@ export function FallbackContent({
       <div style={s.section}>
         <span style={s.pill}>{activity.type}</span>
         <p style={{ ...s.val, marginTop: 12 }}>{activity.description}</p>
-        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginTop: 8 }}>
+        <p style={{ fontSize: 13, color: "var(--overlay-text-muted)", marginTop: 8 }}>
           {fmtDate(activity.time)}
         </p>
       </div>

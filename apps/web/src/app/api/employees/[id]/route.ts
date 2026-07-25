@@ -18,7 +18,7 @@ export async function GET(
     try {
         const result = await requireAdmin();
         if (result.error) {
-            return NextResponse.json({ error: result.error }, { status: result.status });
+            return NextResponse.json({ success: false, message: result.error }, { status: result.status });
         }
 
         const { id } = await params;
@@ -32,7 +32,7 @@ export async function GET(
         );
 
         if (!employee) {
-            return NextResponse.json({ error: "Employee not found" }, { status: 404 });
+            return NextResponse.json({ success: false, message: "Employee not found" }, { status: 404 });
         }
 
         // Get recent activity from audit logs
@@ -93,7 +93,7 @@ export async function GET(
         });
     } catch (error: any) {
         console.error("[Employee Detail] GET error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ success: false, message: error.message }, { status: 500 });
     }
 }
 
@@ -107,7 +107,7 @@ export async function PUT(
     try {
         const result = await requireAdmin();
         if (result.error) {
-            return NextResponse.json({ error: result.error }, { status: result.status });
+            return NextResponse.json({ success: false, message: result.error }, { status: result.status });
         }
 
         const { id } = await params;
@@ -123,7 +123,7 @@ export async function PUT(
             { _id: id as any, adminId, role: "Staff" }
         );
         if (!employee) {
-            return NextResponse.json({ error: "Employee not found" }, { status: 404 });
+            return NextResponse.json({ success: false, message: "Employee not found" }, { status: 404 });
         }
 
         const action = body.action;
@@ -210,7 +210,7 @@ export async function PUT(
 
             if (!newPassword || typeof newPassword !== "string") {
                 return NextResponse.json(
-                    { error: "New password is required" },
+                    { success: false, message: "New password is required" },
                     { status: 400 }
                 );
             }
@@ -220,14 +220,14 @@ export async function PUT(
                 const adminDoc = await db.collection("users").findOne({ _id: admin._id as any });
                 if (!adminDoc?.passwordHash) {
                     return NextResponse.json(
-                        { error: "Admin password verification failed" },
+                        { success: false, message: "Admin password verification failed" },
                         { status: 403 }
                     );
                 }
                 const adminPwdValid = await bcrypt.compare(adminPassword, adminDoc.passwordHash);
                 if (!adminPwdValid) {
                     return NextResponse.json(
-                        { error: "Incorrect admin password. Please try again." },
+                        { success: false, message: "Incorrect admin password. Please try again." },
                         { status: 403 }
                     );
                 }
@@ -239,7 +239,7 @@ export async function PUT(
                 fullName: employee.fullName || employee.full_name,
             });
             if (passwordError) {
-                return NextResponse.json({ error: passwordError }, { status: 400 });
+                return NextResponse.json({ success: false, message: passwordError }, { status: 400 });
             }
 
             const passwordHash = await bcrypt.hash(newPassword, 12);
@@ -347,7 +347,7 @@ export async function PUT(
             } else if (body.permissions) {
                 newPermissions = body.permissions;
             } else {
-                return NextResponse.json({ error: "Permissions or template required" }, { status: 400 });
+                return NextResponse.json({ success: false, message: "Permissions or template required" }, { status: 400 });
             }
 
             const beforePermissions = employee.permissions || EMPTY_PERMISSIONS;
@@ -392,7 +392,7 @@ export async function PUT(
                 if (newEmail && newEmail !== employee.email) {
                     const existing = await db.collection("users").findOne({ email: newEmail, _id: { $ne: id as any } });
                     if (existing) {
-                        return NextResponse.json({ error: "Email already in use" }, { status: 409 });
+                        return NextResponse.json({ success: false, message: "Email already in use" }, { status: 409 });
                     }
                 }
                 updates.email = newEmail;
@@ -426,10 +426,10 @@ export async function PUT(
             return NextResponse.json({ ok: true });
         }
 
-        return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+        return NextResponse.json({ success: false, message: "Invalid action" }, { status: 400 });
     } catch (error: any) {
         console.error("[Employee Detail] PUT error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ success: false, message: error.message }, { status: 500 });
     }
 }
 
@@ -443,7 +443,7 @@ export async function DELETE(
     try {
         const result = await requireAdmin();
         if (result.error) {
-            return NextResponse.json({ error: result.error }, { status: result.status });
+            return NextResponse.json({ success: false, message: result.error }, { status: result.status });
         }
 
         const { id } = await params;
@@ -455,7 +455,7 @@ export async function DELETE(
             { _id: id as any, adminId, role: "Staff" }
         );
         if (!employee) {
-            return NextResponse.json({ error: "Employee not found" }, { status: 404 });
+            return NextResponse.json({ success: false, message: "Employee not found" }, { status: 404 });
         }
 
         // Kill all sessions first
@@ -485,6 +485,6 @@ export async function DELETE(
         return NextResponse.json({ ok: true });
     } catch (error: any) {
         console.error("[Employee Detail] DELETE error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ success: false, message: error.message }, { status: 500 });
     }
 }

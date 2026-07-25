@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 import type { IPaymentRepository, Payment, CreatePaymentDTO } from "../domain/types";
+import { getFinancialYear } from "@/lib/utils/financial-year";
 
 function toEntity(doc: Record<string, unknown>, client?: Record<string, unknown> | null, order?: Record<string, unknown> | null): Payment {
     return {
@@ -101,6 +102,7 @@ export class MongoPaymentRepository implements IPaymentRepository {
             client_id: data.client_id || null,
             order_id: data.order_id || null,
             createdAt: now,
+            financial_year: getFinancialYear(data.payment_date ? new Date(data.payment_date) : now),
         };
         const result = await col.insertOne(doc);
         return { ...toEntity(doc as Record<string, unknown>), id: result.insertedId.toString() };

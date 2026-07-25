@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth-session";
+import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { connectToDatabase } from "@/lib/mongodb";
+
+const EXCLUDED_STATUSES = ["delivered", "cancelled", "archived"];
 
 export async function GET() {
     try {
@@ -13,49 +15,41 @@ export async function GET() {
         const { getDb } = await import("@/lib/mongodb");
         const db = await getDb();
 
-        const userId = user._id.toString();
+        const ownerId = getDataOwnerId(user);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
 
-        // ─── Fetch assigned orders ──────────────────────────────
-        // Orders assigned to this staff member or created by them
+        // ─── Base filter: org-scoped orders, excluding terminal statuses ─
+        const baseFilter = {
+            userId: ownerId,
+            status: { $nin: EXCLUDED_STATUSES },
+        };
+
         const ordersCollection = db.collection("orders");
 
+        // ─── Fetch assigned orders (most recent first) ──────────
         const assignedOrders = await ordersCollection
-            .find({
-                $or: [
-                    { assignedTo: userId },
-                    { assigned_to: userId },
-                    { createdBy: userId },
-                    { created_by: userId },
-                ],
-            })
-            .sort({ createdAt: -1, created_at: -1 })
-            .limit(10)
+            .find(baseFilter)
+            .sort({ createdAt: -1 })
+            .limit(25)
             .toArray();
 
         // ─── Compute stats ──────────────────────────────────────
         const allOrders = await ordersCollection
-            .find({
-                $or: [
-                    { assignedTo: userId },
-                    { assigned_to: userId },
-                    { createdBy: userId },
-                    { created_by: userId },
-                ],
-            })
+            .find(baseFilter)
+            .limit(25)
             .toArray();
 
         const pendingOrders = allOrders.filter(
-            (o: any) =>
-                o.status === "pending" ||
-                o.status === "processing" ||
-                o.status === "in_progress"
+            (o: any) => {
+                const ps = o.production_status || o.status;
+                return ps === "pending" || ps === "processing" || ps === "in_progress";
+            }
         );
         const completedOrders = allOrders.filter(
-            (o: any) => o.status === "completed" || o.status === "dispatched"
+            (o: any) => (o.production_status || o.status) === "completed"
         );
 
         // Today's orders (created or updated today)
@@ -64,15 +58,18 @@ export async function GET() {
             return orderDate >= today && orderDate < tomorrow;
         });
 
-        // Build tasks from orders for today's view
-        const todaysTasks = todaysOrders.slice(0, 8).map((order: any, idx: number) => ({
+        // Build tasks from today's orders
+        const todaysTasks = todaysOrders.slice(0, 8).map((order: any) => {
+            const ps = order.production_status || order.status;
+            return {
             id: order._id.toString(),
             title: `${order.order_number || order.orderNumber || `Order #${order._id.toString().slice(-6)}`} — ${order.client_name || order.clientName || "Client"}`,
-            type: order.status === "dispatched" ? "packing" : order.status === "processing" || order.status === "in_progress" ? "production" : "order",
-            status: order.status === "completed" || order.status === "dispatched" ? "completed" : order.status === "processing" || order.status === "in_progress" ? "in_progress" : "pending",
+            type: ps === "dispatched" ? "packing" : ps === "processing" || ps === "in_progress" ? "production" : "order",
+            status: ps === "completed" || ps === "dispatched" ? "completed" : ps === "processing" || ps === "in_progress" ? "in_progress" : "pending",
             priority: order.priority || "medium",
             dueTime: order.due_date || order.dueDate ? new Date(order.due_date || order.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : undefined,
-        }));
+            };
+        });
 
         const stats = {
             assignedOrders: allOrders.length,

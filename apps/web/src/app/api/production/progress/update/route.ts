@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { syncOrderStatusFromProduction } from "@/lib/utils/orderStatusSync";
 
 // ─── POST: Record a production progress update ──────────────────────
 // This creates a new entry in the productionProgress collection
@@ -116,32 +117,20 @@ export async function POST(request: Request) {
             .collection("productionProgress")
             .insertOne(progressEntry);
 
-        // 2. Material consumption deduction (Feature 8)
+        // 2. Material consumption logging (read-only — no stock mutation)
+        // Stock deduction happens only at order creation (POST /api/orders).
+        // This block logs consumption for batch traceability without changing inventory.
         if (body.materialsConsumed && Array.isArray(body.materialsConsumed)) {
             for (const mat of body.materialsConsumed) {
                 if (!mat.inventoryId || !mat.quantityUsed) continue;
 
                 const invItem = await db
                     .collection("inventory")
-                    .findOne({ _id: new ObjectId(mat.inventoryId) });
+                    .findOne({ _id: new ObjectId(mat.inventoryId), userId: adminId });
 
                 if (!invItem) continue;
 
-                const newQty = Number(invItem.quantity) - Number(mat.quantityUsed);
-                if (newQty < 0) {
-                    // Prevent negative stock — skip but log warning
-                    console.warn(
-                        `Insufficient stock for ${mat.name || mat.inventoryId}. Available: ${invItem.quantity}, Requested: ${mat.quantityUsed}`
-                    );
-                    continue;
-                }
-
-                await db.collection("inventory").updateOne(
-                    { _id: new ObjectId(mat.inventoryId) },
-                    { $set: { quantity: newQty, updatedAt: now } }
-                );
-
-                // Log material consumption
+                // Log material consumption (no inventory mutation)
                 await db.collection("materialConsumption").insertOne({
                     productionId: body.productionId,
                     batchNumber: production.batchNumber,
@@ -149,8 +138,7 @@ export async function POST(request: Request) {
                     materialName: mat.name || invItem.name,
                     quantityUsed: Number(mat.quantityUsed),
                     unit: mat.unit || invItem.unit || "kg",
-                    previousStock: Number(invItem.quantity),
-                    newStock: newQty,
+                    currentStock: Number(invItem.quantity),
                     consumedBy: userId,
                     consumedByName: userName,
                     timestamp: now,
@@ -159,13 +147,15 @@ export async function POST(request: Request) {
             }
         }
 
-        // 3. Update the main production record
+        // 3. Update the main production record — use processedUnits (good + rejected)
         const newProduced = producedQty;
         const newRejected = rejectedQty;
         const expected = production.expectedOutput || 1;
+        const processedUnits = newProduced + newRejected;
         const progressPercent = newProgressPercent !== null
             ? newProgressPercent
-            : Math.min(Math.round((newProduced / expected) * 100), 100);
+            : Math.min(Math.round((processedUnits / expected) * 100), 100);
+        const isAutoComplete = processedUnits >= expected;
 
         const activityLog = [...(production.activityLog || [])];
         activityLog.push({
@@ -187,10 +177,11 @@ export async function POST(request: Request) {
             updatedAt: now,
         };
 
-        // Auto-complete if progress reaches 100%
-        if (progressPercent >= 100) {
+        // Auto-complete when processedUnits >= expectedOutput
+        if (isAutoComplete && production.status !== "completed") {
             updateFields.status = "completed";
-            updateFields.completedAt = now;
+            updateFields.completedAt = production.completedAt || now;
+            updateFields.progressPercent = 100;
         } else if (production.status === "pending") {
             updateFields.status = "in_progress";
         }
@@ -199,6 +190,16 @@ export async function POST(request: Request) {
             { _id: new ObjectId(body.productionId) },
             { $set: updateFields }
         );
+
+        // ── Sync order status when production auto-completes (via shared helper) ──
+        if (isAutoComplete && production.orderId) {
+            try {
+                await syncOrderStatusFromProduction(production.orderId, adminId);
+            } catch (syncErr) {
+                console.error("Failed to sync order on auto-complete:", syncErr);
+                // do not throw — production update already succeeded
+            }
+        }
 
         // 4. Auto-mark attendance (Feature 4)
         const todayStart = new Date();
@@ -237,7 +238,9 @@ export async function POST(request: Request) {
             progressId: progressResult.insertedId.toString(),
             producedQuantity: newProduced,
             rejectQuantity: newRejected,
-            progressPercent,
+            progressPercent: isAutoComplete ? 100 : progressPercent,
+            status: isAutoComplete ? "completed" : (updateFields.status || production.status),
+            autoCompleted: isAutoComplete,
             oldValues: {
                 producedQuantity: oldProducedQty,
                 rejectQuantity: oldRejectedQty,

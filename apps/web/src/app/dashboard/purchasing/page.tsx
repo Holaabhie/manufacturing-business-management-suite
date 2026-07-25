@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   Plus,
   Search,
@@ -57,6 +57,7 @@ import { IOSButton } from "@/components/ui/ios/IOSButton";
 import { IOSBadge } from "@/components/ui/ios/IOSBadge";
 import { staggerContainer, staggerItem } from "@/styles/animations";
 import { StatWidget } from "@/components/ui/StatWidget";
+import { useCachedPage } from "@/hooks/useCachedPage";
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -168,6 +169,7 @@ export default function PurchasingPage() {
   const [poItems, setPoItems] = useState<
     { inventoryItemId: string; materialName: string; quantity: string; unit: string; unitPrice: string }[]
   >([]);
+  const [addToInventory, setAddToInventory] = useState(false);
 
   // ─── Data Fetching ────────────────────────────────────────────
 
@@ -217,8 +219,37 @@ export default function PurchasingPage() {
     }
   }, []);
 
+  // ── Page State Persistence ────────────────────────────
+  const [restoredFromCache, setRestoredFromCache] = useState(false);
+  const { restoreState, persist, scrollYRef } = useCachedPage({ pageKey: "purchasing" });
+  const persistRef = useRef({ activeTab, orderSearch, vendorSearch, orders, vendors, stats });
+  useEffect(() => { persistRef.current = { activeTab, orderSearch, vendorSearch, orders, vendors, stats }; });
+  useEffect(() => {
+    const cached = restoreState();
+    if (cached) {
+      if (cached.activeTab) setActiveTab(cached.activeTab as TabKey);
+      if (cached.orderSearch) setOrderSearch(cached.orderSearch as string);
+      if (cached.vendorSearch) setVendorSearch(cached.vendorSearch as string);
+      if (Array.isArray(cached.orders) && (cached.orders as any[]).length > 0) {
+        setOrders(cached.orders as PurchaseOrder[]);
+        setOrdersLoading(false);
+      }
+      if (Array.isArray(cached.vendors) && (cached.vendors as any[]).length > 0) {
+        setVendors(cached.vendors as Vendor[]);
+        setVendorsLoading(false);
+      }
+      if (cached.stats) setStats(cached.stats as any);
+      setRestoredFromCache(true);
+    }
+    return () => {
+      persist({ ...persistRef.current, scrollY: scrollYRef.current });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     setMounted(true);
+    // Always fetch fresh data (cached data is shown instantly while this runs)
     fetchOrders();
     fetchVendors();
     fetchInventory();
@@ -256,6 +287,7 @@ export default function PurchasingPage() {
     setPoNotes("");
     setPoTaxPercent("18");
     setPoItems([{ inventoryItemId: "", materialName: "", quantity: "", unit: "kg", unitPrice: "" }]);
+    setAddToInventory(false);
     setIsPODialogOpen(true);
   };
 
@@ -306,6 +338,7 @@ export default function PurchasingPage() {
       vendorName: vendor?.name || "",
       taxPercent: parseNumericValue(poTaxPercent, 18),
       notes: poNotes,
+      addToInventory,
       items: poItems
         .filter((item) => item.inventoryItemId)
         .map((item) => ({
@@ -325,9 +358,14 @@ export default function PurchasingPage() {
       });
       const data = await res.json();
       if (data.success) {
-        toast.success("Purchase order created");
+        toast.success(
+          data.inventorySynced
+            ? "Purchase order created & materials added to inventory"
+            : "Purchase order created",
+        );
         setIsPODialogOpen(false);
         fetchOrders();
+        if (data.inventorySynced) fetchInventory();
       } else {
         toast.error(data.error || "Failed to create PO");
       }
@@ -408,7 +446,7 @@ export default function PurchasingPage() {
   const orderedCount = stats?.orderedCount ?? orders.filter((o) => o.status === "Ordered").length;
   const receivedCount = stats?.receivedCount ?? orders.filter((o) => o.status === "Received").length;
 
-  const formatCurrency = (n: number) => `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+  const formatCurrency = (n: number) => `\u20B9${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
   // ─── Loading Skeleton ─────────────────────────────────────────
 
@@ -477,7 +515,7 @@ export default function PurchasingPage() {
       <div className="kpi-panel">
         <div className="kpi-panel__glow" />
         <div className="kpi-grid !grid-cols-1 md:!grid-cols-4">
-          <StatWidget label="Total Spent" value={totalSpend} icon={IndianRupee} color="blue" prefix="₹" delay={0} />
+          <StatWidget label="Total Spent" value={totalSpend} icon={IndianRupee} color="blue" prefix={"\u20B9"} delay={0} />
           <StatWidget label="Pending" value={pendingCount} icon={Clock} color="orange" delay={1} />
           <StatWidget label="In Transit" value={orderedCount} icon={Truck} color="purple" delay={2} />
           <StatWidget label="Received" value={receivedCount} icon={PackageCheck} color="green" delay={3} />
@@ -932,8 +970,8 @@ export default function PurchasingPage() {
 
       {/* ════════════ NEW PURCHASE ORDER DIALOG ════════════ */}
       <Dialog open={isPODialogOpen} onOpenChange={setIsPODialogOpen}>
-        <DialogContent className="w-full max-w-[420px] sm:max-w-[560px] md:max-w-[680px] lg:max-w-[750px] p-0 overflow-hidden rounded-[24px] border-[var(--glass-border)] glass-dialog">
-          <ScrollArea className="max-h-[90vh]">
+        <DialogContent className="w-full max-w-[420px] sm:max-w-[560px] md:max-w-[680px] lg:max-w-[750px] p-0 max-h-[90vh] overflow-hidden rounded-[24px] border-[var(--glass-border)] glass-dialog flex flex-col">
+          <div className="overflow-y-auto flex-1">
             <div className="p-4 sm:p-6 md:p-8">
               <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid var(--glass-border)" }}>
                 <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, rgba(34,197,94,0.4), rgba(255,255,255,0.06))", border: "1px solid var(--glass-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1029,12 +1067,12 @@ export default function PurchasingPage() {
                           />
                         </div>
                         <div>
-                          <Label className="text-[11px] text-[var(--muted-foreground)]">₹/Unit</Label>
+                          <Label className="text-[11px] text-[var(--muted-foreground)]">{"\u20B9"}/Unit</Label>
                           <NumericInput
                             value={item.unitPrice}
                             onValueChange={(v) => updatePOItem(idx, "unitPrice", v)}
                             placeholder="0.00"
-                            prefix="₹"
+                            prefix={"\u20B9"}
                             allowDecimal
                             min={0}
                           />
@@ -1104,6 +1142,66 @@ export default function PurchasingPage() {
                   </div>
                 )}
 
+                {/* ── Add to Inventory Toggle ── */}
+                <div
+                  className={cn(
+                    "p-3 rounded-[14px] border transition-all duration-200 cursor-pointer select-none",
+                    addToInventory
+                      ? "border-[#2563EB]/40 bg-blue-50 dark:bg-blue-950/30"
+                      : "border-[var(--border)] bg-[var(--muted)]"
+                  )}
+                  onClick={() => setAddToInventory((v) => !v)}
+                  role="switch"
+                  aria-checked={addToInventory}
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setAddToInventory((v) => !v); } }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div
+                        className={cn(
+                          "w-[32px] h-[32px] rounded-[8px] flex items-center justify-center transition-colors",
+                          addToInventory
+                            ? "bg-[#2563EB]/15 text-[#2563EB]"
+                            : "bg-[var(--muted)] text-[var(--muted-foreground)]"
+                        )}
+                      >
+                        <Package className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <span className={cn(
+                          "text-[13px] font-semibold block leading-[18px]",
+                          addToInventory ? "text-[#2563EB] dark:text-blue-400" : "text-[var(--foreground)]"
+                        )}>
+                          Add to Inventory
+                        </span>
+                        <span className="text-[11px] text-[var(--muted-foreground)] leading-[14px] block">
+                          Update stock levels on creation
+                        </span>
+                      </div>
+                    </div>
+                    {/* Pill toggle */}
+                    <div
+                      className={cn(
+                        "w-[42px] h-[24px] rounded-full p-[2px] transition-colors duration-200",
+                        addToInventory ? "bg-[#2563EB]" : "bg-slate-300 dark:bg-[#1C2333]"
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          "w-[20px] h-[20px] rounded-full bg-white shadow-sm transition-transform duration-200",
+                          addToInventory ? "translate-x-[18px]" : "translate-x-0"
+                        )}
+                      />
+                    </div>
+                  </div>
+                  {addToInventory && (
+                    <p className="text-[11px] text-[#2563EB]/70 dark:text-blue-400/70 mt-2 leading-[15px] pl-[42px]">
+                      Stock will be added now. When this PO is later marked as &ldquo;Received&rdquo;, inventory will <strong>not</strong> be incremented again.
+                    </p>
+                  )}
+                </div>
+
                 <DialogFooter className="pt-2">
                   <button type="submit" className="glow-btn w-full h-[50px] text-[17px] flex items-center justify-center gap-2">
                     <ShoppingCart className="h-5 w-5" /> Create Purchase Order
@@ -1111,7 +1209,7 @@ export default function PurchasingPage() {
                 </DialogFooter>
               </form>
             </div>
-          </ScrollArea>
+          </div>
         </DialogContent>
       </Dialog>
 

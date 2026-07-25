@@ -682,11 +682,11 @@ const INVOICE_TEMPLATE_SOURCE = `<!DOCTYPE html>
           <th class="cell-center col-hsn">HSN</th>
           <th class="cell-right col-qty">Qty</th>
           <th class="cell-center col-unit">Unit</th>
-          <th class="cell-right col-rate">Rate (₹)</th>
+          <th class="cell-right col-rate">Rate (\u20B9)</th>
           {{#if hasDiscount}}<th class="cell-right col-disc">Disc.</th>{{/if}}
           <th class="cell-right col-tax">Taxable</th>
           <th class="cell-center col-gst">GST</th>
-          <th class="cell-right col-amt">Amount (₹)</th>
+          <th class="cell-right col-amt">Amount (\u20B9)</th>
         </tr>
       </thead>
       <tbody>

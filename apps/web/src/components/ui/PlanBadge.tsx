@@ -65,7 +65,7 @@ export function PlanBadge({
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full font-semibold
-        bg-gray-100 text-gray-600
+        bg-muted text-muted-foreground
         dark:bg-gray-800 dark:text-gray-400
         border border-gray-200 dark:border-gray-700
         ${size === 'sm' ? 'px-2 py-0.5 text-[10px]' : 'px-3 py-1 text-xs'}

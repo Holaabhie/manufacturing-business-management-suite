@@ -31,9 +31,16 @@ export class ProductionService {
             parsed.data.batchNumber ||
             `PRD-${new Date().getFullYear()}-${String(count + 1).padStart(4, "0")}`;
 
-        // Deduct materials from inventory
+        // Generate production ID early so deductMaterials can reference it
+        const productionId = new ObjectId().toString();
+
+        // Deduct materials from inventory (with context for usageHistory)
         if (parsed.data.materials && parsed.data.materials.length > 0) {
-            await this.repo.deductMaterials(parsed.data.materials);
+            await this.repo.deductMaterials(parsed.data.materials, {
+                productionId,
+                orderId: parsed.data.orderId,
+                orderProductName: parsed.data.orderProductName,
+            });
         }
 
         // Create initial activity log entry

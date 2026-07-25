@@ -279,7 +279,7 @@ export function MaterialsStep({ inventory, productName, onMaterialsChange, initi
                         {totalEstCost > 0 && (
                             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
                                 <span style={{ color: "#94a3b8" }}>Est. Cost</span>
-                                <span style={{ fontWeight: 600, color: "#a5b4fc" }}>₹{totalEstCost.toLocaleString("en-IN")}</span>
+                                <span style={{ fontWeight: 600, color: "#a5b4fc" }}>{"\u20B9"}{totalEstCost.toLocaleString("en-IN")}</span>
                             </div>
                         )}
                         {lowStockCount > 0 && (

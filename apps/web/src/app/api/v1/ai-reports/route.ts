@@ -21,7 +21,7 @@ Response format:
 {
   "summary": "1-2 sentence plain-text summary",
   "data": [
-    { "label": "Metric Name", "val": "₹1.2L or 42%", "color": "green|blue|orange|red|purple" }
+    { "label": "Metric Name", "val": "\u20B91.2L or 42%", "color": "green|blue|orange|red|purple" }
   ],
   "insight": "One actionable insight or recommendation (plain text)",
   "type": "revenue|inventory|production|general"
@@ -29,7 +29,7 @@ Response format:
 
 Rules:
 1. Always include 3-6 data items in the "data" array
-2. Use ₹ for Indian Rupees, format large numbers as Lakhs (L) or Crores (Cr)
+2. Use \u20B9 for Indian Rupees, format large numbers as Lakhs (L) or Crores (Cr)
 3. Pick "color" based on context: green=good, red=bad, orange=warning, blue=neutral, purple=highlight
 4. Keep summary under 30 words
 5. Make insight specific and actionable
@@ -77,16 +77,17 @@ export async function POST(req: NextRequest) {
 
         if (orders.length > 0) {
             const totalRevenue = orders.reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
-            const completed = orders.filter((o) => o.status === "completed").length;
-            const pending = orders.filter((o) => o.status === "pending").length;
-            const processing = orders.filter((o) => o.status === "processing").length;
+            const completed = orders.filter((o) => (o.production_status || o.status) === "completed" && o.payment_status === "paid").length;
+            const pending = orders.filter((o) => !(o.production_status || o.status) || (o.production_status || o.status) === "pending").length;
+            const processing = orders.filter((o) => (o.production_status || o.status) === "processing").length;
+            const awaitingPayment = orders.filter((o) => (o.production_status || o.status) === "completed" && o.payment_status !== "paid").length;
 
             contextParts.push(
-                `## Orders (${orders.length} recent)\nTotal Revenue: ₹${totalRevenue}\nCompleted: ${completed}, Processing: ${processing}, Pending: ${pending}\n${JSON.stringify(orders.slice(0, 10).map((o) => ({
+                `## Orders (${orders.length} recent)\nTotal Revenue: \u20B9${totalRevenue}\nCompleted: ${completed}, Processing: ${processing}, Pending: ${pending}, Awaiting Payment: ${awaitingPayment}\n${JSON.stringify(orders.slice(0, 10).map((o) => ({
                     product: o.product_name,
                     qty: o.quantity,
                     amount: o.total_amount,
-                    status: o.status,
+                    productionStatus: o.production_status || o.status,
                     paymentStatus: o.payment_status,
                     materialCost: o.material_cost || 0,
                     labourCost: o.labour_cost || 0,
@@ -115,7 +116,7 @@ export async function POST(req: NextRequest) {
 
         if (payments.length > 0) {
             const totalCollected = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
-            contextParts.push(`## Payments (${payments.length} recent, ₹${totalCollected} collected)\n${JSON.stringify(payments.slice(0, 8).map((p) => ({ amount: p.amount, date: p.payment_date, method: p.payment_method })), null, 2)}`);
+            contextParts.push(`## Payments (${payments.length} recent, \u20B9${totalCollected} collected)\n${JSON.stringify(payments.slice(0, 8).map((p) => ({ amount: p.amount, date: p.payment_date, method: p.payment_method })), null, 2)}`);
         }
 
         const businessContext = contextParts.length > 0

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { toast as sonnerToast } from "sonner"; // Sonner toast notification library
 import {
     Users, Search, Plus, Shield, ShieldAlert, UserCog, Mail, Calendar,
     ChevronRight, MoreHorizontal, Power, PowerOff, KeyRound, Copy, Check,
@@ -98,7 +99,7 @@ function StatusBadge({ status }: { status: string }) {
     const Icon = c.icon;
 
     return (
-        <IOSBadge variant="tinted" color={c.classes.includes('emerald') ? 'green' : c.classes.includes('red') ? 'red' : c.classes.includes('amber') ? 'orange' : 'teal'} className="gap-1 px-1.5 py-0.5 rounded-[6px] font-semibold text-[11px] uppercase tracking-wider">
+        <IOSBadge variant="tinted" color={c.classes.includes('emerald') ? 'green' : c.classes.includes('red') ? 'red' : c.classes.includes('amber') ? 'orange' : 'blue'} className="gap-1 px-1.5 py-0.5 rounded-[6px] font-semibold text-[11px] uppercase tracking-wider">
             <Icon className="h-3 w-3" />
             {c.label}
         </IOSBadge>
@@ -131,11 +132,14 @@ export default function EmployeeManagementPage() {
     const [newEmpDept, setNewEmpDept] = useState("General");
     const [newEmpDesignation, setNewEmpDesignation] = useState("");
     const [newEmpTemplate, setNewEmpTemplate] = useState("operations");
+    const [newEmpPassword, setNewEmpPassword] = useState("");
+    const [newEmpConfirmPassword, setNewEmpConfirmPassword] = useState("");
+    const [showNewEmpPassword, setShowNewEmpPassword] = useState(false);
 
     // Success / Credential Display
     const [showCredentials, setShowCredentials] = useState(false);
     const [createdEmployee, setCreatedEmployee] = useState<{
-        employeeId: string; tempPassword: string; fullName: string;
+        employeeId: string; email: string; fullName: string;
     } | null>(null);
     const [copiedId, setCopiedId] = useState(false);
     const [copiedPwd, setCopiedPwd] = useState(false);
@@ -174,7 +178,7 @@ export default function EmployeeManagementPage() {
                 }
             }
         } catch {
-            toast.error("Failed to load employee data");
+            sonnerToast.error("Failed to load employee data");
         } finally {
             setLoading(false);
             setRoleLoading(false);
@@ -185,7 +189,14 @@ export default function EmployeeManagementPage() {
 
     // ─── Add Employee ───────────────────────────────────
     const handleAddEmployee = async () => {
-        if (!newEmpName.trim()) { toast.error("Employee name is required"); return; }
+        if (!newEmpName.trim()) { sonnerToast.error("Employee name is required"); return; }
+        if (!newEmpEmail.trim()) { sonnerToast.error("Email is required for staff accounts"); return; }
+        if (!newEmpPassword) { sonnerToast.error("Password is required"); return; }
+        if (newEmpPassword.length < 8) { sonnerToast.error("Password must be at least 8 characters"); return; }
+        if (!/[A-Z]/.test(newEmpPassword)) { sonnerToast.error("Password must contain an uppercase letter"); return; }
+        if (!/[a-z]/.test(newEmpPassword)) { sonnerToast.error("Password must contain a lowercase letter"); return; }
+        if (!/[0-9]/.test(newEmpPassword)) { sonnerToast.error("Password must contain a number"); return; }
+        if (newEmpPassword !== newEmpConfirmPassword) { sonnerToast.error("Passwords do not match"); return; }
 
         setAdding(true);
         try {
@@ -199,16 +210,17 @@ export default function EmployeeManagementPage() {
                     department: newEmpDept,
                     designation: newEmpDesignation.trim(),
                     permissionTemplate: newEmpTemplate,
+                    password: newEmpPassword,
                 }),
             });
             const json = await res.json();
 
-            if (!res.ok) throw new Error(json.error || "Failed to create employee");
+            if (!res.ok) throw new Error(json.message || "Failed to create employee");
 
             // Show credentials
             setCreatedEmployee({
                 employeeId: json.employee.employeeId,
-                tempPassword: json.employee.tempPassword,
+                email: json.employee.email,
                 fullName: json.employee.fullName,
             });
             setShowAddDialog(false);
@@ -217,12 +229,13 @@ export default function EmployeeManagementPage() {
             // Reset
             setNewEmpName(""); setNewEmpEmail(""); setNewEmpPhone("");
             setNewEmpDept("General"); setNewEmpDesignation(""); setNewEmpTemplate("operations");
+            setNewEmpPassword(""); setNewEmpConfirmPassword("");
 
             // Refresh list
             fetchData();
-            toast.success(`Employee ${json.employee.fullName} created!`);
+            sonnerToast.success(`Employee ${json.employee.fullName} created!`);
         } catch (error: any) {
-            toast.error(error.message);
+            sonnerToast.error(error.message);
         } finally {
             setAdding(false);
         }
@@ -237,8 +250,8 @@ export default function EmployeeManagementPage() {
             if (actionType === "delete") {
                 const res = await fetch(`/api/employees/${actionTarget.id}`, { method: "DELETE" });
                 const json = await res.json();
-                if (!res.ok) throw new Error(json.error);
-                toast.success(`${actionTarget.fullName} permanently removed`);
+                if (!res.ok) throw new Error(json.message || "Failed to delete employee");
+                sonnerToast.success(`${actionTarget.fullName} permanently removed`); // uses local state, not json
                 setEmployees(prev => prev.filter(e => e.id !== actionTarget.id));
             } else if (actionType === "deactivate" || actionType === "activate") {
                 const res = await fetch(`/api/employees/${actionTarget.id}`, {
@@ -247,8 +260,8 @@ export default function EmployeeManagementPage() {
                     body: JSON.stringify({ action: "toggle_status" }),
                 });
                 const json = await res.json();
-                if (!res.ok) throw new Error(json.error);
-                toast.success(`${actionTarget.fullName} ${json.status === "active" ? "activated" : "deactivated"}`);
+                if (!res.ok) throw new Error(json.message || "Failed to update status");
+                sonnerToast.success(`${actionTarget.fullName} ${json.status === "active" ? "activated" : "deactivated"}`);
                 setEmployees(prev =>
                     prev.map(e => e.id === actionTarget.id ? { ...e, status: json.status } : e)
                 );
@@ -259,13 +272,13 @@ export default function EmployeeManagementPage() {
                     body: JSON.stringify({ action: "reset_password" }),
                 });
                 const json = await res.json();
-                if (!res.ok) throw new Error(json.error);
+                if (!res.ok) throw new Error(json.message || "Failed to reset password");
                 setResetPasswordResult(json.tempPassword);
-                toast.success("Password reset successfully");
+                sonnerToast.success("Password reset successfully");
                 return; // Don't close dialog yet
             }
         } catch (error: any) {
-            toast.error(error.message);
+            sonnerToast.error(error.message);
         } finally {
             setActionLoading(false);
             if (actionType !== "reset_password") {
@@ -278,11 +291,11 @@ export default function EmployeeManagementPage() {
     // ─── Change Password (admin-typed) ────────────────────
     const handleChangePassword = async () => {
         if (!changePwdTarget) return;
-        if (changePwdNewPassword.length < 8) { toast.error("Password must be at least 8 characters"); return; }
-        if (!/[A-Z]/.test(changePwdNewPassword)) { toast.error("Password must contain an uppercase letter"); return; }
-        if (!/[a-z]/.test(changePwdNewPassword)) { toast.error("Password must contain a lowercase letter"); return; }
-        if (!/[0-9]/.test(changePwdNewPassword)) { toast.error("Password must contain a number"); return; }
-        if (changePwdNewPassword !== changePwdConfirm) { toast.error("Passwords do not match"); return; }
+        if (changePwdNewPassword.length < 8) { sonnerToast.error("Password must be at least 8 characters"); return; }
+        if (!/[A-Z]/.test(changePwdNewPassword)) { sonnerToast.error("Password must contain an uppercase letter"); return; }
+        if (!/[a-z]/.test(changePwdNewPassword)) { sonnerToast.error("Password must contain a lowercase letter"); return; }
+        if (!/[0-9]/.test(changePwdNewPassword)) { sonnerToast.error("Password must contain a number"); return; }
+        if (changePwdNewPassword !== changePwdConfirm) { sonnerToast.error("Passwords do not match"); return; }
 
         setChangePwdLoading(true);
         try {
@@ -296,11 +309,11 @@ export default function EmployeeManagementPage() {
                 }),
             });
             const json = await res.json();
-            if (!res.ok) throw new Error(json.error || "Failed to change password");
+            if (!res.ok) throw new Error(json.message || "Failed to change password");
             setChangePwdStep("success");
-            toast.success(json.message || `Password updated for ${changePwdTarget.fullName}`);
+            sonnerToast.success(json.message || `Password updated for ${changePwdTarget.fullName}`);
         } catch (error: any) {
-            toast.error(error.message);
+            sonnerToast.error(error.message);
         } finally {
             setChangePwdLoading(false);
         }
@@ -432,7 +445,7 @@ export default function EmployeeManagementPage() {
             dataToExport,
             columns
         );
-        toast.success("Staff Excel downloaded!");
+        sonnerToast.success("Staff Excel downloaded!");
     };
 
     // ─── Guards ─────────────────────────────────────────
@@ -459,6 +472,20 @@ export default function EmployeeManagementPage() {
     return (
         <TooltipProvider delayDuration={0}>
             <div className="space-y-6 max-w-[1400px] mx-auto pb-20">
+                {/* ─── Legacy Accounts Banner ─────────────────────── */}
+                {employees.some(e => e.email?.endsWith("@staff.local") || !e.email) && (
+                    <div className="p-4 rounded-[14px] bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
+                        <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                        <div>
+                            <p className="text-[14px] font-semibold text-amber-500 dark:text-amber-400">Legacy Staff Accounts Detected</p>
+                            <p className="text-[13px] text-[var(--muted-foreground)] mt-1">
+                                {employees.filter(e => e.email?.endsWith("@staff.local") || !e.email).length} staff account(s) are missing email addresses and use legacy Employee ID login.
+                                Update their profiles with a real email for secure authentication.
+                            </p>
+                        </div>
+                    </div>
+                )}
+
                 {/* ─── Header ──────────────────────────────────────── */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
@@ -760,7 +787,7 @@ export default function EmployeeManagementPage() {
                                 </div>
                                 <div>
                                     <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "#f1f5f9", lineHeight: "22px", margin: 0 }}>Add New Employee</DialogTitle>
-                                    <DialogDescription style={{ fontSize: 13, color: "#64748b", lineHeight: "18px", margin: "2px 0 0" }}>Auto-generated ID and temp password</DialogDescription>
+                                    <DialogDescription style={{ fontSize: 13, color: "#64748b", lineHeight: "18px", margin: "2px 0 0" }}>Set up login credentials for new staff</DialogDescription>
                                 </div>
                             </div>
 
@@ -778,7 +805,7 @@ export default function EmployeeManagementPage() {
 
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-1.5">
-                                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">Email</label>
+                                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">Email *</label>
                                         <IOSInput
                                             type="email"
                                             placeholder="employee@company.com"
@@ -833,6 +860,56 @@ export default function EmployeeManagementPage() {
                                     />
                                 </div>
 
+                                {/* Password Fields */}
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">Password *</label>
+                                        <div className="relative">
+                                            <IOSInput
+                                                type={showNewEmpPassword ? "text" : "password"}
+                                                placeholder="Min 8 chars"
+                                                value={newEmpPassword}
+                                                onChange={(e: any) => setNewEmpPassword(e.target.value)}
+                                                className="h-11 pr-10"
+                                            />
+                                            <button type="button" onClick={() => setShowNewEmpPassword(!showNewEmpPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors">
+                                                {showNewEmpPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">Confirm Password *</label>
+                                        <IOSInput
+                                            type="password"
+                                            placeholder="Re-enter password"
+                                            value={newEmpConfirmPassword}
+                                            onChange={(e: any) => setNewEmpConfirmPassword(e.target.value)}
+                                            className="h-11"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Password Strength */}
+                                {newEmpPassword && (
+                                    <div className="px-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <div className="flex-1 h-1.5 bg-[var(--muted)] rounded-full overflow-hidden">
+                                                <div className={`h-full rounded-full transition-all ${
+                                                    newEmpPassword.length < 8 ? 'w-[20%] bg-red-500' :
+                                                    !/[A-Z]/.test(newEmpPassword) || !/[a-z]/.test(newEmpPassword) ? 'w-[50%] bg-amber-500' :
+                                                    !/[0-9]/.test(newEmpPassword) ? 'w-[75%] bg-blue-500' : 'w-full bg-emerald-500'
+                                                }`} />
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px]">
+                                            <span className={newEmpPassword.length >= 8 ? 'text-emerald-500' : 'text-[var(--muted-foreground)]'}>✓ 8+ chars</span>
+                                            <span className={/[A-Z]/.test(newEmpPassword) ? 'text-emerald-500' : 'text-[var(--muted-foreground)]'}>✓ Uppercase</span>
+                                            <span className={/[a-z]/.test(newEmpPassword) ? 'text-emerald-500' : 'text-[var(--muted-foreground)]'}>✓ Lowercase</span>
+                                            <span className={/[0-9]/.test(newEmpPassword) ? 'text-emerald-500' : 'text-[var(--muted-foreground)]'}>✓ Number</span>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="p-4 rounded-[12px] bg-[var(--muted)] dark:bg-[var(--muted)] border border-[var(--border)]">
                                     <div className="flex items-start gap-3">
                                         <div className="h-6 w-6 rounded-full bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -842,8 +919,8 @@ export default function EmployeeManagementPage() {
                                             <p className="font-semibold text-[var(--foreground)]">What happens next?</p>
                                             <ul className="space-y-1">
                                                 <li>• A unique Employee ID (EMP-XXXX) will be generated</li>
-                                                <li>• A temp password will be created for first login</li>
-                                                <li>• Share these credentials securely</li>
+                                                <li>• Staff will log in using their email and password</li>
+                                                <li>• Share the email and password securely</li>
                                             </ul>
                                         </div>
                                     </div>
@@ -856,7 +933,7 @@ export default function EmployeeManagementPage() {
                                     variant="filled"
                                     color="blue"
                                     onClick={handleAddEmployee}
-                                    disabled={adding || !newEmpName.trim()}
+                                    disabled={adding || !newEmpName.trim() || !newEmpEmail.trim() || !newEmpPassword || newEmpPassword !== newEmpConfirmPassword}
                                     className="flex-1"
                                 >
                                     {adding ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Plus className="h-4 w-4 mr-1.5" />}
@@ -882,22 +959,35 @@ export default function EmployeeManagementPage() {
                                 </div>
                                 <div>
                                     <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "#f1f5f9", lineHeight: "22px", margin: 0 }}>Employee Created</DialogTitle>
-                                    <DialogDescription style={{ fontSize: 13, color: "#64748b", lineHeight: "18px", margin: "2px 0 0" }}>Share credentials with {createdEmployee?.fullName}</DialogDescription>
+                                    <DialogDescription style={{ fontSize: 13, color: "#64748b", lineHeight: "18px", margin: "2px 0 0" }}>Share login details with {createdEmployee?.fullName}</DialogDescription>
                                 </div>
                             </div>
 
                             {createdEmployee && (
                                 <div className="space-y-4 pt-2">
-                                    <div className="p-4 rounded-[16px] bg-[#FF9500]/10 border border-[#FF9500]/20 text-left">
+                                    <div className="p-4 rounded-[16px] bg-[#34C759]/10 border border-[#34C759]/20 text-left">
                                         <div className="flex items-center gap-2 mb-3 px-1">
-                                            <AlertTriangle className="h-4 w-4 text-[#FF9500]" />
-                                            <p className="text-[13px] font-semibold text-[#FF9500] dark:text-[#FF9F0A]">Save these credentials now!</p>
+                                            <CheckCircle className="h-4 w-4 text-[#34C759]" />
+                                            <p className="text-[13px] font-semibold text-[#34C759]">Account created successfully!</p>
                                         </div>
 
                                         <div className="space-y-3">
                                             <div className="flex items-center justify-between bg-white dark:bg-black rounded-[12px] px-3.5 py-3 shadow-sm border border-[var(--border)]">
                                                 <div>
-                                                    <p className="text-[10px] uppercase font-bold text-[var(--muted-foreground)] tracking-wider">Employee ID</p>
+                                                    <p className="text-[10px] uppercase font-bold text-[var(--muted-foreground)] tracking-wider">Login Email</p>
+                                                    <p className="font-medium text-[15px] text-[var(--foreground)]">{createdEmployee.email}</p>
+                                                </div>
+                                                <button
+                                                    className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-[var(--muted)] text-[var(--muted-foreground)] transition-colors"
+                                                    onClick={() => copyToClipboard(createdEmployee.email, "pwd")}
+                                                >
+                                                    {copiedPwd ? <Check className="h-4 w-4 text-[#34C759]" /> : <Copy className="h-4 w-4" />}
+                                                </button>
+                                            </div>
+
+                                            <div className="flex items-center justify-between bg-white dark:bg-black rounded-[12px] px-3.5 py-3 shadow-sm border border-[var(--border)]">
+                                                <div>
+                                                    <p className="text-[10px] uppercase font-bold text-[var(--muted-foreground)] tracking-wider">Employee ID (Internal)</p>
                                                     <p className="font-mono font-bold text-[17px] text-[var(--foreground)]">{createdEmployee.employeeId}</p>
                                                 </div>
                                                 <button
@@ -907,24 +997,11 @@ export default function EmployeeManagementPage() {
                                                     {copiedId ? <Check className="h-4 w-4 text-[#34C759]" /> : <Copy className="h-4 w-4" />}
                                                 </button>
                                             </div>
-
-                                            <div className="flex items-center justify-between bg-white dark:bg-black rounded-[12px] px-3.5 py-3 shadow-sm border border-[var(--border)]">
-                                                <div>
-                                                    <p className="text-[10px] uppercase font-bold text-[var(--muted-foreground)] tracking-wider">Temporary Password</p>
-                                                    <p className="font-mono font-bold text-[17px] text-[var(--foreground)]">{createdEmployee.tempPassword}</p>
-                                                </div>
-                                                <button
-                                                    className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-[var(--muted)] text-[var(--muted-foreground)] transition-colors"
-                                                    onClick={() => copyToClipboard(createdEmployee.tempPassword, "pwd")}
-                                                >
-                                                    {copiedPwd ? <Check className="h-4 w-4 text-[#34C759]" /> : <Copy className="h-4 w-4" />}
-                                                </button>
-                                            </div>
                                         </div>
                                     </div>
 
                                     <div className="text-[13px] text-[var(--muted-foreground)]">
-                                        Employee will use the <strong>Staff Portal</strong> to log in.
+                                        Staff will log in using their <strong>email and password</strong> on the Staff Portal.
                                     </div>
                                 </div>
                             )}

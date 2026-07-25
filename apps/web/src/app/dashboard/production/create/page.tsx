@@ -386,10 +386,10 @@ export default function CreateProductionPage() {
     }
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden' }}>
+        <div className="flex flex-col min-h-full pb-28">
         {/* ─── Scrollable content area ─── */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 0' }}>
-        <div className="space-y-6 max-w-4xl mx-auto" style={{ paddingBottom: '24px' }}>
+        <div className="flex-1 px-4 pt-4">
+        <div className="space-y-6 max-w-4xl mx-auto pb-6">
             {/* ─── Breadcrumb ──────────────────────────────────────── */}
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <button
@@ -404,73 +404,68 @@ export default function CreateProductionPage() {
 
             <h1 className="text-2xl font-bold tracking-tight">New Production Run</h1>
 
-            {/* ─── Step Indicator ──────────────────────────────────── */}
-            <div className="relative">
-                <div className="flex items-center justify-between">
-                    {steps.map((step, index) => {
-                        const isActive = currentStep === step.id;
-                        const isCompleted = currentStep > step.id;
-                        const StepIcon = step.icon;
+            {/* ─── Stepper ──────────────────────────────────────── */}
+            <div className="pb-5">
+              {/* Desktop — horizontal stepper */}
+              <div className="hidden sm:flex items-start justify-between relative">
+                {steps.map((step, index) => {
+                  const isCompleted = currentStep > step.id;
+                  const isActive    = currentStep === step.id;
+                  const StepIcon = step.icon;
+                  return (
+                    <div key={step.id} className="flex flex-col items-center flex-1 relative">
+                      {index > 0 && (
+                        <div className="absolute top-[22px] right-[50%] left-[-50%] h-[2px] z-0">
+                          <div className={cn(
+                            "h-full w-full transition-all duration-500",
+                            isCompleted ? "bg-[#10B981]" : "bg-[rgba(255,255,255,0.08)]"
+                          )} />
+                        </div>
+                      )}
+                      <div className={cn(
+                        "relative z-10 w-11 h-11 rounded-full flex items-center justify-center transition-all duration-300",
+                        isCompleted
+                          ? "bg-[#10B981] shadow-[0_0_16px_rgba(16,185,129,0.3)]"
+                          : isActive
+                            ? "bg-[#2563EB] shadow-[0_0_20px_rgba(37,99,235,0.4)]"
+                            : "bg-[rgba(255,255,255,0.06)] border border-[rgba(255,255,255,0.08)]"
+                      )}>
+                        {isCompleted
+                          ? <Check size={18} className="text-white" strokeWidth={2.5} />
+                          : <StepIcon size={18} className={isActive ? "text-white" : "text-[#475569]"} />}
+                      </div>
+                      <p className={cn(
+                        "mt-2.5 text-[11.5px] font-medium text-center leading-tight max-w-[80px] transition-colors duration-200",
+                        isActive ? "text-foreground" : isCompleted ? "text-[#10B981]" : "text-[#475569]"
+                      )}>
+                        {step.title}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
 
-                        return (
-                            <div key={step.id} className="flex items-center flex-1">
-                                <div className="flex flex-col items-center flex-shrink-0 z-10">
-                                    <div
-                                        className={cn(
-                                            "w-10 h-10 rounded-xl flex items-center justify-center border-2 transition-all duration-300",
-                                            isCompleted
-                                                ? "bg-emerald-500 border-emerald-500 text-white"
-                                                : isActive
-                                                    ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-500/30"
-                                                    : "bg-card border-border text-muted-foreground"
-                                        )}
-                                    >
-                                        {isCompleted ? (
-                                            <Check className="h-4.5 w-4.5" />
-                                        ) : (
-                                            <StepIcon className="h-4.5 w-4.5" />
-                                        )}
-                                    </div>
-                                    <div className="mt-2 text-center">
-                                        <p
-                                            className={cn(
-                                                "text-xs font-bold",
-                                                isActive
-                                                    ? "text-foreground"
-                                                    : isCompleted
-                                                        ? "text-emerald-500"
-                                                        : "text-muted-foreground"
-                                            )}
-                                        >
-                                            {step.title}
-                                        </p>
-                                        <p className="text-[10px] text-muted-foreground hidden sm:block">
-                                            {step.description}
-                                        </p>
-                                    </div>
-                                </div>
-                                {index < steps.length - 1 && (
-                                    <div className="flex-1 mx-3 mt-[-24px]">
-                                        <div className="h-0.5 bg-border rounded-full overflow-hidden">
-                                            <div
-                                                className={cn(
-                                                    "h-full rounded-full transition-all duration-500",
-                                                    currentStep > step.id
-                                                        ? "w-full bg-emerald-500"
-                                                        : "w-0 bg-indigo-600"
-                                                )}
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
+              {/* Mobile — compact dot indicator */}
+              <div className="flex sm:hidden items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {steps.map((step) => (
+                    <div key={step.id} className={cn(
+                      "transition-all duration-300 rounded-full",
+                      currentStep === step.id ? "w-6 h-2 bg-[#2563EB]"
+                        : currentStep > step.id ? "w-2 h-2 bg-[#10B981]"
+                        : "w-2 h-2 bg-[rgba(255,255,255,0.12)]"
+                    )} />
+                  ))}
                 </div>
+                <div className="text-right">
+                  <p className="text-[11px] text-muted-foreground">Step {currentStep} of {steps.length}</p>
+                  <p className="text-[13px] font-semibold text-foreground">{steps[currentStep - 1]?.title}</p>
+                </div>
+              </div>
             </div>
 
             {/* ─── Step Content ────────────────────────────────────── */}
-            <div className="rounded-xl border bg-card dark:bg-slate-900 border-border dark:border-slate-800 overflow-hidden min-h-[420px]">
+            <div className="rounded-[20px] border bg-card dark:bg-[rgba(255,255,255,0.04)] border-border dark:border-[rgba(255,255,255,0.08)] shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)] overflow-hidden min-h-[380px]">
                 <AnimatePresence mode="wait" custom={slideDirection}>
                     <motion.div
                         key={currentStep}
@@ -545,10 +540,10 @@ export default function CreateProductionPage() {
                                                     <button
                                                         key={order.id}
                                                         className={cn(
-                                                            "w-full text-left rounded-xl border p-4 transition-all duration-200",
+                                                            "w-full text-left rounded-[14px] border p-3.5 transition-all duration-200",
                                                             isSelected
-                                                                ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 ring-2 ring-indigo-500/20"
-                                                                : "border-border hover:border-indigo-300 dark:hover:border-indigo-800 hover:bg-muted/30"
+                                                                ? "border-[rgba(37,99,235,0.4)] bg-[rgba(37,99,235,0.08)] dark:bg-[rgba(37,99,235,0.12)] ring-1 ring-[rgba(37,99,235,0.2)] shadow-[0_0_16px_rgba(37,99,235,0.08)]"
+                                                                : "border-border dark:border-[rgba(255,255,255,0.06)] hover:border-[rgba(37,99,235,0.2)] hover:bg-muted/30 dark:hover:bg-[rgba(255,255,255,0.04)]"
                                                         )}
                                                         onClick={() => setSelectedOrderId(order.id)}
                                                         id={`order-option-${order.id}`}
@@ -587,10 +582,10 @@ export default function CreateProductionPage() {
                                                             </div>
                                                             <div
                                                                 className={cn(
-                                                                    "w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ml-3 mt-0.5 transition-all",
+                                                                    "flex items-center justify-center flex-shrink-0 ml-3 mt-0.5 transition-all",
                                                                     isSelected
-                                                                        ? "border-indigo-500 bg-indigo-500"
-                                                                        : "border-border"
+                                                                        ? "w-6 h-6 rounded-full bg-[#2563EB]"
+                                                                        : "w-5 h-5 rounded-full border-2 border-border dark:border-[rgba(255,255,255,0.12)]"
                                                                 )}
                                                             >
                                                                 {isSelected && (
@@ -619,7 +614,7 @@ export default function CreateProductionPage() {
 
                                 {/* Selected order summary */}
                                 {selectedOrder && (
-                                    <div className="rounded-lg bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 p-3 flex items-center gap-3">
+                                    <div className="rounded-[12px] bg-[rgba(37,99,235,0.06)] dark:bg-[rgba(37,99,235,0.08)] border border-[rgba(37,99,235,0.15)] p-3 flex items-center gap-3">
                                         <ShoppingCart className="h-4 w-4 text-indigo-500 flex-shrink-0" />
                                         <div className="text-xs">
                                             <span className="font-bold">
@@ -863,7 +858,7 @@ export default function CreateProductionPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div className="space-y-2">
                                         <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                            Labour Cost (₹)
+                                            Labour Cost (INR)
                                         </Label>
                                         <NumericInput
                                             value={labourCost || ""}
@@ -877,7 +872,7 @@ export default function CreateProductionPage() {
                                     </div>
                                     <div className="space-y-2">
                                         <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                            Overhead (₹)
+                                            Overhead (INR)
                                         </Label>
                                         <NumericInput
                                             value={overhead || ""}
@@ -891,7 +886,7 @@ export default function CreateProductionPage() {
                                     </div>
                                     <div className="space-y-2">
                                         <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                            Sale Value (₹)
+                                            Sale Value (INR)
                                         </Label>
                                         <NumericInput
                                             value={saleValue || ""}
@@ -952,7 +947,7 @@ export default function CreateProductionPage() {
                                         <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                                             <span style={{ fontSize: '12px', color: 'hsl(var(--muted-foreground))' }}>{row.label}</span>
                                             <span style={{ fontSize: '13px', fontWeight: 500, color: 'hsl(var(--foreground))' }}>
-                                                ₹{row.value.toLocaleString('en-IN')}
+                                                {"\u20B9"}{row.value.toLocaleString('en-IN')}
                                             </span>
                                         </div>
                                     ))}
@@ -963,11 +958,11 @@ export default function CreateProductionPage() {
                                     {/* Total + Sale */}
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                                         <span style={{ fontSize: '12px', color: 'hsl(var(--muted-foreground))' }}>Total cost</span>
-                                        <span style={{ fontSize: '13px', fontWeight: 500, color: 'hsl(var(--foreground))' }}>₹{totalCost.toLocaleString('en-IN')}</span>
+                                        <span style={{ fontSize: '13px', fontWeight: 500, color: 'hsl(var(--foreground))' }}>{"\u20B9"}{totalCost.toLocaleString('en-IN')}</span>
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                                         <span style={{ fontSize: '12px', color: 'hsl(var(--muted-foreground))' }}>Sale value</span>
-                                        <span style={{ fontSize: '13px', fontWeight: 500, color: 'hsl(var(--foreground))' }}>₹{saleValue.toLocaleString('en-IN')}</span>
+                                        <span style={{ fontSize: '13px', fontWeight: 500, color: 'hsl(var(--foreground))' }}>{"\u20B9"}{saleValue.toLocaleString('en-IN')}</span>
                                     </div>
 
                                     <div style={{ height: '0.5px', background: 'hsl(var(--border))', margin: '8px 0' }} />
@@ -993,8 +988,8 @@ export default function CreateProductionPage() {
                                 </div>
 
                                 {/* ─── Production Summary ─── */}
-                                <div className="rounded-xl bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-800 p-4 space-y-3">
-                                    <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                                <div className="rounded-[14px] bg-[rgba(37,99,235,0.06)] dark:bg-[rgba(37,99,235,0.06)] border border-[rgba(37,99,235,0.15)] p-4 space-y-3">
+                                    <h3 className="text-xs font-bold uppercase tracking-wider text-[#2563EB] dark:text-[#60A5FA]">
                                         Production Summary
                                     </h3>
                                     <div className="flex flex-col gap-2 text-sm">
@@ -1044,20 +1039,12 @@ export default function CreateProductionPage() {
         </div>
         </div>
 
-        {/* ─── Sticky Footer — always visible at bottom ─── */}
-        <div
-            style={{
-                position: 'sticky',
-                bottom: 0,
-                backgroundColor: 'hsl(var(--background))',
-                borderTop: '0.5px solid hsl(var(--border))',
-                padding: '10px 16px 20px',
-            }}
-        >
-            <div className="flex items-center justify-between max-w-4xl mx-auto">
+        {/* ─── Bottom Actions ─── */}
+        <div className="shrink-0 px-4 pt-4 pb-2">
+            <div className="flex items-center justify-between gap-3 max-w-4xl mx-auto">
                 <Button
                     variant="outline"
-                    className="gap-2 rounded-xl"
+                    className="gap-2 rounded-[12px] h-11"
                     onClick={currentStep === 1 ? () => router.push("/dashboard/production") : goBack}
                 >
                     <ChevronLeft className="h-4 w-4" />
@@ -1066,7 +1053,7 @@ export default function CreateProductionPage() {
 
                 {currentStep < 4 ? (
                     <Button
-                        className="gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white"
+                        className="gap-2 rounded-[12px] h-11 bg-[#2563EB] hover:bg-[#1D4ED8] text-white shadow-[0_4px_20px_rgba(37,99,235,0.35)]"
                         onClick={goNext}
                         disabled={!canProceed(currentStep)}
                         id="next-step-btn"
@@ -1079,26 +1066,14 @@ export default function CreateProductionPage() {
                         onClick={handleSubmit}
                         disabled={!canProceed(currentStep) || submitting}
                         id="submit-production-btn"
-                        style={{
-                            width: '100%',
-                            maxWidth: '220px',
-                            padding: '13px',
-                            borderRadius: '12px',
-                            background: (!canProceed(currentStep) || submitting) ? '#1D9E7580' : '#1D9E75',
-                            border: 'none',
-                            color: '#fff',
-                            fontSize: '14px',
-                            fontWeight: 500,
-                            cursor: (!canProceed(currentStep) || submitting) ? 'not-allowed' : 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '8px',
-                            transition: 'transform 0.1s ease',
-                        }}
-                        onPointerDown={(e) => { if (!(!canProceed(currentStep) || submitting)) (e.currentTarget.style.transform = 'scale(0.98)'); }}
-                        onPointerUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
-                        onPointerLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                        className={cn(
+                            "flex-[2] max-w-[220px] h-12 rounded-[12px] text-[14px] font-medium text-white",
+                            "transition-all duration-200 active:scale-[0.98]",
+                            "flex items-center justify-center gap-2",
+                            (!canProceed(currentStep) || submitting)
+                                ? "bg-[rgba(16,185,129,0.4)] cursor-not-allowed"
+                                : "bg-[#10B981] hover:bg-[#059669] shadow-[0_4px_20px_rgba(16,185,129,0.3)] cursor-pointer"
+                        )}
                     >
                         {submitting ? (
                             <>

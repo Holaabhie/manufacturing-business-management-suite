@@ -30,15 +30,7 @@ async function generateEmployeeId(db: any, adminId: string): Promise<string> {
     return `EMP-${String(nextNum).padStart(4, "0")}`;
 }
 
-// ─── Generate a secure temporary password ────────────────────────
-function generateTempPassword(): string {
-    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$";
-    let result = "";
-    for (let i = 0; i < 12; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
-}
+
 
 // ═════════════════════════════════════════════════════════════════
 // GET: List all employees under the current admin
@@ -46,8 +38,8 @@ function generateTempPassword(): string {
 export async function GET() {
     try {
         const result = await requireAdmin();
-        if (result.error) {
-            return NextResponse.json({ error: result.error }, { status: result.status });
+        if (result.error || !result.user) {
+            return NextResponse.json({ success: false, message: result.error || "Unauthorized" }, { status: result.status || 401 });
         }
 
         const admin = result.user;
@@ -85,7 +77,7 @@ export async function GET() {
         return NextResponse.json({ employees, total: employees.length });
     } catch (error: any) {
         console.error("[Employees API] GET error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ success: false, message: error.message }, { status: 500 });
     }
 }
 
@@ -95,8 +87,8 @@ export async function GET() {
 export async function POST(request: Request) {
     try {
         const result = await requireAdmin();
-        if (result.error) {
-            return NextResponse.json({ error: result.error }, { status: result.status });
+        if (result.error || !result.user) {
+            return NextResponse.json({ success: false, message: result.error || "Unauthorized" }, { status: result.status || 401 });
         }
 
         const admin = result.user;
@@ -112,10 +104,22 @@ export async function POST(request: Request) {
         const permissionTemplate = String(body.permissionTemplate ?? "operations");
 
         if (!fullName) {
-            return NextResponse.json({ error: "Employee name is required" }, { status: 400 });
+            return NextResponse.json({ success: false, message: "Employee name is required" }, { status: 400 });
         }
         if (fullName.length < 2) {
-            return NextResponse.json({ error: "Employee name must be at least 2 characters" }, { status: 400 });
+            return NextResponse.json({ success: false, message: "Employee name must be at least 2 characters" }, { status: 400 });
+        }
+        if (!email) {
+            return NextResponse.json({ success: false, message: "Email is required for staff accounts" }, { status: 400 });
+        }
+
+        const password = String(body.password ?? "");
+        const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+        if (!PASSWORD_REGEX.test(password)) {
+            return NextResponse.json(
+                { success: false, message: "Password must be at least 8 characters with uppercase, lowercase, and a number" },
+                { status: 400 }
+            );
         }
 
         const db = await getDb();
@@ -124,14 +128,16 @@ export async function POST(request: Request) {
         if (email) {
             const existing = await db.collection("users").findOne({ email });
             if (existing) {
-                return NextResponse.json({ error: "An account with this email already exists" }, { status: 409 });
+                return NextResponse.json(
+                    { success: false, message: "An account with this email already exists" },
+                    { status: 409 }
+                );
             }
         }
 
-        // ─── Generate Employee ID & Temp Password ────────
+        // ─── Generate Employee ID & Password Hash ────────
         const employeeId = await generateEmployeeId(db, adminId);
-        const tempPassword = generateTempPassword();
-        const passwordHash = await bcrypt.hash(tempPassword, 10);
+        const passwordHash = await bcrypt.hash(password, 12);
         const userId = crypto.randomUUID();
         const now = new Date();
 
@@ -167,7 +173,7 @@ export async function POST(request: Request) {
             status: "active",
             firstLoginCompleted: false,
             failedLoginAttempts: 0,
-            tempPasswordActive: true,
+
             createdAt: now,
             updatedAt: now,
             invitedBy: adminId,
@@ -195,8 +201,10 @@ export async function POST(request: Request) {
             severity: "info",
         });
 
+        console.log("[Employees API] Created:", { email, name: fullName, role: "Staff" });
+
         return NextResponse.json({
-            ok: true,
+            success: true,
             employee: {
                 id: userId,
                 employeeId,
@@ -207,11 +215,13 @@ export async function POST(request: Request) {
                 designation,
                 status: "active",
                 permissionTemplate,
-                tempPassword, // Return once so Admin can share with staff
+                role: "Staff",
+                firstLoginCompleted: false,
+                createdAt: now.toISOString(),
             },
         });
     } catch (error: any) {
         console.error("[Employees API] POST error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ success: false, message: error.message }, { status: 500 });
     }
 }

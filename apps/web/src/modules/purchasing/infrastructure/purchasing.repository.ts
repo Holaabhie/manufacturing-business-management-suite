@@ -48,6 +48,7 @@ interface PurchaseOrderDocument {
     notes?: string;
     orderedAt?: Date;
     receivedAt?: Date;
+    inventorySyncedOnCreate?: boolean;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -85,6 +86,7 @@ function toPurchaseOrderEntity(doc: PurchaseOrderDocument): PurchaseOrder {
         notes: doc.notes,
         orderedAt: doc.orderedAt,
         receivedAt: doc.receivedAt,
+        inventorySyncedOnCreate: doc.inventorySyncedOnCreate,
         createdAt: doc.createdAt,
         updatedAt: doc.updatedAt,
     };

@@ -14,7 +14,7 @@ let nodemailer: typeof import("nodemailer") | null = null;
 async function getNodemailer() {
   if (!nodemailer) {
     try {
-      nodemailer = await import("nodemailer");
+      nodemailer = await import(/* webpackIgnore: true */ "nodemailer");
     } catch {
       console.warn("[NOTIFICATION:EMAIL] nodemailer not installed — using mock");
       return null;

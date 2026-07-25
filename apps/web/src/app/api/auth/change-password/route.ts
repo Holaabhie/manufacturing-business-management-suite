@@ -11,7 +11,7 @@ export async function POST(req: Request) {
         const user = await getSessionUser();
         if (!user) {
             return NextResponse.json(
-                { error: "Unauthorized — no active session" },
+                { success: false, message: "Unauthorized — no active session" },
                 { status: 401 }
             );
         }
@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
         if (!newPassword) {
             return NextResponse.json(
-                { error: "New password is required" },
+                { success: false, message: "New password is required" },
                 { status: 400 }
             );
         }
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
             fullName: user.fullName || user.full_name || undefined,
         });
         if (passwordError) {
-            return NextResponse.json({ error: passwordError }, { status: 400 });
+            return NextResponse.json({ success: false, message: passwordError }, { status: 400 });
         }
 
         const ipAddress = getClientIp(req);
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
                     organizationId: (user as any).organizationId || "",
                     userId: user._id as string,
                     userName: user.fullName || user.full_name || user.email,
-                    userRole: user.role,
+                    userRole: user.role as any,
                     action: "Failed password change — wrong current password",
                     actionType: "security",
                     ipAddress,
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
                 });
 
                 return NextResponse.json(
-                    { error: "Current password is incorrect" },
+                    { success: false, message: "Current password is incorrect" },
                     { status: 401 }
                 );
             }
@@ -69,7 +69,7 @@ export async function POST(req: Request) {
             const isSame = await bcrypt.compare(newPassword, user.passwordHash);
             if (isSame) {
                 return NextResponse.json(
-                    { error: "New password must be different from current password" },
+                    { success: false, message: "New password must be different from current password" },
                     { status: 400 }
                 );
             }
@@ -114,7 +114,7 @@ export async function POST(req: Request) {
             organizationId: (user as any).organizationId || "",
             userId: user._id as string,
             userName: user.fullName || user.full_name || user.email,
-            userRole: user.role,
+            userRole: user.role as any,
             action: "Password changed successfully",
             actionType: "security",
             ipAddress,
@@ -129,7 +129,7 @@ export async function POST(req: Request) {
     } catch (error: any) {
         console.error("[change-password] Error:", error);
         return NextResponse.json(
-            { error: error.message || "Failed to change password" },
+            { success: false, message: error.message || "Failed to change password" },
             { status: 500 }
         );
     }

@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/require-role";
 import { getDataOwnerId } from "@/lib/auth-session";
 import { withIdempotency } from "@/lib/with-idempotency";
 import { triggerNotification } from "@/lib/notifications/dispatcher";
+import { getFinancialYear } from "@/lib/utils/financial-year";
 
 export async function GET() {
     try {
@@ -118,6 +119,7 @@ export const POST = withIdempotency(async (request: NextRequest) => {
             status: body.status || "draft",
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
+            financial_year: getFinancialYear(body.billDate || new Date()),
         };
 
         const insertResult = await db.collection("bills").insertOne(billData);

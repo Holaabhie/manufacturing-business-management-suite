@@ -28,10 +28,11 @@ export async function POST(req: Request) {
 
     // ─── Validation ─────────────────────────────────────────────
     if (loginType === "staff") {
-      // Staff login: employeeId + password
-      if (!employeeId || !password) {
+      // Staff login: identifier (employeeId or email) + password
+      const identifier = (body?.employeeId || body?.email || "").toString().trim();
+      if (!identifier || !password) {
         return NextResponse.json(
-          { error: "Employee ID and password are required" },
+          { success: false, message: "Employee ID or email and password are required" },
           { status: 400 }
         );
       }
@@ -39,7 +40,7 @@ export async function POST(req: Request) {
       // Admin login: email + password
       if (!email || !password) {
         return NextResponse.json(
-          { error: "Email and password are required" },
+          { success: false, message: "Email and password are required" },
           { status: 400 }
         );
       }
@@ -50,10 +51,36 @@ export async function POST(req: Request) {
 
     // ─── Find User ──────────────────────────────────────────────
     if (loginType === "staff") {
+      // Staff identifier dual-lookup: accept email or employeeId
+      const identifier = (body?.employeeId || body?.email || "").toString().trim();
       user = (await db.collection<UserDoc>("users").findOne({
-        employeeId: employeeId,
+        $or: [
+          { email: identifier.toLowerCase() },
+          { employeeId: identifier },
+        ],
         role: "Staff",
       })) as UserDoc | null;
+
+      // ─── Collision Guard ────────────────────────────────────────
+      if (
+        user &&
+        user.employeeId === identifier &&
+        user.email !== identifier.toLowerCase()
+      ) {
+        const count = await db
+          .collection("users")
+          .countDocuments({ employeeId: identifier, role: "Staff" });
+        if (count > 1) {
+          return NextResponse.json(
+            {
+              success: false,
+              message:
+                "Multiple accounts found with this Employee ID. Please log in with your email address.",
+            },
+            { status: 409 }
+          );
+        }
+      }
     } else {
       user = (await db
         .collection<UserDoc>("users")
@@ -63,7 +90,8 @@ export async function POST(req: Request) {
     if (!user) {
       return NextResponse.json(
         {
-          error:
+          success: false,
+          message:
             loginType === "staff"
               ? "Invalid employee ID or password"
               : "Invalid email or password",
@@ -76,7 +104,8 @@ export async function POST(req: Request) {
     if (user.status === "inactive") {
       return NextResponse.json(
         {
-          error:
+          success: false,
+          message:
             "Your account has been deactivated. Contact your administrator.",
         },
         { status: 403 }
@@ -85,7 +114,8 @@ export async function POST(req: Request) {
     if (user.status === "suspended") {
       return NextResponse.json(
         {
-          error:
+          success: false,
+          message:
             "Your account has been suspended. Contact your administrator.",
         },
         { status: 403 }
@@ -103,7 +133,7 @@ export async function POST(req: Request) {
         organizationId: user.organizationId || "",
         userId: user._id,
         userName: user.fullName || user.full_name || user.email,
-        userRole: user.role,
+        userRole: user.role as any,
         action: "Login attempt on locked account",
         actionType: "security",
         ipAddress,
@@ -114,7 +144,8 @@ export async function POST(req: Request) {
 
       return NextResponse.json(
         {
-          error: `Account temporarily locked. Try again in ${remainingMinutes} minute(s).`,
+          success: false,
+          message: `Account temporarily locked. Try again in ${remainingMinutes} minute(s).`,
           locked: true,
           remainingMinutes,
         },
@@ -150,7 +181,7 @@ export async function POST(req: Request) {
         organizationId: user.organizationId || "",
         userId: user._id,
         userName: user.fullName || user.full_name || user.email,
-        userRole: user.role,
+        userRole: user.role as any,
         action: `Failed login attempt (${failedAttempts}/${maxAttempts})`,
         actionType: "security",
         ipAddress,
@@ -165,7 +196,8 @@ export async function POST(req: Request) {
       if (failedAttempts >= maxAttempts) {
         return NextResponse.json(
           {
-            error: `Too many failed attempts. Account locked for ${lockoutMinutes} minutes.`,
+            success: false,
+            message: `Too many failed attempts. Account locked for ${lockoutMinutes} minutes.`,
             locked: true,
           },
           { status: 423 }
@@ -174,7 +206,8 @@ export async function POST(req: Request) {
 
       return NextResponse.json(
         {
-          error:
+          success: false,
+          message:
             loginType === "staff"
               ? "Invalid employee ID or password"
               : "Invalid email or password",
@@ -207,7 +240,7 @@ export async function POST(req: Request) {
             });
 
             return NextResponse.json(
-              { error: "Invalid organization master key" },
+              { success: false, message: "Invalid organization master key" },
               { status: 401 }
             );
           }
@@ -218,13 +251,13 @@ export async function POST(req: Request) {
     // ─── Role Mismatch Prevention ───────────────────────────────
     if (loginType === "admin" && user.role !== "Admin") {
       return NextResponse.json(
-        { error: "This login portal is for administrators only" },
+        { success: false, message: "This login portal is for administrators only" },
         { status: 403 }
       );
     }
     if (loginType === "staff" && user.role !== "Staff") {
       return NextResponse.json(
-        { error: "This login portal is for staff members only" },
+        { success: false, message: "This login portal is for staff members only" },
         { status: 403 }
       );
     }
@@ -257,7 +290,7 @@ export async function POST(req: Request) {
     const suspiciousResult = await detectSuspiciousLogin({
       userId: user._id,
       userName: user.fullName || user.full_name || user.email,
-      userRole: user.role,
+      userRole: user.role as any,
       organizationId: user.organizationId || "",
       ipAddress,
       userAgent,
@@ -267,7 +300,8 @@ export async function POST(req: Request) {
     if (suspiciousResult.action === "block") {
       return NextResponse.json(
         {
-          error: "Login blocked due to unusual activity. Please verify your identity or contact support.",
+          success: false,
+          message: "Login blocked due to unusual activity. Please verify your identity or contact support.",
           suspicious: true,
           reasons: suspiciousResult.reasons,
         },
@@ -303,7 +337,7 @@ export async function POST(req: Request) {
       organizationId: user.organizationId || "",
       userId: user._id,
       userName: user.fullName || user.full_name || user.email,
-      userRole: user.role,
+      userRole: user.role as any,
       action: "Logged in successfully",
       actionType: "login",
       ipAddress,
@@ -321,12 +355,12 @@ export async function POST(req: Request) {
     console.error("[login] Error:", e);
     if (isDbUnavailableError(e)) {
       return NextResponse.json(
-        { error: "Service temporarily unavailable. Please try again in a moment.", success: false },
+        { success: false, message: "Service temporarily unavailable. Please try again in a moment." },
         { status: 503 }
       );
     }
     return NextResponse.json(
-      { error: e?.message ?? "Login failed" },
+      { success: false, message: e?.message ?? "Login failed" },
       { status: 500 }
     );
   }

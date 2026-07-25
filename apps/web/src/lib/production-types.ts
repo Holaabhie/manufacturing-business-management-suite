@@ -22,6 +22,12 @@ export interface ProductionActivityLog {
     details: string;
 }
 
+export interface AssignedStaffMember {
+    id: string;
+    name: string;
+    email: string;
+}
+
 export interface Production {
     id: string;
     // Order linkage
@@ -47,9 +53,13 @@ export interface Production {
 
     // Live progress
     status: ProductionStatus;
+    outputUnit?: "kg" | "pcs" | "units";
     producedQuantity: number;
     rejectQuantity: number;
     progressPercent: number;
+
+    // Staff assignment
+    assignedStaff?: AssignedStaffMember[];
 
     // Activity
     activityLog: ProductionActivityLog[];

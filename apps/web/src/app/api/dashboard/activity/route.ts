@@ -101,7 +101,7 @@ export async function GET(req: Request) {
         title: "Payment received",
         subtitle: p.clients?.name || p.client_name || "",
         amount: p.amount || null,
-        message: `Payment received: ₹${p.amount || 0}`,
+        message: `Payment received: \u20B9${p.amount || 0}`,
         entityId: String(p._id),
         href: "/dashboard/payments",
         createdAt: p.createdAt,

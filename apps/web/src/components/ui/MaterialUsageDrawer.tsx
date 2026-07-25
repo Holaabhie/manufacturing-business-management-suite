@@ -4,6 +4,10 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { X, Package, Factory, Clock, BarChart3, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+    springModal,
+    variantsBackdrop,
+} from "@/lib/motion";
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 
 interface MaterialUsageDrawerProps {
@@ -116,22 +120,31 @@ export function MaterialUsageDrawer({ material, onClose }: MaterialUsageDrawerPr
             {isOpen && (
                 <>
                     {/* Backdrop */}
+                    {/* Tier A fade — spring lives on the drawer, not the scrim */}
+                    {/* onPointerDown (not onClick) — iOS Safari reliability fix */}
+                    {/*
+                        ⚠ CAPACITOR NOTE: this backdrop has backdropFilter: blur(4px).
+                        If you see jank on mobile (Capacitor build), remove the blur and
+                        keep just background rgba — blur + spring repaint can drop frames
+                        on older Android WebViews.
+                    */}
                     <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                        variants={variantsBackdrop}
+                        initial="hidden"
+                        animate="visible"
+                        exit="exit"
                         className="fixed inset-0 z-50"
                         style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
                         onPointerDown={onClose}
                     />
 
                     {/* Drawer */}
+                    {/* Tier B spring — stiffness 300 / damping 25, matches variantsSheetSlideUp axis but x-axis here */}
                     <motion.div
                         initial={{ x: "100%" }}
                         animate={{ x: 0 }}
                         exit={{ x: "100%" }}
-                        transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                        transition={springModal}
                         className="fixed top-0 right-0 z-50 h-full w-full sm:w-[480px] flex flex-col"
                         style={{ background: "#0e1117", borderLeft: "1px solid rgba(255,255,255,0.05)" }}
                         onPointerDown={(e) => e.stopPropagation()}

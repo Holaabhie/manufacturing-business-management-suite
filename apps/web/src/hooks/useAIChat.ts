@@ -33,7 +33,7 @@ const WELCOME_MESSAGE: Message = {
   role: "assistant",
   content: `**Welcome to AI Assistant** ✨
 
-I'm your intelligent business advisor, powered by Google Gemini. Here's how I can help:
+I'm your intelligent business advisor. Here's how I can help:
 
 • **📊 Analytics** — Revenue insights, growth trends, profit margins
 • **📦 Inventory** — Stock levels, restocking alerts, usage patterns

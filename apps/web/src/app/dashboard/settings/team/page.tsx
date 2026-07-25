@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { variantsFadeUp } from "@/lib/motion";
 import {
   Users, UserPlus, Shield, ChevronDown, ChevronRight, X, Loader2,
   Check, RotateCcw, Mail, Clock, AlertCircle,
@@ -92,7 +93,7 @@ export default function TeamPage() {
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+    <motion.div variants={variantsFadeUp} initial="hidden" animate="visible"
       style={{ maxWidth: 960, margin: "0 auto", padding: "16px 16px 80px" }}>
 
       {/* Header */}

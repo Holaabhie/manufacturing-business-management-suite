@@ -3,7 +3,6 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
-    Command,
     CommandDialog,
     CommandEmpty,
     CommandGroup,
@@ -21,15 +20,11 @@ import {
     CreditCard,
     FileText,
     Bot,
-    BarChart3,
-    TrendingUp,
     User,
     Crown,
-    Plus,
     Clock,
     Search,
     Settings,
-    Factory,
     ArrowRight,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -41,9 +36,9 @@ interface CommandPaletteProps {
 
 // Recent items (would be fetched from localStorage/API in production)
 const recentItems = [
-    { type: "order", id: "ORD-001", name: "Order #001 - ABC Corp", href: "/dashboard/orders" },
-    { type: "client", id: "CLI-002", name: "Acme Industries", href: "/dashboard/clients" },
-    { type: "inventory", id: "INV-003", name: "Steel Rods - Batch A", href: "/dashboard/inventory" },
+    { type: "order", id: "ORD-001", name: "Order #001 - ABC Corp", href: "/dashboard/orders", icon: ShoppingCart },
+    { type: "client", id: "CLI-002", name: "Acme Industries", href: "/dashboard/clients", icon: Users },
+    { type: "inventory", id: "INV-003", name: "Steel Rods - Batch A", href: "/dashboard/inventory", icon: Package },
 ];
 
 // Navigation items
@@ -62,10 +57,10 @@ const navigationItems = [
 
 // Quick actions
 const quickActions = [
-    { name: "New Order", icon: ShoppingCart, href: "/dashboard/orders?new=true", color: "text-blue-500" },
-    { name: "New Client", icon: Users, href: "/dashboard/clients?new=true", color: "text-emerald-500" },
-    { name: "Add Inventory Item", icon: Package, href: "/dashboard/inventory?new=true", color: "text-amber-500" },
-    { name: "Generate Report", icon: FileText, href: "/dashboard/assistant", color: "text-purple-500" },
+    { name: "New Order", icon: ShoppingCart, href: "/dashboard/orders?new=true", color: "text-blue-500", bgColor: "bg-blue-500/10" },
+    { name: "New Client", icon: Users, href: "/dashboard/clients?new=true", color: "text-emerald-500", bgColor: "bg-emerald-500/10" },
+    { name: "Add Inventory Item", icon: Package, href: "/dashboard/inventory?new=true", color: "text-amber-500", bgColor: "bg-amber-500/10" },
+    { name: "Generate Report", icon: FileText, href: "/dashboard/assistant", color: "text-purple-500", bgColor: "bg-purple-500/10" },
 ];
 
 export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
@@ -160,13 +155,13 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
 
     return (
         <CommandDialog open={open} onOpenChange={onOpenChange}>
-            <Command className="rounded-lg border shadow-2xl">
                 <CommandInput
                     placeholder="Search orders, clients, inventory..."
                     value={searchQuery}
                     onValueChange={setSearchQuery}
+                    className="text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]"
                 />
-                <CommandList className="max-h-[400px]">
+                <CommandList className="max-h-[400px] bg-[var(--erp-elevated)]">
                     <CommandEmpty>
                         {isSearching ? (
                             <div className="flex items-center justify-center py-6 gap-2">
@@ -186,12 +181,12 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
 
                     {/* Search Results */}
                     {searchResults.length > 0 && (
-                        <CommandGroup heading="Search Results">
+                        <CommandGroup heading="Search Results" className="[&_[cmdk-group-heading]]:text-[var(--muted-foreground)]">
                             {searchResults.map((result) => (
                                 <CommandItem
                                     key={`${result.type}-${result.id}`}
                                     onSelect={() => handleSelect(result.href)}
-                                    className="flex items-center gap-3 py-3"
+                                    className="flex items-center gap-3 py-3 rounded-[var(--radius-md)] aria-selected:bg-[var(--erp-surface)] aria-selected:text-[var(--foreground)] text-[var(--foreground)]"
                                 >
                                     <div className={`p-2 rounded-lg ${result.type === "order" ? "bg-blue-500/10 text-blue-500" :
                                         result.type === "client" ? "bg-emerald-500/10 text-emerald-500" :
@@ -214,15 +209,15 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                     {/* Quick Actions - Only show when not searching */}
                     {!searchQuery && (
                         <>
-                            <CommandGroup heading="Quick Actions">
+                            <CommandGroup heading="Quick Actions" className="[&_[cmdk-group-heading]]:text-[var(--muted-foreground)]">
                                 {quickActions.map((action) => (
                                     <CommandItem
                                         key={action.name}
                                         onSelect={() => handleSelect(action.href)}
-                                        className="flex items-center gap-3 py-2"
+                                        className="flex items-center gap-3 py-2 rounded-[var(--radius-md)] aria-selected:bg-[var(--erp-surface)] aria-selected:text-[var(--foreground)] text-[var(--foreground)]"
                                     >
-                                        <div className={`p-1.5 rounded-md bg-muted ${action.color}`}>
-                                            <Plus className="h-3 w-3" />
+                                        <div className={`p-2 rounded-lg ${action.bgColor} ${action.color}`}>
+                                            <action.icon className="h-3.5 w-3.5" />
                                         </div>
                                         <span>{action.name}</span>
                                         <ArrowRight className="ml-auto h-4 w-4 text-muted-foreground" />
@@ -230,32 +225,33 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                                 ))}
                             </CommandGroup>
 
-                            <CommandSeparator />
+                            <CommandSeparator className="bg-[var(--glass-border)]" />
 
                             {/* Recent Items */}
-                            <CommandGroup heading="Recent">
+                            <CommandGroup heading="Recent" className="[&_[cmdk-group-heading]]:text-[var(--muted-foreground)]">
                                 {recentItems.map((item) => (
                                     <CommandItem
                                         key={`${item.type}-${item.id}`}
                                         onSelect={() => handleSelect(item.href)}
-                                        className="flex items-center gap-3 py-2"
+                                        className="flex items-center gap-3 py-2 rounded-[var(--radius-md)] aria-selected:bg-[var(--erp-surface)] aria-selected:text-[var(--foreground)] text-[var(--foreground)]"
                                     >
-                                        <Clock className="h-4 w-4 text-muted-foreground" />
+                                        <item.icon className="h-4 w-4 text-muted-foreground" />
                                         <span className="flex-1 truncate">{item.name}</span>
+                                        <Clock className="h-3 w-3 text-muted-foreground opacity-50" />
                                         <span className="text-xs text-muted-foreground capitalize">{item.type}</span>
                                     </CommandItem>
                                 ))}
                             </CommandGroup>
 
-                            <CommandSeparator />
+                            <CommandSeparator className="bg-[var(--glass-border)]" />
 
                             {/* Navigation */}
-                            <CommandGroup heading="Navigation">
+                            <CommandGroup heading="Navigation" className="[&_[cmdk-group-heading]]:text-[var(--muted-foreground)]">
                                 {navigationItems.slice(0, 8).map((item) => (
                                     <CommandItem
                                         key={item.name}
                                         onSelect={() => handleSelect(item.href)}
-                                        className="flex items-center gap-3 py-2"
+                                        className="flex items-center gap-3 py-2 rounded-[var(--radius-md)] aria-selected:bg-[var(--erp-surface)] aria-selected:text-[var(--foreground)] text-[var(--foreground)]"
                                     >
                                         <item.icon className="h-4 w-4 text-muted-foreground" />
                                         <span>{item.name}</span>
@@ -270,7 +266,6 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                         </>
                     )}
                 </CommandList>
-            </Command>
         </CommandDialog>
     );
 }

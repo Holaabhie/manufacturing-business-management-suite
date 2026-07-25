@@ -86,6 +86,7 @@ export const ROLE_PERMISSIONS: Record<string, {
             "/dashboard/billing",
             "/dashboard/payments",
             "/dashboard/analytics",
+            "/dashboard/reports/previous-years",
             "/dashboard/profile",
         ],
         hiddenSections: ["OPERATIONS", "INTELLIGENCE", "SYSTEM"],

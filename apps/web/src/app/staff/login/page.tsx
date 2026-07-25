@@ -51,7 +51,7 @@ export default function StaffLoginPage() {
         e.preventDefault();
 
         if (!employeeId || !password) {
-            toast.error("Please enter your Employee ID and password");
+            toast.error("Please enter your Email or Employee ID and password");
             return;
         }
 
@@ -63,6 +63,7 @@ export default function StaffLoginPage() {
                 headers: { "content-type": "application/json" },
                 body: JSON.stringify({
                     employeeId,
+                    email: employeeId,
                     password,
                     loginType: "staff",
                 }),
@@ -72,7 +73,7 @@ export default function StaffLoginPage() {
 
             if (json.locked) {
                 setLockedMinutes(json.remainingMinutes || 30);
-                toast.error(json.error || "Account temporarily locked");
+                toast.error(json.message || "Account temporarily locked");
                 return;
             }
 
@@ -80,7 +81,7 @@ export default function StaffLoginPage() {
                 if (json.attemptsRemaining !== undefined) {
                     setAttemptsRemaining(json.attemptsRemaining);
                 }
-                throw new Error(json?.error || "Login failed");
+                throw new Error(json?.message || "Login failed");
             }
 
             // Check if OTP is required
@@ -196,7 +197,7 @@ export default function StaffLoginPage() {
 
                         <div className="space-y-4">
                             {[
-                                { icon: BadgeCheck, label: "Employee ID Authentication", desc: "Secure credential-based access" },
+                                { icon: BadgeCheck, label: "Email Authentication", desc: "Secure email-based access" },
                                 { icon: Phone, label: "OTP Verification", desc: "Two-factor authentication for security" },
                                 { icon: Users, label: "Role-Based Access", desc: "Permissions tailored to your role" },
                             ].map((item, i) => (
@@ -277,16 +278,16 @@ export default function StaffLoginPage() {
                                         {/* Employee ID */}
                                         <div className="space-y-2">
                                             <Label htmlFor="staff-employee-id" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                                Employee ID
+                                                Email or Employee ID
                                             </Label>
                                             <Input
                                                 id="staff-employee-id"
                                                 type="text"
-                                                placeholder="EMP-001 or your employee ID"
+                                                placeholder="e.g. employee@company.com or EMP-0001"
                                                 value={employeeId}
                                                 onChange={(e) => setEmployeeId(e.target.value)}
                                                 required
-                                                className="h-12 bg-muted/50 dark:bg-white/5 border-border rounded-xl font-mono uppercase"
+                                                className="h-12 bg-muted/50 dark:bg-white/5 border-border rounded-xl"
                                             />
                                         </div>
 

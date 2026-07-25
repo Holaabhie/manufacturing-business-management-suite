@@ -66,7 +66,11 @@ export const GET = withRateLimit(
                 .collection("orders")
                 .find({
                     userId: ownerId,
-                    status: { $in: ["processing", "completed"] },
+                    // Support both post-fix (production_status) and pre-backfill (status) orders
+                    $or: [
+                        { production_status: { $in: ["processing", "completed"] } },
+                        { status: { $in: ["processing", "completed"] } },
+                    ],
                     materials: { $exists: true, $ne: [] },
                 })
                 .toArray();
@@ -132,6 +136,7 @@ export const GET = withRateLimit(
                         // Check if this entry already exists (idempotency check)
                         const invItem = await db.collection("inventory").findOne({
                             _id: new ObjectId(inventoryItemId),
+                            userId: ownerId,
                         });
 
                         if (!invItem) {
@@ -157,7 +162,7 @@ export const GET = withRateLimit(
 
                         // Push the usage history entry
                         await db.collection("inventory").updateOne(
-                            { _id: new ObjectId(inventoryItemId) },
+                            { _id: new ObjectId(inventoryItemId), userId: ownerId },
                             {
                                 $push: {
                                     usageHistory: {

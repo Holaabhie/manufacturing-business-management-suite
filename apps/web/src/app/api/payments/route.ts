@@ -4,6 +4,7 @@ import { getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { triggerNotification } from "@/lib/notifications/dispatcher";
+import { getFinancialYear } from "@/lib/utils/financial-year";
 
 export async function GET() {
   try {
@@ -114,6 +115,7 @@ export async function POST(request: Request) {
       client_id: body.client_id || null,
       order_id: body.order_id || null,
       createdAt: new Date(),
+      financial_year: getFinancialYear(body.payment_date ? new Date(body.payment_date) : new Date()),
     });
 
     const payment = await db.collection("payments").findOne({ _id: result.insertedId });

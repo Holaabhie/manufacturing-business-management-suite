@@ -161,7 +161,7 @@ export function InvoicePreview({ data, className = "" }: InvoicePreviewProps) {
 
             {/* Invoice Preview Embed */}
             {previewUrl && (
-                <div className="relative rounded-xl border border-border overflow-hidden bg-white shadow-lg">
+                <div className="relative rounded-xl border border-border overflow-hidden bg-card shadow-lg">
                     <div className="absolute top-0 left-0 right-0 h-10 bg-muted/80 backdrop-blur-sm flex items-center justify-between px-4 z-10 border-b">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <FileText className="h-4 w-4" />

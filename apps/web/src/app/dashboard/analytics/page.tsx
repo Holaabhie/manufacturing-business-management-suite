@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import {
     TrendingUp,
@@ -15,6 +15,8 @@ import {
     PieChart,
     ChevronDown,
     AlertTriangle,
+    Users,
+    ArrowRight,
 } from "lucide-react";
 import {
     AreaChart,
@@ -43,6 +45,8 @@ import { useRole } from "@/lib/hooks/use-role";
 import { AccessDenied } from "@/components/AccessDenied";
 import { useTranslations } from "next-intl";
 import { useFormatters } from "@/hooks/useFormatters";
+import { useCachedPage } from "@/hooks/useCachedPage";
+import Link from "next/link";
 
 const AVATAR_COLORS = [
   '#4CAF50', '#2196F3', '#FF9800', '#E91E63', '#9C27B0',
@@ -86,6 +90,23 @@ interface InventoryPoint {
     value: number;
 }
 
+interface FunnelStage {
+    stage: string;
+    count: number;
+}
+
+interface ProductionQualityPoint {
+    month: string;
+    produced: number;
+    rejected: number;
+}
+
+interface TopClient {
+    name: string;
+    totalRevenue: number;
+    orderCount: number;
+}
+
 interface AnalyticsKPIs {
     totalRevenue: number;
     revenueGrowth: number;
@@ -101,6 +122,9 @@ interface AnalyticsData {
     topProducts: TopProduct[];
     inventoryData: InventoryPoint[];
     kpis: AnalyticsKPIs;
+    orderFunnel: FunnelStage[];
+    productionQuality: ProductionQualityPoint[];
+    topClients: TopClient[];
 }
 
 // ─── Chart Tooltip ───────────────────────────────────────
@@ -112,7 +136,7 @@ function CustomTooltip({ active, payload, label }: any) {
             {payload.map((p: any, i: number) => (
                 <p key={i} className="text-[15px] font-semibold text-[var(--foreground)]">
                     {p.name}: {typeof p.value === "number" && p.value > 1000
-                        ? `₹${(p.value / 1000).toFixed(0)}K`
+                        ? `\u20B9${(p.value / 1000).toFixed(0)}K`
                         : `${p.value}%`}
                 </p>
             ))}
@@ -120,12 +144,57 @@ function CustomTooltip({ active, payload, label }: any) {
     );
 }
 
+// ─── Funnel Tooltip ──────────────────────────────────────
+function FunnelTooltip({ active, payload, label }: any) {
+    if (!active || !payload?.length) return null;
+    return (
+        <div className="bg-white dark:bg-[var(--card)] rounded-[12px] px-4 py-3 shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] dark:shadow-[var(--shadow-lg)] border border-black/[0.09] dark:border-[var(--border)]">
+            <p className="text-[13px] font-medium text-[var(--muted-foreground)] mb-1">{label}</p>
+            {payload.map((p: any, i: number) => (
+                <p key={i} className="text-[15px] font-semibold text-[var(--foreground)]">
+                    {p.value} orders
+                </p>
+            ))}
+        </div>
+    );
+}
+
+// ─── Quality Tooltip ─────────────────────────────────────
+function QualityTooltip({ active, payload, label }: any) {
+    if (!active || !payload?.length) return null;
+    return (
+        <div className="bg-white dark:bg-[var(--card)] rounded-[12px] px-4 py-3 shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] dark:shadow-[var(--shadow-lg)] border border-black/[0.09] dark:border-[var(--border)]">
+            <p className="text-[13px] font-medium text-[var(--muted-foreground)] mb-1">{label}</p>
+            {payload.map((p: any, i: number) => (
+                <p key={i} className="text-[15px] font-semibold" style={{ color: p.color }}>
+                    {p.name}: {p.value}
+                </p>
+            ))}
+        </div>
+    );
+}
+
+// ─── Empty State CTA ─────────────────────────────────────
+function EmptyCta({ message, href }: { message: string; href: string }) {
+    return (
+        <div className="h-full flex flex-col items-center justify-center gap-3 py-8">
+            <p className="text-[15px] text-[var(--muted-foreground)] text-center">{message}</p>
+            <Link
+                href={href}
+                className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[var(--primary)] hover:underline transition-colors"
+            >
+                Go to page <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+        </div>
+    );
+}
+
 // ─── Format Currency ─────────────────────────────────────
 function formatCurrency(value: number): string {
-    if (value >= 10000000) return `₹${(value / 10000000).toFixed(1)}Cr`;
-    if (value >= 100000) return `₹${(value / 100000).toFixed(1)}L`;
-    if (value >= 1000) return `₹${(value / 1000).toFixed(1)}K`;
-    return `₹${value}`;
+    if (value >= 10000000) return `\u20B9${(value / 10000000).toFixed(1)}Cr`;
+    if (value >= 100000) return `\u20B9${(value / 100000).toFixed(1)}L`;
+    if (value >= 1000) return `\u20B9${(value / 1000).toFixed(1)}K`;
+    return `\u20B9${value}`;
 }
 
 // ─── KPI Card ────────────────────────────────────────────
@@ -189,6 +258,9 @@ function KPICard({
         </motion.div>
     );
 }
+
+// ─── Shared card class ───────────────────────────────────
+const cardCls = "bg-white dark:bg-[var(--card)] !border !border-black/[0.09] dark:!border-[var(--border)] shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] hover:shadow-[0_4px_20px_rgba(15,23,42,0.10),0_2px_8px_rgba(15,23,42,0.06)] transition-shadow duration-200 dark:shadow-none dark:hover:shadow-none";
 
 export default function AnalyticsPage() {
     const { isStaff, loading: roleLoading } = useRole();
@@ -273,6 +345,9 @@ export default function AnalyticsPage() {
                         completionRate: 0,
                         inventoryTurnover: 0,
                     },
+                    orderFunnel: [],
+                    productionQuality: [],
+                    topClients: [],
                 });
             } finally {
                 setLoading(false);
@@ -281,6 +356,25 @@ export default function AnalyticsPage() {
 
         fetchAnalytics();
     }, [dateRange]);
+
+    // ── Page State Persistence ────────────────────────────
+    const { restoreState, persist, scrollYRef } = useCachedPage({ pageKey: "analytics" });
+    const persistRef = useRef({ dateRange, data });
+    useEffect(() => { persistRef.current = { dateRange, data }; });
+    useEffect(() => {
+        const cached = restoreState();
+        if (cached) {
+            if (cached.dateRange) setDateRange(cached.dateRange as "7d" | "30d" | "90d" | "1y");
+            if (cached.data) {
+                setData(cached.data as AnalyticsData);
+                setLoading(false);
+            }
+        }
+        return () => {
+            persist({ ...persistRef.current, scrollY: scrollYRef.current });
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     useEffect(() => {
         fetchMargins();
@@ -321,7 +415,10 @@ export default function AnalyticsPage() {
         );
     }
 
-    const { revenueData, productionData, orderStatusData, topProducts, inventoryData, kpis } = data;
+    const { revenueData, productionData, orderStatusData, topProducts, inventoryData, kpis, orderFunnel, productionQuality, topClients } = data;
+
+    // Funnel bar colors — gradient from blue to green
+    const funnelColors = ["var(--primary)", "#2563EB", "#16A34A", "#059669"];
 
     return (
         <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-6 bg-[#F1F4F9] dark:bg-transparent min-h-screen -m-6 p-6">
@@ -461,10 +558,49 @@ export default function AnalyticsPage() {
                 </p>
             )}
 
+            {/* ═══════════════════════════════════════════════════
+                ORDER FUNNEL — horizontal bar chart
+               ═══════════════════════════════════════════════════ */}
+            <motion.div variants={staggerItem}>
+                <IOSCard variant="elevated" padding="lg" className={cardCls}>
+                    <IOSCardHeader title={t("orderFunnel")} subtitle={t("funnelSubtitle")} />
+                    <IOSCardContent>
+                        {orderFunnel.length > 0 && orderFunnel[0]?.count > 0 ? (
+                            <div className="h-[200px] -ml-4">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart
+                                        data={orderFunnel.map((f, i) => ({
+                                            ...f,
+                                            stage: f.stage === "Total Orders" ? t("totalOrders")
+                                                : f.stage === "In Production" ? t("inProduction")
+                                                : f.stage === "Production Complete" ? t("productionComplete")
+                                                : t("fullyPaid"),
+                                        }))}
+                                        layout="vertical"
+                                        margin={{ left: 10 }}
+                                    >
+                                        <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 13 }} />
+                                        <YAxis type="category" dataKey="stage" axisLine={false} tickLine={false} tick={{ fill: "var(--foreground)", fontSize: 13 }} width={150} />
+                                        <Tooltip content={<FunnelTooltip />} />
+                                        <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={28} name="Orders">
+                                            {orderFunnel.map((_, i) => (
+                                                <Cell key={i} fill={funnelColors[i] || "var(--primary)"} opacity={1 - i * 0.15} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        ) : (
+                            <EmptyCta message={t("noFunnelData")} href="/dashboard/orders" />
+                        )}
+                    </IOSCardContent>
+                </IOSCard>
+            </motion.div>
+
             {/* Revenue Trend + Order Status */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <motion.div variants={staggerItem} className="lg:col-span-2">
-                    <IOSCard variant="elevated" padding="lg" className="bg-white dark:bg-[var(--card)] !border !border-black/[0.09] dark:!border-[var(--border)] shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] hover:shadow-[0_4px_20px_rgba(15,23,42,0.10),0_2px_8px_rgba(15,23,42,0.06)] transition-shadow duration-200 dark:shadow-none dark:hover:shadow-none">
+                    <IOSCard variant="elevated" padding="lg" className={cardCls}>
                         <IOSCardHeader title={t("revenueTrend")} subtitle={t("currentVsLastYear")} />
                         <IOSCardContent>
                             {revenueData.length > 0 ? (
@@ -479,7 +615,7 @@ export default function AnalyticsPage() {
                                             </defs>
                                             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                                             <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 13 }} />
-                                            <YAxis axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 13 }} tickFormatter={(v) => `₹${v / 1000}K`} />
+                                            <YAxis axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 13 }} tickFormatter={(v) => `\u20B9${v / 1000}K`} />
                                             <Tooltip content={<CustomTooltip />} />
                                             <Area type="monotone" dataKey="lastYear" stroke="var(--muted-foreground)" strokeWidth={1.5} strokeDasharray="4 4" fill="transparent" name="Last Year" />
                                             <Area type="monotone" dataKey="revenue" stroke="var(--primary)" strokeWidth={2.5} fill="url(#currentGradient)" name="This Year" />
@@ -487,9 +623,7 @@ export default function AnalyticsPage() {
                                     </ResponsiveContainer>
                                 </div>
                             ) : (
-                                <div className="h-[280px] flex items-center justify-center">
-                                    <p className="text-[15px] text-[var(--muted-foreground)]">{t("noRevenueData")}</p>
-                                </div>
+                                <EmptyCta message={t("emptyRevenueCta")} href="/dashboard/orders" />
                             )}
                         </IOSCardContent>
                     </IOSCard>
@@ -497,7 +631,7 @@ export default function AnalyticsPage() {
 
                 {/* Order Status Donut */}
                 <motion.div variants={staggerItem}>
-                    <IOSCard variant="elevated" padding="lg" className="h-full bg-white dark:bg-[var(--card)] !border !border-black/[0.09] dark:!border-[var(--border)] shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] hover:shadow-[0_4px_20px_rgba(15,23,42,0.10),0_2px_8px_rgba(15,23,42,0.06)] transition-shadow duration-200 dark:shadow-none dark:hover:shadow-none">
+                    <IOSCard variant="elevated" padding="lg" className={cn("h-full", cardCls)}>
                         <IOSCardHeader title={t("orderStatus")} subtitle={t("distribution")} />
                         <IOSCardContent>
                             {orderStatusData.length > 0 ? (
@@ -525,20 +659,18 @@ export default function AnalyticsPage() {
                                     </div>
                                 </>
                             ) : (
-                                <div className="h-[240px] flex items-center justify-center">
-                                    <p className="text-[15px] text-[var(--muted-foreground)]">{t("noOrdersInPeriod")}</p>
-                                </div>
+                                <EmptyCta message={t("emptyOrdersCta")} href="/dashboard/orders" />
                             )}
                         </IOSCardContent>
                     </IOSCard>
                 </motion.div>
             </div>
 
-            {/* Production Efficiency + Top Products */}
+            {/* Production Efficiency + Production Quality */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Production Efficiency */}
                 <motion.div variants={staggerItem}>
-                    <IOSCard variant="elevated" padding="lg" className="bg-white dark:bg-[var(--card)] !border !border-black/[0.09] dark:!border-[var(--border)] shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] hover:shadow-[0_4px_20px_rgba(15,23,42,0.10),0_2px_8px_rgba(15,23,42,0.06)] transition-shadow duration-200 dark:shadow-none dark:hover:shadow-none">
+                    <IOSCard variant="elevated" padding="lg" className={cardCls}>
                         <IOSCardHeader title={t("productionEfficiencyChart")} subtitle={t("monthlyTrend")} />
                         <IOSCardContent>
                             {productionData.length > 0 ? (
@@ -554,17 +686,60 @@ export default function AnalyticsPage() {
                                     </ResponsiveContainer>
                                 </div>
                             ) : (
-                                <div className="h-[240px] flex items-center justify-center">
-                                    <p className="text-[15px] text-[var(--muted-foreground)]">{t("noProductionData")}</p>
-                                </div>
+                                <EmptyCta message={t("emptyProductionCta")} href="/dashboard/production" />
                             )}
                         </IOSCardContent>
                     </IOSCard>
                 </motion.div>
 
+                {/* Production Quality — Produced vs Rejected */}
+                <motion.div variants={staggerItem}>
+                    <IOSCard variant="elevated" padding="lg" className={cardCls}>
+                        <IOSCardHeader title={t("productionQuality")} subtitle={t("qualitySubtitle")} />
+                        <IOSCardContent>
+                            {productionQuality.length > 0 ? (
+                                <div className="h-[240px] -ml-4">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <LineChart data={productionQuality}>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                                            <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 13 }} />
+                                            <YAxis axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 13 }} />
+                                            <Tooltip content={<QualityTooltip />} />
+                                            <Line
+                                                type="monotone"
+                                                dataKey="produced"
+                                                stroke="var(--erp-success)"
+                                                strokeWidth={2.5}
+                                                name={t("produced")}
+                                                dot={{ fill: "var(--erp-success)", r: 4, strokeWidth: 2, stroke: "var(--card)" }}
+                                                activeDot={{ r: 6 }}
+                                            />
+                                            <Line
+                                                type="monotone"
+                                                dataKey="rejected"
+                                                stroke="var(--destructive)"
+                                                strokeWidth={2}
+                                                strokeDasharray="5 3"
+                                                name={t("rejected")}
+                                                dot={{ fill: "var(--destructive)", r: 3, strokeWidth: 2, stroke: "var(--card)" }}
+                                                activeDot={{ r: 5 }}
+                                            />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            ) : (
+                                <EmptyCta message={t("emptyProductionCta")} href="/dashboard/production" />
+                            )}
+                        </IOSCardContent>
+                    </IOSCard>
+                </motion.div>
+            </div>
+
+            {/* Top Products + Top Clients */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Top Products */}
                 <motion.div variants={staggerItem}>
-                    <IOSCard variant="elevated" padding="lg" className="bg-white dark:bg-[var(--card)] !border !border-black/[0.09] dark:!border-[var(--border)] shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] hover:shadow-[0_4px_20px_rgba(15,23,42,0.10),0_2px_8px_rgba(15,23,42,0.06)] transition-shadow duration-200 dark:shadow-none dark:hover:shadow-none">
+                    <IOSCard variant="elevated" padding="lg" className={cardCls}>
                         <IOSCardHeader title={t("topProducts")} subtitle={t("byRevenue")} />
                         <IOSCardContent>
                             {topProducts.length > 0 ? (
@@ -601,9 +776,60 @@ export default function AnalyticsPage() {
                                     })}
                                 </div>
                             ) : (
-                                <div className="h-[200px] flex items-center justify-center">
-                                    <p className="text-[15px] text-[var(--muted-foreground)]">{t("noProductData")}</p>
+                                <EmptyCta message={t("noProductData")} href="/dashboard/orders" />
+                            )}
+                        </IOSCardContent>
+                    </IOSCard>
+                </motion.div>
+
+                {/* Top Clients */}
+                <motion.div variants={staggerItem}>
+                    <IOSCard variant="elevated" padding="lg" className={cardCls}>
+                        <IOSCardHeader title={t("topClientsTitle")} subtitle={t("topClientsSubtitle")} />
+                        <IOSCardContent>
+                            {topClients.length > 0 ? (
+                                <div className="space-y-3">
+                                    {topClients.map((client, index) => {
+                                        const maxRevenue = topClients[0].totalRevenue;
+                                        const percentage = maxRevenue > 0 ? (client.totalRevenue / maxRevenue) * 100 : 0;
+                                        return (
+                                            <div key={client.name} className="space-y-1.5">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2.5">
+                                                        <div
+                                                            className="w-[32px] h-[32px] rounded-full flex items-center justify-center text-[14px] font-bold text-white flex-shrink-0"
+                                                            style={{ backgroundColor: getAvatarColor(client.name) }}
+                                                        >
+                                                            {client.name[0]?.toUpperCase() || "?"}
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <span className="text-[15px] font-medium text-[var(--foreground)] block truncate">
+                                                                {client.name}
+                                                            </span>
+                                                            <span className="text-[12px] text-[var(--muted-foreground)]">
+                                                                {client.orderCount} {t("orders")}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <span className="text-[15px] font-semibold text-[var(--foreground)] flex-shrink-0 ml-3">
+                                                        {formatCurrency(client.totalRevenue)}
+                                                    </span>
+                                                </div>
+                                                <div className="h-[6px] bg-[var(--muted)] rounded-full overflow-hidden ml-[44px]">
+                                                    <motion.div
+                                                        className="h-full rounded-full"
+                                                        style={{ background: getAvatarColor(client.name) }}
+                                                        initial={{ width: 0 }}
+                                                        animate={{ width: `${percentage}%` }}
+                                                        transition={{ duration: 0.8, delay: index * 0.1, ease: [0.16, 1, 0.3, 1] }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
+                            ) : (
+                                <EmptyCta message={t("noClientsData")} href="/dashboard/clients" />
                             )}
                         </IOSCardContent>
                     </IOSCard>
@@ -612,7 +838,7 @@ export default function AnalyticsPage() {
 
             {/* Inventory Breakdown */}
             <motion.div variants={staggerItem}>
-                <IOSCard variant="elevated" padding="lg" className="bg-white dark:bg-[var(--card)] !border !border-black/[0.09] dark:!border-[var(--border)] shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] hover:shadow-[0_4px_20px_rgba(15,23,42,0.10),0_2px_8px_rgba(15,23,42,0.06)] transition-shadow duration-200 dark:shadow-none dark:hover:shadow-none">
+                <IOSCard variant="elevated" padding="lg" className={cardCls}>
                     <IOSCardHeader title={t("inventoryBreakdown")} subtitle={t("stockDistribution")} />
                     <IOSCardContent>
                         {inventoryData.length > 0 ? (
@@ -627,9 +853,7 @@ export default function AnalyticsPage() {
                                 </ResponsiveContainer>
                             </div>
                         ) : (
-                            <div className="h-[200px] flex items-center justify-center">
-                                <p className="text-[15px] text-[var(--muted-foreground)]">{t("noInventoryData")}</p>
-                            </div>
+                            <EmptyCta message={t("emptyInventoryCta")} href="/dashboard/inventory" />
                         )}
                     </IOSCardContent>
                 </IOSCard>
@@ -639,7 +863,7 @@ export default function AnalyticsPage() {
                 PROFIT MARGINS — Per-Order Cost Breakdown
                ══════════════════════════════════════════════════════ */}
             <motion.div variants={staggerItem} className="ind-page">
-                <IOSCard variant="elevated" padding="lg" className="bg-white dark:bg-[var(--card)] !border !border-black/[0.09] dark:!border-[var(--border)] shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] hover:shadow-[0_4px_20px_rgba(15,23,42,0.10),0_2px_8px_rgba(15,23,42,0.06)] transition-shadow duration-200 dark:shadow-none dark:hover:shadow-none">
+                <IOSCard variant="elevated" padding="lg" className={cardCls}>
                     <IOSCardHeader title={t("profitMargins")} subtitle={t("profitMarginsSubtitle")} />
                     <IOSCardContent>
                         {marginLoading ? (
@@ -781,7 +1005,7 @@ export default function AnalyticsPage() {
                                                                     <div key={key} className="flex items-center justify-between gap-3">
                                                                         <span className="text-[12px]" style={{ color: "var(--ind-text-muted)" }}>{label}</span>
                                                                         <div className="flex items-center gap-1">
-                                                                            <span className="text-[12px]" style={{ color: "var(--ind-text-muted)" }}>₹</span>
+                                                                            <span className="text-[12px]" style={{ color: "var(--ind-text-muted)" }}>{"\u20B9"}</span>
                                                                             <input
                                                                                 type="number"
                                                                                 className="w-[90px] h-[28px] px-2 rounded-[6px] text-[13px] font-semibold text-right ind-mono bg-[#F1F4F9] dark:bg-[rgba(255,255,255,0.06)]"

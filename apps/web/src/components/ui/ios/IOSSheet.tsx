@@ -20,7 +20,13 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { MobileSheet } from '@/components/ui/MobileSheet';
+import type { MobileSheetProps } from '@/components/ui/MobileSheet';
+import dynamic from 'next/dynamic';
+
+const MobileSheet = dynamic<MobileSheetProps>(
+    () => import('@/components/ui/MobileSheet').then(mod => mod.MobileSheet),
+    { ssr: false }
+);
 
 export interface IOSSheetProps {
     isOpen: boolean;

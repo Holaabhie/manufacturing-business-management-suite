@@ -197,6 +197,39 @@
   }
 }
 
+/* ── Desktop Dialog Animations (centered modal) ── */
+@keyframes dialogScaleIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes dialogScaleOut {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+}
+
+/* ── Responsive Dialog Positioning ── */
+/* On md+, override inline styles for centered dialog */
+@media (min-width: 768px) {
+  [data-slot="dialog-content"]:not([data-fullscreen]) {
+    transform: translate(-50%, -50%) !important;
+    border-bottom: 1px solid var(--overlay-border) !important;
+    border-radius: 24px !important;
+  }
+}
+
 /* ============================================
    ENTERPRISE DESIGN SYSTEM — LIGHT MODE
    IND Manager — Premium Enterprise ERP
@@ -254,13 +287,15 @@
   --overlay-backdrop-blur: blur(8px);
   --overlay-sheet-bg: rgba(255, 255, 255, 0.96);
   --overlay-card-bg: rgba(255, 255, 255, 0.88);
-  --overlay-border: rgba(15, 23, 42, 0.06);
+  --overlay-border: rgba(15, 23, 42, 0.08);
   --overlay-shadow: 0 8px 30px rgba(15, 23, 42, 0.08);
   --overlay-text-primary: #0F172A;
-  --overlay-text-secondary: #64748B;
-  --overlay-text-muted: #94A3B8;
-  --overlay-hover: rgba(37, 99, 235, 0.06);
+  --overlay-text-secondary: #334155;
+  --overlay-text-muted: #64748B;
+  --overlay-hover: rgba(15, 23, 42, 0.04);
   --overlay-active: rgba(37, 99, 235, 0.10);
+  --overlay-subtle-bg: rgba(15, 23, 42, 0.06);
+  --overlay-faint-bg: rgba(15, 23, 42, 0.03);
   --overlay-accent: #2563EB;
   --overlay-accent-hover: #1D4ED8;
   --overlay-handle: rgba(15, 23, 42, 0.15);
@@ -455,6 +490,8 @@
   --overlay-text-muted: #94A3B8;
   --overlay-hover: rgba(37, 99, 235, 0.12);
   --overlay-active: rgba(37, 99, 235, 0.16);
+  --overlay-subtle-bg: rgba(255, 255, 255, 0.06);
+  --overlay-faint-bg: rgba(255, 255, 255, 0.03);
   --overlay-accent: #60A5FA;
   --overlay-accent-hover: #3B82F6;
   --overlay-handle: rgba(255, 255, 255, 0.18);
@@ -642,11 +679,48 @@
     color: var(--text-secondary);
     line-height: 1.4;
   }
+
+  /* ── Autofill Override (prevent browser yellow bg in dark mode) ── */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 40px var(--background) inset !important;
+    -webkit-text-fill-color: var(--foreground) !important;
+    caret-color: var(--foreground) !important;
+    transition: background-color 5000s ease-in-out 0s;
+  }
 }
 
 /* ============================================
    COMPONENT STYLES
    ============================================ */
+
+/* ── Activity Timeline Scrollbar (WebKit fallback for tailwind-scrollbar) ── */
+.activity-timeline-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.activity-timeline-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.activity-timeline-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 3px;
+}
+
+.activity-timeline-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.dark .activity-timeline-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.dark .activity-timeline-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
 
 /* iOS Elevated Card */
 .ds-card {
@@ -1541,6 +1615,19 @@
   pointer-events: none;
 }
 
+/* ── KPI Panel — Light Mode Overrides ─────────── */
+:root:not(.dark) .kpi-panel {
+  background: rgba(241, 245, 249, 0.70) !important;
+  border: 1px solid rgba(255, 255, 255, 0.70) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+}
+
+:root:not(.dark) .kpi-panel::before,
+:root:not(.dark) .kpi-panel::after {
+  display: none !important;
+  opacity: 0 !important;
+}
+
 /* ── Card Grid (CSS Grid, responsive) ─────── */
 .kpi-grid {
   position: relative;
@@ -1827,6 +1914,94 @@
   background: linear-gradient(90deg, #d1d5db, #9ca3af);
 }
 
+/* ── KPI Card — Light Mode Overrides ─────────── */
+:root:not(.dark) .kpi-card {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(16px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
+}
+
+:root:not(.dark) .kpi-card:hover {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(0, 0, 0, 0.10) !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.10) !important;
+}
+
+:root:not(.dark) .kpi-card::before,
+:root:not(.dark) .kpi-card::after {
+  display: none !important;
+  opacity: 0 !important;
+}
+
+:root:not(.dark) .kpi-card__icon {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.03),
+    0 2px 8px rgba(0, 0, 0, 0.04) !important;
+}
+
+:root:not(.dark) .kpi-card__icon--blue {
+  color: #2563EB !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03), 0 2px 12px rgba(37, 99, 235, 0.12) !important;
+}
+
+:root:not(.dark) .kpi-card__icon--green {
+  color: #16a34a !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03), 0 2px 12px rgba(22, 163, 74, 0.12) !important;
+}
+
+:root:not(.dark) .kpi-card__icon--orange {
+  color: #ea580c !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03), 0 2px 12px rgba(234, 88, 12, 0.12) !important;
+}
+
+:root:not(.dark) .kpi-card__icon--purple {
+  color: #7c3aed !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03), 0 2px 12px rgba(124, 58, 237, 0.12) !important;
+}
+
+:root:not(.dark) .kpi-card__icon--red {
+  color: #dc2626 !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03), 0 2px 12px rgba(220, 38, 38, 0.12) !important;
+}
+
+:root:not(.dark) .kpi-card__icon--gray {
+  color: #6b7280 !important;
+}
+
+:root:not(.dark) .kpi-card__value {
+  color: #111827 !important;
+  text-shadow: none !important;
+}
+
+:root:not(.dark) .kpi-card__label {
+  color: #6b7280 !important;
+}
+
+:root:not(.dark) .kpi-card__progress {
+  background: rgba(0, 0, 0, 0.06) !important;
+}
+
+:root:not(.dark) .kpi-card__badge--positive {
+  background: #EAF3DE !important;
+  color: #27500A !important;
+  border-color: rgba(39, 80, 10, 0.12) !important;
+}
+
+:root:not(.dark) .kpi-card__badge--neutral {
+  background: #f1f5f9 !important;
+  color: #64748b !important;
+  border-color: rgba(100, 116, 139, 0.15) !important;
+}
+
+:root:not(.dark) .kpi-card__badge--negative {
+  background: #fee2e2 !important;
+  color: #991b1b !important;
+  border-color: rgba(153, 27, 27, 0.12) !important;
+}
 
 /* ============================================
    CHANNEL ANALYTICS — Dark Dashboard Theme
@@ -2458,6 +2633,16 @@
   box-shadow: 0 8px 36px rgba(10, 132, 255, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.15);
 }
 
+/* ── Glow Button — Light Mode Override ─────────── */
+:root:not(.dark) .glow-btn {
+  background: #2563EB !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3) !important;
+}
+:root:not(.dark) .glow-btn:hover {
+  background: #1D51C8 !important;
+}
+
 /* ── Toggle Pill ─────────────────────────────── */
 .toggle-pill-group {
   display: flex;
@@ -2545,6 +2730,10 @@
   -webkit-backdrop-filter: blur(48px) saturate(200%);
   border: 1px solid rgba(0, 0, 0, 0.08);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  max-height: 85vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .dark .glass-dialog {
@@ -3359,9 +3548,41 @@
    Inspired by: OpenAI, Linear, Vercel, Perplexity, Arc Browser
    ════════════════════════════════════════════════════════════════ */
 
-/* ── AI Color Tokens (Dark) ─────────────────────────────────── */
-.dark .ai-workspace,
+/* ── AI Color Tokens (Light — base) ────────────────────────── */
 .ai-workspace {
+  --ai-bg-primary: #F3F5F9;
+  --ai-bg-secondary: #FFFFFF;
+  --ai-bg-surface: #FFFFFF;
+  --ai-bg-surface-elevated: #F1F5F9;
+  --ai-bg-surface-hover: #E8ECF2;
+  --ai-bg-glass: rgba(255, 255, 255, 0.72);
+  --ai-bg-glass-border: rgba(0, 0, 0, 0.06);
+  --ai-accent-blue: #3B82F6;
+  --ai-accent-blue-glow: rgba(59, 130, 246, 0.15);
+  --ai-accent-purple: #7C3AED;
+  --ai-accent-purple-glow: rgba(124, 58, 237, 0.15);
+  --ai-accent-teal: #0D9488;
+  --ai-accent-teal-glow: rgba(13, 148, 136, 0.12);
+  --ai-accent-gradient: linear-gradient(135deg, #7C3AED 0%, #3B82F6 50%, #0D9488 100%);
+  --ai-text-primary: rgba(0, 0, 0, 0.88);
+  --ai-text-secondary: rgba(0, 0, 0, 0.55);
+  --ai-text-tertiary: rgba(0, 0, 0, 0.38);
+  --ai-text-accent: #6D28D9;
+  --ai-border-subtle: rgba(0, 0, 0, 0.06);
+  --ai-border-medium: rgba(0, 0, 0, 0.10);
+  --ai-border-focus: rgba(124, 58, 237, 0.5);
+  --ai-success: #059669;
+  --ai-error: #DC2626;
+  --ai-warning: #D97706;
+  --ai-info: #0891B2;
+  --ai-card-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 20px rgba(0,0,0,0.04);
+  --ai-card-shadow-hover: 0 4px 12px rgba(0,0,0,0.08), 0 8px 32px rgba(0,0,0,0.06);
+  --ai-glow-purple: 0 0 20px rgba(124, 58, 237, 0.08);
+  --ai-glow-blue: 0 0 20px rgba(59, 130, 246, 0.08);
+}
+
+/* ── AI Color Tokens (Dark) ────────────────────────────────── */
+.dark .ai-workspace {
   --ai-bg-primary: #0B1020;
   --ai-bg-secondary: #0F172A;
   --ai-bg-surface: #111827;
@@ -3429,7 +3650,8 @@
   background: var(--ai-bg-primary);
   color: var(--ai-text-primary);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  min-height: calc(100vh - 140px);
+  flex: 1;
+  min-height: 0;
 }
 
 /* ── AI Glass Surface ────────────────────────────────────────── */
@@ -3483,21 +3705,28 @@
 }
 .ai-response-card__body strong { color: var(--ai-text-primary); font-weight: 600; }
 .ai-response-card__body code {
-  background: rgba(139, 92, 246, 0.12);
-  color: #C4B5FD;
+  background: rgba(139, 92, 246, 0.08);
+  color: #6D28D9;
   padding: 2px 6px;
   border-radius: 5px;
   font-size: 13px;
   font-family: 'SF Mono', monospace;
 }
+.dark .ai-response-card__body code {
+  background: rgba(139, 92, 246, 0.12);
+  color: #C4B5FD;
+}
 .ai-response-card__body pre {
-  background: #0D1117;
+  background: #F1F5F9;
   border: 1px solid var(--ai-border-subtle);
   border-radius: 12px;
   padding: 16px;
   margin: 12px 0;
   overflow-x: auto;
   font-size: 13px;
+}
+.dark .ai-response-card__body pre {
+  background: #0D1117;
 }
 .ai-response-card__body ul,
 .ai-response-card__body ol {
@@ -3528,8 +3757,11 @@
 }
 .ai-response-card__action-btn:hover {
   color: var(--ai-text-secondary);
-  background: rgba(255,255,255,0.04);
+  background: rgba(0,0,0,0.04);
   border-color: var(--ai-border-subtle);
+}
+.dark .ai-response-card__action-btn:hover {
+  background: rgba(255,255,255,0.04);
 }
 
 /* ── User Message (Compact, right-aligned) ───────────────────── */
@@ -3577,13 +3809,16 @@
 
 /* ── AI Input Bar (Floating Glass) ───────────────────────────── */
 .ai-input-bar {
-  background: rgba(17, 24, 39, 0.85);
+  background: rgba(255, 255, 255, 0.90);
   backdrop-filter: blur(20px) saturate(140%);
   -webkit-backdrop-filter: blur(20px) saturate(140%);
   border: 1px solid var(--ai-border-medium);
   border-radius: 16px;
   padding: 12px 16px;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.dark .ai-input-bar {
+  background: rgba(17, 24, 39, 0.85);
 }
 .ai-input-bar:focus-within {
   border-color: var(--ai-border-focus);
@@ -3641,12 +3876,15 @@
 
 /* ── AI Header ───────────────────────────────────────────────── */
 .ai-header {
-  background: linear-gradient(135deg, #0F172A 0%, #1E1B4B 50%, #0F172A 100%);
+  background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 50%, #EEF2FF 100%);
   border: 1px solid var(--ai-border-subtle);
   border-radius: 18px;
   padding: 20px 24px;
   position: relative;
   overflow: hidden;
+}
+.dark .ai-header {
+  background: linear-gradient(135deg, #0F172A 0%, #1E1B4B 50%, #0F172A 100%);
 }
 .ai-header::after {
   content: '';
@@ -3674,9 +3912,15 @@
 .ai-workspace ::-webkit-scrollbar { width: 5px; }
 .ai-workspace ::-webkit-scrollbar-track { background: transparent; }
 .ai-workspace ::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.08);
+  background: rgba(0,0,0,0.10);
   border-radius: 10px;
 }
 .ai-workspace ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,0.18);
+}
+.dark .ai-workspace ::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.08);
+}
+.dark .ai-workspace ::-webkit-scrollbar-thumb:hover {
   background: rgba(255,255,255,0.15);
 }

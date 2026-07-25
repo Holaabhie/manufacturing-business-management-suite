@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { useCachedPage } from "@/hooks/useCachedPage";
 import { useRouter } from "next/navigation";
 import {
     Cpu,
@@ -118,6 +119,27 @@ export default function MachinesPage() {
     const [machines, setMachines] = useState<Machine[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
+    const [restoredFromCache, setRestoredFromCache] = useState(false);
+
+    // ── Page State Persistence ───────────────────────────
+    const { restoreState, persist, scrollYRef } = useCachedPage({ pageKey: "machines" });
+    const persistRef = useRef({ searchTerm, machines });
+    useEffect(() => { persistRef.current = { searchTerm, machines }; });
+    useEffect(() => {
+        const cached = restoreState();
+        if (cached) {
+            if (cached.searchTerm) setSearchTerm(cached.searchTerm as string);
+            if (Array.isArray(cached.machines) && (cached.machines as any[]).length > 0) {
+                setMachines(cached.machines as Machine[]);
+                setLoading(false);
+                setRestoredFromCache(true);
+            }
+        }
+        return () => {
+            persist({ ...persistRef.current, scrollY: scrollYRef.current });
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Dialog state
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -150,8 +172,8 @@ export default function MachinesPage() {
     }, []);
 
     useEffect(() => {
-        fetchMachines();
-    }, [fetchMachines]);
+        if (!restoredFromCache) fetchMachines();
+    }, [fetchMachines, restoredFromCache]);
 
     // Filtered machines
     const filteredMachines = machines.filter(

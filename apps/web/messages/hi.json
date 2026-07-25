@@ -48,7 +48,8 @@
     "upgrade": "अपग्रेड",
     "ai": "AI",
     "notifications": "नोटिफिकेशन्स",
-    "activity": "गतिविधि लॉग"
+    "activity": "गतिविधि लॉग",
+    "previousYears": "पिछले वर्ष"
   },
   "dashboard": {
     "title": "डैशबोर्ड",
@@ -237,7 +238,7 @@
     "byRevenue": "राजस्व अनुसार",
     "noProductData": "इस अवधि के लिए कोई उत्पाद डेटा नहीं",
     "inventoryBreakdown": "इन्वेंटरी विवरण",
-    "stockDistribution": "श्रेणी अनुसार स्टॉक वितरण",
+    "stockDistribution": "यूनिट प्रकार अनुसार स्टॉक वितरण",
     "noInventoryData": "कोई इन्वेंटरी डेटा उपलब्ध नहीं",
     "profitMargins": "लाभ मार्जिन",
     "profitMarginsSubtitle": "प्रति-ऑर्डर लागत विवरण और मार्जिन विश्लेषण",
@@ -270,7 +271,26 @@
     "inventoryMovement": "इन्वेंटरी गतिविधि",
     "noData": "कोई डेटा उपलब्ध नहीं",
     "loading": "लोड हो रहा है...",
-    "filterBy": "फ़िल्टर करें"
+    "filterBy": "फ़िल्टर करें",
+    "orderFunnel": "ऑर्डर फ़नल",
+    "funnelSubtitle": "चरणों के माध्यम से ऑर्डर प्रगति",
+    "totalOrders": "कुल ऑर्डर",
+    "inProduction": "उत्पादन में",
+    "productionComplete": "उत्पादन पूर्ण",
+    "fullyPaid": "पूर्ण भुगतान",
+    "productionQuality": "उत्पादन गुणवत्ता",
+    "qualitySubtitle": "मासिक उत्पादित बनाम अस्वीकृत आउटपुट",
+    "produced": "उत्पादित",
+    "rejected": "अस्वीकृत",
+    "topClientsTitle": "शीर्ष ग्राहक",
+    "topClientsSubtitle": "कुल राजस्व अनुसार",
+    "orders": "ऑर्डर",
+    "noClientsData": "इस अवधि के लिए कोई ग्राहक डेटा नहीं",
+    "emptyRevenueCta": "राजस्व रुझान देखने के लिए ऑर्डर बनाएं",
+    "emptyOrdersCta": "स्थिति विवरण देखने के लिए ऑर्डर जोड़ें",
+    "emptyProductionCta": "गुणवत्ता डेटा देखने के लिए उत्पादन शुरू करें",
+    "emptyInventoryCta": "विवरण देखने के लिए इन्वेंटरी आइटम जोड़ें",
+    "noFunnelData": "इस अवधि में कोई ऑर्डर नहीं"
   },
   "common2": {
     "confirm": "पुष्टि करें",
@@ -373,5 +393,38 @@
       "templates": "टेम्पलेट",
       "dispatchLogs": "डिस्पैच लॉग"
     }
+  },
+  "table": {
+    "search_placeholder_orders": "Search orders by product, client, or ID...",
+    "search_placeholder_production": "Search by product, batch, client...",
+    "search_placeholder_inventory": "Search by material name...",
+    "no_results_title": "No results found",
+    "no_results_subtitle": "Try adjusting your search or filters",
+    "no_data_title": "No records yet",
+    "no_data_subtitle": "Add your first entry to get started",
+    "showing_results": "Showing {start}–{end} of {total} results",
+    "prev": "Prev",
+    "next": "Next",
+    "today": "Today",
+    "this_week": "This Week",
+    "this_month": "This Month",
+    "custom_range": "Custom Range",
+    "all": "All",
+    "low_stock": "Low Stock",
+    "out_of_stock": "Out of Stock",
+    "critical": "Critical",
+    "recently_updated": "Recently Updated",
+    "clear_filters": "Clear"
+  },
+  "productionDetail": {
+    "error_rejected_exceeds_produced": "अस्वीकृत मात्रा उत्पादित मात्रा से अधिक नहीं हो सकती",
+    "error_load_production": "उत्पादन लोड करने में विफल",
+    "error_load_production_desc": "कनेक्शन जांचें और पुनः प्रयास करें",
+    "btn_retry": "पुनः प्रयास करें",
+    "toast_update_failed": "अपडेट विफल। कृपया पुनः प्रयास करें।",
+    "label_progress": "प्रगति",
+    "label_produced": "उत्पादित",
+    "label_rejected": "अस्वीकृत",
+    "label_expected": "अपेक्षित उत्पादन"
   }
 }

@@ -42,10 +42,14 @@ export async function GET() {
         createdAt: { $gte: oneWeekAgo }
       }),
 
-      // Active orders count
+      // Active orders count (NOT fully completed = NOT(prod done AND pay done) = $or by De Morgan)
       db.collection("orders").countDocuments({
         userId,
-        status: { $ne: "completed" }
+        $or: [
+          { production_status: { $ne: "completed" } },
+          { production_status: { $exists: false } },
+          { payment_status: { $ne: "paid" } }
+        ]
       }),
 
       // Total revenue from orders
@@ -105,13 +109,13 @@ export async function GET() {
       // Orders in production (processing)
       db.collection("orders").countDocuments({
         userId,
-        status: "processing"
+        production_status: "processing"
       }),
 
-      // Orders ready for dispatch (completed)
+      // Orders ready for dispatch (production completed)
       db.collection("orders").countDocuments({
         userId,
-        status: "completed"
+        production_status: "completed"
       }),
 
       // Today's production (orders updated today)

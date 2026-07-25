@@ -48,7 +48,8 @@
     "upgrade": "Upgrade",
     "ai": "AI",
     "notifications": "Notifications",
-    "activity": "Activity Log"
+    "activity": "Activity Log",
+    "previousYears": "FY Archives"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -237,7 +238,7 @@
     "byRevenue": "By revenue",
     "noProductData": "No product data for this period",
     "inventoryBreakdown": "Inventory Breakdown",
-    "stockDistribution": "Stock distribution by category",
+    "stockDistribution": "Stock distribution by unit type",
     "noInventoryData": "No inventory data available",
     "profitMargins": "Profit Margins",
     "profitMarginsSubtitle": "Per-order cost breakdown and margin analysis",
@@ -270,7 +271,26 @@
     "inventoryMovement": "Inventory Movement",
     "noData": "No data available",
     "loading": "Loading...",
-    "filterBy": "Filter by"
+    "filterBy": "Filter by",
+    "orderFunnel": "Order Funnel",
+    "funnelSubtitle": "Order progression through stages",
+    "totalOrders": "Total Orders",
+    "inProduction": "In Production",
+    "productionComplete": "Production Complete",
+    "fullyPaid": "Fully Paid",
+    "productionQuality": "Production Quality",
+    "qualitySubtitle": "Produced vs rejected output by month",
+    "produced": "Produced",
+    "rejected": "Rejected",
+    "topClientsTitle": "Top Clients",
+    "topClientsSubtitle": "By total revenue",
+    "orders": "orders",
+    "noClientsData": "No client data for this period",
+    "emptyRevenueCta": "Create orders to see revenue trends",
+    "emptyOrdersCta": "Add orders to see status breakdown",
+    "emptyProductionCta": "Start production jobs to see quality data",
+    "emptyInventoryCta": "Add inventory items to see breakdown",
+    "noFunnelData": "No orders in this period"
   },
   "common2": {
     "confirm": "Confirm",
@@ -373,5 +393,38 @@
       "templates": "Templates",
       "dispatchLogs": "Dispatch Logs"
     }
+  },
+  "table": {
+    "search_placeholder_orders": "Search orders by product, client, or ID...",
+    "search_placeholder_production": "Search by product, batch, client...",
+    "search_placeholder_inventory": "Search by material name...",
+    "no_results_title": "No results found",
+    "no_results_subtitle": "Try adjusting your search or filters",
+    "no_data_title": "No records yet",
+    "no_data_subtitle": "Add your first entry to get started",
+    "showing_results": "Showing {start}–{end} of {total} results",
+    "prev": "Prev",
+    "next": "Next",
+    "today": "Today",
+    "this_week": "This Week",
+    "this_month": "This Month",
+    "custom_range": "Custom Range",
+    "all": "All",
+    "low_stock": "Low Stock",
+    "out_of_stock": "Out of Stock",
+    "critical": "Critical",
+    "recently_updated": "Recently Updated",
+    "clear_filters": "Clear"
+  },
+  "productionDetail": {
+    "error_rejected_exceeds_produced": "Rejected qty cannot exceed produced qty",
+    "error_load_production": "Failed to load production",
+    "error_load_production_desc": "Check connection and try again",
+    "btn_retry": "Retry",
+    "toast_update_failed": "Update failed. Please try again.",
+    "label_progress": "Progress",
+    "label_produced": "Produced",
+    "label_rejected": "Rejected",
+    "label_expected": "Expected Output"
   }
 }

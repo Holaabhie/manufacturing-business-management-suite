@@ -48,13 +48,13 @@ export function SmartInputBar({
   };
 
   return (
-    <div className="flex-shrink-0 px-4 pb-4 pt-2">
+    <div className="flex-shrink-0 px-4 py-3 border-t border-gray-200 dark:border-white/[0.06]">
       <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
         <div className="ai-input-bar flex items-end gap-3">
           {/* Attachment button */}
           <button
             type="button"
-            className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-[var(--ai-text-tertiary)] hover:text-[var(--ai-text-secondary)] hover:bg-white/5 transition-all"
+            className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-[var(--ai-text-tertiary)] hover:text-[var(--ai-text-secondary)] hover:bg-gray-100 dark:hover:bg-white/5 transition-all"
             title="Attach file"
           >
             <Paperclip className="h-4 w-4" />
@@ -79,7 +79,7 @@ export function SmartInputBar({
           {/* Mic button */}
           <button
             type="button"
-            className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-[var(--ai-text-tertiary)] hover:text-[var(--ai-text-secondary)] hover:bg-white/5 transition-all"
+            className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-[var(--ai-text-tertiary)] hover:text-[var(--ai-text-secondary)] hover:bg-gray-100 dark:hover:bg-white/5 transition-all"
             title="Voice input"
           >
             <Mic className="h-4 w-4" />
@@ -98,7 +98,7 @@ export function SmartInputBar({
             style={{
               background: value.trim()
                 ? "linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%)"
-                : "rgba(255,255,255,0.06)",
+                : "var(--ai-bg-surface-elevated)",
               boxShadow: value.trim()
                 ? "0 4px 14px rgba(139, 92, 246, 0.3)"
                 : "none",
@@ -121,11 +121,11 @@ export function SmartInputBar({
         <div className="flex items-center justify-center gap-3 mt-2">
           <span className="text-[10px] text-[var(--ai-text-tertiary)]">
             Press{" "}
-            <kbd className="px-1.5 py-0.5 bg-white/5 rounded text-[9px] border border-white/8 font-mono">
+            <kbd className="px-1.5 py-0.5 bg-gray-100 dark:bg-white/5 rounded text-[9px] border border-gray-200 dark:border-white/8 font-mono">
               Enter
             </kbd>{" "}
             to send ·{" "}
-            <kbd className="px-1.5 py-0.5 bg-white/5 rounded text-[9px] border border-white/8 font-mono">
+            <kbd className="px-1.5 py-0.5 bg-gray-100 dark:bg-white/5 rounded text-[9px] border border-gray-200 dark:border-white/8 font-mono">
               Shift+Enter
             </kbd>{" "}
             for new line

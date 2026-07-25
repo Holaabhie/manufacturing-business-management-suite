@@ -131,8 +131,10 @@ export class PurchasingService {
         const updated = await this.poRepo.updateStatus(id, userId, newStatus);
         if (!updated) throw new NotFoundError("Purchase Order", id);
 
-        // When received, add stock to inventory
-        if (newStatus === "Received") {
+        // When received, add stock to inventory — but only if stock was NOT
+        // already added at PO creation time (via the "Add to Inventory" toggle).
+        // This prevents double-counting.
+        if (newStatus === "Received" && !currentOrder.inventorySyncedOnCreate) {
             await this.addStockFromPurchase(userId, currentOrder);
         }
 

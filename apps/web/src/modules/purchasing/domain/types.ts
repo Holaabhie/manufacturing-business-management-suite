@@ -48,6 +48,7 @@ export interface PurchaseOrder {
     notes?: string;
     orderedAt?: Date;
     receivedAt?: Date;
+    inventorySyncedOnCreate?: boolean;
     createdAt: Date;
     updatedAt: Date;
 }

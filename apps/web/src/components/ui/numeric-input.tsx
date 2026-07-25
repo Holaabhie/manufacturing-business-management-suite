@@ -23,7 +23,7 @@ export interface NumericInputProps
     min?: number;
     /** Maximum value — clamp on blur */
     max?: number;
-    /** Prefix shown inside the input (e.g. "₹") */
+    /** Prefix shown inside the input (e.g. "\u20B9") */
     prefix?: string;
     /** Suffix shown inside the input (e.g. "kg") */
     suffix?: string;

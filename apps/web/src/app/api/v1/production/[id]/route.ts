@@ -9,6 +9,7 @@ import { withRateLimit } from "@/shared/middleware/rate-limiter";
 import { envelope } from "@/shared/types/api";
 import { getProductionService } from "@/modules/production";
 import { getDataOwnerId } from "@/lib/auth-session";
+import { syncOrderStatusFromProduction } from "@/lib/utils/orderStatusSync";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -29,8 +30,17 @@ export const PUT = withRateLimit(
         withAuth(async (request: NextRequest, user: AuthenticatedUser, context?: RouteContext) => {
             const { id } = await context!.params;
             const body = await request.json();
+            const ownerId = getDataOwnerId(user);
             const service = getProductionService();
-            const item = await service.update(id, getDataOwnerId(user), body);
+            const item = await service.update(id, ownerId, body);
+
+            // Sync parent order status after production update
+            try {
+                await syncOrderStatusFromProduction(item.orderId, ownerId);
+            } catch (err) {
+                console.error("[Production PUT] Order status sync failed:", err);
+            }
+
             return envelope.ok(item);
         }),
     ),

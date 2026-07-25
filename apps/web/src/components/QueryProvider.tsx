@@ -9,8 +9,9 @@ export function QueryProvider({ children }: { children: ReactNode }) {
             new QueryClient({
                 defaultOptions: {
                     queries: {
-                        staleTime: 30 * 1000,       // 30s — matches old polling interval
-                        refetchOnWindowFocus: true,
+                        staleTime: 5 * 60 * 1000,   // 5 min — keep data fresh across navigation
+                        gcTime: 30 * 60 * 1000,     // 30 min — retain in memory for session
+                        refetchOnWindowFocus: false,  // prevent refetch on tab switch
                         retry: 1,
                     },
                 },

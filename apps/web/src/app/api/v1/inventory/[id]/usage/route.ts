@@ -1,10 +1,8 @@
 /**
  * Material Usage History API — /api/v1/inventory/[id]/usage
  * ─────────────────────────────────────────────────────────
- * Returns usage history for a specific material by:
- * 1. Querying productions collection for production-based consumption
- * 2. Reading the inventory item's embedded usageHistory array (order-based deductions)
- * Both sources are merged and sorted by date descending.
+ * Returns usage history for a specific material from the canonical
+ * production_material_usage collection, enriched via $lookup to productions.
  */
 
 import { type NextRequest } from "next/server";
@@ -13,7 +11,7 @@ import { withAuth, type AuthenticatedUser } from "@/shared/middleware/with-auth"
 import { withRateLimit } from "@/shared/middleware/rate-limiter";
 import { envelope } from "@/shared/types/api";
 import { getDb } from "@/lib/mongodb";
-import { ObjectId } from "mongodb";
+
 import { getDataOwnerId } from "@/lib/auth-session";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -39,65 +37,68 @@ export const GET = withRateLimit(
             const db = await getDb();
             const ownerId = getDataOwnerId(user);
 
-            // ── Source 1: Production-based usage (existing aggregation) ──
-            const productionLogs = await db
-                .collection("productions")
+            // ── Canonical source: production_material_usage collection ──
+            // This is written to by POST /api/production when materials are present.
+            // We $lookup into productions for context fields (batchNumber, status, etc).
+            const usageLogs = await db
+                .collection("production_material_usage")
                 .aggregate([
-                    { $match: { userId: ownerId } },
-                    { $unwind: "$materials" },
-                    { $match: { "materials.inventoryId": materialId } },
-                    { $sort: { createdAt: -1 } },
+                    {
+                        $match: {
+                            userId: ownerId,
+                            inventoryItemId: materialId,
+                        },
+                    },
+                    {
+                        $sort: { createdAt: -1 },
+                    },
+                    {
+                        $addFields: {
+                            _productionJobOid: {
+                                $cond: {
+                                    if: { $ne: ["$productionJobId", null] },
+                                    then: { $toObjectId: "$productionJobId" },
+                                    else: null,
+                                },
+                            },
+                        },
+                    },
+                    {
+                        $lookup: {
+                            from: "productions",
+                            localField: "_productionJobOid",
+                            foreignField: "_id",
+                            as: "_prod",
+                        },
+                    },
+                    { $unwind: { path: "$_prod", preserveNullAndEmptyArrays: true } },
                     {
                         $project: {
                             _id: 0,
-                            productionId: { $toString: "$_id" },
-                            orderId: 1,
-                            orderProductName: 1,
-                            batchNumber: 1,
-                            operatorName: 1,
-                            status: 1,
-                            materialName: "$materials.name",
-                            qtyUsed: "$materials.quantityUsed",
-                            unit: "$materials.unit",
-                            date: "$createdAt",
+                            productionId: { $ifNull: ["$productionJobId", ""] },
+                            orderId: { $ifNull: ["$_prod.orderId", ""] },
+                            orderProductName: { $ifNull: ["$_prod.orderProductName", ""] },
+                            batchNumber: { $ifNull: ["$_prod.batchNumber", ""] },
+                            operatorName: { $ifNull: ["$_prod.operatorName", ""] },
+                            status: { $ifNull: ["$_prod.status", "completed"] },
+                            materialName: { $ifNull: ["$itemName", ""] },
+                            qtyUsed: { $ifNull: ["$quantityUsed", 0] },
+                            unit: { $ifNull: ["$unit", ""] },
+                            date: { $ifNull: ["$createdAt", new Date()] },
+                            source: { $literal: "production" },
                         },
                     },
                 ])
                 .toArray();
 
-            const prodLogs: UsageLog[] = productionLogs.map((l) => ({
+            const allLogs: UsageLog[] = usageLogs.map((l) => ({
                 ...(l as Omit<UsageLog, "source">),
+                date: l.date instanceof Date ? l.date.toISOString() : String(l.date),
                 source: "production" as const,
             }));
 
-            // ── Source 2: Order-based deductions (embedded usageHistory on inventory doc) ──
-            let orderLogs: UsageLog[] = [];
-            try {
-                const invItem = await db.collection("inventory").findOne({
-                    _id: new ObjectId(materialId),
-                });
-
-                if (invItem && Array.isArray(invItem.usageHistory)) {
-                    orderLogs = invItem.usageHistory.map((entry: Record<string, unknown>) => ({
-                        productionId: "",
-                        orderId: String(entry.orderId || ""),
-                        orderProductName: String(entry.productName || ""),
-                        batchNumber: String(entry.orderRef || ""),
-                        operatorName: String(entry.clientName || ""),
-                        status: String(entry.status || "completed"),
-                        materialName: invItem.name || "",
-                        qtyUsed: Number(entry.quantityUsed || 0),
-                        unit: String(entry.unit || invItem.unit || ""),
-                        date: entry.usedAt ? new Date(entry.usedAt as string).toISOString() : new Date().toISOString(),
-                        source: "order" as const,
-                    }));
-                }
-            } catch {
-                // Inventory item not found or invalid ID — skip
-            }
-
-            // ── Merge and sort by date descending ──
-            const allLogs = [...prodLogs, ...orderLogs].sort(
+            // Sort by date descending
+            allLogs.sort(
                 (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
             );
 

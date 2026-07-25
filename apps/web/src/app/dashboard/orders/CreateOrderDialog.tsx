@@ -74,7 +74,7 @@ export function CreateOrderDialog({
     const effectiveMaterialCost = currentOrder && formData.order_items.length === 0
       ? Number(currentOrder.materialCost ?? currentOrder.material_cost ?? 0)
       : computedMaterialCost.total;
-    const totalCost = effectiveMaterialCost + parseNumericValue(formData.labour_cost) + parseNumericValue(formData.overhead_cost);
+    const totalCost = effectiveMaterialCost + parseNumericValue(formData.labour_cost) + parseNumericValue(formData.overhead_cost) + parseNumericValue(formData.other_cost);
     const profit = totalValue - totalCost;
     const marginPct = totalValue > 0 ? (profit / totalValue) * 100 : 0;
     const hasData = totalCost > 0 || effectiveMaterialCost > 0;
@@ -261,7 +261,7 @@ export function CreateOrderDialog({
                 <div className="space-y-1.5">
                   <Label className="text-[12px] font-semibold text-gray-500 dark:text-[rgba(255,255,255,0.7)] uppercase tracking-wide">Rate per Unit</Label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[14px] text-gray-400 dark:text-[rgba(255,255,255,0.4)] pointer-events-none">₹</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[14px] text-gray-400 dark:text-[rgba(255,255,255,0.4)] pointer-events-none">{"\u20B9"}</span>
                     <NumericInput
                       value={formData.rate}
                       onValueChange={(v) => setFormData({ ...formData, rate: v })}
@@ -277,7 +277,7 @@ export function CreateOrderDialog({
                 {/* Estimated Order Value Strip */}
                 <div className="col-span-2 mt-1 rounded-[12px] bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-[rgba(59,130,246,0.08)] dark:to-[rgba(99,102,241,0.06)] border border-blue-100 dark:border-[rgba(59,130,246,0.12)] flex items-center justify-between px-4 py-3">
                   <span className="text-[12px] font-semibold text-blue-500/70 dark:text-[rgba(96,165,250,0.7)] uppercase tracking-wider">Estimated Order Value</span>
-                  <span className="text-[17px] font-bold text-blue-600 dark:text-[#60a5fa]">₹{totalValue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+                  <span className="text-[17px] font-bold text-blue-600 dark:text-[#60a5fa]">{"\u20B9"}{totalValue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
                 </div>
               </div>
             </div>
@@ -449,13 +449,13 @@ export function CreateOrderDialog({
                         <div className="flex-1 p-3 relative">
                           <div className="absolute top-0 left-0 right-0 h-[2px] bg-blue-400" />
                           <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-[rgba(255,255,255,0.4)] mb-1">Material Cost</div>
-                          <div className="text-[14px] font-semibold text-gray-900 dark:text-white">₹{effectiveMaterialCost.toLocaleString('en-IN')}</div>
+                          <div className="text-[14px] font-semibold text-gray-900 dark:text-white">{"\u20B9"}{effectiveMaterialCost.toLocaleString('en-IN')}</div>
                         </div>
                         <div className="flex-1 p-3 relative">
                           <div className={cn("absolute top-0 left-0 right-0 h-[2px]", profit >= 0 ? "bg-emerald-400" : "bg-red-400")} />
                           <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-[rgba(255,255,255,0.4)] mb-1">Gross Profit</div>
                           <div className={cn("text-[14px] font-semibold", profit >= 0 ? "text-emerald-600 dark:text-[#34d399]" : "text-red-600 dark:text-[#f87171]")}>
-                            ₹{profit.toLocaleString('en-IN')}
+                            {"\u20B9"}{profit.toLocaleString('en-IN')}
                           </div>
                         </div>
                         <div className="flex-1 p-3 relative">

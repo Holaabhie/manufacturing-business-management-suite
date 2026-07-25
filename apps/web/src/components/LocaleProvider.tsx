@@ -4,7 +4,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { useState, useEffect, createContext, useContext, useCallback } from "react";
 import { type Locale, DEFAULT_LOCALE, LOCALE_STORAGE_KEY, LOCALES } from "@/lib/i18n";
 
-// Statically import all locale message files
+// Statically import all locale message files (updated with previousYears key)
 import en from "../../messages/en.json";
 import hi from "../../messages/hi.json";
 import gu from "../../messages/gu.json";

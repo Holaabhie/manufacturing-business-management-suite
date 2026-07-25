@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useCachedPage } from "@/hooks/useCachedPage";
+import { usePaginatedSearch } from "@/hooks/usePaginatedSearch";
+import { useURLSyncedPagination } from "@/hooks/useURLSyncedPagination";
+import { useLongPress } from "@/hooks/useLongPress";
+import { SearchBar } from "@/components/ui/SearchBar";
+import { TablePagination } from "@/components/ui/TablePagination";
+import { TableEmptyState } from "@/components/ui/TableEmptyState";
+import { MobileSheet } from "@/components/ui/MobileSheet";
 import {
   Plus,
   Search,
@@ -17,6 +25,8 @@ import {
   Calendar,
   ChevronDown,
   ChevronUp,
+  History,
+  Minus,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -59,17 +69,18 @@ import { StatWidget } from "@/components/ui/StatWidget";
 import { TogglePill } from "@/components/ui/glass";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { MaterialUsageDrawer } from "@/components/ui/MaterialUsageDrawer";
+import { AddMaterialModal } from "@/components/inventory/AddMaterialModal";
 
 export default function InventoryPage() {
   const { isAdmin, isPro } = useRole();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpenConfirm, setIsDeleteDialogOpenConfirm] = useState(false);
   const [itemToDeleteId, setItemToDeleteId] = useState<string | null>(null);
   const [currentItem, setCurrentItem] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
+  const [restoredFromCache, setRestoredFromCache] = useState(false);
 
   // ── Forecast State ──
   const [viewMode, setViewMode] = useState<"table" | "forecast">("table");
@@ -79,6 +90,15 @@ export default function InventoryPage() {
 
   // ── Usage Drawer State ──
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
+
+  // ── Long Press + Action Sheet State ──
+  const [longPressedItem, setLongPressedItem] = useState<any>(null);
+  const [isItemSheetOpen, setIsItemSheetOpen] = useState(false);
+
+  const closeItemSheet = useCallback(() => {
+    setIsItemSheetOpen(false);
+    setTimeout(() => setLongPressedItem(null), 350);
+  }, []);
 
   const fetchForecast = useCallback(async () => {
     setForecastLoading(true);
@@ -146,7 +166,7 @@ export default function InventoryPage() {
         item.unit || "—",
         String(item.min_stock_level),
         item.supplier_whatsapp || "—",
-        `₹${landedCost.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`,
+        `\u20B9${landedCost.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`,
         item.hsn_code || "—",
         `${item.tax_rate || 0}%`,
       ];
@@ -205,8 +225,11 @@ export default function InventoryPage() {
   }, []);
 
   useEffect(() => {
-    fetchInventory();
-  }, []);
+    if (!restoredFromCache) {
+      fetchInventory();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restoredFromCache]);
 
   // Fetch forecast when switching to forecast view
   useEffect(() => {
@@ -325,9 +348,129 @@ export default function InventoryPage() {
     window.open(whatsappUrl, "_blank");
   };
 
-  const filteredItems = items.filter((item) =>
-    item.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // ── Inventory Filter Pills ─────────────────────────
+  type InventoryFilter = "all" | "low_stock" | "critical" | "out_of_stock" | "recently_updated";
+  const [inventoryFilter, setInventoryFilter] = useState<InventoryFilter>("all");
+
+  // ── Page State Persistence ───────────────────────────
+  const { restoreState, persist, scrollYRef, restoreScroll } = useCachedPage({ pageKey: "inventory" });
+  const persistRef = useRef({ inventoryFilter, viewMode: "table" as string, items });
+  useEffect(() => { persistRef.current = { inventoryFilter, viewMode, items }; });
+  useEffect(() => {
+    const cached = restoreState();
+    if (cached) {
+      if (cached.inventoryFilter) setInventoryFilter(cached.inventoryFilter as InventoryFilter);
+      if (cached.viewMode) setViewMode(cached.viewMode as "table" | "forecast");
+      if (Array.isArray(cached.items) && (cached.items as any[]).length > 0) {
+        setItems(cached.items as any[]);
+        setLoading(false);
+        setRestoredFromCache(true);
+      }
+    }
+    return () => {
+      persist({ ...persistRef.current, scrollY: scrollYRef.current });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const inventoryPreFiltered = useMemo(() => {
+    const DEFAULT_MIN_STOCK = 10; // Safeguard for min_stock_level = 0
+    return items.filter((item) => {
+      if (inventoryFilter === "all") return true;
+      const qty = Number(item.quantity || 0);
+      const minLevel = Number(item.min_stock_level || DEFAULT_MIN_STOCK);
+      if (inventoryFilter === "critical") return qty <= minLevel;
+      if (inventoryFilter === "low_stock") return qty <= minLevel * 2;
+      if (inventoryFilter === "out_of_stock") return qty === 0;
+      if (inventoryFilter === "recently_updated") {
+        if (!item.updatedAt) return false;
+        const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        return new Date(item.updatedAt) >= weekAgo;
+      }
+      return true;
+    });
+  }, [items, inventoryFilter]);
+
+  // ── URL Sync ─────────────────────────────────────────
+  const { initialPage, initialSearch, syncToURL } = useURLSyncedPagination();
+
+  // ── Pagination + Search ──────────────────────────────
+  const {
+    searchQuery,
+    handleSearch,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    totalFiltered,
+    totalItems,
+    paginatedData: filteredItems,
+    debouncedQuery,
+  } = usePaginatedSearch({
+    data: inventoryPreFiltered,
+    searchFields: ["name", "supplier_whatsapp", "hsn_code"],
+    pageSize: 15,
+    initialPage,
+    initialSearch,
+  });
+
+  // ── Sync to URL on state change ──────────────────────
+  useEffect(() => {
+    syncToURL({
+      page: currentPage,
+      search: debouncedQuery,
+      filters: { filter: inventoryFilter === "all" ? null : inventoryFilter },
+    });
+  }, [currentPage, debouncedQuery, inventoryFilter, syncToURL]);
+
+  // ── Scroll-to-top on page change ─────────────────────
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (currentPage > 1) {
+      tableContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [currentPage]);
+
+  // ── Restore cached state on mount ──
+  useEffect(() => {
+    const cached = restoreState();
+    if (cached) {
+      // URL params win — only apply cache if URL didn't provide values
+      if (!initialSearch && cached.searchQuery) handleSearch(cached.searchQuery as string);
+      if (initialPage === 1 && typeof cached.currentPage === "number" && cached.currentPage > 1) setCurrentPage(cached.currentPage as number);
+      if (cached.inventoryFilter) setInventoryFilter(cached.inventoryFilter as InventoryFilter);
+      if (cached.viewMode) setViewMode(cached.viewMode as "table" | "forecast");
+      if (cached.items && (cached.items as any[]).length > 0) {
+        setItems(cached.items as any[]);
+        setLoading(false);
+        setRestoredFromCache(true);
+      }
+      if (typeof cached.scrollY === "number" && cached.scrollY > 0) {
+        restoreScroll(cached.scrollY);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Persist state on unmount ──
+  const stateRef = useRef({ searchQuery, currentPage, items, inventoryFilter, viewMode });
+  useEffect(() => {
+    stateRef.current = { searchQuery, currentPage, items, inventoryFilter, viewMode };
+  });
+  useEffect(() => {
+    return () => {
+      persist({ ...stateRef.current, scrollY: scrollYRef.current });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Track scroll position for cache ──
+  useEffect(() => {
+    const el = tableContainerRef.current;
+    if (!el) return;
+    const handleScroll = () => { scrollYRef.current = el.scrollTop; };
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, [scrollYRef]);
 
   const lowStockCount = items.filter((i) => i.quantity <= i.min_stock_level).length;
 
@@ -451,7 +594,7 @@ export default function InventoryPage() {
             <span>Export</span>
           </button>
           {/* Add Material */}
-          <IOSButton variant="filled" color="blue" size="medium" onClick={handleAddNewClick} className="glow-btn !bg-none shadow-none" icon={<Plus className="h-4 w-4" />}>
+          <IOSButton variant="filled" color="blue" size="medium" onClick={handleAddNewClick} className="!bg-[#2563EB] text-white hover:!bg-[#1D51C8] dark:!bg-[#2563EB] dark:text-white dark:hover:!bg-[#1D51C8]" icon={<Plus className="h-4 w-4" />}>
             Add Material
           </IOSButton>
         </div>
@@ -459,7 +602,7 @@ export default function InventoryPage() {
 
       {/* ── Stats Row ── */}
       <div className="kpi-panel">
-        <div className="kpi-panel__glow"></div>
+        <div className="kpi-panel__glow hidden dark:block"></div>
         <div className="kpi-grid !grid-cols-1 md:!grid-cols-3">
           <StatWidget
             label="Total Valuation"
@@ -467,7 +610,7 @@ export default function InventoryPage() {
             change={8}
             icon={IndianRupee}
             color="blue"
-            prefix="₹"
+            prefix={"\u20B9"}
             delay={0}
           />
           <StatWidget
@@ -492,42 +635,76 @@ export default function InventoryPage() {
       {/* ── VIEW: Table ── */}
       {viewMode === "table" && (
         <>
-          {/* Search */}
-          <motion.div variants={staggerItem} className="workflow-command-bar">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-[10px] top-1/2 -translate-y-1/2 h-[17px] w-[17px] text-[var(--muted-foreground)]" />
-              <input
-                placeholder="Filter by material name..."
-                className="w-full h-[36px] rounded-[10px] bg-[var(--muted)] pl-[34px] pr-4 text-[15px] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] outline-none border-none focus:ring-2 focus:ring-[var(--primary)] transition-shadow"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+          {/* Search + Filter Pills + Quick Add */}
+          <motion.div variants={staggerItem} className="flex flex-col gap-4">
+            {/* Row 1: Search bar — full width */}
+            <SearchBar
+              value={searchQuery}
+              onChange={handleSearch}
+              placeholder="Search by material name..."
+              ariaLabel="Search inventory"
+              id="inventory-search"
+            />
+
+            {/* Row 2: Filter pills (desktop) */}
+            <div className="hidden sm:flex items-center gap-1.5">
+              {([
+                { key: "all", label: "All" },
+                { key: "critical", label: "Critical" },
+                { key: "low_stock", label: "Low Stock" },
+                { key: "out_of_stock", label: "Out of Stock" },
+                { key: "recently_updated", label: "Recent" },
+              ] as { key: InventoryFilter; label: string }[]).map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setInventoryFilter(item.key)}
+                  className={cn(
+                    "px-3 h-8 rounded-lg text-xs font-medium transition-colors cursor-pointer",
+                    inventoryFilter === item.key
+                      ? "bg-[var(--primary)] text-white"
+                      : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--accent)]"
+                  )}
+                >
+                  {item.label}
+                </button>
+              ))}
             </div>
-            <button
-              type="button"
-              onClick={handleAddNewClick}
-              className="h-9 px-3 rounded-lg bg-[var(--primary)] text-white text-xs font-semibold hover:opacity-90 cursor-pointer transition-opacity"
-            >
-              Quick add
-            </button>
-            {searchTerm && (
-              <button
-                type="button"
-                onClick={() => setSearchTerm("")}
-                className="h-9 px-3 rounded-lg text-xs font-medium text-[var(--muted-foreground)] bg-[var(--muted)] hover:bg-[var(--accent)] cursor-pointer"
-              >
-                Clear
-              </button>
-            )}
-            <span className="text-[13px] text-[var(--muted-foreground)]">{filteredItems.length} items</span>
+
+            {/* Row 3: Quick Add + Clear + Item Count */}
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleAddNewClick}
+                  className="h-9 px-3 rounded-lg bg-[var(--primary)] text-white text-xs font-semibold hover:opacity-90 cursor-pointer transition-opacity"
+                >
+                  Quick add
+                </button>
+                {(searchQuery || inventoryFilter !== "all") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleSearch("");
+                      setInventoryFilter("all");
+                    }}
+                    className="h-9 px-3 rounded-lg text-xs font-medium text-[var(--muted-foreground)] bg-[var(--muted)] hover:bg-[var(--accent)] cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <span className="text-sm text-[var(--muted-foreground)] tabular-nums">{totalFiltered} of {totalItems} items</span>
+            </div>
           </motion.div>
 
           {/* Table */}
           <motion.div variants={staggerItem}>
             <IOSCard variant="elevated" padding="none" className="hidden md:block overflow-hidden glass-premium !rounded-[20px]">
+              <div ref={tableContainerRef} className="max-h-[calc(100vh-320px)] overflow-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="glass-table-header hover:bg-transparent border-b border-white/[0.07] dark:border-white/[0.07]">
+                  <TableRow className="glass-table-header hover:bg-transparent border-b border-white/[0.07] dark:border-white/[0.07] sticky top-0 z-10 bg-white/90 dark:bg-[#0F1117]/90 backdrop-blur-sm">
                     <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide pl-5">Item & Supplier</TableHead>
                     <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">Stock Level</TableHead>
                     <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">Unit Cost (Landed)</TableHead>
@@ -549,23 +726,12 @@ export default function InventoryPage() {
                   ) : filteredItems.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center">
-                        {searchTerm ? (
-                          <div className="flex flex-col items-center gap-3 py-16">
-                            <div className="w-[56px] h-[56px] rounded-[14px] bg-[var(--muted)] flex items-center justify-center">
-                              <Package className="h-6 w-6 text-[var(--muted-foreground)]" />
-                            </div>
-                            <p className="text-[17px] font-medium text-[var(--muted-foreground)]">No materials found</p>
-                            <p className="text-[13px] text-[var(--muted-foreground)]">Try a different search term</p>
-                          </div>
-                        ) : (
-                          <EmptyState
-                            icon="📦"
-                            title="No materials added yet"
-                            description="Add your raw materials to start tracking stock and get AI-powered forecasts"
-                            actionLabel="+ Add First Material"
-                            onAction={handleAddNewClick}
-                          />
-                        )}
+                        <TableEmptyState
+                          variant={searchQuery ? "no-results" : "no-data"}
+                          title={searchQuery ? "No materials found" : "No materials added yet"}
+                          subtitle={searchQuery ? "Try a different search term" : "Add your raw materials to start tracking stock and get AI-powered forecasts"}
+                          action={!searchQuery ? { label: "+ Add First Material", onClick: handleAddNewClick } : undefined}
+                        />
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -610,10 +776,10 @@ export default function InventoryPage() {
                           <TableCell className="py-3.5">
                             <div className="flex flex-col">
                               <span className="text-[15px] font-semibold text-[var(--foreground)]">
-                                ₹{(Number(item.purchase_cost_per_unit || 0) * (1 + Number(item.tax_rate || 0) / 100)).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                                {"\u20B9"}{(Number(item.purchase_cost_per_unit || 0) * (1 + Number(item.tax_rate || 0) / 100)).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
                               </span>
                               <span className="text-[11px] text-[var(--muted-foreground)] uppercase tracking-wide">
-                                ₹{Number(item.purchase_cost_per_unit || 0).toLocaleString("en-IN")} + {item.tax_rate}% Tax
+                                {"\u20B9"}{Number(item.purchase_cost_per_unit || 0).toLocaleString("en-IN")} + {item.tax_rate}% Tax
                               </span>
                             </div>
                           </TableCell>
@@ -673,10 +839,20 @@ export default function InventoryPage() {
                   )}
                 </TableBody>
               </Table>
+              </div>
             </IOSCard>
 
+            {/* ── Pagination ── */}
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalFiltered}
+              pageSize={15}
+              onPageChange={setCurrentPage}
+            />
+
             {/* Mobile Inventory Cards — visible only below md (768px) */}
-            <div className="block md:hidden px-3 py-2 space-y-3">
+            <div className="block md:hidden px-3 py-2 mt-2 flex flex-col gap-3">
               {loading ? (
                 Array.from({ length: 4 }).map((_, i) => (
                   <div key={i} className="bg-gray-100 dark:bg-[#1a1f2e] rounded-xl px-4 py-3 border-l-4 border-gray-300 dark:border-gray-600">
@@ -687,52 +863,11 @@ export default function InventoryPage() {
                 ))
               ) : filteredItems.length === 0 ? (
                 <div className="py-16 text-center">
-                  <Package className="h-10 w-10 mx-auto mb-3 text-gray-500" />
-                  <p className="text-gray-400 text-sm">{searchTerm ? "No materials found" : "No materials added yet"}</p>
+                  <Package className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                  <p className="text-muted-foreground text-sm">{searchQuery ? "No materials found" : "No materials added yet"}</p>
                 </div>
               ) : filteredItems.map((item) => {
-                const isLowStock = item.quantity <= item.min_stock_level;
-                const stockStatus = getStockStatus(item);
-                const borderColorMap = {
-                  critical: 'border-red-500',
-                  low: 'border-orange-400',
-                  healthy: 'border-green-500',
-                };
-                return (
-                  <div
-                    key={item.id}
-                    className={cn(
-                      "bg-gray-50 dark:bg-[#1a1f2e] rounded-xl px-4 py-3 border-l-4",
-                      borderColorMap[stockStatus.level as keyof typeof borderColorMap]
-                    )}
-                    onClick={() => setSelectedMaterial(item)}
-                  >
-                    {/* Row 1: Material name + Stock status badge */}
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-900 dark:text-white text-sm font-bold truncate mr-2">{item.name}</span>
-                      <span className={cn(
-                        "text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap uppercase",
-                        stockStatus.color === "green" ? "bg-green-500/15 text-green-500 dark:text-green-400" :
-                        stockStatus.color === "orange" ? "bg-orange-500/15 text-orange-500 dark:text-orange-400" :
-                        "bg-red-500/15 text-red-500 dark:text-red-400"
-                      )}>{stockStatus.label}</span>
-                    </div>
-                    {/* Row 2: Stock level + Min stock */}
-                    <div className="flex justify-between items-center mt-1">
-                      <span className={cn("text-sm font-semibold", isLowStock ? "text-red-500 dark:text-red-400" : "text-blue-600 dark:text-blue-400")}>Stock: {item.quantity} {item.unit}</span>
-                      <span className="text-gray-500 dark:text-gray-400 text-xs">Min: {item.min_stock_level}</span>
-                    </div>
-                    {/* Row 3: Source PO + Cost */}
-                    <div className="flex justify-between mt-1">
-                      <span className="text-gray-500 dark:text-gray-400 text-xs truncate mr-2">
-                        {item.last_source_po_number
-                          ? `From ${item.last_source_po_number}${formatSourceDate(item.last_received_at) ? ` · ${formatSourceDate(item.last_received_at)}` : ""}`
-                          : item.supplier_whatsapp || "No supplier"}
-                      </span>
-                      <span className="text-gray-600 dark:text-gray-300 text-xs whitespace-nowrap">₹{Number(item.purchase_cost_per_unit || 0).toLocaleString('en-IN')} + {item.tax_rate || 0}% TAX</span>
-                    </div>
-                  </div>
-                );
+                return <MobileInventoryCard key={item.id} item={item} getStockStatus={getStockStatus} formatSourceDate={formatSourceDate} onTap={() => setSelectedMaterial(item)} onLongPress={() => { setLongPressedItem(item); setIsItemSheetOpen(true); }} />;
               })}
             </div>
           </motion.div>
@@ -880,7 +1015,7 @@ export default function InventoryPage() {
                             <div className="ind-stat-card" style={{ padding: 14 }}>
                               <span className="ind-stat-card__label" style={{ fontSize: 10 }}>Cost/Unit</span>
                               <span className="ind-stat-card__value ind-mono" style={{ fontSize: 20, color: "var(--ind-blue)" }}>
-                                ₹{material.purchaseCostPerUnit}
+                                {"\u20B9"}{material.purchaseCostPerUnit}
                               </span>
                             </div>
                           </div>
@@ -951,126 +1086,18 @@ export default function InventoryPage() {
         </motion.div>
       )}
 
-      {/* ── Add/Edit Dialog ── */}
-      <Dialog
-        open={isDialogOpen}
-        onOpenChange={(open) => {
-          setIsDialogOpen(open);
-          if (!open) resetForm();
+      {/* ── Add/Edit Modal (Premium Redesign) ── */}
+      <AddMaterialModal
+        isOpen={isDialogOpen}
+        onClose={() => {
+          setIsDialogOpen(false);
+          resetForm();
         }}
-      >
-        <DialogContent className="max-w-[480px]" aria-describedby={undefined} showCloseButton={false} fullScreen>
-          <DialogDescription className="sr-only">
-            Form to add or edit an inventory material item
-          </DialogDescription>
-          {/* Premium Header */}
-          <div style={{
-            flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '14px 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.07)',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{
-                width: 40, height: 40, borderRadius: 12,
-                background: 'linear-gradient(135deg, rgba(34,197,94,0.4), rgba(255,255,255,0.06))',
-                border: '1px solid rgba(255,255,255,0.10)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <Package className="h-[18px] w-[18px] text-[#4ade80]" />
-              </div>
-              <div>
-                <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', lineHeight: '22px', margin: 0 }}>
-                  {currentItem ? "Edit Material" : "New Material"}
-                </DialogTitle>
-                <p style={{ fontSize: 13, color: '#64748b', lineHeight: '18px', margin: '2px 0 0' }}>
-                  {currentItem ? 'Update stock and supplier details' : 'Add raw material to inventory'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Scrollable body */}
-          <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-3 pb-0">
-            <form id="inventory-form" onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-medium tracking-[0.07em] text-[var(--muted-foreground)] uppercase block mb-1.5">
-                  Material Name *
-                </label>
-                <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="e.g. Polyester Yarn" required className="glass-input h-[44px] px-3" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-medium tracking-[0.07em] text-[var(--muted-foreground)] uppercase block mb-1.5">
-                    Stock Quantity
-                  </label>
-                  <NumericInput id="quantity" value={formData.quantity} onValueChange={(v) => setFormData({ ...formData, quantity: v })} placeholder="Enter quantity" allowDecimal={true} min={0} />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-medium tracking-[0.07em] text-[var(--muted-foreground)] uppercase block mb-1.5">
-                    Unit
-                  </label>
-                  <Input id="unit" value={formData.unit} placeholder="kg, pcs, meters" onChange={(e) => setFormData({ ...formData, unit: e.target.value })} className="glass-input h-[44px] px-3" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-medium tracking-[0.07em] text-[var(--muted-foreground)] uppercase block mb-1.5">
-                    Low Stock Alert
-                  </label>
-                  <NumericInput id="min_stock" value={formData.min_stock_level} onValueChange={(v) => setFormData({ ...formData, min_stock_level: v })} placeholder="e.g. 10" allowDecimal={true} min={0} />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-medium tracking-[0.07em] text-[var(--muted-foreground)] uppercase block mb-1.5">
-                    Landing Cost / Unit
-                  </label>
-                  <NumericInput id="cost" value={formData.purchase_cost_per_unit} onValueChange={(v) => setFormData({ ...formData, purchase_cost_per_unit: v })} placeholder="0.00" prefix="₹" allowDecimal={true} min={0} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-medium tracking-[0.07em] text-[var(--muted-foreground)] uppercase block mb-1.5">
-                    HSN Code
-                  </label>
-                  <Input id="hsn" value={formData.hsn_code} onChange={(e) => setFormData({ ...formData, hsn_code: e.target.value })} placeholder="e.g. 5402" className="glass-input h-[44px] px-3" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-medium tracking-[0.07em] text-[var(--muted-foreground)] uppercase block mb-1.5">
-                    Tax/GST %
-                  </label>
-                  <NumericInput id="tax" value={formData.tax_rate} onValueChange={(v) => setFormData({ ...formData, tax_rate: v })} placeholder="18" allowDecimal={true} min={0} />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-medium tracking-[0.07em] text-[var(--primary)] uppercase block mb-1.5 font-bold">
-                  Supplier WhatsApp *
-                </label>
-                <Input id="whatsapp" value={formData.supplier_whatsapp} onChange={(e) => setFormData({ ...formData, supplier_whatsapp: e.target.value })} placeholder="e.g. +91 9876543210" required className="glass-input h-[44px] px-3" />
-              </div>
-            </form>
-          </div>
-
-          {/* Premium Footer */}
-          <div style={{
-            flexShrink: 0, padding: '12px 16px 20px',
-            borderTop: '1px solid rgba(255,255,255,0.07)',
-            background: 'linear-gradient(180deg, rgba(14,22,44,0.5) 0%, rgba(8,16,36,0.8) 100%)',
-          }}>
-            <button
-              type="submit"
-              form="inventory-form"
-              style={{
-                width: '100%', height: 48, borderRadius: 14,
-                background: 'linear-gradient(135deg, #10b981, #059669)',
-                color: '#fff', fontSize: 14, fontWeight: 600,
-                cursor: 'pointer', border: '1px solid rgba(16,185,129,0.3)',
-                boxShadow: '0 4px 16px rgba(16,185,129,0.25)',
-                fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif",
-              }}
-            >
-              {currentItem ? "Update Details" : "Save to Inventory"}
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
+        formData={formData}
+        setFormData={setFormData}
+        onSubmit={handleSubmit}
+        isEditing={!!currentItem}
+      />
 
       {/* ── Delete Confirm ── */}
       <Dialog open={isDeleteDialogOpenConfirm} onOpenChange={setIsDeleteDialogOpenConfirm}>
@@ -1141,6 +1168,148 @@ export default function InventoryPage() {
         } : null}
         onClose={() => setSelectedMaterial(null)}
       />
+
+      {/* ── Long Press Action Sheet ── */}
+      <MobileSheet open={isItemSheetOpen} onClose={closeItemSheet}>
+        {longPressedItem && (
+          <div className="flex flex-col gap-2 pb-4">
+            {/* Item header */}
+            <div className="px-4 py-3 border-b border-[var(--border)]">
+              <p className="font-semibold text-[var(--foreground)]">
+                {longPressedItem.name}
+              </p>
+              <p className="text-sm text-[var(--muted-foreground)]">
+                Stock: {longPressedItem.quantity} {longPressedItem.unit}
+              </p>
+            </div>
+
+            {/* Actions */}
+            <button
+              className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--muted)] active:bg-[var(--muted)] text-[var(--foreground)] text-left w-full"
+              onClick={() => {
+                closeItemSheet();
+                openEditDialog(longPressedItem);
+              }}
+            >
+              <Edit2 className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
+              Edit Item
+            </button>
+
+            <button
+              className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--muted)] active:bg-[var(--muted)] text-[var(--foreground)] text-left w-full"
+              onClick={() => {
+                closeItemSheet();
+                // Open edit dialog pre-focused for stock addition
+                openEditDialog(longPressedItem);
+                toast.info("Update the stock quantity to add stock");
+              }}
+            >
+              <Plus className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
+              Add Stock
+            </button>
+
+            <button
+              className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--muted)] active:bg-[var(--muted)] text-[var(--foreground)] text-left w-full"
+              onClick={() => {
+                closeItemSheet();
+                // Open edit dialog pre-focused for stock reduction
+                openEditDialog(longPressedItem);
+                toast.info("Update the stock quantity to reduce stock");
+              }}
+            >
+              <Minus className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
+              Reduce Stock
+            </button>
+
+            <button
+              className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--muted)] active:bg-[var(--muted)] text-[var(--foreground)] text-left w-full"
+              onClick={() => {
+                closeItemSheet();
+                // Open usage drawer for this material's history
+                setSelectedMaterial(longPressedItem);
+              }}
+            >
+              <History className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
+              View Stock History
+            </button>
+
+            <button
+              className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--muted)] active:bg-[var(--muted)] text-red-500 text-left w-full"
+              onClick={() => {
+                closeItemSheet();
+                setItemToDeleteId(longPressedItem.id);
+                setIsDeleteDialogOpenConfirm(true);
+              }}
+            >
+              <Trash2 className="h-[18px] w-[18px]" />
+              Delete Item
+            </button>
+          </div>
+        )}
+      </MobileSheet>
     </motion.div>
+  );
+}
+
+// ─── Mobile Inventory Card with Long Press ──────────────────────
+function MobileInventoryCard({
+  item,
+  getStockStatus,
+  formatSourceDate,
+  onTap,
+  onLongPress,
+}: {
+  item: any;
+  getStockStatus: (item: any) => { label: string; color: "green" | "orange" | "red"; level: string };
+  formatSourceDate: (dateStr: string | null | undefined) => string;
+  onTap: () => void;
+  onLongPress: () => void;
+}) {
+  const isLowStock = item.quantity <= item.min_stock_level;
+  const stockStatus = getStockStatus(item);
+  const borderColorMap = {
+    critical: 'border-red-500',
+    low: 'border-orange-400',
+    healthy: 'border-green-500',
+  };
+
+  const longPressHandlers = useLongPress(
+    onLongPress,
+    onTap
+  );
+
+  return (
+    <div
+      className={cn(
+        "bg-gray-50 dark:bg-[#1a1f2e] rounded-xl px-4 py-3 border-l-4 select-none",
+        borderColorMap[stockStatus.level as keyof typeof borderColorMap]
+      )}
+      {...longPressHandlers}
+    >
+      {/* Row 1: Material name + Stock status badge */}
+      <div className="flex justify-between items-center">
+        <span className="text-gray-900 dark:text-white text-sm font-bold truncate mr-2">{item.name}</span>
+        <span className={cn(
+          "text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap uppercase",
+          stockStatus.color === "green" ? "bg-green-500/15 text-green-500 dark:text-green-400" :
+          stockStatus.color === "orange" ? "bg-orange-500/15 text-orange-500 dark:text-orange-400" :
+          "bg-red-500/15 text-red-500 dark:text-red-400"
+        )}>{stockStatus.label}</span>
+      </div>
+      {/* Row 2: Stock level + Min stock */}
+      <div className="flex justify-between items-center mt-1">
+        <span className={cn("text-sm font-semibold", isLowStock ? "text-red-500 dark:text-red-400" : "text-blue-600 dark:text-blue-400")}>Stock: {item.quantity} {item.unit}</span>
+        <span className="text-gray-500 dark:text-gray-400 text-xs">Min: {item.min_stock_level}</span>
+      </div>
+      {/* Row 3: Source PO + Cost */}
+      <div className="flex justify-between mt-1">
+        <span className="text-gray-500 dark:text-gray-400 text-xs truncate mr-2">
+          {item.last_source_po_number
+            ? `From ${item.last_source_po_number}${formatSourceDate(item.last_received_at) ? ` · ${formatSourceDate(item.last_received_at)}` : ""}`
+            : item.supplier_whatsapp || "No supplier"}
+        </span>
+        <span className="text-gray-600 dark:text-gray-300 text-xs whitespace-nowrap">{"\u20B9"}{Number(item.purchase_cost_per_unit || 0).toLocaleString('en-IN')} + {item.tax_rate || 0}% TAX</span>
+      </div>
+    </div>
   );
 }

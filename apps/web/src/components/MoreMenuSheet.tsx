@@ -17,6 +17,11 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
+import {
+  springModal,
+  variantsBackdrop,
+  variantsModalScale,
+} from "@/lib/motion";
 import { MobileSheet } from "@/components/ui/MobileSheet";
 import { useRouter, usePathname } from "next/navigation";
 import {
@@ -356,11 +361,13 @@ function CustomizationOverlay({
       {isOpen && (
         <>
           {/* ── Backdrop: dim + subtle blur between sheet and modal ── */}
+          {/* Tier A fade — spring lives on the modal content */}
+          {/* onPointerDown (not onClick) — iOS Safari reliability fix */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
+            variants={variantsBackdrop}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
             onPointerDown={onClose}
             style={{
               position: "fixed",
@@ -387,11 +394,13 @@ function CustomizationOverlay({
             }}
           >
             {/* ── Floating customization modal ── */}
+            {/* Tier B spring — this IS a modal surface */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.96, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 20 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
+              variants={variantsModalScale}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              transition={springModal}
               onClick={(e) => e.stopPropagation()}
               style={{
                 width: "100%",

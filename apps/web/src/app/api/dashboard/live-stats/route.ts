@@ -40,19 +40,24 @@ export async function GET() {
             openDowntime,
             activeProductionsCount,
         ] = await Promise.all([
-            // Running/active orders
+            // Running/active orders (NOT fully completed = $or by De Morgan)
             db.collection("orders").countDocuments({
                 userId: adminId,
-                status: { $in: ["pending", "processing", "in_progress"] },
+                $or: [
+                    { production_status: { $ne: "completed" } },
+                    { production_status: { $exists: false } },
+                    { payment_status: { $ne: "paid" } }
+                ],
             }),
 
             // Total orders
             db.collection("orders").countDocuments({ userId: adminId }),
 
-            // Completed orders
+            // Fully completed orders (production done AND payment done)
             db.collection("orders").countDocuments({
                 userId: adminId,
-                status: "completed",
+                production_status: "completed",
+                payment_status: "paid",
             }),
 
             // Machine status counts
@@ -106,7 +111,7 @@ export async function GET() {
                     {
                         $match: {
                             userId: adminId,
-                            status: { $ne: "completed" },
+                            status: { $nin: ["completed", "closed"] },
                         },
                     },
                     {
@@ -129,7 +134,7 @@ export async function GET() {
             // Active productions
             db.collection("productions").countDocuments({
                 userId: adminId,
-                status: { $ne: "completed" },
+                status: { $nin: ["completed", "closed"] },
             }),
         ]);
 

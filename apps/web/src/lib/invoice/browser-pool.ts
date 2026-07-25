@@ -74,7 +74,7 @@ async function getBrowser(config: BrowserPoolConfig = DEFAULT_CONFIG): Promise<a
             let chromiumArgs = [...LAUNCH_ARGS];
 
             try {
-                const chromium = await import("@sparticuz/chromium" as string);
+                const chromium = await import(/* webpackIgnore: true */ "@sparticuz/chromium");
                 executablePath = await chromium.default.executablePath();
                 chromiumArgs = chromium.default.args;
                 console.log("[browser-pool] Using @sparticuz/chromium (serverless)");
@@ -83,7 +83,7 @@ async function getBrowser(config: BrowserPoolConfig = DEFAULT_CONFIG): Promise<a
                 console.log("[browser-pool] Using standard puppeteer");
             }
 
-            const puppeteer = await import("puppeteer");
+            const puppeteer = await import(/* webpackIgnore: true */ "puppeteer");
             const launchOptions: any = {
                 headless: true,
                 args: chromiumArgs,

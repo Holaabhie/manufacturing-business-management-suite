@@ -181,20 +181,20 @@ export default function LoginPage() {
   // ═══════════════════════════════════════════════════════════════
   const handleStaffLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!employeeId || !staffPassword) { toast.error("Employee ID and password are required"); return; }
+    if (!employeeId || !staffPassword) { toast.error("Email or Employee ID and password are required"); return; }
 
     setLoading(true);
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ employeeId, password: staffPassword, loginType: "staff" }),
+        body: JSON.stringify({ employeeId, email: employeeId, password: staffPassword, loginType: "staff" }),
       });
       const json = await res.json().catch(() => ({}));
 
       if (json.locked) {
         setLockedMinutes(json.remainingMinutes || 30);
-        toast.error(json.error || "Account temporarily locked");
+        toast.error(json.message || "Account temporarily locked");
         return;
       }
       if (res.status === 503) {
@@ -202,7 +202,7 @@ export default function LoginPage() {
       }
       if (!res.ok) {
         if (json.attemptsRemaining !== undefined) setAttemptsRemaining(json.attemptsRemaining);
-        throw new Error(json?.error || "Login failed");
+        throw new Error(json?.message || "Login failed");
       }
 
       // OTP required
@@ -545,8 +545,8 @@ export default function LoginPage() {
                   className="space-y-5"
                 >
                   <div className="space-y-2">
-                    <Label htmlFor="staff-emp-id" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Employee ID</Label>
-                    <Input id="staff-emp-id" type="text" placeholder="EMP-001 or your employee ID" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} required className="h-12 bg-muted/50 dark:bg-white/5 border-border rounded-xl font-mono uppercase" />
+                    <Label htmlFor="staff-emp-id" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Email or Employee ID</Label>
+                    <Input id="staff-emp-id" type="text" placeholder="e.g. employee@company.com or EMP-0001" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} required className="h-12 bg-muted/50 dark:bg-white/5 border-border rounded-xl" />
                   </div>
 
                   <div className="space-y-2">

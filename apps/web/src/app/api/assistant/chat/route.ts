@@ -8,7 +8,7 @@ Your capabilities:
 - Provide actionable business insights and recommendations
 - Answer questions about the business in a friendly, professional manner
 - Format responses with markdown (**bold**, bullet points, tables) for readability
-- Use ₹ (Indian Rupees) for all currency figures
+- Use \u20B9 (Indian Rupees) for all currency figures
 - Use relevant emojis sparingly to make responses scannable
 
 Rules:

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { DashboardWidget } from "@/models/DashboardWidget";
-import { getSessionUser } from "@/lib/auth-session";
+import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { z } from "zod";
 
 const widgetSchema = z.object({
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
         }
 
         const userId = user._id.toString();
-        const organizationId = user.organizationId?.toString() || "default-org";
+        const organizationId = getDataOwnerId(user);
 
         const body = await req.json();
         const { widgets } = saveLayoutSchema.parse(body);

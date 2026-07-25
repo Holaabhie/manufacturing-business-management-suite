@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/hooks/use-orders";
 import {
     ChevronRight,
     Play,
@@ -13,6 +15,7 @@ import {
     Package,
     Cpu,
     User,
+    Users,
     Calendar,
     Activity,
     Minus,
@@ -39,6 +42,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRole } from "@/lib/hooks/use-role";
+import { useFormatters } from "@/hooks/useFormatters";
 import {
     Dialog,
     DialogContent,
@@ -49,6 +53,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NumericInput } from "@/components/ui/numeric-input";
+import { AssignStaffDialog } from "@/components/production/AssignStaffDialog";
 
 import type {
     Production,
@@ -115,9 +120,12 @@ export default function ProductionDetailPage() {
     const params = useParams();
     const productionId = params.id as string;
     const { isAdmin, isStaff, role } = useRole();
+    const { formatNumber } = useFormatters();
+    const qc = useQueryClient();
 
     const [production, setProduction] = useState<Production | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isError, setIsError] = useState(false);
 
     // Progress update form
     const [updateProduced, setUpdateProduced] = useState("");
@@ -128,7 +136,14 @@ export default function ProductionDetailPage() {
     const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
     const [updating, setUpdating] = useState(false);
     const [overrideMode, setOverrideMode] = useState(false);
+    const [assignStaffOpen, setAssignStaffOpen] = useState(false);
     const [progressHistory, setProgressHistory] = useState<ProductionProgressEntry[]>([]);
+
+    // Refs for form initialization guard and activity timeline
+    const formInitialized = useRef(false);
+    const isAtBottom = useRef(true);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const timelineBottomRef = useRef<HTMLDivElement>(null);
 
     const fetchProduction = useCallback(async () => {
         try {
@@ -140,10 +155,15 @@ export default function ProductionDetailPage() {
             }
             const data = await res.json();
             setProduction(data);
-            setUpdateProduced(String(data.producedQuantity || 0));
-            setUpdateReject(String(data.rejectQuantity || 0));
+            setIsError(false);
+            if (!formInitialized.current) {
+                setUpdateProduced(String(data.producedQuantity || 0));
+                setUpdateReject(String(data.rejectQuantity || 0));
+                formInitialized.current = true;
+            }
         } catch {
             toast.error("Failed to load production");
+            setIsError(true);
         } finally {
             setLoading(false);
         }
@@ -167,12 +187,43 @@ export default function ProductionDetailPage() {
     useEffect(() => {
         fetchProduction();
         fetchProgressHistory();
-        const interval = setInterval(() => {
-            fetchProduction();
-            fetchProgressHistory();
-        }, 10000);
-        return () => clearInterval(interval);
+        let interval: ReturnType<typeof setInterval>;
+        const startPolling = () => {
+            interval = setInterval(() => {
+                if (document.visibilityState === "visible") {
+                    fetchProduction();
+                    fetchProgressHistory();
+                }
+            }, 30_000);
+        };
+        startPolling();
+        const handleVisibility = () => {
+            clearInterval(interval);
+            if (document.visibilityState === "visible") {
+                fetchProduction();
+                fetchProgressHistory();
+                startPolling();
+            }
+        };
+        document.addEventListener("visibilitychange", handleVisibility);
+        return () => {
+            clearInterval(interval);
+            document.removeEventListener("visibilitychange", handleVisibility);
+        };
     }, [fetchProduction, fetchProgressHistory]);
+
+    // Smart auto-scroll: only scroll to bottom if user is already there
+    const handleTimelineScroll = useCallback(() => {
+        const el = scrollContainerRef.current;
+        if (!el) return;
+        isAtBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+    }, []);
+
+    useEffect(() => {
+        if (production?.activityLog?.length && isAtBottom.current) {
+            timelineBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+        }
+    }, [production?.activityLog?.length]);
 
     // ─── Actions ──────────────────────────────────────────────
     const performAction = async (action: string, extra?: Record<string, any>) => {
@@ -200,6 +251,10 @@ export default function ProductionDetailPage() {
                                 ? "Production completed!"
                                 : "Progress updated"
             );
+            // Invalidate dependent React Query caches
+            qc.invalidateQueries({ queryKey: queryKeys.orders });
+            qc.invalidateQueries({ queryKey: queryKeys.inventory });
+            qc.invalidateQueries({ queryKey: queryKeys.stats });
             fetchProduction();
         } catch {
             toast.error("Action failed");
@@ -212,6 +267,22 @@ export default function ProductionDetailPage() {
 
     const handleUpdateProgress = async () => {
         setUpdating(true);
+        // Snapshot for rollback
+        const prevProduction = production;
+
+        // Optimistic local update
+        if (production) {
+            const optimisticProcessed = Number(updateProduced) + Number(updateReject);
+            setProduction({
+                ...production,
+                producedQuantity: Number(updateProduced),
+                rejectQuantity: Number(updateReject),
+                progressPercent: production.expectedOutput > 0
+                    ? Math.min(Math.round((optimisticProcessed / production.expectedOutput) * 100), 100)
+                    : 0,
+            });
+        }
+
         try {
             const res = await fetch("/api/production/progress/update", {
                 method: "POST",
@@ -225,14 +296,25 @@ export default function ProductionDetailPage() {
             });
             const data = await res.json();
             if (data.error) {
+                setProduction(prevProduction);
                 toast.error(data.error);
                 return;
             }
-            toast.success("Progress updated!");
+            if (data.autoCompleted || data.status === "completed") {
+                toast.success("Production batch completed successfully! 🎉");
+            } else {
+                toast.success("Progress updated!");
+            }
+            formInitialized.current = false; // allow next fetch to sync
             setUpdateNotes("");
+            // Invalidate dependent React Query caches
+            qc.invalidateQueries({ queryKey: queryKeys.orders });
+            qc.invalidateQueries({ queryKey: queryKeys.inventory });
+            qc.invalidateQueries({ queryKey: queryKeys.stats });
             fetchProduction();
             fetchProgressHistory();
         } catch {
+            setProduction(prevProduction);
             toast.error("Failed to update progress");
         } finally {
             setUpdating(false);
@@ -241,42 +323,71 @@ export default function ProductionDetailPage() {
 
     // ─── KPIs ─────────────────────────────────────────────────
     const kpis: ProductionKPIs | null = production
-        ? {
-            efficiency:
-                production.expectedOutput > 0
-                    ? Math.round(
-                        (production.producedQuantity / production.expectedOutput) * 100
-                    )
-                    : 0,
-            materialConsumption: production.materials.reduce(
-                (acc, m) => acc + m.quantityUsed,
-                0
-            ),
-            wastage:
-                production.producedQuantity > 0
-                    ? Math.round(
-                        (production.rejectQuantity / production.producedQuantity) * 100
-                    )
-                    : 0,
-            staffContribution: [
-                {
-                    name: production.operatorName || "Operator",
-                    produced: production.producedQuantity,
-                    role: "Operator",
-                },
-            ],
-        }
+        ? (() => {
+            const processedUnits = production.producedQuantity + production.rejectQuantity;
+            return {
+                efficiency:
+                    production.expectedOutput > 0
+                        ? Math.round(
+                            (production.producedQuantity / production.expectedOutput) * 100
+                        )
+                        : 0,
+                materialConsumption: production.materials.reduce(
+                    (acc, m) => acc + m.quantityUsed,
+                    0
+                ),
+                wastage:
+                    processedUnits > 0
+                        ? Math.round(
+                            (production.rejectQuantity / processedUnits) * 100
+                        )
+                        : 0,
+                staffContribution: [
+                    {
+                        name: production.operatorName || "Operator",
+                        produced: production.producedQuantity,
+                        role: "Operator",
+                    },
+                ],
+            };
+        })()
         : null;
+
+    // Validation: rejected qty cannot exceed produced qty
+    const rejectedExceedsProduced = Number(updateReject) > Number(updateProduced);
 
     // ─── Loading UI ───────────────────────────────────────────
     if (loading) {
         return (
-            <div className="space-y-6">
-                <Skeleton className="h-8 w-48" />
-                <Skeleton className="h-6 w-96" />
-                <div className="grid grid-cols-4 gap-4">
+            <div className="space-y-6 pb-28">
+                <Skeleton className="h-5 w-40 rounded-lg" />
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div className="space-y-2">
+                        <Skeleton className="h-8 w-56 rounded-lg" />
+                        <Skeleton className="h-4 w-72 rounded-lg" />
+                    </div>
+                    <div className="flex gap-2">
+                        <Skeleton className="h-10 w-32 rounded-xl" />
+                        <Skeleton className="h-10 w-10 rounded-xl" />
+                    </div>
+                </div>
+                <div className="rounded-xl border bg-card border-border p-5 space-y-3">
+                    <div className="flex justify-between items-center">
+                        <Skeleton className="h-4 w-36 rounded-lg" />
+                        <Skeleton className="h-4 w-28 rounded-lg" />
+                    </div>
+                    <Skeleton className="h-3 w-full rounded-full" />
+                </div>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     {[1, 2, 3, 4].map((i) => (
-                        <Skeleton key={i} className="h-28 rounded-xl" />
+                        <div key={i} className="rounded-xl border bg-card border-border p-4 space-y-3">
+                            <div className="flex items-center gap-2">
+                                <Skeleton className="h-8 w-8 rounded-lg" />
+                                <Skeleton className="h-3 w-16 rounded-lg" />
+                            </div>
+                            <Skeleton className="h-7 w-20 rounded-lg" />
+                            <Skeleton className="h-3 w-24 rounded-lg" />
+                        </div>
                     ))}
                 </div>
                 <Skeleton className="h-[400px] rounded-xl" />
@@ -284,9 +395,33 @@ export default function ProductionDetailPage() {
         );
     }
 
+    if (isError && !production) {
+        return (
+            <div className="flex flex-col items-center justify-center px-5 py-20 gap-4 pb-28">
+                <div className="w-14 h-14 rounded-2xl bg-red-500/10 flex items-center justify-center">
+                    <AlertTriangle className="h-6 w-6 text-red-500" />
+                </div>
+                <p className="text-[15px] font-semibold">Failed to load production</p>
+                <p className="text-[13px] text-muted-foreground text-center">
+                    Check your connection and try again.
+                </p>
+                <Button
+                    onClick={() => {
+                        setIsError(false);
+                        setLoading(true);
+                        fetchProduction();
+                    }}
+                    className="h-10 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[13px] font-semibold"
+                >
+                    Retry
+                </Button>
+            </div>
+        );
+    }
+
     if (!production) {
         return (
-            <div className="flex flex-col items-center justify-center py-32">
+            <div className="flex flex-col items-center justify-center py-32 pb-28">
                 <AlertTriangle className="h-12 w-12 text-muted-foreground mb-4" />
                 <h2 className="text-xl font-bold mb-2">Production Not Found</h2>
                 <Button
@@ -301,7 +436,14 @@ export default function ProductionDetailPage() {
         );
     }
 
-    const sc = statusConfig[production.status];
+    const unit = production.outputUnit ?? "units";
+    const sc = statusConfig[production.status as ProductionStatus] || {
+        label: "Closed",
+        color: "text-red-500",
+        bgColor: "bg-red-500/10",
+        borderColor: "border-red-500/20",
+        icon: Clock,
+    };
     const StatusIcon = sc.icon;
     const canEdit = isStaff || (isAdmin && overrideMode);
     const canEditProgress = canEdit && production.status !== "completed";
@@ -309,7 +451,7 @@ export default function ProductionDetailPage() {
 
     return (
         <motion.div
-            className="space-y-6 pb-6"
+            className="space-y-6 pb-28"
             variants={containerVariants}
             initial="hidden"
             animate="visible"
@@ -407,6 +549,17 @@ export default function ProductionDetailPage() {
                             Resume
                         </Button>
                     )}
+                    {isAdmin && canPerformActions && (
+                        <Button
+                            variant="outline"
+                            className="gap-2 rounded-xl"
+                            onClick={() => setAssignStaffOpen(true)}
+                            id="assign-staff-btn"
+                        >
+                            <Users className="h-4 w-4" />
+                            Assign Staff
+                        </Button>
+                    )}
                     <Button
                         variant="outline"
                         size="icon"
@@ -429,10 +582,10 @@ export default function ProductionDetailPage() {
                         </div>
                         <div className="flex items-center gap-3">
                             <span className="text-sm font-semibold">
-                                {production.producedQuantity}
+                                {formatNumber(production.producedQuantity)}
                                 <span className="text-muted-foreground font-normal">
                                     {" "}
-                                    / {production.expectedOutput} units
+                                    / {formatNumber(production.expectedOutput)} {unit}
                                 </span>
                             </span>
                             <span className="text-lg font-black text-indigo-600 dark:text-indigo-400">
@@ -459,7 +612,7 @@ export default function ProductionDetailPage() {
                         <div className="flex items-center gap-1.5 mt-2">
                             <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
                             <span className="text-xs font-semibold text-red-500">
-                                {production.rejectQuantity} units rejected
+                                {formatNumber(production.rejectQuantity)} {unit} rejected
                             </span>
                             <span className="text-xs text-muted-foreground">
                                 ({kpis?.wastage || 0}% wastage rate)
@@ -502,7 +655,7 @@ export default function ProductionDetailPage() {
                         {kpis?.materialConsumption.toLocaleString() || 0}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                        Total units consumed
+                        Total {unit} consumed
                     </p>
                 </div>
 
@@ -569,30 +722,14 @@ export default function ProductionDetailPage() {
                                         type="button"
                                         onClick={() => setOverrideMode(!overrideMode)}
                                         id="admin-override-toggle"
-                                        style={{
-                                            position: 'relative',
-                                            flexShrink: 0,
-                                            width: 44,
-                                            height: 24,
-                                            borderRadius: 9999,
-                                            border: 'none',
-                                            padding: 0,
-                                            cursor: 'pointer',
-                                            backgroundColor: overrideMode ? '#eab308' : '#4b5563',
-                                            transition: 'background-color 0.2s ease-in-out',
-                                        }}
+                                        className={cn(
+                                            "relative flex-shrink-0 w-[44px] h-[24px] rounded-full border-none p-0 cursor-pointer transition-colors duration-200",
+                                            overrideMode ? "bg-yellow-500" : "bg-gray-600 dark:bg-gray-500"
+                                        )}
                                     >
                                         <span
+                                            className="absolute top-[2px] left-[2px] w-[20px] h-[20px] rounded-full bg-white dark:bg-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-transform duration-200"
                                             style={{
-                                                position: 'absolute',
-                                                top: 2,
-                                                left: 2,
-                                                width: 20,
-                                                height: 20,
-                                                borderRadius: '50%',
-                                                backgroundColor: '#ffffff',
-                                                boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-                                                transition: 'transform 0.2s ease-in-out',
                                                 transform: overrideMode ? 'translateX(20px)' : 'translateX(0px)',
                                             }}
                                         />
@@ -629,7 +766,7 @@ export default function ProductionDetailPage() {
                                         </div>
                                     </div>
                                     <p className="text-xs text-muted-foreground mt-4">
-                                        Target: {production.expectedOutput} units &middot; Progress: {production.progressPercent}%
+                                        Target: {formatNumber(production.expectedOutput)} {unit} &middot; Progress: {production.progressPercent}%
                                     </p>
                                 </div>
                             ) : (
@@ -686,7 +823,7 @@ export default function ProductionDetailPage() {
                                                 </Button>
                                             </div>
                                             <p className="text-[10px] text-muted-foreground text-center">
-                                                Target: {production.expectedOutput} units
+                                                Target: {formatNumber(production.expectedOutput)} {unit}
                                             </p>
                                         </div>
 
@@ -732,6 +869,11 @@ export default function ProductionDetailPage() {
                                                     <Plus className="h-4 w-4" />
                                                 </Button>
                                             </div>
+                                            {rejectedExceedsProduced && (
+                                                <p className="text-[12px] text-red-500 mt-1 text-center">
+                                                    Rejected qty cannot exceed produced qty
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
 
@@ -758,7 +900,7 @@ export default function ProductionDetailPage() {
                                     <Button
                                         className="w-full h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold gap-2 shadow-lg shadow-indigo-500/20"
                                         onClick={handleUpdateProgress}
-                                        disabled={updating || production.status === "pending"}
+                                        disabled={updating || rejectedExceedsProduced || production.status === "pending"}
                                         id="save-progress-btn"
                                     >
                                         {updating ? (
@@ -847,7 +989,7 @@ export default function ProductionDetailPage() {
                                     <DetailItem label="Client" value={production.clientName} />
                                     <DetailItem
                                         label="Order Qty"
-                                        value={`${production.orderQuantity} units`}
+                                        value={`${formatNumber(production.orderQuantity)} ${unit}`}
                                     />
                                     <DetailItem
                                         label="Delivery"
@@ -986,6 +1128,12 @@ export default function ProductionDetailPage() {
                                     No activity yet.
                                 </p>
                             ) : (
+                                <div
+                                    ref={scrollContainerRef}
+                                    onScroll={handleTimelineScroll}
+                                    className="max-h-[320px] sm:max-h-[420px] overflow-y-auto overscroll-contain activity-timeline-scroll"
+                                    style={{ WebkitOverflowScrolling: "touch" as any, scrollbarWidth: "thin" as any, scrollbarColor: "rgba(255,255,255,0.08) transparent" }}
+                                >
                                 <div className="relative">
                                     {/* Timeline line */}
                                     <div className="absolute left-[15px] top-0 bottom-0 w-0.5 bg-border dark:bg-slate-700" />
@@ -1043,6 +1191,8 @@ export default function ProductionDetailPage() {
                                                 </div>
                                             ))}
                                     </div>
+                                </div>
+                                <div ref={timelineBottomRef} />
                                 </div>
                             )}
                         </div>
@@ -1114,18 +1264,18 @@ export default function ProductionDetailPage() {
                         <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 p-3 space-y-1">
                             <div className="flex justify-between text-sm">
                                 <span className="text-muted-foreground">Produced:</span>
-                                <span className="font-bold">{updateProduced} units</span>
+                                <span className="font-bold">{updateProduced} {unit}</span>
                             </div>
                             <div className="flex justify-between text-sm">
                                 <span className="text-muted-foreground">Rejected:</span>
                                 <span className="font-bold text-red-500">
-                                    {updateReject} units
+                                    {updateReject} {unit}
                                 </span>
                             </div>
                             <div className="flex justify-between text-sm">
                                 <span className="text-muted-foreground">Target:</span>
                                 <span className="font-bold">
-                                    {production.expectedOutput} units
+                                    {formatNumber(production.expectedOutput)} {unit}
                                 </span>
                             </div>
                         </div>
@@ -1155,6 +1305,19 @@ export default function ProductionDetailPage() {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* ─── Assign Staff Dialog ─────────────────────────── */}
+            <AssignStaffDialog
+                open={assignStaffOpen}
+                onOpenChange={setAssignStaffOpen}
+                productionId={productionId}
+                productionName={production.orderProductName}
+                currentStaffIds={production.assignedStaff?.map((s) => s.id) || []}
+                onSuccess={() => {
+                    formInitialized.current = false;
+                    fetchProduction();
+                }}
+            />
         </motion.div>
     );
 }

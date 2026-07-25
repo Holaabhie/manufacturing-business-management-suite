@@ -14,14 +14,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAppNotifications } from "@/lib/hooks/use-app-notifications";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 /* ─── Layout constants ───────────────────────── */
-const HEADER_H = 72;   // 60px header + 8px top margin + 4px gap
+const HEADER_H = 60; // 56px header + 4px gap
 const BOTTOM_NAV_H = 80; // mobile bottom nav height
 
 /* ─── Component ──────────────────────────────── */
 export function NotificationDropdown() {
   const router = useRouter();
+  const isMobile = useIsMobile();
   const {
     notifications: allNotifications,
     unreadCount,
@@ -130,7 +132,7 @@ export function NotificationDropdown() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed left-0 right-0 z-30 bg-black/30 dark:bg-black/50"
+            className="fixed left-0 right-0 z-30 bg-black/30 dark:bg-black/50 md:hidden"
             style={{
               top: `${HEADER_H}px`,
               bottom: `${BOTTOM_NAV_H}px`,
@@ -164,12 +166,12 @@ export function NotificationDropdown() {
               /* Glass surface — Dark */
               "dark:bg-[#1C1C1E]/95 dark:border-white/[0.10]",
               "dark:shadow-[0_8px_40px_rgba(0,0,0,0.5),0_2px_12px_rgba(0,0,0,0.3)]",
+              /* Mobile: full-bleed from top. Desktop: compact, anchored top-right near the bell. */
+              "left-3 right-3 md:left-auto md:right-4 md:w-[400px] md:max-h-[80vh]"
             )}
             style={{
               top: `${HEADER_H}px`,
-              left: 12,
-              right: 12,
-              maxHeight: `calc(100vh - ${HEADER_H}px - ${BOTTOM_NAV_H}px - 16px)`,
+              maxHeight: isMobile ? `calc(100vh - ${HEADER_H}px - ${BOTTOM_NAV_H}px - 16px)` : undefined,
               backdropFilter: "blur(40px) saturate(180%)",
               WebkitBackdropFilter: "blur(40px) saturate(180%)",
             }}

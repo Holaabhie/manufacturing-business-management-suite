@@ -19,7 +19,7 @@ export async function POST(req: Request) {
         organizationId: (user as any).organizationId || "",
         userId: user._id as string,
         userName: user.fullName || user.full_name || user.email,
-        userRole: user.role,
+        userRole: user.role as any,
         action: "Logged out",
         actionType: "logout",
         ipAddress,

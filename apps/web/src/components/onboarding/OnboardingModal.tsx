@@ -3,6 +3,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  springModal,
+  variantsBackdrop,
+  variantsModalScale,
+} from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import {
   ChevronRight,
@@ -285,31 +290,60 @@ export function OnboardingModal() {
   return (
     <AnimatePresence>
       {!closing && (
-        /* Full-screen backdrop overlay */
+        /* Full-screen overlay — two-layer approach to prevent blur repaint jank.
+         *
+         * WHY: On Android WebViews (Capacitor), animating opacity on an element
+         * that also has backdropFilter forces the blur to recompute per frame
+         * (blur region changes as the element fades). This causes dropped frames.
+         *
+         * FIX: Split into two siblings inside a static container:
+         *   Layer 1 — static blur div (never animates, compositor layer stays stable)
+         *   Layer 2 — motion.div that only fades the dim rgba color (no blur on this layer)
+         *   Layer 3 — spring-animated modal card (Tier B, unaffected)
+         */
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
+          key="onboarding-root"
+          variants={variantsBackdrop}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
           style={{
             position: "fixed",
             inset: 0,
             zIndex: 50,
-            background: "rgba(0,0,0,0.7)",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             padding: "16px",
           }}
         >
-          {/* Modal card — relative inside flex container */}
+          {/* Layer 1: static blur — never animates, GPU layer is stable */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+              zIndex: 0,
+            }}
+          />
+          {/* Layer 2: dim overlay — only opacity fades (no blur on this element) */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "rgba(0,0,0,0.7)",
+              zIndex: 1,
+            }}
+          />
+
+          {/* Modal card — Tier B spring */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.92, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.92, y: 20 }}
-            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            variants={variantsModalScale}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            transition={springModal}
             style={{
               position: "relative",
               zIndex: 51,
@@ -725,7 +759,7 @@ export function OnboardingModal() {
                               width: 20,
                               height: 20,
                               borderRadius: 10,
-                              background: "white",
+                              background: "var(--background)",
                               boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
                               transform: isEnabled
                                 ? "translateX(20px)"

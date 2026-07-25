@@ -12,7 +12,7 @@ export async function GET() {
   try {
     const user = await getSessionUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
     const linkedIds: string[] = (user as any).linkedAccountIds || [];
@@ -56,7 +56,7 @@ export async function GET() {
   } catch (e: any) {
     console.error("[linked-accounts GET] Error:", e);
     return NextResponse.json(
-      { error: e?.message ?? "Failed to fetch linked accounts" },
+      { success: false, message: e?.message ?? "Failed to fetch linked accounts" },
       { status: 500 }
     );
   }
@@ -74,7 +74,7 @@ export async function POST(req: Request) {
   try {
     const currentUser = await getSessionUser();
     if (!currentUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
     const body = await req.json().catch(() => null);
@@ -88,20 +88,21 @@ export async function POST(req: Request) {
 
     // Find the target user
     if (loginType === "staff") {
-      if (!employeeId || !password) {
+      const identifier = employeeId || email;
+      if (!identifier || !password) {
         return NextResponse.json(
-          { error: "Employee ID and password are required" },
+          { success: false, message: "Employee ID or email and password are required" },
           { status: 400 }
         );
       }
       targetUser = (await db.collection<UserDoc>("users").findOne({
-        employeeId,
+        $or: [{ email: identifier.toLowerCase() }, { employeeId: identifier }],
         role: "Staff",
       })) as UserDoc | null;
     } else {
       if (!email || !password) {
         return NextResponse.json(
-          { error: "Email and password are required" },
+          { success: false, message: "Email and password are required" },
           { status: 400 }
         );
       }
@@ -112,7 +113,7 @@ export async function POST(req: Request) {
 
     if (!targetUser) {
       return NextResponse.json(
-        { error: "Invalid credentials" },
+        { success: false, message: "Invalid credentials" },
         { status: 401 }
       );
     }
@@ -120,7 +121,7 @@ export async function POST(req: Request) {
     // Cannot link to self
     if (String(targetUser._id) === String(currentUser._id)) {
       return NextResponse.json(
-        { error: "Cannot link your own account" },
+        { success: false, message: "Cannot link your own account" },
         { status: 400 }
       );
     }
@@ -130,7 +131,7 @@ export async function POST(req: Request) {
       (currentUser as any).linkedAccountIds || [];
     if (existingLinked.includes(String(targetUser._id))) {
       return NextResponse.json(
-        { error: "This account is already linked" },
+        { success: false, message: "This account is already linked" },
         { status: 400 }
       );
     }
@@ -142,7 +143,7 @@ export async function POST(req: Request) {
     );
     if (!passwordValid) {
       return NextResponse.json(
-        { error: "Invalid credentials" },
+        { success: false, message: "Invalid credentials" },
         { status: 401 }
       );
     }
@@ -153,7 +154,7 @@ export async function POST(req: Request) {
       targetUser.status === "suspended"
     ) {
       return NextResponse.json(
-        { error: "That account is deactivated or suspended" },
+        { success: false, message: "That account is deactivated or suspended" },
         { status: 403 }
       );
     }
@@ -184,7 +185,7 @@ export async function POST(req: Request) {
   } catch (e: any) {
     console.error("[linked-accounts POST] Error:", e);
     return NextResponse.json(
-      { error: e?.message ?? "Failed to link account" },
+      { success: false, message: e?.message ?? "Failed to link account" },
       { status: 500 }
     );
   }

@@ -5,6 +5,7 @@ import { User } from "@/models/User";
 import { seedCompanyDefaults } from "@/modules/company/domain/seeder";
 import { z } from "zod";
 import { AuditLog } from "@/models/AuditLog";
+import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 
 // Step logic based on 1.4 Smart Flow
 const companySetupSchema = z.object({
@@ -44,13 +45,12 @@ export async function POST(req: NextRequest) {
     try {
         await connectToDatabase();
 
-        let userId = "system";
-        let organizationId = "default-org"; // Mocked out because auth middleware sets it
-
-        const sessionHeader = req.headers.get("x-user-id");
-        if (sessionHeader) userId = sessionHeader;
-        const orgHeader = req.headers.get("x-organization-id");
-        if (orgHeader) organizationId = orgHeader;
+        const sessionUser = await getSessionUser();
+        if (!sessionUser) {
+            return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+        }
+        const userId = sessionUser._id.toString();
+        const organizationId = getDataOwnerId(sessionUser);
 
         const data = await req.json();
         const parsed = companySetupSchema.parse(data);

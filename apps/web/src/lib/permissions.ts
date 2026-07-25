@@ -401,7 +401,7 @@ export const MODULE_ROUTE_MAP: Record<string, string[]> = {
     clients: ["/dashboard/clients"],
     invoices: ["/dashboard/billing", "/dashboard/payments"],
     staff: ["/dashboard/users"],
-    reports: ["/dashboard/analytics"],
+    reports: ["/dashboard/analytics", "/dashboard/reports/previous-years"],
     settings: ["/dashboard/settings", "/dashboard/profile"],
     team: ["/dashboard/settings/team"],
 };

@@ -13,7 +13,7 @@ export interface IPayment extends Document {
   razorpayPaymentId?: string;
   /** Razorpay signature (for server-side verification) */
   razorpaySignature?: string;
-  /** Amount in paise (INR). e.g., 49900 = ₹499.00 */
+  /** Amount in paise (INR). e.g., 49900 = INR 499.00 */
   amount: number;
   /** Currency code */
   currency: string;

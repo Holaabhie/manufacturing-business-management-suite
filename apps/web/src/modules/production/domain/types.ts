@@ -49,6 +49,12 @@ export interface Production {
     updatedAt: Date;
     completedAt: Date | null;
     createdBy: string;
+    assignedStaff?: string[];
+    assignmentLogs?: Array<{
+        assignedBy: string;
+        assignedStaff: string[];
+        timestamp: Date;
+    }>;
 }
 
 export interface CreateProductionDTO {
@@ -85,5 +91,9 @@ export interface IProductionRepository {
     update(id: string, userId: string, data: UpdateProductionDTO): Promise<Production | null>;
     delete(id: string, userId: string): Promise<boolean>;
     getProductionCount(userId: string): Promise<number>;
-    deductMaterials(materials: ProductionMaterial[]): Promise<void>;
+    deductMaterials(materials: ProductionMaterial[], context: {
+        productionId: string;
+        orderId: string;
+        orderProductName: string;
+    }): Promise<void>;
 }

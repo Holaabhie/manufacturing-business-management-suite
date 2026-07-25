@@ -27,6 +27,28 @@ export async function PUT(
     } = await request.json();
     const db = await getDb();
 
+    // ── Redirect status writes to production_status ──
+    // NOTE: The main edit dialog (useUpdateOrder) calls /api/v1/orders, not this
+    // legacy route. body.status is rarely sent here, but if it is, we redirect
+    // to production_status to avoid corrupting the legacy status field.
+    const statusFields: Record<string, unknown> = {};
+    if (body.status) {
+      const incomingStatus = body.status;
+      if (incomingStatus === "completed") {
+        statusFields.production_status = "completed";
+        statusFields.production_status_manual_override = true;
+        statusFields.completedAt = new Date();
+      } else if (incomingStatus === "processing") {
+        statusFields.production_status = "processing";
+        statusFields.processedAt = new Date();
+      } else if (incomingStatus === "cancelled" || incomingStatus === "on_hold" ||
+                 incomingStatus === "Cancelled" || incomingStatus === "On Hold") {
+        statusFields.status = incomingStatus;
+        statusFields.production_status = incomingStatus.toLowerCase().replace(/ /g, "_");
+      }
+      // Do NOT write body.status to the status field for processing/completed
+    }
+
     const result = await db.collection("orders").updateOne(
       { _id: new ObjectId(id), userId: getDataOwnerId(user) },
       {
@@ -40,7 +62,8 @@ export async function PUT(
           labour_cost: Number(labour_cost) || 0,
           overhead_cost: Number(overhead_cost) || 0,
           delivery_date: body.delivery_date || null,
-          status: body.status,
+          // status: body.status — REMOVED: redirected to production_status above
+          ...statusFields,
           payment_status: body.payment_status,
           updatedAt: new Date(),
         },

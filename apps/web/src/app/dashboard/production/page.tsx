@@ -1,7 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
+import { useCachedPage } from "@/hooks/useCachedPage";
 import { useRouter } from "next/navigation";
+import { usePaginatedSearch } from "@/hooks/usePaginatedSearch";
+import { useURLSyncedPagination } from "@/hooks/useURLSyncedPagination";
+
+import { TablePagination } from "@/components/ui/TablePagination";
+import { TableEmptyState } from "@/components/ui/TableEmptyState";
 import {
     Plus,
     Search,
@@ -16,7 +22,7 @@ import {
     MoreVertical,
     Trash2,
     Eye,
-    Filter,
+    X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -28,13 +34,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+
 import {
     Dialog,
     DialogContent,
@@ -64,17 +64,27 @@ const statusConfig: Record<
 // ─── Production Page ─────────────────────────────────────
 export default function ProductionPage() {
     const router = useRouter();
-    const { isAdmin } = useRole();
+    const { isAdmin, isStaff, loading: roleLoading } = useRole();
     const [productions, setProductions] = useState<Production[]>([]);
     const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("all");
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [productionToDelete, setProductionToDelete] = useState<string | null>(null);
+    const [restoredFromCache, setRestoredFromCache] = useState(false);
+
+    // ── Page State Persistence ───────────────────────────
+    const { restoreState, persist, scrollYRef } = useCachedPage({ pageKey: "production" });
+
+    // Staff users should see only their assigned productions
+    useEffect(() => {
+        if (!roleLoading && isStaff) {
+            router.replace("/dashboard/production/my-productions");
+        }
+    }, [roleLoading, isStaff, router]);
 
     const fetchProductions = async () => {
         try {
-            const res = await fetch("/api/v1/production");
+            const res = await fetch("/api/v1/production", { credentials: "include" });
             const json = await res.json();
             if (json.error) throw new Error(json.error.message);
             setProductions(json.data || []);
@@ -86,20 +96,28 @@ export default function ProductionPage() {
     };
 
     useEffect(() => {
-        fetchProductions();
+        // Don't fetch if staff (they'll be redirected)
+        if (roleLoading || isStaff) return;
+        if (!restoredFromCache) fetchProductions();
         const interval = setInterval(fetchProductions, 15000);
         return () => clearInterval(interval);
-    }, []);
+    }, [roleLoading, isStaff, restoredFromCache]);
 
     const handleDelete = async (id: string) => {
         try {
-            const res = await fetch(`/api/v1/production/${id}`, { method: "DELETE" });
-            const json = await res.json();
-            if (!res.ok || json.error) {
-                toast.error(json.error?.message || "Delete failed");
+            const res = await fetch(`/api/v1/production/${id}`, {
+                method: "DELETE",
+                credentials: "include",
+            });
+
+            // v1 envelope returns 204 No Content on success (no body)
+            if (res.status === 204 || res.ok) {
+                toast.success("Production closed");
+                setProductions((prev) => prev.filter((p) => p.id !== id));
             } else {
-                toast.success("Production deleted");
-                fetchProductions();
+                // Parse error body only for non-success
+                const json = await res.json().catch(() => null);
+                toast.error(json?.error?.message || "Delete failed");
             }
         } catch {
             toast.error("Delete failed");
@@ -109,34 +127,118 @@ export default function ProductionPage() {
         }
     };
 
-    // Computed stats
-    const stats = {
-        total: productions.length,
-        running: productions.filter((p) => p.status === "running").length,
-        pending: productions.filter((p) => p.status === "pending").length,
-        completed: productions.filter((p) => p.status === "completed").length,
-        paused: productions.filter((p) => p.status === "paused").length,
-        avgEfficiency:
-            productions.length > 0
-                ? Math.round(
-                    productions
-                        .filter((p) => p.expectedOutput > 0)
-                        .reduce((acc, p) => acc + (p.producedQuantity / p.expectedOutput) * 100, 0) /
-                    Math.max(productions.filter((p) => p.expectedOutput > 0).length, 1)
-                )
-                : 0,
-    };
+    // Filter out closed/deleted productions
+    const activeProductions = useMemo(() => productions.filter((p) => p.status !== "closed"), [productions]);
 
-    // Filtering
-    const filtered = productions.filter((p) => {
-        const matchesSearch =
-            p.orderProductName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            p.batchNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            p.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            p.machineName?.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = statusFilter === "all" || p.status === statusFilter;
-        return matchesSearch && matchesStatus;
+    // Computed stats
+    const stats = useMemo(() => {
+        return {
+            total: activeProductions.length,
+            running: activeProductions.filter((p) => p.status === "running").length,
+            pending: activeProductions.filter((p) => p.status === "pending").length,
+            completed: activeProductions.filter((p) => p.status === "completed").length,
+            paused: activeProductions.filter((p) => p.status === "paused").length,
+            avgEfficiency:
+                activeProductions.length > 0
+                    ? Math.round(
+                        activeProductions
+                            .filter((p) => p.expectedOutput > 0)
+                            .reduce((acc, p) => acc + (p.producedQuantity / p.expectedOutput) * 100, 0) /
+                        Math.max(activeProductions.filter((p) => p.expectedOutput > 0).length, 1)
+                    )
+                    : 0,
+        };
+    }, [activeProductions]);
+
+    // ── Date Filter ───────────────────────────────────────
+    type DateFilter = "today" | "week" | "month" | null;
+    const [dateFilter, setDateFilter] = useState<DateFilter>(null);
+
+    // ── Restore cached state on mount ─────────────────────
+    useEffect(() => {
+        const cached = restoreState();
+        if (cached) {
+            if (cached.statusFilter) setStatusFilter(cached.statusFilter as string);
+            if (cached.dateFilter !== undefined) setDateFilter(cached.dateFilter as DateFilter);
+            if (Array.isArray(cached.productions) && (cached.productions as any[]).length > 0) {
+                setProductions(cached.productions as Production[]);
+                setLoading(false);
+                setRestoredFromCache(true);
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // ── Persist on unmount ────────────────────────────────
+    const persistRef = useRef({ statusFilter, dateFilter, productions });
+    useEffect(() => { persistRef.current = { statusFilter, dateFilter, productions }; });
+    useEffect(() => {
+        return () => {
+            persist({ ...persistRef.current, scrollY: scrollYRef.current });
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // ── Status + Date pre-filter ──────────────────────────
+    const preFiltered = useMemo(() => {
+        const now = new Date();
+        return activeProductions.filter((p) => {
+            // Status filter
+            if (statusFilter !== "all" && p.status !== statusFilter) return false;
+            // Date filter
+            if (dateFilter) {
+                const created = new Date(p.createdAt);
+                if (dateFilter === "today") {
+                    return created.toDateString() === now.toDateString();
+                } else if (dateFilter === "week") {
+                    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                    return created >= weekAgo;
+                } else if (dateFilter === "month") {
+                    const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                    return created >= monthAgo;
+                }
+            }
+            return true;
+        });
+    }, [activeProductions, statusFilter, dateFilter]);
+
+    // ── URL Sync ─────────────────────────────────────────
+    const { initialPage, initialSearch, syncToURL } = useURLSyncedPagination();
+
+    // ── Pagination + Search ──────────────────────────────
+    const {
+        searchQuery,
+        handleSearch,
+        currentPage,
+        setCurrentPage,
+        totalPages,
+        totalFiltered,
+        paginatedData: filtered,
+        debouncedQuery,
+    } = usePaginatedSearch({
+        data: preFiltered,
+        searchFields: ["orderProductName", "batchNumber", "clientName", "machineName"],
+        pageSize: 15,
+        initialPage,
+        initialSearch,
     });
+
+    // ── Sync to URL on state change ──────────────────────
+    useEffect(() => {
+        syncToURL({
+            page: currentPage,
+            search: debouncedQuery,
+            filters: { status: statusFilter === "all" ? null : statusFilter, dateFilter },
+        });
+    }, [currentPage, debouncedQuery, statusFilter, dateFilter, syncToURL]);
+
+    // ── Scroll-to-top on page change ─────────────────────
+    const listContainerRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (currentPage > 1) {
+            listContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+        }
+    }, [currentPage]);
 
     const kpiCards = [
         {
@@ -191,7 +293,7 @@ export default function ProductionPage() {
     };
 
     return (
-        <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-6">
+        <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-4 md:space-y-6">
             {/* ── Header ── */}
             <motion.div variants={staggerItem} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
@@ -203,15 +305,183 @@ export default function ProductionPage() {
                         Track and manage active production runs
                     </p>
                 </div>
-                <IOSButton
-                    variant="filled"
-                    size="large"
-                    onClick={() => router.push("/dashboard/production/create")}
-                    icon={<Plus className="h-5 w-5" />}
-                    id="create-production-btn"
-                >
-                    Create Production
-                </IOSButton>
+            </motion.div>
+
+            {/* ── Enterprise Toolbar (3-Layer Hierarchy) ── */}
+            <motion.div
+                variants={staggerItem}
+                className={cn(
+                    // Normal flow on mobile, sticky on desktop
+                    "md:sticky md:top-[56px] md:z-30",
+                    "shrink-0 pb-4 -mx-1 px-1 mb-2",
+                    // Glass surface — only needed on desktop where sticky is active
+                    "md:bg-[rgba(243,245,249,0.88)] md:backdrop-blur-xl",
+                    "md:dark:bg-[rgba(8,12,24,0.82)]",
+                    // Bottom hairline
+                    "border-b border-[rgba(15,23,42,0.06)] dark:border-[rgba(255,255,255,0.06)]",
+                )}
+            >
+                <div className="space-y-3">
+
+                    {/* ROW 1 — Search + Primary Action */}
+                    <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+                        {/* Search Bar */}
+                        <div className="flex-1 relative">
+                            <Search
+                                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 pointer-events-none"
+                                size={16}
+                            />
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => handleSearch(e.target.value)}
+                                placeholder="Search by product, batch, client..."
+                                id="production-search"
+                                className={cn(
+                                    "w-full h-10 pl-10 pr-10 rounded-[12px] text-[14px] transition-all duration-200",
+                                    // Light mode
+                                    "bg-[rgba(255,255,255,0.72)] border border-[rgba(15,23,42,0.08)]",
+                                    "text-foreground placeholder:text-muted-foreground/60",
+                                    "shadow-[0_2px_8px_rgba(15,23,42,0.04)]",
+                                    // Dark mode
+                                    "dark:bg-[rgba(255,255,255,0.06)] dark:border-[rgba(255,255,255,0.08)]",
+                                    "dark:placeholder:text-[rgba(148,163,184,0.72)]",
+                                    "dark:shadow-none",
+                                    // Focus
+                                    "focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[rgba(37,99,235,0.15)]",
+                                    "dark:focus:border-[rgba(37,99,235,0.5)] dark:focus:ring-[rgba(37,99,235,0.2)]",
+                                    // Caret
+                                    "caret-primary",
+                                )}
+                            />
+                            {searchQuery && (
+                                <button
+                                    type="button"
+                                    onClick={() => handleSearch("")}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-muted-foreground transition-colors duration-150 cursor-pointer"
+                                    aria-label="Clear search"
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Create Production — PRIMARY CTA */}
+                        <div className="flex items-center gap-2 shrink-0">
+                            <button
+                                type="button"
+                                onClick={() => router.push("/dashboard/production/create")}
+                                className="flex items-center gap-2 h-10 px-4 rounded-[12px] bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-[13px] font-semibold shadow-[0_2px_8px_rgba(37,99,235,0.25)] hover:shadow-[0_4px_16px_rgba(37,99,235,0.35)] transition-all duration-200 active:scale-[0.98] cursor-pointer"
+                                id="create-production-toolbar-btn"
+                            >
+                                <Plus size={15} />
+                                <span className="hidden sm:inline">Create Production</span>
+                                <span className="sm:hidden">Create</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* ROW 2 + ROW 3 — Filters + Result Count */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+                        {/* LEFT — Status Pills + Date Dropdown */}
+                        <div className="flex flex-wrap items-center gap-1.5">
+                            {/* Status Filter Pills */}
+                            {([
+                                { key: "all", label: "All" },
+                                { key: "running", label: "Running" },
+                                { key: "pending", label: "Pending" },
+                                { key: "paused", label: "Paused" },
+                                { key: "completed", label: "Completed" },
+                            ] as { key: string; label: string }[]).map((item) => (
+                                <button
+                                    key={item.key}
+                                    type="button"
+                                    onClick={() => {
+                                        setStatusFilter(item.key);
+                                        setCurrentPage(1);
+                                    }}
+                                    className={cn(
+                                        "h-8 px-3.5 rounded-[10px] text-[12.5px] font-medium border transition-all duration-150 cursor-pointer",
+                                        statusFilter === item.key
+                                            ? "bg-[#2563EB] text-white border-transparent shadow-sm shadow-[rgba(37,99,235,0.25)]"
+                                            : cn(
+                                                "bg-[rgba(255,255,255,0.60)] hover:bg-white text-[#64748B] hover:text-[#0F172A]",
+                                                "border-[rgba(15,23,42,0.08)] hover:border-[rgba(15,23,42,0.14)]",
+                                                "dark:bg-[rgba(255,255,255,0.06)] dark:hover:bg-[rgba(255,255,255,0.10)]",
+                                                "dark:text-[#94A3B8] dark:hover:text-[#E2E8F0]",
+                                                "dark:border-[rgba(255,255,255,0.08)] dark:hover:border-[rgba(255,255,255,0.14)]",
+                                            )
+                                    )}
+                                >
+                                    {item.label}
+                                </button>
+                            ))}
+
+                            {/* Divider between pills and date dropdown */}
+                            <div className="hidden sm:block w-px h-5 bg-[rgba(15,23,42,0.10)] dark:bg-[rgba(255,255,255,0.08)] mx-1" />
+
+                            {/* Date Range Dropdown */}
+                            <select
+                                value={dateFilter ?? ""}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setDateFilter(val === "" ? null : val as DateFilter);
+                                    setCurrentPage(1);
+                                }}
+                                className={cn(
+                                    "h-8 pl-3 pr-8 min-w-[130px] max-w-[170px] rounded-[10px] text-[12.5px] font-medium",
+                                    "transition-all duration-150 cursor-pointer appearance-none",
+                                    "bg-[rgba(255,255,255,0.60)] hover:bg-white text-[#64748B]",
+                                    "border border-[rgba(15,23,42,0.08)] hover:border-[rgba(15,23,42,0.14)]",
+                                    "dark:bg-[rgba(255,255,255,0.06)] dark:hover:bg-[rgba(255,255,255,0.10)]",
+                                    "dark:text-[#94A3B8] dark:border-[rgba(255,255,255,0.08)] dark:hover:border-[rgba(255,255,255,0.14)]",
+                                    "focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[rgba(37,99,235,0.12)]",
+                                    "dark:focus:border-[rgba(37,99,235,0.5)] dark:focus:ring-[rgba(37,99,235,0.2)]",
+                                    "bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%2712%27%20height=%2712%27%20fill=%27none%27%20viewBox=%270%200%2024%2024%27%3E%3Cpath%20stroke=%27%2364748B%27%20stroke-linecap=%27round%27%20stroke-linejoin=%27round%27%20stroke-width=%272%27%20d=%27m6%209%206%206%206-6%27/%3E%3C/svg%3E')]",
+                                    "bg-no-repeat bg-[right_10px_center]",
+                                )}
+                                id="production-date-filter"
+                            >
+                                <option value="">All Time</option>
+                                <option value="today">Today</option>
+                                <option value="week">This Week</option>
+                                <option value="month">This Month</option>
+                            </select>
+
+                            {/* Clear — only when filters/search are active */}
+                            {(searchQuery || statusFilter !== "all" || dateFilter) && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        handleSearch("");
+                                        setStatusFilter("all");
+                                        setDateFilter(null);
+                                        setCurrentPage(1);
+                                    }}
+                                    className={cn(
+                                        "h-8 px-3 rounded-[10px] text-[12.5px] font-medium transition-all duration-150 cursor-pointer",
+                                        "text-muted-foreground/70 hover:text-muted-foreground",
+                                        "border border-dashed",
+                                        "border-[rgba(15,23,42,0.12)] hover:border-[rgba(15,23,42,0.20)]",
+                                        "dark:border-[rgba(255,255,255,0.10)] dark:hover:border-[rgba(255,255,255,0.20)]",
+                                        "bg-transparent hover:bg-[rgba(255,255,255,0.5)] dark:hover:bg-[rgba(255,255,255,0.06)]",
+                                    )}
+                                >
+                                    Clear
+                                </button>
+                            )}
+                        </div>
+
+                        {/* RIGHT — Result Count (passive metadata) */}
+                        <p className="text-[12.5px] text-muted-foreground/70 font-medium whitespace-nowrap shrink-0 sm:text-right tabular-nums">
+                            {statusFilter !== "all" || dateFilter
+                                ? `Showing ${totalFiltered} of ${productions.length} productions`
+                                : `${totalFiltered} of ${productions.length} productions`
+                            }
+                        </p>
+                    </div>
+
+                </div>
             </motion.div>
 
             {/* ── KPI Cards ── */}
@@ -233,79 +503,18 @@ export default function ProductionPage() {
                 </div>
             </div>
 
-            {/* ── Filters ── */}
-            <motion.div variants={staggerItem} className="workflow-command-bar">
-                <div className="relative flex-1 max-w-sm">
-                    <Search className="absolute left-[10px] top-1/2 -translate-y-1/2 h-[16px] w-[16px] text-muted-foreground" />
-                    <input
-                        placeholder="Search by product, batch, client..."
-                        className="w-full h-[34px] rounded-md bg-muted pl-[34px] pr-4 text-[13px] text-foreground placeholder:text-muted-foreground outline-none border border-border focus:ring-2 focus:ring-primary/30 transition-shadow"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        id="production-search"
-                    />
-                </div>
-                <div className="flex items-center gap-2">
-                    {[
-                        { key: "running", label: "Running" },
-                        { key: "pending", label: "Pending" },
-                        { key: "completed", label: "Completed" },
-                    ].map((item) => (
-                        <button
-                            key={item.key}
-                            type="button"
-                            onClick={() => setStatusFilter(item.key)}
-                            className={cn(
-                                "px-3 h-8 rounded-md text-xs font-medium transition-colors cursor-pointer",
-                                statusFilter === item.key
-                                    ? "bg-primary text-white"
-                                    : "bg-muted text-muted-foreground hover:bg-accent"
-                            )}
-                        >
-                            {item.label}
-                        </button>
-                    ))}
-                </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-[180px] h-[34px] rounded-md bg-muted border-border text-[13px]" id="status-filter">
-                        <div className="flex items-center gap-2">
-                            <Filter className="h-3.5 w-3.5 text-muted-foreground" />
-                            <SelectValue placeholder="Filter status" />
-                        </div>
-                    </SelectTrigger>
-                    <SelectContent className="rounded-lg">
-                        <SelectItem value="all" className="rounded-md">All Status</SelectItem>
-                        <SelectItem value="pending" className="rounded-md">Pending</SelectItem>
-                        <SelectItem value="running" className="rounded-md">Running</SelectItem>
-                        <SelectItem value="paused" className="rounded-md">Paused</SelectItem>
-                        <SelectItem value="completed" className="rounded-md">Completed</SelectItem>
-                    </SelectContent>
-                </Select>
-                {(searchTerm || statusFilter !== "all") && (
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setSearchTerm("");
-                            setStatusFilter("all");
-                        }}
-                        className="h-8 px-3 rounded-md text-xs font-medium text-muted-foreground bg-muted hover:bg-accent cursor-pointer"
-                    >
-                        Clear
-                    </button>
-                )}
-            </motion.div>
-
             {/* ── Productions List ── */}
             <motion.div variants={staggerItem}>
-                <IOSCard variant="elevated" padding="none" className="overflow-hidden">
+                <IOSCard variant="elevated" padding="none" className="md:overflow-hidden">
                     {/* Header Row */}
-                    <div className="hidden md:grid grid-cols-[1fr_120px_1fr_160px_120px_60px] gap-4 px-5 py-3 border-b border-border bg-muted/50">
+                    <div className="hidden md:grid grid-cols-[1fr_120px_1fr_160px_120px_60px] gap-4 px-5 py-3 border-b border-border bg-muted/50 sticky top-0 z-10 backdrop-blur-sm">
                         {["Production", "Status", "Progress", "Machine / Operator", "Order", ""].map((h) => (
                             <span key={h} className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">{h}</span>
                         ))}
                     </div>
 
-                    {/* Body */}
+                    {/* Body — no max-h on mobile (page scrolls), contained scroll on desktop */}
+                    <div ref={listContainerRef} className="md:max-h-[calc(100vh-280px)] md:overflow-auto md:overscroll-contain">
                     {loading ? (
                         <div className="p-5 space-y-4">
                             {Array.from({ length: 4 }).map((_, i) => (
@@ -320,31 +529,21 @@ export default function ProductionPage() {
                             ))}
                         </div>
                     ) : filtered.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-16 text-center">
-                            <div className="w-14 h-14 rounded-lg bg-muted flex items-center justify-center mb-4">
-                                <Cog className="h-6 w-6 text-muted-foreground" />
-                            </div>
-                            <h3 className="text-[16px] font-semibold text-foreground mb-1">No productions found</h3>
-                            <p className="text-[13px] text-muted-foreground mb-6 max-w-sm">
-                                {searchTerm || statusFilter !== "all"
-                                    ? "Try adjusting your filters to find what you're looking for."
-                                    : "Create your first production to start tracking runs."}
-                            </p>
-                            {!searchTerm && statusFilter === "all" && (
-                                <IOSButton
-                                    variant="filled"
-                                    size="medium"
-                                    onClick={() => router.push("/dashboard/production/create")}
-                                    icon={<Plus className="h-4 w-4" />}
-                                >
-                                    Create First Production
-                                </IOSButton>
-                            )}
-                        </div>
+                        <TableEmptyState
+                            variant={searchQuery ? "no-results" : "no-data"}
+                            title={searchQuery ? "No productions match your search" : "No productions found"}
+                            subtitle={searchQuery || statusFilter !== "all" || dateFilter
+                                ? "Try adjusting your filters to find what you're looking for."
+                                : "Create your first production to start tracking runs."}
+                            action={!searchQuery && statusFilter === "all" && !dateFilter ? {
+                                label: "Create First Production",
+                                onClick: () => router.push("/dashboard/production/create"),
+                            } : undefined}
+                        />
                     ) : (
                         <div className="divide-y divide-border">
                             {filtered.map((production, index) => {
-                                const sc = statusConfig[production.status];
+                                const sc = statusConfig[production.status as ProductionStatus] || { label: "Closed", color: "red" as const, icon: X };
 
                                 return (
                                     <motion.div
@@ -423,7 +622,7 @@ export default function ProductionPage() {
                                                 {production.orderId ? `#${production.orderId.slice(0, 8)}` : "—"}
                                             </span>
                                             <span className="text-[11px] text-muted-foreground">
-                                                {production.orderQuantity} units
+                                                {production.orderQuantity} {production.outputUnit ?? "units"}
                                             </span>
                                         </div>
 
@@ -432,7 +631,7 @@ export default function ProductionPage() {
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                     <button
-                                                        className="h-[34px] w-[34px] rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-muted transition-all cursor-pointer"
+                                                        className="h-[34px] w-[34px] rounded-md flex items-center justify-center md:opacity-0 md:group-hover:opacity-100 hover:bg-muted transition-all cursor-pointer"
                                                     >
                                                         <MoreVertical className="h-4 w-4 text-muted-foreground" />
                                                     </button>
@@ -463,7 +662,17 @@ export default function ProductionPage() {
                             })}
                         </div>
                     )}
+                    </div>
                 </IOSCard>
+
+                {/* ── Pagination ── */}
+                <TablePagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={totalFiltered}
+                    pageSize={15}
+                    onPageChange={setCurrentPage}
+                />
             </motion.div>
 
             {/* ── Delete Dialog ── */}

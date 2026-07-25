@@ -123,7 +123,7 @@ export function CreateInvoiceExample() {
 
                 <div>
                     <label htmlFor="amount" className="text-sm font-medium">
-                        Amount (₹)
+                        Amount (INR)
                     </label>
                     <input
                         id="amount"

@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 /* ── IOSInput ─────────────────────────────────── */
 export interface IOSInputProps
     extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> {
-    label?: string;
+    label?: React.ReactNode;
     error?: string;
     helperText?: string;
     leftIcon?: React.ReactNode;
@@ -82,7 +82,7 @@ IOSInput.displayName = 'IOSInput';
 /* ── IOSTextarea ──────────────────────────────── */
 export interface IOSTextareaProps
     extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
-    label?: string;
+    label?: React.ReactNode;
     error?: string;
     helperText?: string;
 }
@@ -135,7 +135,7 @@ export interface IOSSelectOption {
 
 export interface IOSSelectProps
     extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>, 'size'> {
-    label?: string;
+    label?: React.ReactNode;
     error?: string;
     options: IOSSelectOption[];
     placeholder?: string;
@@ -161,6 +161,7 @@ export const IOSSelect = React.forwardRef<HTMLSelectElement, IOSSelectProps>(
                             'pl-4 pr-10',
                             'transition-shadow duration-200',
                             'focus:ring-2 focus:ring-[var(--primary)]',
+                            'dark:[color-scheme:dark] [color-scheme:light]',
                             error && 'ring-2 ring-[var(--destructive)]',
                             'disabled:opacity-40 cursor-pointer',
                             className
@@ -173,7 +174,7 @@ export const IOSSelect = React.forwardRef<HTMLSelectElement, IOSSelectProps>(
                             </option>
                         )}
                         {options.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
+                            <option key={opt.value} value={opt.value} className="bg-[var(--background)] text-[var(--foreground)]">
                                 {opt.label}
                             </option>
                         ))}
@@ -259,7 +260,7 @@ export interface IOSRadioGroupProps {
     value?: string;
     onValueChange?: (value: string) => void;
     options: IOSRadioOption[];
-    label?: string;
+    label?: React.ReactNode;
     disabled?: boolean;
     className?: string;
 }

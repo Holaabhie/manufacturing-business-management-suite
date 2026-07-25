@@ -94,10 +94,18 @@ export interface Order {
     estimatedMargin?: number;
     priority?: 'low' | 'normal' | 'high' | 'urgent';
     notes?: string;
+    paymentTerms?: string;
+    creditDays?: number;
+    gstApplicable?: boolean;
+    gstPercent?: number;
     createdAt: Date;
     updatedAt: Date;
     processedAt?: Date | null;
     completedAt?: Date | null;
+    /** Dedicated production status — decoupled from order.status */
+    productionStatus?: string;
+    /** When true, an Admin force-completed production via UI — production-sync will not overwrite */
+    productionStatusManualOverride?: boolean;
 }
 
 export interface CreateOrderDTO {

@@ -377,7 +377,7 @@ export default function FolioPage() {
   }, [expenses]);
 
   // ─── Helpers ────────────────────────────────────────
-  const formatCurrency = (v: number) => `₹${v.toLocaleString("en-IN")}`;
+  const formatCurrency = (v: number) => `\u20B9${v.toLocaleString("en-IN")}`;
   const formatDate = (d: string) => {
     try {
       return new Date(d).toLocaleDateString("en-IN", {
@@ -883,21 +883,22 @@ export default function FolioPage() {
 
       {/* ════════════ EXPENSE MODAL ════════════ */}
       <Dialog open={expenseModalOpen} onOpenChange={setExpenseModalOpen}>
-        <DialogContent className="sm:max-w-[480px] rounded-[20px] p-0 gap-0 overflow-hidden border-[var(--border)] bg-[var(--card)]">
-          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "16px 24px 12px", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-            <div style={{ width: 40, height: 40, borderRadius: 8, background: "rgba(37, 99, 235, 0.12)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Receipt className="h-[18px] w-[18px] text-[#60a5fa]" />
+        <DialogContent className="sm:max-w-[480px] !rounded-3xl !p-6 gap-0 overflow-hidden border border-gray-100 dark:border-white/10 bg-white dark:bg-[#161B27] shadow-xl shadow-black/5 dark:shadow-black/40">
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-11 h-11 rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+              <Receipt className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "#f1f5f9", lineHeight: "22px", margin: 0 }}>{editingExpense ? "Edit Expense" : "Add Expense"}</DialogTitle>
-              <p style={{ fontSize: 13, color: "#64748b", lineHeight: "18px", margin: "2px 0 0" }}>Track business spending</p>
+              <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-white">{editingExpense ? "Edit Expense" : "Add Expense"}</DialogTitle>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Track business spending</p>
             </div>
           </div>
 
-          <div className="px-6 pb-6 space-y-4">
+          <div className="space-y-4">
             {/* Date */}
-            <div>
-              <label className="block text-[13px] font-medium text-[var(--muted-foreground)] mb-1.5">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                 Date
               </label>
               <input
@@ -906,17 +907,13 @@ export default function FolioPage() {
                 onChange={(e) =>
                   setExpenseForm((p) => ({ ...p, date: e.target.value }))
                 }
-                className="w-full h-[44px] px-4 rounded-[10px] text-[15px] text-[var(--foreground)] transition-all duration-200 outline-none"
-                style={{
-                  background: "var(--input)",
-                  border: "1px solid var(--border)",
-                }}
+                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm transition-all"
               />
             </div>
 
             {/* Category */}
-            <div>
-              <label className="block text-[13px] font-medium text-[var(--muted-foreground)] mb-1.5">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                 Category
               </label>
               <select
@@ -924,11 +921,7 @@ export default function FolioPage() {
                 onChange={(e) =>
                   setExpenseForm((p) => ({ ...p, category: e.target.value }))
                 }
-                className="w-full h-[44px] px-4 rounded-[10px] text-[15px] text-[var(--foreground)] transition-all duration-200 outline-none appearance-none cursor-pointer"
-                style={{
-                  background: "var(--input)",
-                  border: "1px solid var(--border)",
-                }}
+                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm transition-all appearance-none cursor-pointer"
               >
                 {CATEGORIES.map((c) => (
                   <option key={c} value={c}>
@@ -939,9 +932,9 @@ export default function FolioPage() {
             </div>
 
             {/* Amount */}
-            <div>
-              <label className="block text-[13px] font-medium text-[var(--muted-foreground)] mb-1.5">
-                Amount (₹)
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                Amount (INR)
               </label>
               <input
                 type="number"
@@ -952,17 +945,13 @@ export default function FolioPage() {
                   setExpenseForm((p) => ({ ...p, amount: e.target.value }))
                 }
                 placeholder="0.00"
-                className="w-full h-[44px] px-4 rounded-[10px] text-[15px] text-[var(--foreground)] transition-all duration-200 outline-none placeholder:text-[var(--muted-foreground)]"
-                style={{
-                  background: "var(--input)",
-                  border: "1px solid var(--border)",
-                }}
+                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm transition-all"
               />
             </div>
 
             {/* Description */}
-            <div>
-              <label className="block text-[13px] font-medium text-[var(--muted-foreground)] mb-1.5">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                 Description
               </label>
               <input
@@ -972,30 +961,21 @@ export default function FolioPage() {
                   setExpenseForm((p) => ({ ...p, description: e.target.value }))
                 }
                 placeholder="What was this for?"
-                className="w-full h-[44px] px-4 rounded-[10px] text-[15px] text-[var(--foreground)] transition-all duration-200 outline-none placeholder:text-[var(--muted-foreground)]"
-                style={{
-                  background: "var(--input)",
-                  border: "1px solid var(--border)",
-                }}
+                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm transition-all"
               />
             </div>
 
             {/* Actions */}
-            <div className="flex justify-end gap-3 pt-2">
+            <div className="flex gap-3 pt-2">
               <DialogClose asChild>
-                <button className="px-5 py-2.5 rounded-[10px] text-[15px] font-medium text-[var(--muted-foreground)] hover:bg-[var(--muted)] transition-all cursor-pointer">
+                <button className="flex-1 py-3 px-4 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 transition-all cursor-pointer">
                   Cancel
                 </button>
               </DialogClose>
               <button
                 onClick={handleSaveExpense}
                 disabled={savingExpense || !expenseForm.amount || Number(expenseForm.amount) <= 0}
-                className="px-5 py-2.5 rounded-[10px] text-[15px] font-semibold text-white transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.97]"
-                style={{
-                  background:
-                    "linear-gradient(135deg, var(--primary), var(--chart-5))",
-                  boxShadow: "0 4px 14px rgba(0, 122, 255, 0.3)",
-                }}
+                className="flex-1 py-3 px-4 bg-[#2563EB] hover:bg-[#1D51C8] text-white font-semibold rounded-xl transition-all duration-150 shadow-sm shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.97] cursor-pointer text-sm"
               >
                 {savingExpense
                   ? "Saving…"
@@ -1010,21 +990,22 @@ export default function FolioPage() {
 
       {/* ════════════ NOTE MODAL ════════════ */}
       <Dialog open={noteModalOpen} onOpenChange={setNoteModalOpen}>
-        <DialogContent className="sm:max-w-[520px] rounded-[20px] p-0 gap-0 overflow-hidden border-[var(--border)] bg-[var(--card)]">
-          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "16px 24px 12px", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-            <div style={{ width: 40, height: 40, borderRadius: 8, background: "rgba(139, 92, 246, 0.12)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <StickyNote className="h-[18px] w-[18px] text-[#c084fc]" />
+        <DialogContent className="sm:max-w-[520px] !rounded-3xl !p-6 gap-0 overflow-hidden border border-gray-100 dark:border-white/10 bg-white dark:bg-[#161B27] shadow-xl shadow-black/5 dark:shadow-black/40">
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-11 h-11 rounded-2xl bg-purple-50 dark:bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+              <StickyNote className="w-5 h-5 text-purple-600 dark:text-purple-400" />
             </div>
             <div>
-              <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "#f1f5f9", lineHeight: "22px", margin: 0 }}>{editingNote ? "Edit Note" : "New Note"}</DialogTitle>
-              <p style={{ fontSize: 13, color: "#64748b", lineHeight: "18px", margin: "2px 0 0" }}>Quick business notes</p>
+              <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-white">{editingNote ? "Edit Note" : "New Note"}</DialogTitle>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Quick business notes</p>
             </div>
           </div>
 
-          <div className="px-6 pb-6 space-y-4">
+          <div className="space-y-4">
             {/* Title */}
-            <div>
-              <label className="block text-[13px] font-medium text-[var(--muted-foreground)] mb-1.5">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                 Title
               </label>
               <input
@@ -1034,17 +1015,13 @@ export default function FolioPage() {
                   setNoteForm((p) => ({ ...p, title: e.target.value }))
                 }
                 placeholder="Quick title…"
-                className="w-full h-[44px] px-4 rounded-[10px] text-[15px] text-[var(--foreground)] transition-all duration-200 outline-none placeholder:text-[var(--muted-foreground)]"
-                style={{
-                  background: "var(--input)",
-                  border: "1px solid var(--border)",
-                }}
+                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm transition-all"
               />
             </div>
 
             {/* Body */}
-            <div>
-              <label className="block text-[13px] font-medium text-[var(--muted-foreground)] mb-1.5">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                 Note
               </label>
               <textarea
@@ -1054,18 +1031,14 @@ export default function FolioPage() {
                 }
                 placeholder="Write your note here…"
                 rows={6}
-                className="w-full px-4 py-3 rounded-[10px] text-[15px] text-[var(--foreground)] leading-[22px] transition-all duration-200 outline-none resize-none placeholder:text-[var(--muted-foreground)]"
-                style={{
-                  background: "var(--input)",
-                  border: "1px solid var(--border)",
-                }}
+                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 text-sm resize-none min-h-[120px] transition-all"
               />
             </div>
 
             {/* Actions */}
-            <div className="flex justify-end gap-3 pt-2">
+            <div className="flex gap-3 pt-2">
               <DialogClose asChild>
-                <button className="px-5 py-2.5 rounded-[10px] text-[15px] font-medium text-[var(--muted-foreground)] hover:bg-[var(--muted)] transition-all cursor-pointer">
+                <button className="flex-1 py-3 px-4 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 transition-all cursor-pointer">
                   Cancel
                 </button>
               </DialogClose>
@@ -1075,12 +1048,7 @@ export default function FolioPage() {
                   savingNote ||
                   (!noteForm.title.trim() && !noteForm.body.trim())
                 }
-                className="px-5 py-2.5 rounded-[10px] text-[15px] font-semibold text-white transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.97]"
-                style={{
-                  background:
-                    "linear-gradient(135deg, var(--primary), var(--chart-5))",
-                  boxShadow: "0 4px 14px rgba(0, 122, 255, 0.3)",
-                }}
+                className="flex-1 py-3 px-4 bg-[#2563EB] hover:bg-[#1D51C8] text-white font-semibold rounded-xl transition-all duration-150 shadow-sm shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.97] cursor-pointer text-sm"
               >
                 {savingNote
                   ? "Saving…"

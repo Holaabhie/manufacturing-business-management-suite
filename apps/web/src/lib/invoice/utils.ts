@@ -9,15 +9,15 @@ import type { InvoiceLineItem, InvoicePayload, InvoiceTotals, TaxType } from "./
 
 // ─── Currency Formatting ──────────────────────────────────────
 
-/** Format number as INR with ₹ symbol: ₹1,23,456.78 */
+/** Format number as INR with \u20B9 symbol: \u20B91,23,456.78 */
 export function formatINR(amount: number): string {
-    return "₹" + amount.toLocaleString("en-IN", {
+    return "\u20B9" + amount.toLocaleString("en-IN", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     });
 }
 
-/** Format number without ₹ symbol (for table cells) */
+/** Format number without \u20B9 symbol (for table cells) */
 export function formatNumber(n: number): string {
     return n.toLocaleString("en-IN", {
         minimumFractionDigits: 2,

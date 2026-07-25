@@ -62,6 +62,11 @@ import {
     Loader2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+    variantsFadeUp,
+    variantsStaggerContainer,
+    variantsStaggerItem,
+} from "@/lib/motion";
 
 interface EnterpriseDataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[];
@@ -237,9 +242,10 @@ export function EnterpriseDataTable<TData, TValue>({
             <AnimatePresence>
                 {showBulkActions && selectedRowCount > 0 && (
                     <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
+                        variants={variantsFadeUp}
+                        initial="hidden"
+                        animate="visible"
+                        exit="exit"
                         className="flex items-center justify-between px-4 py-2.5 bg-primary/5 border border-primary/20 rounded-lg"
                     >
                         <div className="flex items-center gap-2">
@@ -333,25 +339,29 @@ export function EnterpriseDataTable<TData, TValue>({
                                 </TableRow>
                             ))
                         ) : table.getRowModel().rows?.length ? (
-                            table.getRowModel().rows.map((row, idx) => (
-                                <motion.tr
-                                    key={row.id}
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    transition={{ delay: idx * 0.02 }}
-                                    className={cn(
-                                        "border-b transition-colors hover:bg-muted/50",
-                                        row.getIsSelected() && "bg-primary/5"
-                                    )}
-                                    data-state={row.getIsSelected() && "selected"}
-                                >
-                                    {row.getVisibleCells().map((cell) => (
-                                        <TableCell key={cell.id} className="text-sm">
-                                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                        </TableCell>
-                                    ))}
-                                </motion.tr>
-                            ))
+                            <motion.tbody
+                                variants={variantsStaggerContainer}
+                                initial="hidden"
+                                animate="visible"
+                            >
+                                {table.getRowModel().rows.map((row) => (
+                                    <motion.tr
+                                        key={row.id}
+                                        variants={variantsStaggerItem}
+                                        className={cn(
+                                            "border-b transition-colors hover:bg-muted/50",
+                                            row.getIsSelected() && "bg-primary/5"
+                                        )}
+                                        data-state={row.getIsSelected() && "selected"}
+                                    >
+                                        {row.getVisibleCells().map((cell) => (
+                                            <TableCell key={cell.id} className="text-sm">
+                                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                            </TableCell>
+                                        ))}
+                                    </motion.tr>
+                                ))}
+                            </motion.tbody>
                         ) : (
                             // Empty state
                             <TableRow>

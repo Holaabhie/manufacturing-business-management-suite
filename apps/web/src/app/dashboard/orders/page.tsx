@@ -98,8 +98,9 @@ import { staggerContainer, staggerItem } from "@/styles/animations";
 import { StatWidget } from "@/components/ui/StatWidget";
 import { TogglePill } from "@/components/ui/glass";
 import { CompletionConfirmationModal, InvoicePreviewModal } from "@/components/orders/CompletionModals";
+import { useQuery } from "@tanstack/react-query";
 
-// â”€â”€â”€ React Query Hooks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ──────────────── React Query Hooks ──────────────────────────────────────────
 import {
   useOrders,
   useClients,
@@ -109,6 +110,7 @@ import {
   useDeleteOrder,
   useRecordPayment,
   useUpdateOrderStatus,
+  queryKeys,
 } from "@/lib/hooks/use-orders";
 
 function OrdersContent() {
@@ -159,6 +161,29 @@ function OrdersContent() {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [paymentOrder, setPaymentOrder] = useState<any>(null);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+
+  // ─── Fresh order data for payment modal (Bug #2 fix) ───
+  const paymentOrderId = paymentOrder?.id as string | undefined;
+  const { data: freshOrder } = useQuery<Record<string, unknown>>({
+    queryKey: queryKeys.order(paymentOrderId ?? ""),
+    queryFn: () => fetch(`/api/v1/orders/${paymentOrderId}`).then(r => {
+      if (!r.ok) throw new Error("Failed to fetch order");
+      return r.json().then(json => json.data ?? json);
+    }),
+    staleTime: 0,
+    enabled: !!paymentOrderId && isPaymentDialogOpen,
+  });
+
+  useEffect(() => {
+    if (!freshOrder) return;
+    const total = Number(freshOrder.totalAmount ?? 0);
+    const paid = Number(freshOrder.totalPaid ?? 0);
+    const balance = isNaN(total) || isNaN(paid) ? 0 : total - paid;
+    setPaymentFormData(prev => ({
+      ...prev,
+      amount: String(balance > 0 ? balance : 0),
+    }));
+  }, [freshOrder]);
 
   // â”€â”€â”€ Completion Confirmation Modal state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [completionOrder, setCompletionOrder] = useState<any>(null);
@@ -734,17 +759,23 @@ function OrdersContent() {
     updateOrderStatus.isPending;
 
   // â”€â”€â”€ Status helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const getStatusBadgeColor = (status: string): "green" | "orange" | "gray" | "blue" => {
+  const getStatusBadgeColor = (status: string): "green" | "orange" | "gray" | "blue" | "red" | "purple" => {
     if (status === "completed") return "green";
     if (status === "processing") return "orange";
+    if (status === "awaiting_payment") return "orange";
     if (status === "active") return "blue";
+    if (status === "cancelled") return "red";
+    if (status === "on_hold") return "purple";
     return "gray";
   };
 
   const getStatusLabel = (status: string): string => {
     if (status === "completed") return "COMPLETED";
     if (status === "processing") return "IN PRODUCTION";
+    if (status === "awaiting_payment") return "AWAITING PAYMENT";
     if (status === "active") return "ACTIVE";
+    if (status === "cancelled") return "CANCELLED";
+    if (status === "on_hold") return "ON HOLD";
     return "PENDING";
   };
 
@@ -1755,9 +1786,15 @@ function OrdersContent() {
                                       ? "bg-[var(--erp-success)]"
                                       : derived === "processing"
                                         ? "bg-[var(--erp-warning)] animate-pulse"
-                                        : derived === "active"
-                                          ? "bg-[var(--primary)]"
-                                          : "bg-[var(--muted-foreground)]",
+                                        : derived === "awaiting_payment"
+                                          ? "bg-amber-500 animate-pulse"
+                                          : derived === "active"
+                                            ? "bg-[var(--primary)]"
+                                            : derived === "cancelled"
+                                              ? "bg-red-500"
+                                              : derived === "on_hold"
+                                                ? "bg-purple-500"
+                                                : "bg-[var(--muted-foreground)]",
                                   )}
                                 />
                               )}
@@ -1782,7 +1819,7 @@ function OrdersContent() {
                         </TableCell>
                         <TableCell className="pr-5 text-right py-4">
                           <div className="flex items-center justify-end gap-1">
-                            {/* Invoice download â€” Owner only */}
+                            {/* Invoice download – Owner only */}
                             {!isStaff && (
                               <motion.button
                                 whileTap={{ scale: 0.9 }}
@@ -1806,7 +1843,7 @@ function OrdersContent() {
                                 className="w-52 rounded-[12px]"
                               >
 
-                                {/* Edit Order â€” Owner only */}
+                                {/* Edit Order – Owner only */}
                                 {!isStaff && (
                                   <DropdownMenuItem
                                     onClick={() => openEditDialog(order)}
@@ -1816,7 +1853,7 @@ function OrdersContent() {
                                     Order
                                   </DropdownMenuItem>
                                 )}
-                                {/* Record Payment â€” Owner only */}
+                                {/* Record Payment – Owner only */}
                                 {!isStaff && (
                                   <DropdownMenuItem
                                     onClick={() => openPaymentDialog(order)}
@@ -1851,7 +1888,7 @@ function OrdersContent() {
               </div>
             </IOSCard>
 
-            {/* â”€â”€ Pagination â”€â”€ */}
+            {/* ── Pagination ── */}
             <TablePagination
               currentPage={currentPage}
               totalPages={totalPages}
@@ -1860,19 +1897,15 @@ function OrdersContent() {
               onPageChange={setCurrentPage}
             />
 
-            {/* â•â•â• PREMIUM MOBILE ORDER CARDS â•â•â• */}
+            {/* ═══ PREMIUM MOBILE ORDER CARDS ═══ */}
             <div style={{ padding: '0 2px' }} className="block md:hidden">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {ordersLoading ? (
                 Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} style={{
-                    background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: 20, padding: 18, position: 'relative', overflow: 'hidden',
-                  }}>
-                    <div style={{ height: 16, width: 140, borderRadius: 8, background: 'rgba(255,255,255,0.06)' }} className="shimmer" />
-                    <div style={{ height: 14, width: '80%', borderRadius: 8, background: 'rgba(255,255,255,0.04)', marginTop: 10 }} className="shimmer" />
-                    <div style={{ height: 14, width: 100, borderRadius: 8, background: 'rgba(255,255,255,0.04)', marginTop: 10 }} className="shimmer" />
+                  <div key={i} className="bg-gray-100 dark:bg-[#1C2333] rounded-2xl px-4 py-3 border-l-4 border-gray-300 dark:border-gray-600">
+                    <div className="h-4 w-32 rounded bg-gray-200 dark:bg-gray-700 shimmer" />
+                    <div className="h-4 w-full rounded bg-gray-200 dark:bg-gray-700 shimmer mt-2" />
+                    <div className="h-3 w-24 rounded bg-gray-200 dark:bg-gray-700 shimmer mt-2" />
                   </div>
                 ))
               ) : filteredOrders.length === 0 ? (
@@ -1881,35 +1914,53 @@ function OrdersContent() {
                   <p style={{ color: '#94a3b8', fontSize: 14, fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif" }}>No active orders</p>
                 </div>
               ) : filteredOrders.map((order: any, idx: number) => {
-                const status = deriveOrderStatusFromOrder(order);
-                const accentColor = status === 'processing' ? '#f59e0b' : status === 'completed' ? '#10b981' : status === 'active' ? '#3b82f6' : '#64748b';
-                const statusLabel = getStatusLabel(status);
-                const statusBg = status === 'processing' ? 'rgba(245,158,11,0.15)' : status === 'completed' ? 'rgba(16,185,129,0.15)' : status === 'active' ? 'rgba(59,130,246,0.15)' : 'rgba(100,116,139,0.15)';
-                const statusBorder = status === 'processing' ? 'rgba(245,158,11,0.3)' : status === 'completed' ? 'rgba(16,185,129,0.3)' : status === 'active' ? 'rgba(59,130,246,0.3)' : 'rgba(100,116,139,0.3)';
-                const paymentStatus = order.paymentStatus ?? 'pending';
-                const isPaid = paymentStatus === 'paid' || paymentStatus === 'Paid';
-                const isPressed = pressedCardId === order.id;
+                const derived = deriveOrderStatusFromOrder(order);
+                const s = derived;
+                const borderColor =
+                  s === 'active' ? '#2563EB' :
+                  s === 'pending' ? '#F59E0B' :
+                  s === 'processing' ? '#F59E0B' :
+                  s === 'awaiting_payment' ? '#F59E0B' :
+                  s === 'completed' ? '#22C55E' :
+                  s === 'cancelled' ? '#EF4444' :
+                  s === 'on_hold' ? '#A855F7' : '#94A3B8';
+                const badgeClasses =
+                  s === 'active'           ? 'bg-blue-500/15 text-blue-500 dark:text-blue-400' :
+                  s === 'pending'          ? 'bg-amber-500/15 text-amber-500 dark:text-amber-400' :
+                  s === 'processing'       ? 'bg-amber-500/15 text-amber-500 dark:text-amber-400' :
+                  s === 'awaiting_payment' ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400' :
+                  s === 'completed'        ? 'bg-green-500/15 text-green-500 dark:text-green-400' :
+                  s === 'cancelled'        ? 'bg-red-500/15 text-red-500 dark:text-red-400' :
+                  s === 'on_hold'          ? 'bg-purple-500/15 text-purple-500 dark:text-purple-400' :
+                                             'bg-slate-500/15 text-slate-500 dark:text-slate-400';
+                const statusLabel = getStatusLabel(derived);
+                const paymentRaw = order.paymentStatus;
+                const isPaid = paymentRaw === 'paid' || paymentRaw === 'Paid';
+                const clientName = order.client?.name ?? order.clients?.name;
+                const productName = order.productName ?? order.product_name;
+                const amount = Number(order.totalAmount ?? order.total_amount ?? 0);
+                const qty = order.quantity;
+                const unit = order.unit ?? 'kg';
+                const createdAt = order.createdAt;
 
                 return (
                   <div
-                    key={order.id}
-                    style={{
-                      position: 'relative',
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)',
-                      border: isPressed ? `1px solid rgba(59,130,246,0.5)` : '1px solid rgba(255,255,255,0.08)',
-                      borderRadius: 20,
-                      boxShadow: isPressed
-                        ? '0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 20px rgba(59,130,246,0.2)'
-                        : '0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)',
-                      padding: 18,
-                      paddingLeft: 24,
-                      overflow: 'hidden',
-                      transform: isPressed ? 'scale(0.96)' : 'scale(1)',
-                      transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease',
-                      cursor: 'pointer',
-                      WebkitTapHighlightColor: 'transparent',
-                      userSelect: 'none' as const,
+                    key={order.id ?? idx}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e: React.KeyboardEvent) => {
+                      if ((e.key === 'Enter' || e.key === ' ') && !isBottomSheetOpen) {
+                        e.preventDefault();
+                        openEditDialog(order);
+                      }
                     }}
+                    className={cn(
+                      "bg-gray-50 dark:bg-[#1C2333] rounded-2xl overflow-hidden",
+                      "shadow-[0_2px_12px_rgba(15,23,42,0.06)] active:scale-[0.98]",
+                      "transition-transform cursor-pointer select-none",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+                    )}
+                    style={{ borderLeft: `4px solid ${borderColor}` }}
                     onTouchStart={() => handleLongPressStart(order)}
                     onTouchEnd={handleLongPressEnd}
                     onTouchCancel={handleLongPressEnd}
@@ -1920,62 +1971,51 @@ function OrdersContent() {
                       if (!isBottomSheetOpen) openEditDialog(order);
                     }}
                   >
-                    {/* Left accent bar */}
-                    <div style={{
-                      position: 'absolute', left: 0, top: 12, bottom: 12,
-                      width: 4, borderRadius: 4, background: accentColor,
-                    }} />
-
-                    {/* Top row: Product + Status */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{
-                        color: 'var(--foreground)', fontWeight: 600, fontSize: 16, maxWidth: '60%',
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif",
-                      }}>
-                        {order.productName ?? order.product_name ?? 'â€”'}
-                      </span>
-                      <span style={{
-                        fontSize: 10, fontWeight: 700, letterSpacing: '0.05em',
-                        padding: '3px 10px', borderRadius: 20,
-                        background: statusBg, color: accentColor,
-                        border: `1px solid ${statusBorder}`,
-                        fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif",
-                      }}>
-                        {statusLabel}
-                      </span>
-                    </div>
-
-                    {/* Client name */}
-                    <div style={{ color: '#64748b', fontSize: 13, marginTop: 3, fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif" }}>
-                      {order.client?.name ?? order.clients?.name ?? 'â€”'}
-                    </div>
-
-                    {/* Divider */}
-                    <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', margin: '10px 0' }} />
-
-                    {/* Bottom row: Amount + Weight + Payment */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{
-                        color: '#60a5fa', fontSize: 20, fontWeight: 700,
-                        fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif",
-                      }}>
-                        {formatINR(Number(order.totalAmount ?? order.total_amount ?? 0))}
-                      </span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ color: '#64748b', fontSize: 12, fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif" }}>
-                          {order.quantity ?? 0} {order.unit ?? 'kg'}
+                    <div className="px-4 py-3">
+                      {/* Row 1: Product name (bold, truncate) · status badge */}
+                      <div className="flex justify-between items-center min-h-[22px]">
+                        <span className="text-gray-900 dark:text-white text-sm font-bold truncate mr-2">
+                          {productName || '—'}
                         </span>
-                        <span style={{
-                          fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
-                          background: isPaid ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
-                          color: isPaid ? '#22c55e' : '#ef4444',
-                          border: `1px solid ${isPaid ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
-                          boxShadow: isPaid ? '0 0 8px rgba(34,197,94,0.4)' : 'none',
-                          fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif",
-                        }}>
-                          {isPaid ? 'PAID' : 'UNPAID'}
+                        <span className={cn(
+                          "text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap uppercase shrink-0",
+                          badgeClasses
+                        )}>
+                          {statusLabel}
                         </span>
+                      </div>
+
+                      {/* Row 2: ₹ amount (blue) · qty + payment badge */}
+                      <div className="flex justify-between items-center mt-1 min-h-[22px]">
+                        <span className="text-blue-500 dark:text-blue-400 text-sm font-semibold tabular-nums">
+                          ₹{Number(amount).toLocaleString('en-IN')}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          {qty != null && (
+                            <span className="text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap">
+                              {qty} {unit}
+                            </span>
+                          )}
+                          {paymentRaw && (
+                            <span className={cn(
+                              "text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap uppercase",
+                              isPaid
+                                ? "bg-green-500/15 text-green-500 dark:text-green-400"
+                                : "bg-red-500/15 text-red-500 dark:text-red-400"
+                            )}>
+                              {isPaid ? 'PAID' : 'UNPAID'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Row 3: client · date · chevron */}
+                      <div className="flex justify-between items-center mt-1 min-h-[20px]">
+                        <span className="text-gray-500 dark:text-gray-400 text-xs truncate mr-2">
+                          {clientName || '—'}
+                          {createdAt && ` · ${new Date(createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`}
+                        </span>
+                        <ChevronRight className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
                       </div>
                     </div>
                   </div>
@@ -1992,9 +2032,9 @@ function OrdersContent() {
         {longPressedOrder && (
           <>
             {/* Header */}
-            <div style={{ padding: '0 16px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ padding: '0 16px 16px', borderBottom: '1px solid var(--overlay-border, rgba(15,23,42,0.06))' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                <h2 style={{ fontSize: 18, fontWeight: 700, color: '#e6e0e9', letterSpacing: '-0.5px', lineHeight: 1.3, margin: 0, fontFamily: "Inter, -apple-system, sans-serif" }}>
+                <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--overlay-text-primary, #0F172A)', letterSpacing: '-0.5px', lineHeight: 1.3, margin: 0, fontFamily: "Inter, -apple-system, sans-serif" }}>
                   {longPressedOrder.productName ?? longPressedOrder.product_name ?? 'Order'}
                 </h2>
                 <span style={{
@@ -2008,67 +2048,85 @@ function OrdersContent() {
                     const ds = deriveOrderStatusFromOrder(longPressedOrder);
                     if (ds === 'completed') return 'rgba(48,209,88,0.1)';
                     if (ds === 'processing') return 'rgba(255,149,0,0.1)';
+                    if (ds === 'awaiting_payment') return 'rgba(245,158,11,0.1)';
                     if (ds === 'active') return 'rgba(10,132,255,0.1)';
+                    if (ds === 'cancelled') return 'rgba(239,68,68,0.1)';
+                    if (ds === 'on_hold') return 'rgba(168,85,247,0.1)';
                     return 'rgba(142,142,147,0.1)';
                   })(),
                   color: (() => {
                     const ds = deriveOrderStatusFromOrder(longPressedOrder);
                     if (ds === 'completed') return '#30D158';
                     if (ds === 'processing') return '#FF9F0A';
+                    if (ds === 'awaiting_payment') return '#D97706';
                     if (ds === 'active') return '#0A84FF';
+                    if (ds === 'cancelled') return '#EF4444';
+                    if (ds === 'on_hold') return '#A855F7';
                     return '#8E8E93';
                   })(),
                   border: `1px solid ${(() => {
                     const ds = deriveOrderStatusFromOrder(longPressedOrder);
                     if (ds === 'completed') return 'rgba(48,209,88,0.2)';
                     if (ds === 'processing') return 'rgba(255,149,0,0.2)';
+                    if (ds === 'awaiting_payment') return 'rgba(245,158,11,0.2)';
                     if (ds === 'active') return 'rgba(10,132,255,0.2)';
+                    if (ds === 'cancelled') return 'rgba(239,68,68,0.2)';
+                    if (ds === 'on_hold') return 'rgba(168,85,247,0.2)';
                     return 'rgba(142,142,147,0.2)';
                   })()}`
                 }}>
                   {getStatusLabel(deriveOrderStatusFromOrder(longPressedOrder))}
                 </span>
               </div>
-              <p style={{ fontSize: 14, color: '#948e9c', margin: 0, display: 'flex', alignItems: 'center', gap: 8, fontFamily: "Inter, sans-serif" }}>
+              <p style={{ fontSize: 14, color: 'var(--overlay-text-secondary, #64748B)', margin: 0, display: 'flex', alignItems: 'center', gap: 8, fontFamily: "Inter, sans-serif" }}>
                 <span>{formatINR(Number(longPressedOrder.totalAmount ?? 0))}</span>
-                <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#494551', display: 'inline-block' }} />
+                <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--overlay-text-muted, #94A3B8)', display: 'inline-block' }} />
                 <span>{longPressedOrder.quantity ?? 0} {longPressedOrder.unit ?? 'items'}</span>
               </p>
             </div>
 
             {/* Action Items */}
-            <div style={{ display: 'flex', flexDirection: 'column', padding: '8px 8px' }}>
-              {[
-                { icon: <Edit2 size={20} />, label: 'Edit Order', color: '#cfbcff', action: () => { closeBottomSheet(); setTimeout(() => openEditDialog(longPressedOrder), 400); } },
-                { icon: <Send size={20} />, label: 'Share', color: '#a855f7', action: () => { closeBottomSheet(); showToast('Share link copied!'); } },
-                { icon: <FileText size={20} />, label: 'View Invoice', color: '#22c55e', action: () => { closeBottomSheet(); setTimeout(() => generateInvoice(longPressedOrder), 400); } },
-                { icon: <Layers size={20} />, label: 'Duplicate', color: '#e7c365', action: () => { closeBottomSheet(); showToast('Order duplicated'); } },
-              ].map((item) => (
-                <button
-                  key={item.label}
-                  onClick={item.action}
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', height: 56, padding: '0 12px 0 16px', background: 'transparent', border: 'none', cursor: 'pointer', borderRadius: 14, transition: 'background 0.2s ease', WebkitTapHighlightColor: 'transparent', fontFamily: "Inter, -apple-system, sans-serif" }}
-                  onMouseDown={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
-                  onMouseUp={(e) => (e.currentTarget.style.background = 'transparent')}
-                  onTouchStart={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
-                  onTouchEnd={(e) => (e.currentTarget.style.background = 'transparent')}
-                >
-                  <div style={{ color: item.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{item.icon}</div>
-                  <span style={{ color: '#e6e0e9', fontSize: 15, fontWeight: 500 }}>{item.label}</span>
-                </button>
-              ))}
+            <div className="flex flex-col gap-1 py-2">
+              <button
+                className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--muted)] active:bg-[var(--muted)] text-[var(--foreground)] text-left w-full"
+                onClick={() => { closeBottomSheet(); setTimeout(() => openEditDialog(longPressedOrder), 400); }}
+              >
+                <Edit2 className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
+                Edit Order
+              </button>
+
+              <button
+                className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--muted)] active:bg-[var(--muted)] text-[var(--foreground)] text-left w-full"
+                onClick={() => { closeBottomSheet(); showToast('Share link copied!'); }}
+              >
+                <Send className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
+                Share
+              </button>
+
+              <button
+                className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--muted)] active:bg-[var(--muted)] text-[var(--foreground)] text-left w-full"
+                onClick={() => { closeBottomSheet(); setTimeout(() => generateInvoice(longPressedOrder), 400); }}
+              >
+                <FileText className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
+                View Invoice
+              </button>
+
+              <button
+                className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--muted)] active:bg-[var(--muted)] text-[var(--foreground)] text-left w-full"
+                onClick={() => { closeBottomSheet(); showToast('Order duplicated'); }}
+              >
+                <Layers className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
+                Duplicate
+              </button>
+
               {/* Delete */}
               {isAdmin && (
                 <button
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--muted)] active:bg-[var(--muted)] text-red-500 text-left w-full"
                   onClick={() => { closeBottomSheet(); setOrderToDeleteId(longPressedOrder.id); setIsDeleteDialogOpenConfirm(true); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', height: 56, padding: '0 12px 0 16px', background: 'transparent', border: 'none', cursor: 'pointer', borderRadius: 14, transition: 'background 0.2s ease', WebkitTapHighlightColor: 'transparent', fontFamily: "Inter, -apple-system, sans-serif" }}
-                  onMouseDown={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
-                  onMouseUp={(e) => (e.currentTarget.style.background = 'transparent')}
-                  onTouchStart={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
-                  onTouchEnd={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
-                  <div style={{ color: '#ffb4ab', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Trash2 size={20} /></div>
-                  <span style={{ color: '#ffb4ab', fontSize: 15, fontWeight: 500 }}>Delete</span>
+                  <Trash2 className="h-[18px] w-[18px]" />
+                  Delete
                 </button>
               )}
             </div>

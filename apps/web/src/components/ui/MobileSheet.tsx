@@ -28,35 +28,26 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, type PanInfo } from 'framer-motion';
+import {
+  springModal,
+  variantsBackdrop,
+  variantsSheetSlideUp,
+  variantsModalScale,
+} from '@/lib/motion';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { Z } from '@/lib/z-index';
 import * as FocusScope from '@radix-ui/react-focus-scope';
 
 // ─── Constants ────────────────────────────────────────────────
 
-const EASE = [0.4, 0, 0.2, 1] as const;
-const DURATION = 0.25;
+// EASE / DURATION no longer used for main sheet — Tier B spring handles it.
+// Kept for the drag handle's dragTransition only.
 const DRAG_DISMISS_THRESHOLD = 120;
 const DESKTOP_BREAKPOINT = 1024;
 
 // ─── Animation variants ──────────────────────────────────────
-
-const backdropVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1 },
-};
-
-const bottomSheetVariants = {
-  hidden: { y: '100%' },
-  visible: { y: 0 },
-  exit: { y: '100%' },
-};
-
-const centeredModalVariants = {
-  hidden: { opacity: 0, scale: 0.96, y: 24 },
-  visible: { opacity: 1, scale: 1, y: 0 },
-  exit: { opacity: 0, scale: 0.96, y: 24 },
-};
+// Backdrop → Tier A fade (spring is on content, not scrim).
+// Bottom sheet / centered modal → Tier B spring from lib/motion.
 
 // ─── Hook: viewport detection ────────────────────────────────
 
@@ -128,6 +119,17 @@ export function MobileSheet({
   // ── Body scroll lock (centralized, reference-counted) ──
   useBodyScrollLock(open);
 
+  // ── Reset scroll position to top on every open ──
+  // Without this, the scroll container retains its scrollTop from the
+  // previous session because AnimatePresence keeps it mounted during
+  // the exit animation. On re-open, the stale offset makes the sheet
+  // appear scrolled to the bottom.
+  useEffect(() => {
+    if (open && scrollRef.current) {
+      scrollRef.current.scrollTop = 0;
+    }
+  }, [open]);
+
   // ── ESC key handler ──
   useEffect(() => {
     if (!open) return;
@@ -159,7 +161,9 @@ export function MobileSheet({
   }, []);
 
   // ── Transition config ──
-  const mainTransition = { duration: DURATION, ease: EASE };
+  // Tier B spring — stiffness 300 / damping 25. Used for both
+  // bottom-sheet slide-up and centered-modal scale. NOT used for backdrop.
+  const mainTransition = springModal;
 
   if (!mounted) return null;
 
@@ -168,13 +172,14 @@ export function MobileSheet({
       {open && (
         <>
           {/* ── Backdrop ── */}
+          {/* Tier A fade — spring lives on the content layer, not the scrim */}
+          {/* onPointerDown (not onClick) — iOS Safari reliability fix */}
           <motion.div
             key="mobile-sheet-backdrop"
-            variants={backdropVariants}
+            variants={variantsBackdrop}
             initial="hidden"
             animate="visible"
-            exit="hidden"
-            transition={mainTransition}
+            exit="exit"
             onPointerDown={onClose}
             style={{
               position: 'fixed',
@@ -200,20 +205,13 @@ export function MobileSheet({
               ref={sheetRef}
               key="mobile-sheet-content"
               className={className}
-              variants={isDesktop ? centeredModalVariants : bottomSheetVariants}
+              variants={isDesktop ? variantsModalScale : variantsSheetSlideUp}
               initial="hidden"
-              animate={
-                isDesktop
-                  ? 'visible'
-                  : { y: 0, maxHeight }
-              }
+              animate="visible"
               exit="exit"
-              transition={
-                isDesktop
-                  ? mainTransition
-                  : { ...mainTransition, maxHeight: { duration: 0.28, ease: [0.4, 0, 0.2, 1] } }
-              }
+              transition={mainTransition}
               // Prevent inner taps from closing via backdrop
+              // onPointerDown (not onClick) — iOS Safari reliability fix
               onPointerDown={(e) => e.stopPropagation()}
               // Focus target for keyboard events
               tabIndex={-1}
@@ -230,10 +228,10 @@ export function MobileSheet({
                       maxHeight: 'min(90vh, 700px)',
                       display: 'flex',
                       flexDirection: 'column' as const,
-                      background: 'var(--overlay-sheet-bg, #0D1421)',
-                      border: '1px solid var(--overlay-border, rgba(255,255,255,0.07))',
+                      background: 'var(--overlay-sheet-bg, rgba(255,255,255,0.96))',
+                      border: '1px solid var(--overlay-border, rgba(15,23,42,0.06))',
                       borderRadius: 24,
-                      boxShadow: 'var(--overlay-shadow, 0 24px 48px rgba(0,0,0,0.4))',
+                      boxShadow: 'var(--overlay-shadow, 0 8px 30px rgba(15,23,42,0.08))',
                       overflow: 'hidden',
                       outline: 'none',
                     }
@@ -246,15 +244,16 @@ export function MobileSheet({
                       left: 0,
                       right: 0,
                       zIndex: zIndex + 1,
+                      maxHeight,
                       display: 'flex',
                       flexDirection: 'column' as const,
-                      background: 'var(--overlay-sheet-bg, #0D1421)',
-                      borderTop: '1px solid var(--overlay-border, rgba(255,255,255,0.07))',
-                      borderLeft: '1px solid var(--overlay-border, rgba(255,255,255,0.07))',
-                      borderRight: '1px solid var(--overlay-border, rgba(255,255,255,0.07))',
+                      background: 'var(--overlay-sheet-bg, rgba(255,255,255,0.96))',
+                      borderTop: '1px solid var(--overlay-border, rgba(15,23,42,0.06))',
+                      borderLeft: '1px solid var(--overlay-border, rgba(15,23,42,0.06))',
+                      borderRight: '1px solid var(--overlay-border, rgba(15,23,42,0.06))',
                       borderBottom: 'none',
                       borderRadius: '32px 32px 0 0',
-                      boxShadow: 'var(--overlay-shadow, 0 -8px 32px rgba(0,0,0,0.5))',
+                      boxShadow: 'var(--overlay-shadow, 0 8px 30px rgba(15,23,42,0.08))',
                       paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 16px)',
                       outline: 'none',
                     }
@@ -291,7 +290,7 @@ export function MobileSheet({
                       width: 48,
                       height: 5,
                       borderRadius: 999,
-                      background: 'var(--overlay-handle, rgba(255,255,255,0.15))',
+                      background: 'var(--overlay-handle, rgba(15,23,42,0.15))',
                     }}
                   />
                 </motion.div>

@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 import type { IProductionRepository, Production, CreateProductionDTO, UpdateProductionDTO, ActivityLogEntry, ProductionMaterial } from "../domain/types";
+import { getFinancialYear } from "@/lib/utils/financial-year";
 
 function toEntity(doc: Record<string, unknown>): Production {
     return {
@@ -31,6 +32,8 @@ function toEntity(doc: Record<string, unknown>): Production {
         updatedAt: doc.updatedAt as Date,
         completedAt: (doc.completedAt as Date) || null,
         createdBy: String(doc.createdBy || ""),
+        assignedStaff: (doc.assignedStaff as string[])?.map(String) || [],
+        assignmentLogs: (doc.assignmentLogs as any[]) || [],
     };
 }
 
@@ -47,7 +50,7 @@ export class MongoProductionRepository implements IProductionRepository {
 
     async findAll(userId: string): Promise<Production[]> {
         const c = await this.col();
-        const docs = await c.find({ userId }).sort({ createdAt: -1 }).toArray();
+        const docs = await c.find({ userId, status: { $ne: "closed" } }).sort({ createdAt: -1 }).toArray();
         return docs.map((d) => toEntity(d as Record<string, unknown>));
     }
 
@@ -87,6 +90,7 @@ export class MongoProductionRepository implements IProductionRepository {
             updatedAt: now,
             completedAt: null,
             createdBy,
+            financial_year: getFinancialYear(now),
         };
         const result = await c.insertOne(doc);
         return { ...toEntity(doc as Record<string, unknown>), id: result.insertedId.toString() };
@@ -115,8 +119,24 @@ export class MongoProductionRepository implements IProductionRepository {
     async delete(id: string, userId: string): Promise<boolean> {
         try {
             const c = await this.col();
-            const result = await c.deleteOne({ _id: new ObjectId(id), userId });
-            return result.deletedCount === 1;
+
+            // Check if already closed — idempotent
+            const existing = await c.findOne({ _id: new ObjectId(id), userId });
+            if (!existing) return false;
+            if (existing.status === "closed") return true;
+
+            // Soft delete — NEVER deleteOne()
+            const result = await c.updateOne(
+                { _id: new ObjectId(id), userId },
+                {
+                    $set: {
+                        status: "closed",
+                        updatedAt: new Date(),
+                        closedAt: new Date(),
+                    },
+                },
+            );
+            return result.matchedCount === 1;
         } catch { return false; }
     }
 
@@ -125,7 +145,10 @@ export class MongoProductionRepository implements IProductionRepository {
         return c.countDocuments({ userId });
     }
 
-    async deductMaterials(materials: ProductionMaterial[]): Promise<void> {
+    async deductMaterials(
+        materials: ProductionMaterial[],
+        context: { productionId: string; orderId: string; orderProductName: string },
+    ): Promise<void> {
         const db = await getDb();
         const invCol = db.collection("inventory");
         for (const mat of materials) {
@@ -135,7 +158,20 @@ export class MongoProductionRepository implements IProductionRepository {
             const newQty = Number(invItem.quantity) - Number(mat.quantityUsed);
             await invCol.updateOne(
                 { _id: new ObjectId(mat.inventoryId) },
-                { $set: { quantity: Math.max(0, newQty), updatedAt: new Date() } },
+                {
+                    $set: { quantity: Math.max(0, newQty), updatedAt: new Date() },
+                    $push: {
+                        usageHistory: {
+                            productionId: context.productionId,
+                            orderId: context.orderId,
+                            productName: context.orderProductName,
+                            quantityUsed: Number(mat.quantityUsed),
+                            unit: mat.unit || "",
+                            status: "pending",
+                            usedAt: new Date(),
+                        },
+                    } as any,
+                },
             );
         }
     }

@@ -33,7 +33,7 @@ export const GlassInput = React.forwardRef<HTMLInputElement, GlassInputProps>(
             "w-full h-[44px] rounded-[12px] px-3 text-[15px] font-medium",
             "transition-all duration-200",
             // Light
-            "bg-black/[0.04] border border-black/[0.12] text-gray-900 placeholder:text-gray-400",
+            "bg-black/[0.04] border border-black/[0.12] text-foreground placeholder:text-muted-foreground",
             "focus:outline-none focus:bg-transparent focus:border-[#007AFF] focus:shadow-[0_0_0_3px_rgba(0,122,255,0.2)]",
             // Dark
             "dark:bg-white/[0.05] dark:border-white/10 dark:text-white/90 dark:placeholder:text-white/30",

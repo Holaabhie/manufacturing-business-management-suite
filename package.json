@@ -17,6 +17,7 @@
         "packages/*"
     ],
     "dependencies": {
-        "lucide-react": "^0.563.0"
+        "lucide-react": "^0.563.0",
+        "mongodb": "^7.5.0"
     }
 }

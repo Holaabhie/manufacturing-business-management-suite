@@ -7,6 +7,7 @@ import { AuditLog } from "@/models/AuditLog";
 import { z } from "zod";
 import { ObjectId } from "mongodb";
 import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
+import { getFinancialYear } from "@/lib/utils/financial-year";
 
 // Zod Schema matching 2.4 - Payment Recording API
 const recordPaymentSchema = z.object({
@@ -63,35 +64,8 @@ function computeLegacyPaymentStatus(totalPaid: number, totalAmount: number): str
     return "pending";
 }
 
-// ─── Auto Timeline/Progress Update ──────────────────────
-// Based on payment progress:
-//   First payment recorded   → "processing" (Payment Started)
-//   Partial payment          → "processing"
-//   Full payment completed   → "completed" (Payment Completed)
-function computeOrderStatusFromPayment(
-    currentStatus: string,
-    totalPaid: number,
-    totalAmount: number,
-    hadPreviousPayments: boolean,
-): string {
-    // Don't downgrade cancelled or on-hold orders
-    if (currentStatus === "cancelled" || currentStatus === "Cancelled" || currentStatus === "On Hold") {
-        return currentStatus;
-    }
-
-    if (totalPaid >= totalAmount && totalAmount > 0) {
-        return "completed";
-    }
-
-    if (totalPaid > 0) {
-        // Move to processing if it was pending/draft
-        if (currentStatus === "pending" || currentStatus === "Draft" || currentStatus === "Confirmed") {
-            return "processing";
-        }
-    }
-
-    return currentStatus;
-}
+// NOTE: computeOrderStatusFromPayment() was removed as part of the order-status fix.
+// Payments no longer write to order.status — production status is tracked independently.
 
 export async function POST(req: NextRequest) {
     try {
@@ -99,8 +73,11 @@ export async function POST(req: NextRequest) {
 
         // ─── Auth: get real user from session ────────────────
         const sessionUser = await getSessionUser();
-        const userId = sessionUser ? sessionUser._id.toString() : "system";
-        const organizationId = sessionUser?.organizationId?.toString() || "default-org";
+        if (!sessionUser) {
+            return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+        }
+        const userId = sessionUser._id.toString();
+        const organizationId = getDataOwnerId(sessionUser);
 
         const body = await req.json();
         const data = recordPaymentSchema.parse(body);
@@ -139,6 +116,7 @@ export async function POST(req: NextRequest) {
             notes: data.notes,
             recorded_by: userId,
             organizationId,
+            financial_year: getFinancialYear(new Date(data.payment_date)),
         });
 
         await transaction.save();
@@ -229,19 +207,13 @@ export async function POST(req: NextRequest) {
                     order_id: data.reference_id,
                     transaction_ref: data.transaction_ref || null,
                     createdAt: new Date(),
+                    financial_year: getFinancialYear(new Date(data.payment_date)),
                 });
 
-                // Compute payment status and auto-advance timeline
+                // Compute payment status (production status is managed separately — NOT touched here)
                 const newPaymentStatus = computeLegacyPaymentStatus(totalPaidNow, totalAmount);
-                const hadPreviousPayments = legacyTotalPaid > 0;
-                const newOrderStatus = computeOrderStatusFromPayment(
-                    String(legacyOrder.status || "pending"),
-                    totalPaidNow,
-                    totalAmount,
-                    hadPreviousPayments,
-                );
 
-                // Update the legacy order with computed fields
+                // Update the legacy order with payment-related fields only
                 await ordersCol.updateOne(
                     { _id: new ObjectId(data.reference_id) },
                     {
@@ -249,7 +221,7 @@ export async function POST(req: NextRequest) {
                             payment_status: newPaymentStatus,
                             total_paid: totalPaidNow,
                             balance_due: Math.max(0, totalAmount - totalPaidNow),
-                            status: newOrderStatus,
+                            // status intentionally NOT touched — derived from production_status + payment_status
                             last_payment_date: new Date(data.payment_date),
                             updatedAt: new Date(),
                         },
@@ -265,12 +237,10 @@ export async function POST(req: NextRequest) {
                         total_tds: tds_amount,
                         balance_due: Math.max(0, totalAmount - totalPaidNow),
                         payment_status: newPaymentStatus,
-                        order_status: newOrderStatus,
                         payment_percentage: totalAmount > 0 ? (totalPaidNow / totalAmount) * 100 : 0,
                     };
                 } else {
                     // Augment existing summary with legacy sync info
-                    orderSummary.order_status = newOrderStatus;
                     orderSummary.payment_status = newPaymentStatus;
                     orderSummary.total_paid = totalPaidNow;
                     orderSummary.balance_due = Math.max(0, totalAmount - totalPaidNow);
@@ -285,7 +255,7 @@ export async function POST(req: NextRequest) {
                 userId,
                 userName: sessionUser?.fullName || sessionUser?.email || "System User",
                 userRole: sessionUser?.role || "Staff",
-                action: `Recorded ₹${data.amount} receipt for Order #${data.reference_id}`,
+                action: `Recorded \u20B9${data.amount} receipt for Order #${data.reference_id}`,
                 actionType: 'create',
                 module: 'payments',
                 resourceId: transaction._id.toString(),

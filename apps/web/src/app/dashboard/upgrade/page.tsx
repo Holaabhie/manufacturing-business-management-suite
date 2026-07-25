@@ -76,7 +76,7 @@ const TIERS: Record<string, {
   pro: {
     name: "Pro",
     price: 999,
-    priceLabel: "₹999",
+    priceLabel: "\u20B9999",
     description: "For growing businesses that need more power",
     icon: Crown,
     features: [
@@ -184,7 +184,7 @@ function CheckoutForm({
           ) : (
             <>
               <Sparkles className="mr-2 h-5 w-5" />
-              Subscribe ₹999/month
+              Subscribe {"\u20B9"}999/month
             </>
           )}
         </IOSButton>

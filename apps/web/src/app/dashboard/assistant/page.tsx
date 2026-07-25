@@ -2,14 +2,11 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
-  Bot,
   Sparkles,
   Trash2,
-  History,
   MessageSquare,
   FileBarChart,
   Settings,
-  WifiOff,
   Send,
   RefreshCw,
   Lightbulb,
@@ -17,7 +14,6 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 // ── AI Components ──
 import { AIThinkingLoader } from "@/components/ai/AIThinkingLoader";
@@ -69,10 +65,7 @@ export default function AIAssistantPage() {
   // ── Auto-scroll ──
   const scrollToBottom = useCallback(() => {
     if (scrollRef.current) {
-      const viewport = scrollRef.current.querySelector("[data-radix-scroll-area-viewport]");
-      if (viewport) {
-        viewport.scrollTop = viewport.scrollHeight;
-      }
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, []);
 
@@ -119,111 +112,58 @@ export default function AIAssistantPage() {
 
   // ─── Render ──────────────────────────────────────────────
   return (
-    <div className="ai-workspace h-[calc(100vh-140px)] flex flex-col rounded-2xl overflow-hidden">
-      {/* ═══════════ PREMIUM HEADER ═══════════ */}
-      <div className="ai-header flex-shrink-0 mb-4 mx-0">
-        <div className="flex justify-between items-start relative z-10">
-          <div>
-            <h1 className="text-[24px] font-bold tracking-tight flex items-center gap-3 text-white mb-1">
-              <div
-                className="w-11 h-11 rounded-[14px] flex items-center justify-center"
-                style={{
-                  background: "linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%)",
-                  boxShadow: "0 6px 20px rgba(139, 92, 246, 0.3)",
-                }}
-              >
-                <Bot className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <span>AI Assistant</span>
-                <div className="flex items-center gap-2 mt-1">
-                  <span
-                    className="text-[11px] font-medium px-2.5 py-0.5 rounded-full"
-                    style={{
-                      background: "rgba(16, 185, 129, 0.15)",
-                      color: "#34D399",
-                      border: "1px solid rgba(16, 185, 129, 0.25)",
-                    }}
-                  >
-                    Powered by Gemini
-                  </span>
-                  {isContextLoaded ? (
-                    <span className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">
-                      <span className="relative flex h-1.5 w-1.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
-                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
-                      </span>
-                      Ready
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1.5 text-[10px] font-semibold text-amber-400">
-                      <WifiOff className="h-3 w-3" /> Loading…
-                    </span>
-                  )}
-                </div>
-              </div>
-            </h1>
+    <div className="ai-workspace flex flex-col h-[calc(100dvh-64px-56px)] md:h-[calc(100dvh-64px)] overflow-hidden">
+      {/* Flat topbar — flex-shrink-0 */}
+      <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-white/[0.06]">
+        {/* Left: tabs */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setViewMode("chat")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              viewMode === "chat"
+                ? "bg-gray-200/70 text-gray-900 dark:bg-white/10 dark:text-white"
+                : "text-gray-500 hover:text-gray-700 dark:text-white/50 dark:hover:text-white/70"
+            }`}
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
+            Chat
+          </button>
+          <button
+            onClick={() => setViewMode("reports")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              viewMode === "reports"
+                ? "bg-gray-200/70 text-gray-900 dark:bg-white/10 dark:text-white"
+                : "text-gray-500 hover:text-gray-700 dark:text-white/50 dark:hover:text-white/70"
+            }`}
+          >
+            <FileBarChart className="h-3.5 w-3.5" />
+            Smart Reports
+          </button>
+        </div>
 
-            {/* Mode Toggle */}
-            <div
-              className="flex mt-3 gap-1 rounded-[10px] p-0.5 w-fit"
-              style={{ background: "rgba(255,255,255,0.06)" }}
-            >
-              <button
-                onClick={() => setViewMode("chat")}
-                className={cn(
-                  "px-3 py-1.5 rounded-[8px] text-[12px] font-medium transition-all duration-200 cursor-pointer flex items-center gap-1.5",
-                  viewMode === "chat"
-                    ? "bg-white/10 text-white shadow-sm"
-                    : "text-white/40 hover:text-white/70"
-                )}
-              >
-                <MessageSquare className="h-3.5 w-3.5" /> Chat
-              </button>
-              <button
-                onClick={() => setViewMode("reports")}
-                className={cn(
-                  "px-3 py-1.5 rounded-[8px] text-[12px] font-medium transition-all duration-200 cursor-pointer flex items-center gap-1.5",
-                  viewMode === "reports"
-                    ? "bg-white/10 text-white shadow-sm"
-                    : "text-white/40 hover:text-white/70"
-                )}
-              >
-                <FileBarChart className="h-3.5 w-3.5" /> Smart Reports
-              </button>
-            </div>
+        {/* Right: READY status + Clear button */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <div className={cn("w-1.5 h-1.5 rounded-full", isContextLoaded ? "bg-emerald-400" : "bg-amber-400")} />
+            <span className={cn("text-xs font-medium", isContextLoaded ? "text-emerald-400" : "text-amber-400")}>
+              {isContextLoaded ? "READY" : "LOADING..."}
+            </span>
           </div>
-
-          {/* Header Actions */}
-          <div className="flex gap-2 items-center">
-            {viewMode === "chat" && (
-              <>
-                <button
-                  onClick={clearChat}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium cursor-pointer transition-all"
-                  style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.6)" }}
-                >
-                  <Trash2 className="h-3.5 w-3.5 text-rose-400" /> Clear
-                </button>
-                {userMessageCount > 0 && (
-                  <span
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider"
-                    style={{ background: "rgba(139,92,246,0.15)", color: "#A78BFA" }}
-                  >
-                    <History className="h-3 w-3" /> {userMessageCount} msgs
-                  </span>
-                )}
-              </>
-            )}
-          </div>
+          <button
+            onClick={clearChat}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-white/50 dark:hover:text-white/70 dark:hover:bg-white/[0.06] transition-colors"
+          >
+            <Trash2 className="h-3.5 w-3.5 text-rose-400" />
+            Clear
+          </button>
         </div>
       </div>
 
       {/* ═══════════ CHAT VIEW ═══════════ */}
       {viewMode === "chat" && (
-        <div className="flex-1 flex gap-5 min-h-0 overflow-hidden">
+        <div className="flex-1 flex gap-5 min-h-0">
           {/* ── Left: Conversation Stream ── */}
-          <div className="flex-1 flex flex-col min-w-0 rounded-2xl overflow-hidden" style={{ background: "var(--ai-bg-secondary)" }}>
+          <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden rounded-2xl" style={{ background: "var(--ai-bg-secondary)" }}>
             {/* AI Not Configured Banner */}
             {aiNotConfigured && (
               <div className="flex items-center gap-3 mx-4 mt-4 p-3 rounded-[14px] border border-[var(--ai-border-subtle)]" style={{ background: "rgba(245,158,11,0.06)" }}>
@@ -232,13 +172,13 @@ export default function AIAssistantPage() {
                 </div>
                 <div>
                   <p className="text-[13px] font-semibold text-[var(--ai-text-primary)]">AI not configured</p>
-                  <p className="text-[11px] text-[var(--ai-text-tertiary)]">Contact your admin to set up the Gemini API key.</p>
+                  <p className="text-[11px] text-[var(--ai-text-tertiary)]">Contact your admin to set up the AI webhook.</p>
                 </div>
               </div>
             )}
 
             {/* Messages Stream */}
-            <ScrollArea className="flex-1 px-4 pt-4" ref={scrollRef}>
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-3 space-y-3" ref={scrollRef}>
               <div className="space-y-4 pb-4 max-w-4xl mx-auto">
                 <AnimatePresence mode="popLayout">
                   {messages.map((message) => {
@@ -277,15 +217,17 @@ export default function AIAssistantPage() {
                   })}
                 </AnimatePresence>
               </div>
-            </ScrollArea>
+            </div>
 
-            {/* Input Bar */}
-            <SmartInputBar
-              value={input}
-              onChange={setInput}
-              onSubmit={handleSend}
-              isLoading={isLoading}
-            />
+            {/* Input bar — flex-shrink-0, safe-area padding on mobile */}
+            <div className="flex-shrink-0 w-full" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+              <SmartInputBar
+                value={input}
+                onChange={setInput}
+                onSubmit={handleSend}
+                isLoading={isLoading}
+              />
+            </div>
           </div>
 
           {/* ── Right: Bento Sidebar ── */}

@@ -68,6 +68,7 @@ export const PATCH = withRateLimit(
                         try {
                             const invItem = await db.collection("inventory").findOne({
                                 _id: new ObjectId(inventoryItemId),
+                                userId: ownerId,
                             });
 
                             if (!invItem) {
@@ -97,7 +98,7 @@ export const PATCH = withRateLimit(
                             );
 
                             await db.collection("inventory").updateOne(
-                                { _id: new ObjectId(inventoryItemId) },
+                                { _id: new ObjectId(inventoryItemId), userId: ownerId },
                                 {
                                     $inc: { quantity: -deductAmount },
                                     $push: {

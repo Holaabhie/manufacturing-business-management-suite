@@ -2,7 +2,7 @@ import type { IOrderRepository, Order } from "../domain/types";
 import { createOrderSchema, updateOrderSchema } from "../domain/schemas";
 import { NotFoundError, ValidationError, type FieldError } from "@/shared/lib/errors";
 
-const VALID_STATUSES = ["pending", "processing", "completed"];
+const VALID_STATUSES = ["pending", "processing", "completed", "cancelled", "on_hold"];
 
 export class OrderService {
     constructor(private readonly repo: IOrderRepository) { }
@@ -67,11 +67,14 @@ export class OrderService {
             throw new ValidationError([{ field: "status", message: `Invalid status: ${status}. Must be one of: ${VALID_STATUSES.join(", ")}` }]);
         }
 
-        // Check current status — don't allow changes on completed orders
+        // Check current status — don't allow changes on fully-completed orders
+        // (production done AND payment done)
         const current = await this.repo.findById(id, userId);
         if (!current) throw new NotFoundError("Order", id);
-        if (current.status === "completed") {
-            throw new ValidationError([{ field: "status", message: "Cannot change status of a completed order" }]);
+        const prodDone = (current.productionStatus || current.status) === "completed";
+        const payDone = (current.paymentStatus as string) === "paid";
+        if (prodDone && payDone) {
+            throw new ValidationError([{ field: "status", message: "Cannot change status of a fully completed order" }]);
         }
 
         const updated = await this.repo.updateStatus(id, userId, status);

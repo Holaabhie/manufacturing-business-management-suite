@@ -73,12 +73,18 @@ function DialogContent({
                 "data-[state=open]:animate-[sheetSlideUp_0.28s_ease] data-[state=closed]:animate-[sheetSlideDown_0.22s_ease_forwards]",
               ]
             : [
+                /* ── Mobile: bottom sheet ── */
                 "fixed bottom-0 left-1/2 z-[1001]",
                 "w-full max-w-[480px]",
                 "max-h-[88dvh] flex flex-col",
                 "rounded-t-[32px] rounded-b-none",
                 "p-0 outline-none",
                 "data-[state=open]:animate-[sheetSlideUp_0.28s_ease] data-[state=closed]:animate-[sheetSlideDown_0.22s_ease_forwards]",
+                /* ── Desktop md+: centered dialog ── */
+                "md:top-1/2 md:bottom-auto",
+                "md:max-h-[85dvh]",
+                "md:rounded-[24px]",
+                "md:data-[state=open]:animate-[dialogScaleIn_0.22s_ease] md:data-[state=closed]:animate-[dialogScaleOut_0.18s_ease_forwards]",
               ],
           className
         )}
@@ -99,9 +105,9 @@ function DialogContent({
         }
         {...props}
       >
-        {/* Drag handle — only for bottom sheet variant */}
+        {/* Drag handle — only for bottom sheet variant (hidden on md+) */}
         {!fullScreen && (
-          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 16, paddingBottom: 8 }}>
+          <div className="flex justify-center pt-4 pb-2 md:hidden">
             <div
               style={{
                 width: 48,

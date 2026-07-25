@@ -5,8 +5,9 @@ import { Label } from "@/components/ui/label";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { Search, UserPlus, Check, Package, IndianRupee, Calendar, Cpu, User, ChevronDown, X, AlertTriangle, TrendingUp, Layers } from "lucide-react";
+import { Search, UserPlus, Check, Package, IndianRupee, Calendar, Cpu, User, ChevronDown, ChevronRight, X, AlertTriangle, TrendingUp, Layers, Copy, Clock, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import type { Order } from "@/modules/orders/domain/types";
 
 // ─── Shared field wrapper ────────────────────────────────────
 function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
@@ -26,14 +27,35 @@ const fadeIn = { initial: { opacity: 0, y: 12 } as const, animate: { opacity: 1,
 // ═════════════════════════════════════════════════════════════
 export function StepClientProduct({
   clients, form, setForm, clientSearch, setClientSearch, addingClient, setAddingClient, newClient, setNewClient,
+  recentOrders, onClone, cloningOrderId, showAllPrevious, setShowAllPrevious,
 }: {
   clients: any[]; form: any; setForm: (f: any) => void;
   clientSearch: string; setClientSearch: (s: string) => void;
   addingClient: boolean; setAddingClient: (b: boolean) => void;
   newClient: { name: string; phone: string; email: string }; setNewClient: (c: any) => void;
+  recentOrders?: Order[];
+  onClone?: (orderId: string) => void;
+  cloningOrderId?: string | null;
+  showAllPrevious?: boolean;
+  setShowAllPrevious?: (show: boolean) => void;
 }) {
   const filtered = clients.filter((c) => c.name?.toLowerCase().includes(clientSearch.toLowerCase()));
   const selectedClient = clients.find((c) => c.id === form.client_id);
+
+  // ─── Clone card helpers ─────────────────────────────────
+  const formatINR = (num: number) =>
+    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(num);
+
+  const daysAgo = (dateStr: string | Date | undefined) => {
+    if (!dateStr) return "unknown date";
+    const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
+    if (days === 0) return "today";
+    if (days === 1) return "1 day ago";
+    return `${days} days ago`;
+  };
+
+  const latestOrder = recentOrders?.[0];
+  const remainingOrders = recentOrders?.slice(1) ?? [];
 
   return (
     <motion.div {...fadeIn} className="space-y-5">
@@ -92,6 +114,130 @@ export function StepClientProduct({
         )}
       </Field>
 
+      {/* ── Clone Previous Order Card ── */}
+      <AnimatePresence>
+        {latestOrder && !addingClient && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="rounded-[12px] border border-[var(--border)] bg-[var(--card)] p-4 space-y-3">
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Copy className="h-4 w-4 text-[var(--primary)]" />
+                  <span className="text-[13px] font-bold text-[var(--foreground)]">
+                    Previous Orders Found
+                  </span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--primary)] text-white font-bold">
+                    {recentOrders?.length ?? 0}
+                  </span>
+                </div>
+              </div>
+
+              {/* Latest order card */}
+              <div className="rounded-[10px] border border-[var(--border)] bg-[var(--muted)] p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[14px] font-semibold text-[var(--foreground)] truncate">
+                      {latestOrder.productName || "Unnamed Product"}
+                    </p>
+                    <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5">
+                      {Number(latestOrder.quantity || 0).toLocaleString('en-IN')} {(latestOrder.unit || 'kg').toUpperCase()}
+                      {latestOrder.totalAmount > 0 && (
+                        <> · {formatINR(Number(latestOrder.totalAmount))}</>  
+                      )}
+                    </p>
+                    <p className="text-[11px] text-[var(--muted-foreground)] mt-1 flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      Created {daysAgo(latestOrder.createdAt)}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onClone?.(latestOrder.id)}
+                    disabled={cloningOrderId === latestOrder.id}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold transition-all cursor-pointer whitespace-nowrap",
+                      "bg-[var(--primary)] text-white hover:opacity-90",
+                      cloningOrderId === latestOrder.id && "opacity-60 cursor-not-allowed"
+                    )}
+                  >
+                    {cloningOrderId === latestOrder.id ? (
+                      <><Loader2 className="h-3 w-3 animate-spin" /> Loading...</>
+                    ) : (
+                      <><Copy className="h-3 w-3" /> Clone Order</>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* View all previous link */}
+              {remainingOrders.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllPrevious?.(!showAllPrevious)}
+                  className="flex items-center gap-1 text-[12px] text-[var(--primary)] font-medium hover:underline cursor-pointer"
+                >
+                  {showAllPrevious ? "Hide" : "View all"} previous orders
+                  <ChevronRight className={cn("h-3 w-3 transition-transform", showAllPrevious && "rotate-90")} />
+                </button>
+              )}
+
+              {/* Expanded list of remaining orders */}
+              <AnimatePresence>
+                {showAllPrevious && remainingOrders.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden space-y-2"
+                  >
+                    {remainingOrders.map((order) => (
+                      <div
+                        key={order.id}
+                        className="rounded-[10px] border border-[var(--border)] bg-[var(--muted)] p-3"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[13px] font-medium text-[var(--foreground)] truncate">
+                              {order.productName || "Unnamed Product"}
+                            </p>
+                            <p className="text-[12px] text-[var(--muted-foreground)] mt-0.5">
+                              {Number(order.quantity || 0).toLocaleString('en-IN')} {(order.unit || 'kg').toUpperCase()}
+                              {order.totalAmount > 0 && <> · {formatINR(Number(order.totalAmount))}</>}
+                              {" "}· {daysAgo(order.createdAt)}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => onClone?.(order.id)}
+                            disabled={cloningOrderId === order.id}
+                            className={cn(
+                              "flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[11px] font-semibold transition-all cursor-pointer whitespace-nowrap",
+                              "border border-[var(--primary)] text-[var(--primary)] hover:bg-[rgba(0,122,255,0.06)]",
+                              cloningOrderId === order.id && "opacity-60 cursor-not-allowed"
+                            )}
+                          >
+                            {cloningOrderId === order.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <><Copy className="h-3 w-3" /> Clone</>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Product */}
       <Field label="Product Name">
         <Input placeholder="e.g. Steel Rods, Cotton Fabric..." value={form.product_name} onChange={(e) => setForm({ ...form, product_name: e.target.value })} className={inputClass} />
@@ -124,15 +270,86 @@ export function StepClientProduct({
 // STEP 2: Financials
 // ═════════════════════════════════════════════════════════════
 export function StepFinancials({ form, setForm }: { form: any; setForm: (f: any) => void }) {
-  const orderVal = Number(form.order_value) || 0;
+  // ─── Derived from Step 1 ──────────────────────────────
+  const productQuantity = parseFloat(form.quantity) || 0;
+  const productUnit = (form.unit || 'unit').toUpperCase();
+
+  // ─── Auto-calculate order value from rate ─────────────
+  const unitRate = parseFloat(form.unit_rate) || 0;
+  const calculatedOrderValue = productQuantity * unitRate;
+
+  // Sync order_value whenever rate or quantity changes
+  React.useEffect(() => {
+    const val = productQuantity * (parseFloat(form.unit_rate) || 0);
+    setForm((prev: any) => ({ ...prev, order_value: val > 0 ? String(val) : '' }));
+  }, [form.unit_rate, productQuantity]);
+
+  // ─── INR formatter ────────────────────────────────────
+  const formatINR = (num: number) =>
+    new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(num);
+
+  // ─── GST calculations ────────────────────────────────
   const gstPct = form.gst_applicable ? (Number(form.gst_percent) || 0) : 0;
-  const gstAmt = orderVal * gstPct / 100;
-  const total = orderVal + gstAmt;
+  const subtotal = calculatedOrderValue;
+  const gstAmt = subtotal * gstPct / 100;
+  const grandTotal = subtotal + gstAmt;
 
   return (
     <motion.div {...fadeIn} className="space-y-5">
+      {/* ── PRICING — Quantity (read-only from Step 1) + Rate Per Unit ── */}
+      <div className="rounded-[12px] border border-[var(--border)] bg-[var(--muted)] p-4 space-y-3">
+        <p className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider">Pricing</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Quantity — read-only */}
+          <div className="space-y-1.5">
+            <Label className="text-[13px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">Quantity</Label>
+            <div className={cn(inputClass, "flex items-center px-3 bg-[var(--card)] border border-[var(--border)] opacity-70 cursor-not-allowed")}>
+              <Package className="h-4 w-4 text-[var(--muted-foreground)] mr-2 flex-shrink-0" />
+              <span className="text-[15px] font-semibold text-[var(--foreground)]">
+                {productQuantity > 0 ? productQuantity.toLocaleString('en-IN') : '—'} {productUnit}
+              </span>
+            </div>
+            <p className="text-[11px] text-[var(--muted-foreground)] pl-1">Set in Step 1 — Client & Product</p>
+          </div>
+
+          {/* Rate Per Unit — editable */}
+          <Field label={`Rate Per ${productUnit}`}>
+            <NumericInput
+              value={form.unit_rate}
+              onValueChange={(v) => setForm({ ...form, unit_rate: v })}
+              prefix={"\u20B9"}
+              placeholder="0"
+              allowDecimal={true}
+              className={cn(inputClass, "pl-8 font-semibold")}
+            />
+          </Field>
+        </div>
+      </div>
+
+      {/* ── ORDER VALUE — auto-calculated, read-only ── */}
       <Field label="Order Value">
-        <NumericInput value={form.order_value} onValueChange={(v) => setForm({ ...form, order_value: v })} prefix="₹" placeholder="0" className={cn(inputClass, "pl-8")} />
+        <div className="relative">
+          <NumericInput
+            value={form.order_value}
+            onValueChange={() => {}}
+            prefix={"\u20B9"}
+            placeholder="0"
+            className={cn(inputClass, "pl-8 font-bold text-[17px] bg-[var(--card)] opacity-70 cursor-not-allowed")}
+            disabled
+          />
+        </div>
+        <p className="text-[11px] text-[var(--muted-foreground)] pl-1 mt-1">
+          Calculated from quantity × rate
+          {calculatedOrderValue > 0 && (
+            <span className="ml-1 font-medium text-[var(--primary)]">
+              ({productQuantity.toLocaleString('en-IN')} × {formatINR(unitRate)} = {formatINR(calculatedOrderValue)})
+            </span>
+          )}
+        </p>
       </Field>
 
       <Field label="Payment Terms">
@@ -179,31 +396,79 @@ export function StepFinancials({ form, setForm }: { form: any; setForm: (f: any)
         )}
       </AnimatePresence>
 
-      {/* Live calculation */}
+      {/* ── Enhanced Summary Card ── */}
       <div className="rounded-[12px] border border-[var(--border)] bg-[var(--muted)] p-4 space-y-2">
         <div className="flex justify-between text-[14px] text-[var(--muted-foreground)]">
-          <span>Subtotal</span><span className="font-medium text-[var(--foreground)]">₹{orderVal.toLocaleString("en-IN")}</span>
+          <span>Quantity</span>
+          <span className="font-medium text-[var(--foreground)]">{productQuantity > 0 ? productQuantity.toLocaleString('en-IN') : '—'} {productUnit}</span>
+        </div>
+        <div className="flex justify-between text-[14px] text-[var(--muted-foreground)]">
+          <span>Rate</span>
+          <span className="font-medium text-[var(--foreground)]">{unitRate > 0 ? `${formatINR(unitRate)} / ${productUnit}` : '—'}</span>
+        </div>
+        <div className="border-t border-[var(--border)] my-1" />
+        <div className="flex justify-between text-[14px] text-[var(--muted-foreground)]">
+          <span>Subtotal</span><span className="font-medium text-[var(--foreground)]">{subtotal > 0 ? formatINR(subtotal) : '₹0'}</span>
         </div>
         {form.gst_applicable && (
           <div className="flex justify-between text-[14px] text-[var(--muted-foreground)]">
-            <span>GST ({gstPct}%)</span><span className="font-medium text-[var(--foreground)]">₹{gstAmt.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>
+            <span>GST ({gstPct}%)</span><span className="font-medium text-[var(--foreground)]">{formatINR(gstAmt)}</span>
           </div>
         )}
         <div className="border-t border-[var(--border)] pt-2 flex justify-between text-[16px] font-bold text-[var(--foreground)]">
-          <span>Total</span><span>₹{total.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>
+          <span>Grand Total</span><span>{grandTotal > 0 ? formatINR(grandTotal) : '₹0'}</span>
         </div>
       </div>
     </motion.div>
   );
 }
 
+
 // ═════════════════════════════════════════════════════════════
-// STEP 3: Production Setup (Optional)
+// STEP 3: Production Setup (Optional) — Multi Machine+Operator
 // ═════════════════════════════════════════════════════════════
 export function StepProduction({
   form, setForm, machines, employees,
 }: { form: any; setForm: (f: any) => void; machines: any[]; employees: any[] }) {
   const productionStaff = employees.filter((e) => e.department === "Production" || e.department === "General");
+
+  const assignments: Array<{ id: string; machineId: string; machineName: string; operatorId: string; operatorName: string }> =
+    form.productionAssignments || [{ id: crypto.randomUUID(), machineId: "", machineName: "", operatorId: "", operatorName: "" }];
+
+  const updateAssignment = (id: string, field: string, value: string) => {
+    const updated = assignments.map((a) => {
+      if (a.id !== id) return a;
+      if (field === "machineId") {
+        const m = machines.find((x) => x.id === value);
+        return { ...a, machineId: value, machineName: m?.machineName || "" };
+      }
+      if (field === "operatorId") {
+        const e = employees.find((x) => x.id === value);
+        return { ...a, operatorId: value, operatorName: e?.fullName || "" };
+      }
+      return { ...a, [field]: value };
+    });
+    setForm({ ...form, productionAssignments: updated });
+  };
+
+  const addRow = () => {
+    setForm({
+      ...form,
+      productionAssignments: [...assignments, { id: crypto.randomUUID(), machineId: "", machineName: "", operatorId: "", operatorName: "" }],
+    });
+  };
+
+  const removeRow = (id: string) => {
+    if (assignments.length <= 1) return;
+    setForm({
+      ...form,
+      productionAssignments: assignments.filter((a) => a.id !== id),
+    });
+  };
+
+  // Check for duplicate pairs
+  const pairs = assignments.map((a) => `${a.machineId}:${a.operatorId}`);
+  const hasDuplicates = assignments.some((a) => a.machineId && a.operatorId) && pairs.length !== new Set(pairs).size;
 
   return (
     <motion.div {...fadeIn} className="space-y-5">
@@ -213,34 +478,84 @@ export function StepProduction({
           <p className="text-[15px] font-semibold text-[var(--foreground)]">Set up production now</p>
           <p className="text-[12px] text-[var(--muted-foreground)] mt-0.5">You can also do this later from Production Floor</p>
         </div>
-        <button type="button" onClick={() => setForm({ ...form, setup_production: !form.setup_production })}
-          className={cn("w-[51px] h-[31px] rounded-full transition-colors relative cursor-pointer", form.setup_production ? "bg-[var(--erp-success)]" : "bg-[var(--accent)]")}
+        <button
+          type="button"
+          onClick={() => setForm({ ...form, setup_production: !form.setup_production })}
+          className={cn(
+            "relative shrink-0 w-[51px] h-[31px] rounded-full transition-colors cursor-pointer p-0 overflow-hidden",
+            form.setup_production ? "bg-[var(--erp-success)]" : "bg-[var(--accent)]"
+          )}
         >
-          <motion.div className="w-[27px] h-[27px] rounded-full bg-white shadow-md absolute top-[2px]" animate={{ x: form.setup_production ? 22 : 2 }} transition={{ type: "spring", stiffness: 700, damping: 30 }} />
+          <motion.div
+            className="absolute top-[2px] left-[2px] w-[27px] h-[27px] rounded-full bg-white shadow-md"
+            animate={{ x: form.setup_production ? 20 : 0 }}
+            transition={{ type: "spring", stiffness: 700, damping: 30 }}
+          />
         </button>
       </div>
 
       <AnimatePresence>
         {form.setup_production && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden space-y-4">
-            <Field label="Machine / Equipment">
-              <Select value={form.machine_id} onValueChange={(v) => { const m = machines.find((x) => x.id === v); setForm({ ...form, machine_id: v, machine_name: m?.machineName || "" }); }}>
-                <SelectTrigger className={cn(inputClass, "cursor-pointer")}><SelectValue placeholder="Select machine" /></SelectTrigger>
-                <SelectContent className="rounded-[10px]">
-                  {machines.map((m) => <SelectItem key={m.id} value={m.id} className="rounded-[8px]">{m.machineName}{m.machineType ? ` (${m.machineType})` : ""}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </Field>
+            {/* Machine + Operator Rows */}
+            {assignments.map((row, idx) => (
+              <div
+                key={row.id}
+                className="rounded-[12px] border border-[var(--border)] bg-[var(--muted)] p-3 space-y-3"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider">
+                    Assignment {idx + 1}
+                  </span>
+                  {assignments.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeRow(row.id)}
+                      className="w-[28px] h-[28px] rounded-[8px] flex items-center justify-center hover:bg-[rgba(255,59,48,0.1)] transition-colors cursor-pointer"
+                    >
+                      <X className="h-3.5 w-3.5 text-[var(--destructive)]" />
+                    </button>
+                  )}
+                </div>
 
-            <Field label="Assigned Operator">
-              <Select value={form.operator_id} onValueChange={(v) => { const e = employees.find((x) => x.id === v); setForm({ ...form, operator_id: v, operator_name: e?.fullName || "" }); }}>
-                <SelectTrigger className={cn(inputClass, "cursor-pointer")}><SelectValue placeholder="Select operator" /></SelectTrigger>
-                <SelectContent className="rounded-[10px]">
-                  {productionStaff.map((e) => <SelectItem key={e.id} value={e.id} className="rounded-[8px]">{e.fullName} — {e.department}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </Field>
+                <Field label="Machine / Equipment">
+                  <Select value={row.machineId} onValueChange={(v) => updateAssignment(row.id, "machineId", v)}>
+                    <SelectTrigger className={cn(inputClass, "cursor-pointer")}><SelectValue placeholder="Select machine" /></SelectTrigger>
+                    <SelectContent className="rounded-[10px]">
+                      {machines.map((m) => <SelectItem key={m.id} value={m.id} className="rounded-[8px]">{m.machineName}{m.machineType ? ` (${m.machineType})` : ""}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
 
+                <Field label="Assigned Operator">
+                  <Select value={row.operatorId} onValueChange={(v) => updateAssignment(row.id, "operatorId", v)}>
+                    <SelectTrigger className={cn(inputClass, "cursor-pointer")}><SelectValue placeholder="Select operator" /></SelectTrigger>
+                    <SelectContent className="rounded-[10px]">
+                      {productionStaff.map((e) => <SelectItem key={e.id} value={e.id} className="rounded-[8px]">{e.fullName} — {e.department}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </div>
+            ))}
+
+            {/* Duplicate warning */}
+            {hasDuplicates && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-[8px] bg-[rgba(255,59,48,0.06)] text-[var(--destructive)] text-[13px]">
+                <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+                <span className="font-medium">Duplicate machine + operator pair detected</span>
+              </div>
+            )}
+
+            {/* Add Another Machine button */}
+            <button
+              type="button"
+              onClick={addRow}
+              className="flex items-center gap-1.5 text-[13px] text-[var(--primary)] font-medium hover:underline cursor-pointer"
+            >
+              <span className="text-[16px] leading-none">+</span> Add Another Machine
+            </button>
+
+            {/* Start date — single for the whole production */}
             <Field label="Target Start Date">
               <Input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} className={cn(inputClass, "cursor-pointer")} />
             </Field>
@@ -277,7 +592,7 @@ export function StepMaterials({
   form, setForm, inventoryItems, onSkip,
 }: {
   form: { materials: SelectedMaterialEntry[]; [key: string]: unknown };
-  setForm: (f: Record<string, unknown>) => void;
+  setForm: (f: any) => void;
   inventoryItems: InventorySearchItem[];
   onSkip: () => void;
 }) {
@@ -422,8 +737,15 @@ export function StepMaterials({
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--muted)] text-[var(--muted-foreground)] font-medium whitespace-nowrap">
                         Material
                       </span>
+                      {mat.currentStock === -1 && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[rgba(255,59,48,0.1)] text-[var(--destructive)] font-semibold whitespace-nowrap">
+                          Not in inventory
+                        </span>
+                      )}
                     </div>
-                    <span className="text-[12px] text-[var(--muted-foreground)] mt-0.5 block">Available: {mat.currentStock} {mat.unit}</span>
+                    <span className="text-[12px] text-[var(--muted-foreground)] mt-0.5 block">
+                      {mat.currentStock === -1 ? "Item not found in current inventory" : `Available: ${mat.currentStock} ${mat.unit}`}
+                    </span>
                   </div>
                   <button
                     type="button"
@@ -437,9 +759,10 @@ export function StepMaterials({
                 <div className="flex items-center gap-2">
                   <NumericInput
                     value={String(mat.quantityRequired)}
-                    onValueChange={(v) => updateQuantity(mat.inventoryItemId, Math.max(1, Number(v) || 1))}
-                    placeholder="1"
+                    onValueChange={(v) => updateQuantity(mat.inventoryItemId, v === "" ? 0 : Number(v))}
+                    placeholder="0"
                     allowDecimal={false}
+                    min={0}
                     className={cn(inputClass, "w-[100px] text-center")}
                   />
                   <span className="text-[13px] text-[var(--muted-foreground)] font-medium">{mat.unit}</span>
@@ -501,9 +824,12 @@ export function StepReview({ form, clients, machines }: { form: any; clients: an
       {/* Financials */}
       <div className="rounded-[12px] border border-[var(--border)] bg-[var(--muted)] p-4">
         <p className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider mb-2">Financials</p>
-        <Row label="Subtotal" value={`₹${orderVal.toLocaleString("en-IN")}`} />
-        {form.gst_applicable && <Row label={`GST (${gstPct}%)`} value={`₹${gstAmt.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`} />}
-        <Row label="Total Amount" value={`₹${total.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`} accent />
+        {(Number(form.unit_rate) || 0) > 0 && (
+          <Row label={`Rate Per ${(form.unit || 'unit').toUpperCase()}`} value={`\u20B9${Number(form.unit_rate).toLocaleString("en-IN")} / ${(form.unit || 'unit').toUpperCase()}`} />
+        )}
+        <Row label="Subtotal" value={`\u20B9${orderVal.toLocaleString("en-IN")}`} />
+        {form.gst_applicable && <Row label={`GST (${gstPct}%)`} value={`\u20B9${gstAmt.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`} />}
+        <Row label="Total Amount" value={`\u20B9${total.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`} accent />
         <Row label="Payment Terms" value={form.payment_terms} />
         {form.payment_terms === "Credit" && <Row label="Credit Period" value={`${form.credit_days || 0} days`} />}
       </div>
@@ -512,8 +838,20 @@ export function StepReview({ form, clients, machines }: { form: any; clients: an
       {form.setup_production && (
         <div className="rounded-[12px] border border-[var(--border)] bg-[var(--muted)] p-4">
           <p className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider mb-2">Production Setup</p>
-          <Row label="Machine" value={form.machine_name || "—"} />
-          <Row label="Operator" value={form.operator_name || "—"} />
+          {(form.productionAssignments || [])
+            .filter((a: any) => a.machineId || a.operatorId)
+            .map((a: any, idx: number) => (
+              <div key={a.id || idx} className="py-1.5 border-b border-[var(--border)] last:border-0">
+                <div className="flex justify-between items-center">
+                  <span className="text-[13px] text-[var(--muted-foreground)]">Machine {idx + 1}</span>
+                  <span className="text-[14px] font-medium text-[var(--foreground)]">{a.machineName || "—"}</span>
+                </div>
+                <div className="flex justify-between items-center mt-0.5">
+                  <span className="text-[13px] text-[var(--muted-foreground)]">Operator {idx + 1}</span>
+                  <span className="text-[14px] font-medium text-[var(--foreground)]">{a.operatorName || "—"}</span>
+                </div>
+              </div>
+            ))}
           <Row label="Start Date" value={form.start_date ? new Date(form.start_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"} />
         </div>
       )}
@@ -547,13 +885,17 @@ export function StepReview({ form, clients, machines }: { form: any; clients: an
         const totalMaterialCost = Math.round(
           mats.reduce((acc: number, m) => acc + m.quantityRequired * (m.purchase_cost_per_unit || 0), 0) * 100
         ) / 100;
-        const grossProfit = Math.round((ov - totalMaterialCost) * 100) / 100;
+        const labourCost = Number(form.labour_cost) || 0;
+        const overheadCost = Number(form.overhead_cost) || 0;
+        const otherCost = Number(form.other_cost) || 0;
+        const totalCost = totalMaterialCost + labourCost + overheadCost + otherCost;
+        const grossProfit = Math.round((ov - totalCost) * 100) / 100;
         const marginPercent = Math.round((grossProfit / ov) * 1000) / 10;
         const isPositive = grossProfit > 0;
         const profitColor = isPositive ? "var(--erp-success)" : "var(--destructive)";
 
         const materialBreakdown = mats
-          .map((m) => `${m.itemName} — ₹${Math.round(m.quantityRequired * (m.purchase_cost_per_unit || 0)).toLocaleString("en-IN")}`)
+          .map((m) => `${m.itemName} \u2014 \u20B9${Math.round(m.quantityRequired * (m.purchase_cost_per_unit || 0)).toLocaleString("en-IN")}`)
           .join("  |  ");
 
         return (
@@ -569,17 +911,17 @@ export function StepReview({ form, clients, machines }: { form: any; clients: an
             {/* Row 1: Order Value */}
             <div className="flex justify-between items-center py-2 border-b border-[var(--border)]">
               <span className="text-[13px] text-[var(--muted-foreground)]">Order Value</span>
-              <span className="text-[14px] font-medium text-[var(--foreground)]">₹{ov.toLocaleString("en-IN")}</span>
+              <span className="text-[14px] font-medium text-[var(--foreground)]">{"\u20B9"}{ov.toLocaleString("en-IN")}</span>
             </div>
 
-            {/* Row 2: Material Cost */}
+            {/* Row 2: Total Cost */}
             <div className="py-2 border-b border-[var(--border)]">
               <div className="flex justify-between items-center">
-                <span className="text-[13px] text-[var(--muted-foreground)]">Material Cost</span>
-                <span className="text-[14px] font-medium" style={{ color: "var(--erp-warning)" }}>₹{totalMaterialCost.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>
+                <span className="text-[13px] text-[var(--muted-foreground)]">Total Cost</span>
+                <span className="text-[14px] font-medium" style={{ color: "var(--erp-warning)" }}>{"\u20B9"}{totalCost.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>
               </div>
               <p className="text-[11px] text-[var(--muted-foreground)] mt-1 truncate" title={materialBreakdown}>
-                {materialBreakdown}
+                Materials: {"\u20B9"}{totalMaterialCost.toLocaleString("en-IN")}{labourCost + overheadCost + otherCost > 0 ? `  |  Other: \u20B9${(labourCost + overheadCost + otherCost).toLocaleString("en-IN")}` : ""}
               </p>
             </div>
 
@@ -590,7 +932,7 @@ export function StepReview({ form, clients, machines }: { form: any; clients: an
                 <div className="flex items-center gap-1 justify-end">
                   {!isPositive && <AlertTriangle className="h-3.5 w-3.5" style={{ color: profitColor }} />}
                   <span className="text-[16px] font-bold" style={{ color: profitColor }}>
-                    ₹{Math.abs(grossProfit).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                    {"\u20B9"}{Math.abs(grossProfit).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
                     {grossProfit < 0 && " loss"}
                   </span>
                 </div>

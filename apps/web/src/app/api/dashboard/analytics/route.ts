@@ -10,8 +10,11 @@ import { getDb } from "@/lib/mongodb";
  *  - Production efficiency (monthly average)
  *  - Order status distribution
  *  - Top products by revenue
- *  - Inventory breakdown
- *  - KPI summary cards
+ *  - Inventory breakdown (by unit type)
+ *  - KPI summary cards (with current-vs-previous growth)
+ *  - Order funnel (independent stage tallies)
+ *  - Production quality (produced vs rejected, monthly)
+ *  - Top clients by revenue
  */
 export async function GET(request: Request) {
     try {
@@ -35,6 +38,10 @@ export async function GET(request: Request) {
         const lastYearEnd = new Date(now);
         lastYearEnd.setFullYear(lastYearEnd.getFullYear() - 1);
 
+        // Previous equal-length period for KPI growth comparison
+        const prevRangeEnd = new Date(rangeStart.getTime() - 1); // 1ms before current range
+        const prevRangeStart = new Date(prevRangeEnd.getTime() - rangeDays * 24 * 60 * 60 * 1000);
+
         // ─── All queries in parallel ───────────────────────────
         const [
             revenueByMonth,
@@ -49,6 +56,14 @@ export async function GET(request: Request) {
             totalInventoryCount,
             ordersInRange,
             inventoryMovement,
+            // ── New queries ──
+            orderFunnelAgg,
+            productionQualityAgg,
+            topClientsAgg,
+            // KPI growth: current range revenue
+            currentRangeRevenueAgg,
+            // KPI growth: previous range revenue
+            prevRangeRevenueAgg,
         ] = await Promise.all([
             // Current year revenue grouped by month
             db
@@ -84,7 +99,7 @@ export async function GET(request: Request) {
             db
                 .collection("productions")
                 .aggregate([
-                    { $match: { userId, createdAt: { $gte: rangeStart } } },
+                    { $match: { userId, createdAt: { $gte: rangeStart }, status: { $ne: "closed" } } },
                     {
                         $group: {
                             _id: { $dateToString: { format: "%Y-%m", date: { $toDate: "$createdAt" } } },
@@ -95,12 +110,30 @@ export async function GET(request: Request) {
                 ])
                 .toArray(),
 
-            // Order status distribution
+            // Order status distribution (derived from production_status + payment_status)
             db
                 .collection("orders")
                 .aggregate([
                     { $match: { userId, createdAt: { $gte: rangeStart } } },
-                    { $group: { _id: "$status", count: { $sum: 1 } } },
+                    {
+                        $addFields: {
+                            effective_status: {
+                                $cond: {
+                                    if: {
+                                        $and: [
+                                            { $eq: ["$production_status", "completed"] },
+                                            { $eq: ["$payment_status", "paid"] },
+                                        ],
+                                    },
+                                    then: "completed",
+                                    else: {
+                                        $ifNull: ["$production_status", { $ifNull: ["$status", "pending"] }],
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    { $group: { _id: "$effective_status", count: { $sum: 1 } } },
                 ])
                 .toArray(),
 
@@ -121,14 +154,14 @@ export async function GET(request: Request) {
                 ])
                 .toArray(),
 
-            // Inventory breakdown by category
+            // Inventory breakdown by unit type (FIX: was using non-existent $category)
             db
                 .collection("inventory")
                 .aggregate([
                     { $match: { userId } },
                     {
                         $group: {
-                            _id: { $ifNull: ["$category", "Uncategorized"] },
+                            _id: { $ifNull: ["$unit", "Other"] },
                             count: { $sum: 1 },
                             totalValue: {
                                 $sum: {
@@ -147,8 +180,12 @@ export async function GET(request: Request) {
             // Total orders (all time)
             db.collection("orders").countDocuments({ userId }),
 
-            // Completed orders (all time)
-            db.collection("orders").countDocuments({ userId, status: "completed" }),
+            // Fully completed orders (production done AND payment done)
+            db.collection("orders").countDocuments({
+                userId,
+                production_status: "completed",
+                payment_status: "paid",
+            }),
 
             // Total revenue (all time)
             db
@@ -170,6 +207,148 @@ export async function GET(request: Request) {
                 userId,
                 updatedAt: { $gte: rangeStart },
             }),
+
+            // ═══════════════════════════════════════════════════
+            // NEW: Order Funnel — independent tallies per stage
+            // ═══════════════════════════════════════════════════
+            db
+                .collection("orders")
+                .aggregate([
+                    { $match: { userId, createdAt: { $gte: rangeStart } } },
+                    {
+                        $group: {
+                            _id: null,
+                            total: { $sum: 1 },
+                            inProduction: {
+                                $sum: {
+                                    $cond: [
+                                        {
+                                            $in: [
+                                                "$production_status",
+                                                ["processing", "in_progress", "printing", "completed"],
+                                            ],
+                                        },
+                                        1,
+                                        0,
+                                    ],
+                                },
+                            },
+                            productionComplete: {
+                                $sum: {
+                                    $cond: [{ $eq: ["$production_status", "completed"] }, 1, 0],
+                                },
+                            },
+                            fullyPaid: {
+                                $sum: {
+                                    $cond: [{ $eq: ["$payment_status", "paid"] }, 1, 0],
+                                },
+                            },
+                        },
+                    },
+                ])
+                .toArray(),
+
+            // ═══════════════════════════════════════════════════
+            // NEW: Production Quality — produced vs rejected, monthly
+            // Uses productions.createdAt for month bucketing
+            // ═══════════════════════════════════════════════════
+            db
+                .collection("productions")
+                .aggregate([
+                    { $match: { userId, createdAt: { $gte: rangeStart } } },
+                    {
+                        $group: {
+                            _id: { $dateToString: { format: "%Y-%m", date: { $toDate: "$createdAt" } } },
+                            produced: { $sum: { $toDouble: { $ifNull: ["$producedQuantity", 0] } } },
+                            rejected: { $sum: { $toDouble: { $ifNull: ["$rejectQuantity", 0] } } },
+                        },
+                    },
+                    { $sort: { _id: 1 } },
+                ])
+                .toArray(),
+
+            // ═══════════════════════════════════════════════════
+            // NEW: Top 5 Clients by revenue
+            // Guards against null/empty client_id before $toObjectId
+            // ═══════════════════════════════════════════════════
+            db
+                .collection("orders")
+                .aggregate([
+                    {
+                        $match: {
+                            userId,
+                            createdAt: { $gte: rangeStart },
+                            client_id: { $nin: [null, ""] },
+                        },
+                    },
+                    {
+                        $addFields: {
+                            client_oid: {
+                                $cond: {
+                                    if: {
+                                        $and: [
+                                            { $ne: ["$client_id", null] },
+                                            { $ne: ["$client_id", ""] },
+                                        ],
+                                    },
+                                    then: { $toObjectId: "$client_id" },
+                                    else: null,
+                                },
+                            },
+                        },
+                    },
+                    {
+                        $group: {
+                            _id: "$client_oid",
+                            totalRevenue: { $sum: { $toDouble: "$total_amount" } },
+                            orderCount: { $sum: 1 },
+                        },
+                    },
+                    { $sort: { totalRevenue: -1 } },
+                    { $limit: 5 },
+                    {
+                        $lookup: {
+                            from: "clients",
+                            localField: "_id",
+                            foreignField: "_id",
+                            as: "clientDoc",
+                        },
+                    },
+                    {
+                        $project: {
+                            _id: 0,
+                            name: {
+                                $ifNull: [
+                                    { $arrayElemAt: ["$clientDoc.name", 0] },
+                                    "Unknown Client",
+                                ],
+                            },
+                            totalRevenue: 1,
+                            orderCount: 1,
+                        },
+                    },
+                ])
+                .toArray(),
+
+            // ═══════════════════════════════════════════════════
+            // NEW: KPI Growth — current range revenue
+            // ═══════════════════════════════════════════════════
+            db
+                .collection("orders")
+                .aggregate([
+                    { $match: { userId, createdAt: { $gte: rangeStart } } },
+                    { $group: { _id: null, total: { $sum: { $toDouble: "$total_amount" } } } },
+                ])
+                .toArray(),
+
+            // NEW: KPI Growth — previous equal range revenue
+            db
+                .collection("orders")
+                .aggregate([
+                    { $match: { userId, createdAt: { $gte: prevRangeStart, $lte: prevRangeEnd } } },
+                    { $group: { _id: null, total: { $sum: { $toDouble: "$total_amount" } } } },
+                ])
+                .toArray(),
         ]);
 
         // ─── Format revenue trend ────────────────────────────
@@ -252,6 +431,33 @@ export async function GET(request: Request) {
             value: totalInventoryItems > 0 ? Math.round((cat.count / totalInventoryItems) * 100) : 0,
         }));
 
+        // ─── Format order funnel ─────────────────────────────
+        const funnelRaw = orderFunnelAgg[0] || { total: 0, inProduction: 0, productionComplete: 0, fullyPaid: 0 };
+        const orderFunnel = [
+            { stage: "Total Orders", count: funnelRaw.total },
+            { stage: "In Production", count: funnelRaw.inProduction },
+            { stage: "Production Complete", count: funnelRaw.productionComplete },
+            { stage: "Fully Paid", count: funnelRaw.fullyPaid },
+        ];
+
+        // ─── Format production quality ───────────────────────
+        const productionQuality = productionQualityAgg.map((item: any) => {
+            const parts = item._id.split("-");
+            const monthIdx = parseInt(parts[1], 10) - 1;
+            return {
+                month: monthNames[monthIdx] || item._id,
+                produced: Math.round(item.produced || 0),
+                rejected: Math.round(item.rejected || 0),
+            };
+        });
+
+        // ─── Format top clients ──────────────────────────────
+        const topClients = topClientsAgg.map((c: any) => ({
+            name: c.name || "Unknown Client",
+            totalRevenue: Math.round(c.totalRevenue || 0),
+            orderCount: c.orderCount || 0,
+        }));
+
         // ─── Compute KPIs ────────────────────────────────────
         const totalRevenue = totalRevenueAgg[0]?.total || 0;
         const completionRate = totalOrdersCount > 0 ? Math.round((completedOrdersCount / totalOrdersCount) * 100) : 0;
@@ -264,15 +470,13 @@ export async function GET(request: Request) {
         const inventoryTurnover =
             totalInventoryCount > 0 ? Math.round((ordersInRange / totalInventoryCount) * 10) / 10 : 0;
 
-        // Revenue growth: compare first half vs second half of range
-        const halfPoint = new Date(rangeStart.getTime() + (now.getTime() - rangeStart.getTime()) / 2);
-        const firstHalfRevenue = revenueByMonth
-            .filter((r: any) => new Date(r._id + "-01") < halfPoint)
-            .reduce((s: number, r: any) => s + (r.revenue || 0), 0);
-        const secondHalfRevenue = revenueByMonth
-            .filter((r: any) => new Date(r._id + "-01") >= halfPoint)
-            .reduce((s: number, r: any) => s + (r.revenue || 0), 0);
-        const revenueGrowth = firstHalfRevenue > 0 ? Math.round(((secondHalfRevenue - firstHalfRevenue) / firstHalfRevenue) * 1000) / 10 : 0;
+        // Revenue growth: current range vs previous equal range
+        // (Behavior change: previously used first-half/second-half split within range)
+        const currentRevenue = currentRangeRevenueAgg[0]?.total || 0;
+        const prevRevenue = prevRangeRevenueAgg[0]?.total || 0;
+        const revenueGrowth = prevRevenue > 0
+            ? Math.round(((currentRevenue - prevRevenue) / prevRevenue) * 1000) / 10
+            : 0;
 
         return NextResponse.json({
             revenueData,
@@ -287,6 +491,10 @@ export async function GET(request: Request) {
                 completionRate,
                 inventoryTurnover,
             },
+            // New data
+            orderFunnel,
+            productionQuality,
+            topClients,
         });
     } catch (error: any) {
         console.error("Error fetching analytics:", error);

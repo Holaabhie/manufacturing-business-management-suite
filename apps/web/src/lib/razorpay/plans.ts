@@ -10,7 +10,7 @@ export type PlanId = 'pro_monthly' | 'pro_yearly';
 export interface PlanConfig {
   id: PlanId;
   name: string;
-  /** Price in paise (e.g. 49900 = ₹499.00) */
+  /** Price in paise (e.g. 49900 = INR 499.00) */
   price: number;
   currency: string;
   interval: 'monthly' | 'yearly';
@@ -23,7 +23,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
   pro_monthly: {
     id: 'pro_monthly',
     name: 'Pro Monthly',
-    price: 99900, // ₹999.00
+    price: 99900, // INR 999.00
     currency: 'INR',
     interval: 'monthly',
     features: [
@@ -39,7 +39,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
   pro_yearly: {
     id: 'pro_yearly',
     name: 'Pro Yearly',
-    price: 999900, // ₹9,999.00 (save ₹1,989)
+    price: 999900, // INR 9,999.00 (save INR 1,989)
     currency: 'INR',
     interval: 'yearly',
     features: [
@@ -58,7 +58,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
 
 /** Get display price in rupees (from paise) */
 export function formatPrice(paise: number): string {
-  return `₹${(paise / 100).toLocaleString('en-IN')}`;
+  return `\u20B9${(paise / 100).toLocaleString('en-IN')}`;
 }
 
 /** Calculate yearly savings */

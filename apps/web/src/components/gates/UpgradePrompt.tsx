@@ -79,7 +79,7 @@ export function UpgradePrompt({
                 onClick={onUpgrade}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:shadow-md hover:from-violet-500 hover:to-indigo-500 active:scale-[0.98]"
               >
-                Upgrade to Pro — ₹{monthlyPrice}/mo
+                Upgrade to Pro — {"\u20B9"}{monthlyPrice}/mo
               </button>
             </div>
           </div>
@@ -105,10 +105,10 @@ export function UpgradePrompt({
       {/* Content */}
       <div className="p-6">
         <div className="flex items-baseline gap-2 mb-4">
-          <span className="text-3xl font-bold text-gray-900 dark:text-gray-100">₹{monthlyPrice}</span>
+          <span className="text-3xl font-bold text-gray-900 dark:text-gray-100">{"\u20B9"}{monthlyPrice}</span>
           <span className="text-sm text-gray-500 dark:text-gray-400">/month</span>
           <span className="ml-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-            Save ₹{((PLANS.pro_monthly.price * 12 - PLANS.pro_yearly.price) / 100).toFixed(0)} yearly
+            Save {"\u20B9"}{((PLANS.pro_monthly.price * 12 - PLANS.pro_yearly.price) / 100).toFixed(0)} yearly
           </span>
         </div>
 

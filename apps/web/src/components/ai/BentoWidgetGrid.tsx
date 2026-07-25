@@ -192,8 +192,7 @@ export function BentoWidgetGrid({
             >
               <div className="flex items-center gap-3">
                 <div
-                  className="w-7 h-7 rounded-[7px] flex items-center justify-center flex-shrink-0 text-[var(--ai-text-tertiary)] group-hover:text-[var(--ai-accent-purple)] transition-colors"
-                  style={{ background: "rgba(255,255,255,0.04)" }}
+                  className="w-7 h-7 rounded-[7px] flex items-center justify-center flex-shrink-0 text-[var(--ai-text-tertiary)] group-hover:text-[var(--ai-accent-purple)] transition-colors bg-gray-100 dark:bg-white/[0.04]"
                 >
                   {action.icon}
                 </div>

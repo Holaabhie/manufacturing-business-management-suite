@@ -732,9 +732,9 @@ export function buildInvoiceHTML(data: InvoicePayload): string {
           <th style="text-align: left;">Description</th>
           <th class="cell-right" style="width: 60px;">Qty</th>
           <th class="cell-center" style="width: 48px;">Unit</th>
-          <th class="cell-right" style="width: 80px;">Rate (₹)</th>
+          <th class="cell-right" style="width: 80px;">Rate (\u20B9)</th>
           <th class="cell-center" style="width: 48px;">GST</th>
-          <th class="cell-right" style="width: 90px;">Amount (₹)</th>
+          <th class="cell-right" style="width: 90px;">Amount (\u20B9)</th>
         </tr>
       </thead>
       <tbody>

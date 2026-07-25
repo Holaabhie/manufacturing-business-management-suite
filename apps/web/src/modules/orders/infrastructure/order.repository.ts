@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 import type { IOrderRepository, Order, OrderItem, OrderMaterial, CreateOrderDTO, UpdateOrderDTO, LegacyDeductionItem } from "../domain/types";
+import { getFinancialYear } from "@/lib/utils/financial-year";
 
 function toEntity(doc: Record<string, unknown>, client?: Record<string, unknown> | null): Order {
     const totalAmount = Number(doc.total_amount || doc.grand_total || 0);
@@ -46,10 +47,16 @@ function toEntity(doc: Record<string, unknown>, client?: Record<string, unknown>
         estimatedMargin: Number(doc.estimated_margin || 0),
         priority: (doc.priority as 'low' | 'normal' | 'high' | 'urgent') || 'normal',
         notes: String(doc.notes || ''),
+        paymentTerms: doc.payment_terms ? String(doc.payment_terms) : undefined,
+        creditDays: doc.credit_days ? Number(doc.credit_days) : undefined,
+        gstApplicable: doc.gst_applicable != null ? Boolean(doc.gst_applicable) : undefined,
+        gstPercent: doc.gst_percent != null ? Number(doc.gst_percent) : undefined,
         createdAt: (doc.createdAt || doc.created_at || new Date()) as Date,
         updatedAt: (doc.updatedAt || doc.updated_at || doc.createdAt || doc.created_at || new Date()) as Date,
         processedAt: doc.processedAt ? (doc.processedAt as Date) : (doc.processed_at ? (doc.processed_at as Date) : null),
         completedAt: doc.completedAt ? (doc.completedAt as Date) : (doc.completed_at ? (doc.completed_at as Date) : null),
+        productionStatus: doc.production_status ? String(doc.production_status) : undefined,
+        productionStatusManualOverride: doc.production_status_manual_override === true ? true : undefined,
     };
 }
 
@@ -154,6 +161,7 @@ export class MongoOrderRepository implements IOrderRepository {
             notes: data.notes || '',
             createdAt: now,
             updatedAt: now,
+            financial_year: getFinancialYear(now),
         };
         const result = await col.insertOne(doc);
         return { ...toEntity(doc as Record<string, unknown>), id: result.insertedId.toString() };
@@ -197,17 +205,23 @@ export class MongoOrderRepository implements IOrderRepository {
         try {
             const col = await this.ordersCol();
             const now = new Date();
-            const fields: Record<string, unknown> = { status, updatedAt: now };
+            // Write to production_status (NOT the legacy status field)
+            const fields: Record<string, unknown> = { production_status: status, updatedAt: now };
 
             if (status === "processing") {
                 fields.processedAt = now;
             } else if (status === "completed") {
                 fields.completedAt = now;
+                // Mark as manual override so production-sync never overwrites
+                fields.production_status_manual_override = true;
                 // Also set processedAt if it wasn't set before
                 const existing = await col.findOne({ _id: new ObjectId(id), userId });
                 if (existing && !existing.processedAt) {
                     fields.processedAt = now;
                 }
+            } else if (status === "cancelled" || status === "on_hold") {
+                // Terminal statuses — also write to legacy status for cancelled/on_hold
+                fields.status = status;
             }
 
             const result = await col.findOneAndUpdate(
@@ -247,6 +261,7 @@ export class MongoOrderRepository implements IOrderRepository {
                 quantity_deducted: Number(item.quantity_deducted),
                 userId,
                 createdAt: new Date(),
+                financial_year: getFinancialYear(new Date()),
             });
         }
     }

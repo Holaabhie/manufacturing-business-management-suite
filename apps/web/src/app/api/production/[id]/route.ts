@@ -3,6 +3,7 @@ import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { triggerNotification } from "@/lib/notifications/dispatcher";
+import { syncOrderStatusFromProduction } from "@/lib/utils/orderStatusSync";
 
 // ─── GET: Single production detail ──────────────────────────────────
 export async function GET(
@@ -16,16 +17,63 @@ export async function GET(
         }
 
         const { id } = await params;
+
+        if (!ObjectId.isValid(id)) {
+            return NextResponse.json(
+                { error: "Invalid production ID" },
+                { status: 400 }
+            );
+        }
+
         const db = await getDb();
-        const production = await db
-            .collection("productions")
-            .findOne({ _id: new ObjectId(id), userId: getDataOwnerId(user) });
+
+        // Fetch production — scoped to data owner for Admin/Owner
+        // Staff access is validated separately below
+        const isAdmin = user.role === "Admin" || user.role === "Owner";
+        const production = isAdmin
+            ? await db
+                  .collection("productions")
+                  .findOne({ _id: new ObjectId(id), userId: getDataOwnerId(user) })
+            : await db
+                  .collection("productions")
+                  .findOne({ _id: new ObjectId(id) });
 
         if (!production) {
             return NextResponse.json(
                 { error: "Production not found" },
                 { status: 404 }
             );
+        }
+
+        // Staff access control: must be in assignedStaff array
+        if (!isAdmin) {
+            const assignedStaff = (production.assignedStaff as any[]) || [];
+            const isAssigned = assignedStaff.some(
+                (memberId: any) =>
+                    String(memberId) === String(user._id)
+            );
+
+            if (!isAssigned) {
+                return NextResponse.json(
+                    { error: "Access denied" },
+                    { status: 403 }
+                );
+            }
+        }
+
+        // Resolve assigned staff names for the response
+        let assignedStaffDetails: any[] = [];
+        if (production.assignedStaff && (production.assignedStaff as any[]).length > 0) {
+            const staffDocs = await db
+                .collection("users")
+                .find({ _id: { $in: production.assignedStaff as ObjectId[] } })
+                .project({ fullName: 1, full_name: 1, email: 1 })
+                .toArray();
+            assignedStaffDetails = staffDocs.map((s: any) => ({
+                id: String(s._id),
+                name: s.fullName || s.full_name || s.email || "Unknown",
+                email: s.email || "",
+            }));
         }
 
         return NextResponse.json({
@@ -55,6 +103,7 @@ export async function GET(
             updatedAt: production.updatedAt,
             completedAt: production.completedAt,
             createdBy: production.createdBy,
+            assignedStaff: assignedStaffDetails,
         });
     } catch (error: any) {
         console.error("Error fetching production:", error);
@@ -85,6 +134,14 @@ export async function PUT(
             return NextResponse.json(
                 { error: "Production not found" },
                 { status: 404 }
+            );
+        }
+
+        // Guard: prevent editing completed productions
+        if (existing.status === "completed" && body.action !== "complete") {
+            return NextResponse.json(
+                { error: "Production already completed. Reopen required to edit." },
+                { status: 400 }
             );
         }
 
@@ -119,107 +176,52 @@ export async function PUT(
                     body.status = "running";
                     break;
                 case "complete":
-                    // ─── Material deduction via internal inventory API ───
+                    // ─── Read-only low-stock check (no deduction — stock was already
+                    //     deducted at order creation in POST /api/orders) ───
                     {
                         const materials = existing.materials || [];
-                        const materialsDeducted: any[] = [];
                         const lowStockAlerts: any[] = [];
-                        const origin = new URL(request.url).origin;
-                        const cookieHeader = request.headers.get("cookie") || "";
 
-                        // First pass: verify all materials have sufficient stock
-                        for (const mat of materials) {
-                            const itemId = mat.inventoryId || mat.inventoryItemId;
-                            if (!itemId) continue;
+                        if (materials.length > 0) {
+                            const origin = new URL(request.url).origin;
+                            const cookieHeader = request.headers.get("cookie") || "";
 
-                            // Read current stock via inventory GET
+                            // Fetch current inventory to check stock levels
                             const checkRes = await fetch(`${origin}/api/inventory`, {
                                 headers: { Cookie: cookieHeader },
                             });
+
                             if (checkRes.ok) {
                                 const allItems = await checkRes.json();
-                                const item = Array.isArray(allItems)
-                                    ? allItems.find((i: any) => i.id === itemId)
-                                    : null;
-                                if (item) {
-                                    const required = Number(mat.quantityUsed || mat.quantity) || 0;
-                                    if (item.quantity < required) {
-                                        return NextResponse.json(
-                                            {
-                                                error: `Insufficient stock for ${item.name}. Available: ${item.quantity} ${item.unit}, Required: ${required} ${item.unit}`,
-                                                itemName: item.name,
-                                                available: item.quantity,
-                                                required,
-                                            },
-                                            { status: 400 }
-                                        );
+                                if (Array.isArray(allItems)) {
+                                    for (const mat of materials) {
+                                        const itemId = mat.inventoryId || mat.inventoryItemId;
+                                        if (!itemId) continue;
+
+                                        const item = allItems.find((i: any) => i.id === itemId);
+                                        if (item && item.quantity !== undefined) {
+                                            const minLevel = Number(item.min_stock_level || item.minStockLevel || 10);
+                                            if (item.quantity <= minLevel) {
+                                                lowStockAlerts.push({
+                                                    itemId,
+                                                    itemName: item.name || mat.name || mat.itemName,
+                                                    currentStock: item.quantity,
+                                                    minStockLevel: minLevel,
+                                                    unit: item.unit || mat.unit,
+                                                });
+                                            }
+                                        }
                                     }
                                 }
                             }
                         }
 
-                        // Second pass: deduct stock via PATCH /api/inventory/[id]/stock
-                        for (const mat of materials) {
-                            const itemId = mat.inventoryId || mat.inventoryItemId;
-                            if (!itemId) continue;
-
-                            const qty = Number(mat.quantityUsed || mat.quantity) || 0;
-                            if (qty <= 0) continue;
-
-                            const deductRes = await fetch(
-                                `${origin}/api/inventory/${itemId}/stock`,
-                                {
-                                    method: "PATCH",
-                                    headers: {
-                                        "Content-Type": "application/json",
-                                        Cookie: cookieHeader,
-                                    },
-                                    body: JSON.stringify({
-                                        action: "deduct",
-                                        quantity: qty,
-                                    }),
-                                }
-                            );
-
-                            const deductData = await deductRes.json();
-
-                            if (!deductRes.ok) {
-                                return NextResponse.json(
-                                    {
-                                        error: `Failed to deduct stock for ${mat.name || mat.itemName}: ${deductData.error}`,
-                                        partiallyDeducted: materialsDeducted,
-                                    },
-                                    { status: 400 }
-                                );
-                            }
-
-                            materialsDeducted.push({
-                                itemId,
-                                itemName: deductData.itemName || mat.name || mat.itemName,
-                                quantityDeducted: qty,
-                                previousStock: deductData.previousStock,
-                                newStock: deductData.newStock,
-                                unit: deductData.unit || mat.unit,
-                            });
-
-                            // Check for low stock
-                            if (deductData.newStock !== undefined && deductData.newStock <= 10) {
-                                lowStockAlerts.push({
-                                    itemId,
-                                    itemName: deductData.itemName,
-                                    currentStock: deductData.newStock,
-                                    unit: deductData.unit,
-                                });
-                            }
-                        }
-
-                        // Store deduction results on the production for reference
-                        body._materialsDeducted = materialsDeducted;
+                        // Store low-stock alerts on the production for reference
                         body._lowStockAlerts = lowStockAlerts;
                     }
 
                     actionText = "Production Completed";
-                    detailsText = `Production completed. Final: ${body.producedQuantity || existing.producedQuantity} produced, ${body.rejectQuantity || existing.rejectQuantity} rejected. Materials deducted from inventory.`;
+                    detailsText = `Production completed. Final: ${body.producedQuantity || existing.producedQuantity} produced, ${body.rejectQuantity || existing.rejectQuantity} rejected.`;
                     body.status = "completed";
                     body.completedAt = now.toISOString();
                     break;
@@ -242,14 +244,19 @@ export async function PUT(
             });
         }
 
-        // Calculate progress
+        // Calculate progress using processedUnits (good + rejected)
         const produced =
             body.producedQuantity !== undefined
                 ? Number(body.producedQuantity)
                 : existing.producedQuantity || 0;
+        const rejected =
+            body.rejectQuantity !== undefined
+                ? Number(body.rejectQuantity)
+                : existing.rejectQuantity || 0;
         const expected = existing.expectedOutput || 1;
+        const processedUnits = produced + rejected;
         const progressPercent = Math.min(
-            Math.round((produced / expected) * 100),
+            Math.round((processedUnits / expected) * 100),
             100
         );
 
@@ -289,6 +296,16 @@ export async function PUT(
                 },
                 triggeredBy: getDataOwnerId(user),
             }).catch(() => {}); // fire-and-forget
+
+            // ── Sync order status when production completes (via shared helper) ──
+            if (updated.orderId) {
+                try {
+                    await syncOrderStatusFromProduction(updated.orderId, getDataOwnerId(user));
+                } catch (syncErr) {
+                    console.error("Failed to sync order status on production complete:", syncErr);
+                    // Non-blocking — production completion still succeeds
+                }
+            }
         }
 
         // For completion, return enhanced response
@@ -313,7 +330,7 @@ export async function PUT(
     }
 }
 
-// ─── DELETE: Delete production ───────────────────────────────────────
+// ─── DELETE: Soft-delete production (set status to "closed") ─────────
 export async function DELETE(
     _request: Request,
     { params }: { params: Promise<{ id: string }> }
@@ -321,33 +338,69 @@ export async function DELETE(
     try {
         const user = await getSessionUser();
         if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return NextResponse.json(
+                { success: false, message: "Unauthorized" },
+                { status: 401 }
+            );
         }
 
         // Only admins can delete
-        if (user.role !== "Admin") {
+        if (user.role !== "Admin" && user.role !== "Owner") {
             return NextResponse.json(
-                { error: "Only admins can delete productions" },
+                { success: false, message: "Only admins can delete productions" },
                 { status: 403 }
             );
         }
 
         const { id } = await params;
-        const db = await getDb();
-        const result = await db
-            .collection("productions")
-            .deleteOne({ _id: new ObjectId(id), userId: getDataOwnerId(user) });
 
-        if (result.deletedCount === 0) {
+        if (!ObjectId.isValid(id)) {
             return NextResponse.json(
-                { error: "Production not found" },
+                { success: false, message: "Invalid production id" },
+                { status: 400 }
+            );
+        }
+
+        const db = await getDb();
+        const ownerId = getDataOwnerId(user);
+        const productionId = new ObjectId(id);
+
+        // Check existence
+        const production = await db
+            .collection("productions")
+            .findOne({ _id: productionId, userId: ownerId });
+
+        if (!production) {
+            return NextResponse.json(
+                { success: false, message: "Production not found" },
                 { status: 404 }
             );
         }
 
+        // Idempotency: already closed = success
+        if (production.status === "closed") {
+            return NextResponse.json({ success: true });
+        }
+
+        // Soft delete — NEVER deleteOne()
+        await db.collection("productions").updateOne(
+            { _id: productionId, userId: ownerId },
+            {
+                $set: {
+                    status: "closed",
+                    updatedAt: new Date(),
+                    closedAt: new Date(),
+                    closedBy: String(user._id),
+                },
+            }
+        );
+
         return NextResponse.json({ success: true });
     } catch (error: any) {
         console.error("Error deleting production:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json(
+            { success: false, message: "Internal server error" },
+            { status: 500 }
+        );
     }
 }

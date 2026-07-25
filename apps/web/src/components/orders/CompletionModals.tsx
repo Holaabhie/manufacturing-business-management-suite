@@ -102,7 +102,7 @@ export function CompletionConfirmationModal({
               <span style={{
                 fontSize: 18, fontWeight: 600, color: "var(--overlay-accent)",
               }}>
-                ₹{Number(order.totalAmount ?? 0).toLocaleString("en-IN")}
+                {"\u20B9"}{Number(order.totalAmount ?? 0).toLocaleString("en-IN")}
               </span>
             </div>
           </div>
@@ -289,7 +289,7 @@ export function InvoicePreviewModal({
     if (!inv) return;
     const clientPhone = inv.client?.phone || "";
     const msg = encodeURIComponent(
-      `Hi ${inv.client?.name || ""},\n\nYour invoice ${editData?.invoiceNumber || inv.invoiceNumber} for ₹${Number(inv.totalAmount).toLocaleString("en-IN")} has been generated.\n\nThank you for your business!\n- ${inv.company?.companyName || ""}`,
+      `Hi ${inv.client?.name || ""},\n\nYour invoice ${editData?.invoiceNumber || inv.invoiceNumber} for \u20B9${Number(inv.totalAmount).toLocaleString("en-IN")} has been generated.\n\nThank you for your business!\n- ${inv.company?.companyName || ""}`,
     );
     const phoneClean = clientPhone.replace(/\D/g, "");
     const whatsappUrl = phoneClean
@@ -369,7 +369,7 @@ export function InvoicePreviewModal({
                 <div style={{ textAlign: "right" }}>
                   <p style={{ fontSize: 11, fontWeight: 500, color: "var(--overlay-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", margin: 0 }}>Total</p>
                   {/* Invoice total — financial KPI, KEEP strong */}
-                  <p style={{ fontSize: 22, fontWeight: 600, color: "#16a34a", margin: "4px 0 0" }}>₹{Number(inv.totalAmount).toLocaleString("en-IN")}</p>
+                  <p style={{ fontSize: 22, fontWeight: 600, color: "#16a34a", margin: "4px 0 0" }}>{"\u20B9"}{Number(inv.totalAmount).toLocaleString("en-IN")}</p>
                 </div>
               </div>
               {/* Items */}
@@ -399,29 +399,29 @@ export function InvoicePreviewModal({
                   }}>
                     <span style={{ fontWeight: 500 }}>{item.description}</span>
                     <span style={{ textAlign: "right", color: "var(--overlay-text-muted)" }}>{item.quantity} {item.unit}</span>
-                    <span style={{ textAlign: "right", color: "var(--overlay-text-muted)" }}>₹{Number(item.rate).toLocaleString("en-IN")}</span>
+                    <span style={{ textAlign: "right", color: "var(--overlay-text-muted)" }}>{"\u20B9"}{Number(item.rate).toLocaleString("en-IN")}</span>
                     {/* Line amount — numeric hierarchy, KEEP semibold */}
-                    <span style={{ textAlign: "right", fontWeight: 600 }}>₹{Number(item.amount).toLocaleString("en-IN")}</span>
+                    <span style={{ textAlign: "right", fontWeight: 600 }}>{"\u20B9"}{Number(item.amount).toLocaleString("en-IN")}</span>
                   </div>
                 ))}
                 {/* Totals */}
                 <div style={{ borderTop: "1px solid var(--overlay-border)", padding: "8px 12px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--overlay-text-muted)", marginBottom: 4 }}>
-                    <span>Subtotal</span><span>₹{Number(inv.subtotal).toLocaleString("en-IN")}</span>
+                    <span>Subtotal</span><span>{"\u20B9"}{Number(inv.subtotal).toLocaleString("en-IN")}</span>
                   </div>
                   {inv.cgstAmount > 0 && (
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--overlay-text-muted)", marginBottom: 4 }}>
-                      <span>CGST (9%)</span><span>₹{Number(inv.cgstAmount).toLocaleString("en-IN")}</span>
+                      <span>CGST (9%)</span><span>{"\u20B9"}{Number(inv.cgstAmount).toLocaleString("en-IN")}</span>
                     </div>
                   )}
                   {inv.sgstAmount > 0 && (
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--overlay-text-muted)", marginBottom: 4 }}>
-                      <span>SGST (9%)</span><span>₹{Number(inv.sgstAmount).toLocaleString("en-IN")}</span>
+                      <span>SGST (9%)</span><span>{"\u20B9"}{Number(inv.sgstAmount).toLocaleString("en-IN")}</span>
                     </div>
                   )}
                   {/* Grand total — financial KPI, KEEP strong */}
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 600, color: "#16a34a", paddingTop: 6, borderTop: "1px solid var(--overlay-border)" }}>
-                    <span>Total</span><span>₹{Number(inv.totalAmount).toLocaleString("en-IN")}</span>
+                    <span>Total</span><span>{"\u20B9"}{Number(inv.totalAmount).toLocaleString("en-IN")}</span>
                   </div>
                 </div>
               </div>

@@ -122,7 +122,7 @@ function fmt(n: number): string {
     return "Rs. " + n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-/** Compact number (no ₹) for table cells to save space */
+/** Compact number (no \u20B9) for table cells to save space */
 function fmtNum(n: number): string {
     return n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
@@ -218,9 +218,9 @@ function getInvoiceCols(): ColDef[] {
         { label: "HSN/SAC", x: x0 + 66, w: 20, align: "left", pad: 2 },
         { label: "QTY", x: x0 + 86, w: 15, align: "right", pad: 2 },
         { label: "UNIT", x: x0 + 101, w: 15, align: "center", pad: 1 },
-        { label: "RATE", x: x0 + 116, w: 22, align: "right", pad: 2 },      // widened, removed (₹)
+        { label: "RATE", x: x0 + 116, w: 22, align: "right", pad: 2 },      // widened, removed (INR)
         { label: "GST %", x: x0 + 138, w: 12, align: "right", pad: 2 },
-        { label: "AMOUNT", x: x0 + 150, w: 30, align: "right", pad: 3 },    // widened, removed (₹)
+        { label: "AMOUNT", x: x0 + 150, w: 30, align: "right", pad: 3 },    // widened, removed (INR)
     ];
     return cols;
 }
@@ -924,8 +924,8 @@ export async function generatePurchaseOrderPDF(
     const poCols: ColDef[] = [
         { label: "ITEM DESCRIPTION", x: ML, w: 100, align: "left", pad: 4 },
         { label: "QTY", x: ML + 100, w: 24, align: "right", pad: 2 },
-        { label: "RATE (₹)", x: ML + 124, w: 28, align: "right", pad: 2 },
-        { label: "TOTAL (₹)", x: ML + 152, w: 28, align: "right", pad: 2 },
+        { label: "RATE (\u20B9)", x: ML + 124, w: 28, align: "right", pad: 2 },
+        { label: "TOTAL (\u20B9)", x: ML + 152, w: 28, align: "right", pad: 2 },
     ];
 
     y = drawTableHeader(doc, y, poCols);

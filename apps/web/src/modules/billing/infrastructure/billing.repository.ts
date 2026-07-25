@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 import type { IBillingRepository, Bill, CreateBillDTO, UpdateBillDTO } from "../domain/types";
+import { getFinancialYear } from "@/lib/utils/financial-year";
 
 function toEntity(doc: Record<string, unknown>): Bill {
     const rawItems = (doc.items as Record<string, unknown>[]) || [];
@@ -98,6 +99,7 @@ export class MongoBillingRepository implements IBillingRepository {
             status: data.status || "draft",
             created_at: now,
             updated_at: now,
+            financial_year: getFinancialYear(data.billDate || now),
         };
         const result = await c.insertOne(doc);
         return { ...toEntity(doc as Record<string, unknown>), id: result.insertedId.toString() };

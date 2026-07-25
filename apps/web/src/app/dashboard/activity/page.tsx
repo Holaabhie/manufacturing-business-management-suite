@@ -195,7 +195,7 @@ export default function ActivityLogPage() {
                           <div className="flex items-center justify-between sm:justify-end gap-6 sm:w-[200px] flex-shrink-0 ml-14 sm:ml-0">
                             {activity.amount !== null && (
                               <p className="text-[15px] font-medium text-[var(--foreground)]">
-                                ₹{activity.amount.toLocaleString("en-IN")}
+                                {"\u20B9"}{activity.amount.toLocaleString("en-IN")}
                               </p>
                             )}
                             <div className="flex items-center gap-3 text-right">

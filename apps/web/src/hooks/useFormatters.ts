@@ -19,7 +19,7 @@ import {
  *
  * Usage:
  *   const { formatINR, formatDate } = useFormatters();
- *   formatINR(150000)  // → "₹1,50,000" (or locale-specific)
+ *   formatINR(150000)  // → "\u20B91,50,000" (or locale-specific)
  */
 export function useFormatters() {
   const { locale } = useAppLocale();

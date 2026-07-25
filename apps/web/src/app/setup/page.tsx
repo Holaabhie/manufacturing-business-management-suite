@@ -690,7 +690,7 @@ export default function SetupPage() {
                           <div
                             style={{
                               width: 18, height: 18, borderRadius: "50%",
-                              background: "#fff", position: "absolute",
+                              background: "var(--background)", position: "absolute",
                               top: 3,
                               left: isOn ? 21 : 3,
                               transition: "left 0.2s ease",

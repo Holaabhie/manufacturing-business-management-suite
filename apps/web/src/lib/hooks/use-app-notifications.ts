@@ -109,14 +109,18 @@ function generateNotificationsFromData(
   };
 
   (orders as Record<string, unknown>[]).forEach((o) => {
+    const prodStatus = (o.productionStatus || o.production_status || o.status) as string | undefined;
+    const payStatus = (o.paymentStatus || o.payment_status) as string | undefined;
+    const isFullyCompleted = prodStatus === "completed" && payStatus === "paid";
+
     const dueDate = (o.due_date || o.dueDate || o.delivery_date) as
       | string
       | undefined;
     if (
       dueDate &&
       new Date(dueDate) < now &&
-      o.status !== "completed" &&
-      o.status !== "delivered"
+      !isFullyCompleted &&
+      prodStatus !== "delivered"
     ) {
       const clients = o.clients as Record<string, unknown> | undefined;
       generated.push({
@@ -130,7 +134,7 @@ function generateNotificationsFromData(
         url: `/dashboard/production/${o.id}`,
       });
     }
-    if (o.status === "production" || o.status === "in_production") {
+    if (prodStatus === "processing" || prodStatus === "in_progress") {
       const startDate = (o.production_start_date ||
         o.updatedAt ||
         o.createdAt) as string | undefined;
@@ -154,15 +158,15 @@ function generateNotificationsFromData(
         }
       }
     }
-    if (o.status === "completed" || o.status === "delivered") {
+    if (prodStatus === "completed") {
       const clients = o.clients as Record<string, unknown> | undefined;
       generated.push({
         id: `completed-${o.id}`,
         type: "completed",
-        title: `${orderLabel(o)} completed`,
+        title: `${orderLabel(o)} production completed`,
         message: `Order for ${
           clients?.name || o.client_name || "client"
-        } — ${o.quantity || 0} units`,
+        } — ${o.quantity || 0} units${payStatus !== "paid" ? " (awaiting payment)" : ""}`,
         created_at:
           (o.updatedAt as string) ||
           (o.createdAt as string) ||
@@ -196,7 +200,7 @@ function generateNotificationsFromData(
         title: `Payment pending from ${
           clients?.name || p.client_name || "client"
         }`,
-        message: `₹${Number(p.amount || 0).toLocaleString("en-IN")} — ${
+        message: `\u20B9${Number(p.amount || 0).toLocaleString("en-IN")} — ${
           p.payment_method || "—"
         }`,
         created_at:
