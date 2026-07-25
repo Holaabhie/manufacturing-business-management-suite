@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { USER_UPDATED_EVENT } from "@/lib/events";
 import {
   User,
   Mail,
@@ -24,7 +25,9 @@ import {
 } from "@/components/ui/ios";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { motion, AnimatePresence } from "framer-motion";
+import { variantsFadeUp } from "@/lib/motion";
 import { toast } from "sonner";
+import usePageStateCache from "@/infrastructure/state/pageStateCache";
 import {
   Dialog,
   DialogContent,
@@ -220,7 +223,8 @@ function ProfileContent() {
             toast.error(data.error);
           } else {
             toast.success("Avatar updated successfully!");
-            fetchProfile();
+            await fetchProfile();
+            window.dispatchEvent(new CustomEvent(USER_UPDATED_EVENT));
           }
         } catch (error: any) {
           toast.error(error.message || "Failed to update avatar");
@@ -237,6 +241,7 @@ function ProfileContent() {
 
   const handleLogout = async (allDevices = false) => {
     try {
+      usePageStateCache.getState().clearAll();
       await fetch("/api/auth/logout", { method: "POST" });
       window.location.href = "/login";
     } catch (error) {
@@ -254,8 +259,9 @@ function ProfileContent() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
+      variants={variantsFadeUp}
+      initial="hidden"
+      animate="visible"
       className="max-w-4xl mx-auto space-y-6 sm:space-y-8 pb-12 px-4 sm:px-0"
     >
       <div className="flex flex-col gap-1.5 pt-4 sm:pt-6">

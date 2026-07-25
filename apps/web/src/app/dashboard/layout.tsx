@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import usePageStateCache from "@/infrastructure/state/pageStateCache";
 import {
   LayoutDashboard,
   Users,
@@ -34,13 +35,21 @@ import {
   BookOpen,
   Download,
   Plus,
+  Archive,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  transitionSidebar,
+  variantsSidebarLabel,
+  variantsSidebarGroup,
+} from "@/lib/motion";
+import { PageTransition } from "@/components/ui/PageTransition";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 import { NotificationDropdown } from "@/components/NotificationDropdown";
+import { USER_UPDATED_EVENT } from "@/lib/events";
 import { useTheme } from "next-themes";
 import {
   DropdownMenu,
@@ -112,6 +121,7 @@ const navigationGroups = [
     items: [
       { name: "AI Assistant", nameKey: "aiAssistant", href: "/dashboard/assistant", icon: Sparkles },
       { name: "Analytics", nameKey: "analytics", href: "/dashboard/analytics", icon: BarChart3 },
+      { name: "Previous Years", nameKey: "previousYears", href: "/dashboard/reports/previous-years", icon: Archive },
       { name: "Notifications", nameKey: "notifications", href: "/dashboard/notifications", icon: Bell },
     ],
   },
@@ -167,6 +177,7 @@ const moreSheetSections = [
       { name: "Analytics", desc: "Revenue & performance", icon: BarChart3, emoji: "📊", href: "/dashboard/analytics" },
       { name: "Machines", desc: "Equipment & maintenance", icon: Gauge, emoji: "⚙️", href: "/dashboard/machines" },
       { name: "Tally Export", desc: "Export for Tally ERP", icon: Download, emoji: "📤", href: "/dashboard/billing" },
+      { name: "Previous Years", desc: "Archived FY data", icon: Archive, emoji: "📦", href: "/dashboard/reports/previous-years" },
     ],
   },
   {
@@ -250,6 +261,9 @@ export default function DashboardLayout({
     };
     fetchUser();
 
+    const onUserUpdated = () => fetchUser();
+    window.addEventListener(USER_UPDATED_EVENT, onUserUpdated);
+
     const handleScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener("scroll", handleScroll);
 
@@ -262,12 +276,14 @@ export default function DashboardLayout({
     window.addEventListener("keydown", handleKeyDown);
 
     return () => {
+      window.removeEventListener(USER_UPDATED_EVENT, onUserUpdated);
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, []);
 
   const handleLogout = async () => {
+    usePageStateCache.getState().clearAll();
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
   };
@@ -324,7 +340,7 @@ export default function DashboardLayout({
       <motion.aside
         initial={false}
         animate={{ width: isCollapsed ? "72px" : "240px" }}
-        transition={{ duration: 0.2, ease: "easeInOut" }}
+        transition={transitionSidebar}
         className={cn(
           "hidden md:flex fixed inset-y-0 left-0 z-50 flex-col",
           "bg-[var(--erp-sidebar-bg,var(--sidebar))] border-r border-[var(--sidebar-border)]"
@@ -342,10 +358,11 @@ export default function DashboardLayout({
               <AnimatePresence mode="wait">
                 {!isCollapsed && (
                   <motion.div
-                    initial={{ opacity: 0, width: 0 }}
-                    animate={{ opacity: 1, width: "auto" }}
-                    exit={{ opacity: 0, width: 0 }}
-                    transition={{ duration: 0.15 }}
+                    key="sidebar-label"
+                    variants={variantsSidebarLabel}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
                     className="overflow-hidden"
                   >
                     <span className="text-[14px] font-semibold text-foreground whitespace-nowrap">
@@ -388,10 +405,11 @@ export default function DashboardLayout({
                     <AnimatePresence initial={false}>
                       {expandedGroups.includes(group.label) && (
                         <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                          key={group.label}
+                          variants={variantsSidebarGroup}
+                          initial="hidden"
+                          animate="visible"
+                          exit="exit"
                           className="overflow-hidden space-y-0.5"
                         >
                           {group.items.map((item) => {
@@ -510,7 +528,7 @@ export default function DashboardLayout({
       {/* ════════════ MAIN CONTENT AREA ════════════ */}
       <div
         className={cn(
-          "flex flex-col transition-all duration-200 ease-in-out pb-20 md:pb-0",
+          "flex flex-col transition-all duration-200 ease-in-out",
           "md:pl-[240px]",
           isCollapsed && "md:pl-[72px]"
         )}
@@ -645,12 +663,7 @@ export default function DashboardLayout({
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="cursor-pointer relative">
-                    <Avatar className="h-[34px] w-[34px] ring-2 ring-primary/20 hover:ring-primary/40 transition-all duration-150">
-                      <AvatarImage src={user.user_metadata?.avatar_url} />
-                      <AvatarFallback className="text-white text-[12px] font-bold bg-primary">
-                        {user.email?.substring(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <UserAvatar src={user.avatar_url} name={user.fullName} email={user.email} size="sm" className="ring-2 ring-primary/20 hover:ring-primary/40 transition-all duration-150" />
                     <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-background" />
                   </button>
                 </DropdownMenuTrigger>
@@ -661,15 +674,10 @@ export default function DashboardLayout({
                 >
                   {/* Header Section */}
                   <div className="p-3 flex items-center gap-3 border-b border-border">
-                    <Avatar className="h-[38px] w-[38px] flex-shrink-0">
-                      <AvatarImage src={user.user_metadata?.avatar_url} />
-                      <AvatarFallback className="text-white text-[13px] font-bold bg-primary">
-                        {user.email?.substring(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <UserAvatar src={user.avatar_url} name={user.fullName} email={user.email} size="md" />
                     <div className="flex-1 min-w-0 overflow-hidden">
                       <p className="text-[13px] font-medium text-foreground truncate">
-                        {user.user_metadata?.full_name || user.email?.split("@")[0]}
+                        {user.fullName || user.email?.split("@")[0]}
                       </p>
                       <p className="text-[11px] text-muted-foreground truncate">
                         {user.email}
@@ -727,14 +735,15 @@ export default function DashboardLayout({
 
         {/* Main Content */}
         <main className="flex-1 p-4 md:p-6 lg:p-8 pb-24 md:pb-8">
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            className="max-w-[1400px] mx-auto"
-          >
-            {children}
-          </motion.div>
+          {/* PageTransition: AnimatePresence mode="wait", keyed on full pathname.
+               Exit animation plays before new page mounts — prevents double-fetch
+               on manual useEffect pages (users/, settings/team/) and keeps
+               Suspense fallbacks from appearing mid-transition. */}
+          <PageTransition>
+            <div className="max-w-[1400px] mx-auto">
+              {children}
+            </div>
+          </PageTransition>
         </main>
       </div>
 
