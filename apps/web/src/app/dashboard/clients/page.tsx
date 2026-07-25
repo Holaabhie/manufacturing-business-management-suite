@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Plus,
   Search,
@@ -64,6 +64,7 @@ import { ReadOnlyBanner } from "@/components/AccessDenied";
 import { generateDataExportPDF } from "@/lib/pdf-generator";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useCachedPage } from "@/hooks/useCachedPage";
 
 export default function ClientsPage() {
   const { isAdmin, isPro } = useRole();
@@ -74,6 +75,42 @@ export default function ClientsPage() {
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [isDeleteDialogOpenConfirm, setIsDeleteDialogOpenConfirm] = useState(false);
   const [clientToDeleteId, setClientToDeleteId] = useState<string | null>(null);
+  const [restoredFromCache, setRestoredFromCache] = useState(false);
+
+  // ── Cache persistence ──
+  const { restoreState, persist, scrollYRef, containerRef: cachedScrollRef, restoreScroll } = useCachedPage({
+    pageKey: "clients",
+  });
+
+  // Restore cached state on mount (runs before first fetch)
+  useEffect(() => {
+    const cached = restoreState();
+    if (cached) {
+      if (cached.searchTerm !== undefined) setSearchTerm(cached.searchTerm as string);
+      if (cached.selectedClient) setSelectedClient(cached.selectedClient as any);
+      if (cached.clients && (cached.clients as any[]).length > 0) {
+        setClients(cached.clients as any[]);
+        setLoading(false);
+        setRestoredFromCache(true);
+      }
+      if (typeof cached.scrollY === "number" && cached.scrollY > 0) {
+        restoreScroll(cached.scrollY);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist state on unmount
+  const stateRef = useRef({ clients, searchTerm, selectedClient });
+  useEffect(() => {
+    stateRef.current = { clients, searchTerm, selectedClient };
+  });
+  useEffect(() => {
+    return () => {
+      persist({ ...stateRef.current, scrollY: scrollYRef.current });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const starterLimit = 5;
   const isAtLimit = !isPro && clients.length >= starterLimit;
@@ -118,6 +155,7 @@ export default function ClientsPage() {
   const [clientOrders, setClientOrders] = useState<any[]>([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [loadingMaterials, setLoadingMaterials] = useState<Record<string, boolean>>({});
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   // New Client Form
   const [formData, setFormData] = useState({ name: "", company: "", email: "", phone: "", address: "", customerSince: new Date().toISOString().split("T")[0] });
@@ -131,8 +169,8 @@ export default function ClientsPage() {
   // Material Form
   const [materialForm, setMaterialForm] = useState({ productId: "", name: "", type: "", defaultQty: "" });
 
-  const fetchClients = async () => {
-    setLoading(true);
+  const fetchClients = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
       const res = await fetch("/api/clients");
       const data = await res.json();
@@ -141,7 +179,7 @@ export default function ClientsPage() {
     } catch (error) {
       toast.error("Failed to fetch clients");
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
@@ -194,9 +232,11 @@ export default function ClientsPage() {
   };
 
   useEffect(() => {
-    fetchClients();
-    const interval = setInterval(fetchClients, 30000);
+    // If cache served data, fetch silently in background; otherwise show loading
+    fetchClients(!restoredFromCache);
+    const interval = setInterval(() => fetchClients(false), 30000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -280,6 +320,15 @@ export default function ClientsPage() {
       address: client.address || ""
     });
     fetchClientDetails(client);
+    // Lazy-load avatar from single-client endpoint (not included in list fetch to avoid payload bloat)
+    fetch(`/api/v1/clients/${client.id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(res => {
+        if (res?.data?.avatarUrl) {
+          setSelectedClient((prev: any) => prev?.id === client.id ? { ...prev, avatarUrl: res.data.avatarUrl } : prev);
+        }
+      })
+      .catch(() => { /* avatar fetch is best-effort */ });
   };
 
   const handleAddProduct = async (e: React.FormEvent) => {
@@ -381,11 +430,11 @@ export default function ClientsPage() {
   );
 
   return (
-    <motion.div variants={staggerContainer} initial="initial" animate="animate" className="flex h-[calc(100vh-120px)] gap-6 overflow-hidden">
+    <motion.div variants={staggerContainer} initial="initial" animate="animate" className="flex h-[calc(100vh-120px)] gap-6 overflow-hidden max-w-7xl mx-auto w-full">
       {/* Sidebar List */}
       <motion.div variants={staggerItem} className={cn(
-        "flex-1 flex flex-col gap-4 min-w-0 transition-all duration-300",
-        "w-full"
+        "flex flex-col gap-4 min-w-0 transition-all duration-300",
+        "w-full md:max-w-sm lg:max-w-md"
       )}>
         <div className="flex justify-between items-center gap-2">
           <h1 className="text-[28px] sm:text-[34px] font-bold tracking-tight text-[var(--foreground)]">Clients</h1>
@@ -562,7 +611,7 @@ export default function ClientsPage() {
 
       {/* Client profile modal (name, company, profile, orders, sum) */}
       <Dialog open={!!selectedClient} onOpenChange={(open) => { if (!open) setSelectedClient(null); }}>
-        <DialogContent className="max-w-[900px] p-0 overflow-hidden" aria-describedby={undefined} fullScreen>
+        <DialogContent className="max-w-[900px] w-full p-0 overflow-hidden rounded-2xl" aria-describedby={undefined}>
           <DialogTitle className="sr-only">Client Profile</DialogTitle>
           {selectedClient && (
             <div
@@ -592,14 +641,86 @@ export default function ClientsPage() {
                 {/* -- Avatar + Name Hero -- */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '24px 0 16px' }}>
                   <div style={{ position: 'relative', flexShrink: 0 }}>
-                    <div style={{
-                      width: 72, height: 72, borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #007AFF, #5856D6)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      boxShadow: '0 4px 24px rgba(0,122,255,0.35), 0 0 0 3px rgba(10,13,22,1), 0 0 0 5px rgba(0,122,255,0.25)',
-                      fontSize: 24, fontWeight: 800, color: '#fff', letterSpacing: 1,
-                    }}>
-                      {clientInitials(selectedClient?.name)}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      id="client-avatar-upload"
+                      style={{ display: 'none' }}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file || !selectedClient) return;
+                        // Reset file input so re-selecting the same file fires onChange
+                        e.target.value = '';
+                        if (file.size > 500 * 1024) {
+                          toast.error('Avatar must be smaller than 500KB');
+                          return;
+                        }
+                        setAvatarUploading(true);
+                        const reader = new FileReader();
+                        reader.onloadend = async () => {
+                          const base64String = reader.result as string;
+                          // Show optimistic preview
+                          const prevAvatar = selectedClient.avatarUrl;
+                          setSelectedClient((prev: any) => prev ? { ...prev, avatarUrl: base64String } : prev);
+                          try {
+                            const res = await fetch(`/api/clients/${selectedClient.id}`, {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ ...editData, avatarUrl: base64String }),
+                            });
+                            if (!res.ok) throw new Error('Failed to save avatar');
+                            toast.success('Avatar saved!');
+                          } catch (err: any) {
+                            // Revert on failure
+                            setSelectedClient((prev: any) => prev ? { ...prev, avatarUrl: prevAvatar } : prev);
+                            toast.error(err.message || 'Failed to upload avatar');
+                          } finally {
+                            setAvatarUploading(false);
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                    />
+                    <div
+                      style={{
+                        width: 72, height: 72, borderRadius: '50%',
+                        background: selectedClient?.avatarUrl ? 'transparent' : 'linear-gradient(135deg, #007AFF, #5856D6)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: '0 4px 24px rgba(0,122,255,0.35), 0 0 0 3px rgba(10,13,22,1), 0 0 0 5px rgba(0,122,255,0.25)',
+                        fontSize: 24, fontWeight: 800, color: '#fff', letterSpacing: 1,
+                        overflow: 'hidden', position: 'relative',
+                        cursor: isAdmin ? 'pointer' : 'default',
+                        opacity: avatarUploading ? 0.6 : 1,
+                      }}
+                      onClick={() => isAdmin && document.getElementById('client-avatar-upload')?.click()}
+                    >
+                      {selectedClient?.avatarUrl ? (
+                        <img
+                          src={selectedClient.avatarUrl}
+                          alt="avatar"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                        />
+                      ) : (
+                        clientInitials(selectedClient?.name)
+                      )}
+                      {isAdmin && (
+                        <div
+                          style={{
+                            position: 'absolute', inset: 0, borderRadius: '50%',
+                            background: 'rgba(0,0,0,0.45)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            opacity: 0, transition: 'opacity 0.2s',
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+                          onMouseLeave={(e) => (e.currentTarget.style.opacity = '0')}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            document.getElementById('client-avatar-upload')?.click();
+                          }}
+                        >
+                          <Edit2 size={16} color="#fff" />
+                        </div>
+                      )}
                     </div>
                     <div style={{ position: 'absolute', bottom: 2, left: 2, width: 14, height: 14, borderRadius: '50%', background: '#30D158', border: '3px solid rgba(10,13,22,1)', boxShadow: '0 0 8px rgba(48,209,88,0.5)' }} />
                   </div>
@@ -633,7 +754,7 @@ export default function ClientsPage() {
                       <IndianRupee className="h-4 w-4" style={{ color: '#60a5fa' }} />
                       <span style={{ fontSize: 11, fontWeight: 800, color: '#93bbfd', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total sum</span>
                     </div>
-                    <div style={{ marginTop: 8, fontSize: 22, fontWeight: 900, color: '#e2e8f0' }}>?{selectedOrdersTotal.toLocaleString('en-IN')}</div>
+                    <div style={{ marginTop: 8, fontSize: 22, fontWeight: 900, color: '#e2e8f0' }}>₹{selectedOrdersTotal.toLocaleString('en-IN')}</div>
                   </div>
                 </div>
 
@@ -754,11 +875,11 @@ export default function ClientsPage() {
                     <span style={{ fontSize: 11, fontWeight: 700, color: '#93bbfd', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Spent</span>
                   </div>
                   <p style={{ fontSize: 32, fontWeight: 800, color: '#60a5fa', letterSpacing: '-1px', lineHeight: 1 }}>
-                    ?{(() => { const total = clientOrders.reduce((acc, o) => acc + (Number(o.totalAmount || o.total_amount) || 0), 0); return total >= 100000 ? (total / 100000).toFixed(1) + 'L' : total.toLocaleString('en-IN'); })()}
+                    ₹{(() => { const total = clientOrders.reduce((acc, o) => acc + (Number(o.totalAmount || o.total_amount) || 0), 0); return total >= 100000 ? (total / 100000).toFixed(1) + 'L' : total.toLocaleString('en-IN'); })()}
                   </p>
                   {(() => { const thisMonth = clientOrders.filter(o => { const d = new Date(o.createdAt); const now = new Date(); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).reduce((acc, o) => acc + (Number(o.totalAmount || o.total_amount) || 0), 0); return thisMonth > 0 ? (
                     <span style={{ display: 'inline-block', marginTop: 8, fontSize: 11, fontWeight: 600, color: '#93bbfd', background: 'rgba(0,122,255,0.15)', padding: '3px 10px', borderRadius: 20 }}>
-                      ?{thisMonth >= 1000 ? (thisMonth / 1000).toFixed(0) + 'K' : thisMonth.toLocaleString('en-IN')} this month
+                      ₹{thisMonth >= 1000 ? (thisMonth / 1000).toFixed(0) + 'K' : thisMonth.toLocaleString('en-IN')} this month
                     </span>
                   ) : null; })()}
                 </div>
@@ -781,7 +902,7 @@ export default function ClientsPage() {
                           />
                         </div>
                         <div className="space-y-2 sm:col-span-1">
-                          <label className="text-[13px] font-medium text-[var(--muted-foreground)] pl-1">Default Rate (?)</label>
+                          <label className="text-[13px] font-medium text-[var(--muted-foreground)] pl-1">Default Rate (₹)</label>
                           <IOSInput
                             type="number"
                             value={productForm.defaultRate}
@@ -816,7 +937,7 @@ export default function ClientsPage() {
                         <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-[var(--muted)] transition-colors" onClick={() => toggleProductExpand(product.id)}>
                           <div>
                             <h4 className="font-bold text-[16px] text-[var(--foreground)] select-none">{product.name}</h4>
-                            <p className="text-[13px] text-[var(--muted-foreground)] select-none">Rate: <span className="font-semibold text-[var(--foreground)]">?{Number(product.defaultRate).toLocaleString()}</span></p>
+                            <p className="text-[13px] text-[var(--muted-foreground)] select-none">Rate: <span className="font-semibold text-[var(--foreground)]">₹{Number(product.defaultRate).toLocaleString()}</span></p>
                           </div>
                           <div className="flex items-center gap-3">
                             {isAdmin && (
@@ -880,7 +1001,7 @@ export default function ClientsPage() {
                 <div className="flex justify-between items-center px-1">
                   <h3 style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Historical Records</h3>
                   <div style={{ fontSize: 12, fontWeight: 800, color: '#93bbfd' }}>
-                    Total: ?{selectedOrdersTotal.toLocaleString('en-IN')}
+                    Total: ₹{selectedOrdersTotal.toLocaleString('en-IN')}
                   </div>
                 </div>
                 {loadingDetails ? (
@@ -907,7 +1028,7 @@ export default function ClientsPage() {
                           </div>
                         </div>
                         <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                          <span style={{ fontWeight: 700, color: '#60a5fa', fontSize: 15 }}>?{(Number(order.totalAmount || order.total_amount) || 0).toLocaleString('en-IN')}</span>
+                          <span style={{ fontWeight: 700, color: '#60a5fa', fontSize: 15 }}>₹{(Number(order.totalAmount || order.total_amount) || 0).toLocaleString('en-IN')}</span>
                           <IOSBadge color={order.status === 'completed' ? 'green' : order.status === 'pending' ? 'orange' : 'blue'}>
                             {order.status}
                           </IOSBadge>

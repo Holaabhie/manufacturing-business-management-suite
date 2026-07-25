@@ -9,6 +9,7 @@ interface ClientDoc {
     email: string;
     phone: string;
     address: string;
+    avatarUrl?: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -21,6 +22,7 @@ function toEntity(doc: ClientDoc): Client {
         email: doc.email || "",
         phone: doc.phone || "",
         address: doc.address || "",
+        avatarUrl: doc.avatarUrl || "",
         createdAt: doc.createdAt,
         updatedAt: doc.updatedAt,
     };
@@ -70,6 +72,7 @@ export class MongoClientRepository implements IClientRepository {
             if (data.email !== undefined) fields.email = data.email;
             if (data.phone !== undefined) fields.phone = data.phone;
             if (data.address !== undefined) fields.address = data.address;
+            if (data.avatarUrl !== undefined) fields.avatarUrl = data.avatarUrl;
 
             const result = await c.findOneAndUpdate(
                 { _id: new ObjectId(id), userId },

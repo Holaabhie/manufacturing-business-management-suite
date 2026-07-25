@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 const AuditTrailPanel = dynamic(() => import("@/components/AuditTrailPanel"), { ssr: false });
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Shield,
@@ -46,7 +46,9 @@ import {
 } from "@/components/ui/ios";
 import { Switch } from "@/components/ui/switch";
 import { motion, AnimatePresence } from "framer-motion";
+import { variantsFadeUp } from "@/lib/motion";
 import { toast } from "sonner";
+import usePageStateCache from "@/infrastructure/state/pageStateCache";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
@@ -123,6 +125,8 @@ function SettingsContent() {
   } = useModules();
 
   const [companySaving, setCompanySaving] = useState(false);
+  // Guard: prevents the hookCompany sync effect from overwriting local state during an active logo save
+  const logoSavingRef = useRef(false);
   const [companyData, setCompanyData] = useState<CompanyProfile>({
     companyName: "",
     address: "",
@@ -138,8 +142,10 @@ function SettingsContent() {
   });
 
   // Sync form state when hook data loads
+  // Guarded by logoSavingRef to prevent stale hookCompany data from overwriting
+  // the logo during an in-flight save (refinement #2 — race window)
   useEffect(() => {
-    if (hookCompany) {
+    if (hookCompany && !logoSavingRef.current) {
       setCompanyData({
         companyName: hookCompany.companyName || "",
         address: hookCompany.address || "",
@@ -301,6 +307,9 @@ function SettingsContent() {
       }
 
       const file = e.target.files[0];
+      // Reset file input so re-selecting the same file fires onChange
+      e.target.value = '';
+
       if (file.size > 500 * 1024) {
         toast.error("Logo must be smaller than 500KB");
         return;
@@ -309,8 +318,25 @@ function SettingsContent() {
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64String = reader.result as string;
+        const prevLogoUrl = companyData.logoUrl;
+        // Optimistic preview
         setCompanyData({ ...companyData, logoUrl: base64String });
-        toast.success("Logo uploaded - remember to save changes!");
+        // Auto-save: merge the new logo with the LAST SERVER STATE (hookCompany), not the
+        // local form state, to avoid accidentally persisting half-edited fields (refinement #5).
+        // hookCompany always has companyName which the API requires.
+        logoSavingRef.current = true;
+        try {
+          const serverState = hookCompany || companyData;
+          const updated = await updateCompanyProfile({ ...serverState, logoUrl: base64String });
+          setCompanyData((prev) => ({ ...prev, logoUrl: updated.logoUrl || base64String }));
+          toast.success("Logo saved successfully!");
+        } catch (error: any) {
+          // Revert on failure
+          setCompanyData((prev) => ({ ...prev, logoUrl: prevLogoUrl || "" }));
+          toast.error(error.message || "Failed to save logo");
+        } finally {
+          logoSavingRef.current = false;
+        }
       };
       reader.readAsDataURL(file);
     } catch (error: any) {
@@ -320,6 +346,7 @@ function SettingsContent() {
 
   const handleLogout = async (allDevices = false) => {
     try {
+      usePageStateCache.getState().clearAll();
       await fetch("/api/auth/logout", { method: "POST" });
       window.location.href = "/login";
     } catch (error) {
@@ -484,8 +511,9 @@ function SettingsContent() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
+      variants={variantsFadeUp}
+      initial="hidden"
+      animate="visible"
       className="max-w-4xl mx-auto space-y-6 sm:space-y-8 pb-12 px-4 sm:px-0"
     >
       <div className="flex flex-col gap-1.5 pt-4 sm:pt-6">

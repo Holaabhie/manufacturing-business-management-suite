@@ -12,6 +12,7 @@ export const updateClientSchema = z.object({
     email: z.string().email().trim().optional().or(z.literal("")),
     phone: z.string().max(50).trim().optional(),
     address: z.string().max(500).trim().optional(),
+    avatarUrl: z.string().optional(),
 });
 
 export type CreateClientInput = z.infer<typeof createClientSchema>;

@@ -9,6 +9,7 @@ export interface Client {
     email: string;
     phone: string;
     address: string;
+    avatarUrl?: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -25,6 +26,7 @@ export interface UpdateClientDTO {
     email?: string;
     phone?: string;
     address?: string;
+    avatarUrl?: string;
 }
 
 export interface ClientProduct {

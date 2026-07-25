@@ -21,18 +21,22 @@ export async function PUT(
     const body = await request.json();
     const db = await getDb();
 
-    const result = await db.collection("clients").updateOne(
-      { _id: new ObjectId(id), userId: getDataOwnerId(user) },
-      {
-        $set: {
+    const updateFields: Record<string, unknown> = {
           name: body.name,
           company: body.company || "",
           email: body.email,
           phone: body.phone,
           address: body.address,
           updatedAt: new Date(),
-        },
-      }
+        };
+        // Only update avatarUrl if explicitly provided (avoids clearing on regular edits)
+        if (body.avatarUrl !== undefined) {
+          updateFields.avatarUrl = body.avatarUrl;
+        }
+
+    const result = await db.collection("clients").updateOne(
+      { _id: new ObjectId(id), userId: getDataOwnerId(user) },
+      { $set: updateFields }
     );
 
     if (result.matchedCount === 0) {
