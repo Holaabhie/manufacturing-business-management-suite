@@ -99,6 +99,9 @@ import { StatWidget } from "@/components/ui/StatWidget";
 import { TogglePill } from "@/components/ui/glass";
 import { CompletionConfirmationModal, InvoicePreviewModal } from "@/components/orders/CompletionModals";
 import { useQuery } from "@tanstack/react-query";
+import { CollapsingTitle } from "@/components/ui/CollapsingTitle";
+import { useCollapseProgress } from "@/hooks/useCollapseProgress";
+import { ConfirmDeleteSheet } from "@/components/ui/ConfirmDeleteSheet";
 
 // ──────────────── React Query Hooks ──────────────────────────────────────────
 import {
@@ -114,6 +117,7 @@ import {
 } from "@/lib/hooks/use-orders";
 
 function OrdersContent() {
+  const { progress: collapseProgress } = useCollapseProgress();
   const router = useRouter();
   const { role, isAdmin, isStaff, isPro, loading: roleLoading } = useRole();
   const { formatINR } = useFormatters();
@@ -894,20 +898,14 @@ function OrdersContent() {
       animate="animate"
       className="space-y-6 overflow-x-hidden"
     >
-      {/* â”€â”€ Header â”€â”€ */}
-      <motion.div
-        variants={staggerItem}
-        className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
-      >
-        <div>
-          <h1 className="text-[34px] font-bold text-[var(--foreground)] leading-[41px] tracking-[0.37px]">
-            Orders & Production
-          </h1>
-          <p className="text-[15px] text-[var(--muted-foreground)] mt-1 leading-[20px] flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-[var(--primary)]" />{" "}
-            Integrated material flow
-          </p>
-        </div>
+      {/* ── Header ── */}
+      <motion.div variants={staggerItem}>
+        <CollapsingTitle
+          title="Orders & Production"
+          subtitle={`${orderStats.total} orders · ${orderStats.processing} in progress · ${orderStats.pending} pending`}
+          subtitleLoading={ordersLoading}
+          collapseProgress={collapseProgress}
+        />
       </motion.div>
 
       {/* â”€â”€ Enterprise Toolbar (3-Layer Hierarchy) â”€â”€ */}
@@ -2158,74 +2156,25 @@ function OrdersContent() {
 
 
       {/* Delete Dialog */}
-      <Dialog
+      <ConfirmDeleteSheet
         open={isDeleteDialogOpenConfirm}
-        onOpenChange={(open) => {
-          // GUARD: only accept close
-          if (!open) { setIsDeleteDialogOpenConfirm(false); setOrderToDeleteId(null); }
+        onClose={() => {
+          setIsDeleteDialogOpenConfirm(false);
+          setOrderToDeleteId(null);
         }}
-      >
-        <DialogContent className="max-w-[350px]" showCloseButton={false}>
-          {/* Premium Header */}
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '12px 20px 12px', borderBottom: '1px solid rgba(255,255,255,0.07)',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{
-                width: 40, height: 40, borderRadius: 12,
-                background: 'linear-gradient(135deg, rgba(239,68,68,0.4), rgba(255,255,255,0.06))',
-                border: '1px solid rgba(255,255,255,0.10)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <Trash2 className="h-[18px] w-[18px] text-[#f87171]" />
-              </div>
-              <div>
-                <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', lineHeight: '22px', margin: 0 }}>
-                  Delete Order
-                </DialogTitle>
-                <DialogDescription style={{ fontSize: 13, color: '#64748b', lineHeight: '18px', margin: '2px 0 0' }}>
-                  This will NOT restore inventory automatically.
-                </DialogDescription>
-              </div>
-            </div>
-          </div>
-          <div style={{ padding: '16px 20px 20px' }}>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <motion.button
-                whileTap={{ scale: 0.97 }}
-                onClick={() => { setIsDeleteDialogOpenConfirm(false); setOrderToDeleteId(null); }}
-                style={{
-                  flex: 1, height: 48, borderRadius: 14,
-                  background: 'rgba(255,255,255,0.06)', color: '#94a3b8',
-                  border: '1px solid rgba(255,255,255,0.10)',
-                  fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                  fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif",
-                }}
-              >
-                Cancel
-              </motion.button>
-              <motion.button
-                whileTap={{ scale: 0.97 }}
-                onClick={() => orderToDeleteId && handleDelete(orderToDeleteId)}
-                disabled={deleteOrder.isPending}
-                style={{
-                  flex: 1, height: 48, borderRadius: 14,
-                  background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-                  color: '#fff',
-                  border: '1px solid rgba(239,68,68,0.3)',
-                  boxShadow: '0 4px 16px rgba(239,68,68,0.25)',
-                  fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                  opacity: deleteOrder.isPending ? 0.5 : 1,
-                  fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif",
-                }}
-              >
-                {deleteOrder.isPending ? 'Deleting...' : 'Delete'}
-              </motion.button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+        onConfirm={async () => {
+          if (orderToDeleteId) {
+            await handleDelete(orderToDeleteId);
+          }
+        }}
+        isDeleting={deleteOrder.isPending}
+        entityLabel="order"
+        entityName={
+          orders.find((o) => o.id === orderToDeleteId)?.productName ||
+          orders.find((o) => o.id === orderToDeleteId)?.product_name
+        }
+        consequenceText="will be permanently removed from sales history. Note: This will not restore inventory automatically. This cannot be undone."
+      />
 
       {/* Payment Dialog */}
       <Dialog open={isPaymentDialogOpen} onOpenChange={(open) => {
@@ -2454,6 +2403,41 @@ export default function OrdersPage() {
                   </div>
                 ))}
               </div>
+            </div>
+            {/* Search + Filter Bar Skeleton */}
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+              <div className="h-[48px] w-full sm:w-[280px] rounded-[12px] bg-[var(--muted)] shimmer" />
+              <div className="h-[40px] w-[120px] rounded-[10px] bg-[var(--muted)] shimmer" />
+            </div>
+            {/* Table Skeleton — matches real admin order table */}
+            <div className="hidden md:block rounded-[20px] border border-[var(--border)] overflow-hidden">
+              <div className="h-[44px] bg-[var(--muted)]/30 border-b border-[var(--border)]" />
+              <div className="divide-y divide-[var(--border)]">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-4 px-5 py-4">
+                    <div className="h-[40px] w-[40px] rounded-full bg-[var(--muted)] shimmer flex-shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-[14px] w-3/4 rounded-[4px] bg-[var(--muted)] shimmer" />
+                      <div className="h-[12px] w-1/2 rounded-[4px] bg-[var(--muted)] shimmer" />
+                    </div>
+                    <div className="h-[24px] w-[80px] rounded-full bg-[var(--muted)] shimmer" />
+                    <div className="h-[14px] w-[100px] rounded-[4px] bg-[var(--muted)] shimmer" />
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Mobile Card Skeleton — matches mobile card-based order list */}
+            <div className="md:hidden space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="rounded-[16px] border border-[var(--border)] p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="h-[16px] w-2/3 rounded-[4px] bg-[var(--muted)] shimmer" />
+                    <div className="h-[24px] w-[72px] rounded-full bg-[var(--muted)] shimmer" />
+                  </div>
+                  <div className="h-[12px] w-1/2 rounded-[4px] bg-[var(--muted)] shimmer" />
+                  <div className="h-[12px] w-1/3 rounded-[4px] bg-[var(--muted)] shimmer" />
+                </div>
+              ))}
             </div>
           </div>
         }

@@ -29,7 +29,7 @@ const dashboardWidgetSchema = new Schema<IDashboardWidget>(
             type: Number,
             required: true,
             min: 0,
-            max: 3,
+            max: 99,
         },
         is_visible: {
             type: Boolean,

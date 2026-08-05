@@ -181,7 +181,7 @@ export function EnterpriseDataTable<TData, TValue>({
                                 <span className="hidden sm:inline">Columns</span>
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuContent align="end" className="w-48 max-h-[260px] overflow-y-auto scrollbar-thin">
                             <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             {table

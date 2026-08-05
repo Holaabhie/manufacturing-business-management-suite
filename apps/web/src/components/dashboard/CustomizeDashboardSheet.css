@@ -1,0 +1,44 @@
+/* CustomizeDashboardSheet.css */
+
+.customize-dashboard-sheet-root {
+  --overlay-backdrop: rgba(10, 12, 18, 0.42);
+  --overlay-backdrop-blur: blur(6px);
+}
+
+.customize-sheet__container {
+  border-radius: 28px 28px 0 0 !important;
+  background: #ffffff !important;
+  box-shadow: 0 -8px 40px rgba(10, 12, 18, 0.16) !important;
+  border-top: 1px solid rgba(234, 236, 241, 0.8) !important;
+}
+
+.dark .customize-sheet__container {
+  background: #1c1c1e !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Custom scrollbar styling inside sheet */
+.customize-sheet__container ::-webkit-scrollbar {
+  width: 4px;
+}
+
+.customize-sheet__container ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.customize-sheet__container ::-webkit-scrollbar-thumb {
+  background: rgba(107, 114, 128, 0.2);
+  border-radius: 4px;
+}
+
+.customize-sheet__container ::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 114, 128, 0.4);
+}
+
+/* Touch feedback optimization */
+@media (max-width: 480px) {
+  .customize-sheet__row {
+    padding: 0.75rem 0.5rem;
+  }
+}

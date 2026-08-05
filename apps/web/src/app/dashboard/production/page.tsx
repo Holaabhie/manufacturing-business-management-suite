@@ -49,6 +49,9 @@ import { IOSBadge } from "@/components/ui/ios/IOSBadge";
 import { IOSButton } from "@/components/ui/ios/IOSButton";
 import { StatWidget } from "@/components/ui/StatWidget";
 import { staggerContainer, staggerItem } from "@/styles/animations";
+import { CollapsingTitle } from "@/components/ui/CollapsingTitle";
+import { useCollapseProgress } from "@/hooks/useCollapseProgress";
+import { ConfirmDeleteSheet } from "@/components/ui/ConfirmDeleteSheet";
 
 // ─── Status Config ───────────────────────────────────────
 const statusConfig: Record<
@@ -63,6 +66,7 @@ const statusConfig: Record<
 
 // ─── Production Page ─────────────────────────────────────
 export default function ProductionPage() {
+    const { progress: collapseProgress } = useCollapseProgress();
     const router = useRouter();
     const { isAdmin, isStaff, loading: roleLoading } = useRole();
     const [productions, setProductions] = useState<Production[]>([]);
@@ -295,16 +299,13 @@ export default function ProductionPage() {
     return (
         <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-4 md:space-y-6">
             {/* ── Header ── */}
-            <motion.div variants={staggerItem} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h1 className="text-[24px] font-semibold text-foreground leading-tight">
-                        Production Floor
-                    </h1>
-                    <p className="text-[14px] text-muted-foreground mt-1 flex items-center gap-2">
-                        <Cog className="h-4 w-4 text-primary" />
-                        Track and manage active production runs
-                    </p>
-                </div>
+            <motion.div variants={staggerItem}>
+                <CollapsingTitle
+                    title="Production Floor"
+                    subtitle={`${stats.running} active runs · ${stats.pending} pending · ${stats.completed} completed`}
+                    subtitleLoading={loading}
+                    collapseProgress={collapseProgress}
+                />
             </motion.div>
 
             {/* ── Enterprise Toolbar (3-Layer Hierarchy) ── */}
@@ -516,15 +517,29 @@ export default function ProductionPage() {
                     {/* Body — no max-h on mobile (page scrolls), contained scroll on desktop */}
                     <div ref={listContainerRef} className="md:max-h-[calc(100vh-280px)] md:overflow-auto md:overscroll-contain">
                     {loading ? (
-                        <div className="p-5 space-y-4">
+                        <div className="divide-y divide-border">
                             {Array.from({ length: 4 }).map((_, i) => (
-                                <div key={i} className="flex gap-4 items-center">
-                                    <div className="h-14 flex-1 rounded-[10px] bg-muted animate-pulse" />
-                                    <div className="h-14 w-24 rounded-[10px] bg-muted animate-pulse" />
-                                    <div className="h-14 flex-1 rounded-[10px] bg-muted animate-pulse" />
-                                    <div className="h-14 w-40 rounded-[10px] bg-muted animate-pulse" />
-                                    <div className="h-14 w-28 rounded-[10px] bg-muted animate-pulse" />
-                                    <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
+                                <div key={i} className="grid grid-cols-1 md:grid-cols-[1fr_120px_1fr_160px_120px_60px] gap-3 md:gap-4 px-5 py-3.5">
+                                    <div className="flex flex-col justify-center gap-1.5">
+                                        <div className="h-[14px] w-3/4 rounded-[6px] bg-[var(--muted)] shimmer" />
+                                        <div className="h-[11px] w-1/2 rounded-[4px] bg-[var(--muted)] shimmer" />
+                                    </div>
+                                    <div className="flex items-center">
+                                        <div className="h-[24px] w-[72px] rounded-full bg-[var(--muted)] shimmer" />
+                                    </div>
+                                    <div className="flex flex-col justify-center gap-1.5">
+                                        <div className="h-[13px] w-2/3 rounded-[4px] bg-[var(--muted)] shimmer" />
+                                        <div className="h-[5px] w-full rounded-full bg-[var(--muted)] shimmer" />
+                                    </div>
+                                    <div className="flex items-center">
+                                        <div className="h-[13px] w-3/4 rounded-[4px] bg-[var(--muted)] shimmer" />
+                                    </div>
+                                    <div className="flex items-center">
+                                        <div className="h-[13px] w-2/3 rounded-[4px] bg-[var(--muted)] shimmer" />
+                                    </div>
+                                    <div className="flex items-center justify-end">
+                                        <div className="h-8 w-8 rounded-full bg-[var(--muted)] shimmer" />
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -676,26 +691,21 @@ export default function ProductionPage() {
             </motion.div>
 
             {/* ── Delete Dialog ── */}
-            <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                <DialogContent className="max-w-[380px]" showCloseButton={false}>
-                    <DialogHeader className="px-4 pt-3">
-                        <DialogTitle className="text-[15px] font-medium text-foreground">Delete Production</DialogTitle>
-                        <DialogDescription className="text-[13px] text-muted-foreground">
-                            Are you sure you want to delete this production record? This action cannot be undone.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="px-4 pb-5 pt-2.5">
-                        <DialogFooter className="flex gap-2">
-                            <IOSButton variant="gray" size="large" onClick={() => setDeleteDialogOpen(false)} fullWidth>
-                                Cancel
-                            </IOSButton>
-                            <IOSButton variant="destructive" size="large" onClick={() => productionToDelete && handleDelete(productionToDelete)} fullWidth>
-                                Delete
-                            </IOSButton>
-                        </DialogFooter>
-                    </div>
-                </DialogContent>
-            </Dialog>
+            <ConfirmDeleteSheet
+                open={deleteDialogOpen}
+                onClose={() => setDeleteDialogOpen(false)}
+                onConfirm={async () => {
+                    if (productionToDelete) {
+                        await handleDelete(productionToDelete);
+                    }
+                }}
+                entityLabel="production job"
+                entityName={
+                    productions.find((p) => p.id === productionToDelete)?.batchNumber ||
+                    productions.find((p) => p.id === productionToDelete)?.productName
+                }
+                consequenceText="will be permanently removed. This cannot be undone."
+            />
         </motion.div>
     );
 }

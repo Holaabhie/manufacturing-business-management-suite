@@ -191,7 +191,7 @@ export function MaterialsStep({ inventory, productName, onMaterialsChange, initi
                                             <SelectTrigger className="h-9 bg-card/50" style={{ borderColor: "rgba(99,102,241,0.15)" }}>
                                                 <SelectValue placeholder="Select material..." />
                                             </SelectTrigger>
-                                            <SelectContent>
+                                            <SelectContent className="max-h-[220px] overflow-y-auto scrollbar-thin">
                                                 <div className="px-2 py-1.5">
                                                     <div className="relative">
                                                         <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />

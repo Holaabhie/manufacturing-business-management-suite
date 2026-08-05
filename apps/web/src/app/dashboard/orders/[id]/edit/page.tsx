@@ -764,7 +764,7 @@ export default function EditOrderPage() {
                           >
                             <SelectValue placeholder="Select customer..." />
                           </SelectTrigger>
-                          <SelectContent className="rounded-[10px]">
+                          <SelectContent className="rounded-[10px] max-h-[220px] overflow-y-auto scrollbar-thin">
                             {clients.map((c: any) => (
                               <SelectItem key={c.id} value={c.id} className="rounded-[8px]">
                                 {c.name}
@@ -953,7 +953,7 @@ export default function EditOrderPage() {
                               >
                                 <SelectValue placeholder="Select..." />
                               </SelectTrigger>
-                              <SelectContent className="rounded-[10px]">
+                              <SelectContent className="rounded-[10px] max-h-[220px] overflow-y-auto scrollbar-thin">
                                 {inventoryItems.map((item: any) => (
                                   <SelectItem key={item.id} value={item.id} className="rounded-[8px] text-[13px]">
                                     {item.name}
@@ -1040,7 +1040,7 @@ export default function EditOrderPage() {
                             <SelectTrigger className={cn("h-12", inputStyles)}>
                               <SelectValue placeholder="Select material..." />
                             </SelectTrigger>
-                            <SelectContent className="rounded-[10px]">
+                            <SelectContent className="rounded-[10px] max-h-[220px] overflow-y-auto scrollbar-thin">
                               {inventoryItems.map((item: any) => (
                                 <SelectItem key={item.id} value={item.id} className="rounded-[8px]">
                                   {item.name}

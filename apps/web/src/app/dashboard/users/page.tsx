@@ -31,6 +31,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { staggerContainer, staggerItem } from "@/styles/animations";
 import { StatWidget } from "@/components/ui/StatWidget";
+import { ConfirmDeleteSheet } from "@/components/ui/ConfirmDeleteSheet";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { exportToExcel } from "@/lib/excel-export";
 import { AccessDenied } from "@/components/AccessDenied";
@@ -487,18 +488,18 @@ export default function EmployeeManagementPage() {
                 )}
 
                 {/* ─── Header ──────────────────────────────────────── */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                        <h1 className="text-[28px] font-bold tracking-tight flex items-center gap-3 text-[var(--foreground)]">
-                            <div className="h-10 w-10 rounded-[12px] bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center shadow-lg shadow-[#007AFF]/30">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 min-w-0">
+                    <div className="min-w-0 flex-1">
+                        <h1 className="text-[22px] sm:text-[24px] md:text-[28px] font-bold tracking-tight flex items-center gap-3 text-[var(--foreground)] min-w-0">
+                            <div className="h-10 w-10 rounded-[12px] bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center shadow-lg shadow-[#007AFF]/30 shrink-0">
                                 <Users className="h-5 w-5 text-white" />
                             </div>
-                            Employee Management
+                            <span className="truncate">Employee Management</span>
                         </h1>
-                        <p className="text-[13px] text-[var(--muted-foreground)] mt-1.5">Create, manage, and monitor your workforce.</p>
+                        <p className="text-[13px] text-[var(--muted-foreground)] mt-1.5 break-words">Create, manage, and monitor your workforce.</p>
                     </div>
 
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
                         <button
                             onClick={exportToXLSX}
                             className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/15 bg-[rgba(255,255,255,0.08)] hover:bg-white/15 text-white text-xs font-medium cursor-pointer transition-all duration-150"
@@ -1023,36 +1024,42 @@ export default function EmployeeManagementPage() {
                 {/* ═══════════════════════════════════════════════════════
             ACTION CONFIRMATION DIALOG
         ═══════════════════════════════════════════════════════ */}
+                {/* ── Confirm Delete Sheet for Employee Delete ── */}
+                <ConfirmDeleteSheet
+                    open={actionType === "delete" && !!actionTarget}
+                    onClose={() => { setActionTarget(null); setActionType(null); }}
+                    onConfirm={handleAction}
+                    isDeleting={actionLoading}
+                    entityLabel="employee"
+                    entityName={actionTarget ? `${actionTarget.fullName} (${actionTarget.employeeId})` : undefined}
+                    consequenceText="will be permanently removed from staff records. This cannot be undone."
+                />
+
                 <Dialog
-                    open={!!actionTarget && !!actionType}
+                    open={!!actionTarget && !!actionType && actionType !== "delete"}
                     onOpenChange={(open) => {
                         if (!open) { setActionTarget(null); setActionType(null); setResetPasswordResult(null); }
                     }}
                 >
                     <DialogContent className="sm:max-w-md bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px] p-6 text-center overflow-hidden">
                         {/* Icon Header */}
-                        <div className={`h-14 w-14 rounded-full mx-auto flex items-center justify-center mb-2 ${actionType === "delete" ? "bg-[#FF3B30]/10 text-[#FF3B30]" : actionType === "deactivate" ? "bg-[#FF9500]/10 text-[#FF9500]" : actionType === "activate" ? "bg-[#34C759]/10 text-[#34C759]" : "bg-[#007AFF]/10 text-[#007AFF]"}`}>
-                            {actionType === "delete" && <Trash2 className="h-7 w-7" />}
+                        <div className={`h-14 w-14 rounded-full mx-auto flex items-center justify-center mb-2 ${actionType === "deactivate" ? "bg-[#FF9500]/10 text-[#FF9500]" : actionType === "activate" ? "bg-[#34C759]/10 text-[#34C759]" : "bg-[#007AFF]/10 text-[#007AFF]"}`}>
                             {actionType === "deactivate" && <PowerOff className="h-7 w-7" />}
                             {actionType === "activate" && <Power className="h-7 w-7" />}
                             {actionType === "reset_password" && <KeyRound className="h-7 w-7" />}
                         </div>
 
                         <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-                            <div style={{ width: 40, height: 40, borderRadius: 12, background: actionType === "delete" ? "linear-gradient(135deg, rgba(239,68,68,0.4), rgba(255,255,255,0.06))" : actionType === "activate" ? "linear-gradient(135deg, rgba(34,197,94,0.4), rgba(255,255,255,0.06))" : "linear-gradient(135deg, rgba(245,158,11,0.4), rgba(255,255,255,0.06))", border: "1px solid rgba(255,255,255,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                              {actionType === "delete" ? <Trash2 className="h-[18px] w-[18px] text-[#f87171]" /> : actionType === "activate" ? <CheckCircle className="h-[18px] w-[18px] text-[#4ade80]" /> : <AlertTriangle className="h-[18px] w-[18px] text-[#fbbf24]" />}
+                            <div style={{ width: 40, height: 40, borderRadius: 12, background: actionType === "activate" ? "linear-gradient(135deg, rgba(34,197,94,0.4), rgba(255,255,255,0.06))" : "linear-gradient(135deg, rgba(245,158,11,0.4), rgba(255,255,255,0.06))", border: "1px solid rgba(255,255,255,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              {actionType === "activate" ? <CheckCircle className="h-[18px] w-[18px] text-[#4ade80]" /> : <AlertTriangle className="h-[18px] w-[18px] text-[#fbbf24]" />}
                             </div>
                             <div>
                             <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "#f1f5f9", lineHeight: "22px", margin: 0 }}>
-                                {actionType === "delete" && "Delete Employee"}
                                 {actionType === "deactivate" && "Deactivate Employee"}
                                 {actionType === "activate" && "Activate Employee"}
                                 {actionType === "reset_password" && (resetPasswordResult ? "Password Reset Complete" : "Reset Password")}
                             </DialogTitle>
                             <DialogDescription className="text-[15px] pt-1 text-[var(--muted-foreground)]">
-                                {actionType === "delete" && (
-                                    <>This will permanently remove <strong>{actionTarget?.fullName}</strong> ({actionTarget?.employeeId}) and delete all their data. This cannot be undone.</>
-                                )}
                                 {actionType === "deactivate" && (
                                     <>This will disable <strong>{actionTarget?.fullName}</strong>&apos;s account and terminate active sessions. They will be unable to log in.</>
                                 )}
@@ -1103,13 +1110,12 @@ export default function EmployeeManagementPage() {
                                     </IOSButton>
                                     <IOSButton
                                         variant="filled"
-                                        color={actionType === "delete" ? "red" : actionType === "deactivate" ? "orange" : actionType === "activate" ? "green" : "blue"}
+                                        color={actionType === "deactivate" ? "orange" : actionType === "activate" ? "green" : "blue"}
                                         className="flex-1 text-[15px] font-semibold"
                                         onClick={handleAction}
                                         disabled={actionLoading}
                                     >
                                         {actionLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
-                                        {actionType === "delete" && "Delete"}
                                         {actionType === "deactivate" && "Deactivate"}
                                         {actionType === "activate" && "Activate"}
                                         {actionType === "reset_password" && "Reset"}

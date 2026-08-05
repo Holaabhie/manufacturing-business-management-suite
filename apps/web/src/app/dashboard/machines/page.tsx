@@ -32,6 +32,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useRole } from "@/lib/hooks/use-role";
 import { useTranslations } from "next-intl";
 import { useFormatters } from "@/hooks/useFormatters";
+import { ConfirmDeleteSheet } from "@/components/ui/ConfirmDeleteSheet";
 import {
     Dialog,
     DialogContent,
@@ -306,6 +307,25 @@ export default function MachinesPage() {
         return (
             <div className="space-y-6">
                 <Skeleton className="h-10 w-64" />
+                {/* KPI Stats Skeleton — matches real .kpi-panel / .kpi-grid auto-fit layout */}
+                <div className="kpi-panel">
+                    <div className="kpi-panel__glow"></div>
+                    <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                        {Array.from({ length: 5 }).map((_, i) => (
+                            <div
+                                key={i}
+                                className="kpi-card flex flex-col justify-center min-h-[140px]"
+                            >
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="h-[48px] w-[48px] rounded-[14px] bg-[var(--muted)] shimmer" />
+                                    <div className="h-[24px] w-[50px] rounded-full bg-[var(--muted)] shimmer" />
+                                </div>
+                                <div className="h-[34px] w-[120px] rounded-[8px] bg-[var(--muted)] shimmer mb-2" />
+                                <div className="h-[16px] w-[90px] rounded-[6px] bg-[var(--muted)] shimmer" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
                 <Skeleton className="h-10 w-96" />
                 <div className="space-y-3">
                     {[1, 2, 3, 4].map((i) => (
@@ -628,41 +648,15 @@ export default function MachinesPage() {
             </Dialog>
 
             {/* ─── Delete Confirmation Dialog ─────────────────────── */}
-            <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                <DialogContent className="sm:max-w-[400px] bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px] overflow-hidden p-0">
-                    <div className="p-6">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                          <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg, rgba(239,68,68,0.4), rgba(255,255,255,0.06))', border: '1px solid rgba(255,255,255,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Trash2 className="h-[18px] w-[18px] text-[#f87171]" />
-                          </div>
-                          <div>
-                            <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', lineHeight: '22px', margin: 0 }}>
-                              {t("deleteMachine")}
-                            </DialogTitle>
-                            <DialogDescription style={{ fontSize: 13, color: '#64748b', lineHeight: '18px', margin: '2px 0 0' }}>
-                              {t("deleteConfirm")}
-                            </DialogDescription>
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', gap: 10, paddingTop: 24, marginTop: 8, borderTop: '1px solid rgba(255,255,255,0.07)', marginLeft: -24, marginRight: -24, paddingLeft: 24, paddingRight: 24, paddingBottom: 8 }}>
-                            <button
-                                onClick={() => setDeleteDialogOpen(false)}
-                                style={{ flex: 1, height: 48, borderRadius: 14, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.10)', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}
-                            >
-                                {tCommon("cancel")}
-                            </button>
-                            <button
-                                onClick={handleDelete}
-                                disabled={deleting}
-                                id="confirm-delete-machine-btn"
-                                style={{ flex: 1, height: 48, borderRadius: 14, background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: '#fff', border: '1px solid rgba(239,68,68,0.3)', boxShadow: '0 4px 16px rgba(239,68,68,0.25)', fontSize: 15, fontWeight: 600, cursor: 'pointer', opacity: deleting ? 0.5 : 1 }}
-                            >
-                                {deleting ? t("deleting") : t("deleteMachine")}
-                            </button>
-                        </div>
-                    </div>
-                </DialogContent>
-            </Dialog>
+            <ConfirmDeleteSheet
+                open={deleteDialogOpen}
+                onClose={() => setDeleteDialogOpen(false)}
+                onConfirm={handleDelete}
+                isDeleting={deleting}
+                entityLabel="machine"
+                entityName={selectedMachine?.name}
+                consequenceText="will be permanently removed from machine management. This cannot be undone."
+            />
         </motion.div>
     );
 }

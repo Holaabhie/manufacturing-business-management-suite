@@ -99,7 +99,7 @@ export function StatWidget({
                 {/* Header: Icon + Badge */}
                 <div className="kpi-card__header">
                     {/* Stitch-enhanced icon tile with colored glow */}
-                    <div className={`kpi-card__icon kpi-card__icon--${color}`}>
+                    <div className={`kpi-card__icon kpi-card__icon--${color} shrink-0`}>
                         <Icon className="h-5 w-5" strokeWidth={2} />
                     </div>
                     {/* Trend badge — hide entirely if no valid change or 0% */}

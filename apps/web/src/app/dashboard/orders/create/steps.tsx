@@ -72,7 +72,7 @@ export function StepClientProduct({
                 className={cn(inputClass, "pl-10")}
               />
             </div>
-            <div className="max-h-[160px] overflow-y-auto rounded-[10px] border border-[var(--border)] bg-[var(--muted)]">
+            <div className="max-h-[min(160px,calc(100dvh-200px))] overflow-y-auto scrollbar-thin rounded-[10px] border border-[var(--border)] bg-[var(--muted)]">
               {filtered.length === 0 ? (
                 <p className="text-center text-[13px] text-[var(--muted-foreground)] py-4">No clients found</p>
               ) : filtered.slice(0, 8).map((c) => (

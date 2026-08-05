@@ -33,6 +33,8 @@ import { motion } from "framer-motion";
 import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { toast } from "sonner";
+import { CustomizeDashboardSheet } from "@/components/dashboard/CustomizeDashboardSheet";
 import {
   AreaChart,
   Area,
@@ -56,6 +58,8 @@ import type { ActivityItem } from "@/components/dashboard/activity-detail-types"
 import { useCachedPage } from "@/hooks/useCachedPage";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/hooks/use-orders";
+import { CollapsingTitle } from "@/components/ui/CollapsingTitle";
+import { useCollapseProgress } from "@/hooks/useCollapseProgress";
 
 const ActivityDetailPopup = dynamic(
   () => import("@/components/dashboard/ActivityDetailPopup"),
@@ -156,6 +160,7 @@ function CustomTooltip({ active, payload, label }: any) {
 // DASHBOARD PAGE
 // ═══════════════════════════════════════════════════
 export default function DashboardPage() {
+  const { progress: collapseProgress } = useCollapseProgress();
   const { restoreState, persist, restoreScroll } = useCachedPage({
     pageKey: "dashboard",
     maxAgeMs: 5 * 60 * 1000,
@@ -203,6 +208,7 @@ export default function DashboardPage() {
   // Widget State
   const [widgetLayout, setWidgetLayout] = useState<WidgetConfig[]>([]);
   const [isWidgetModalOpen, setIsWidgetModalOpen] = useState(false);
+  const [customizeSheetOpen, setCustomizeSheetOpen] = useState(false);
   const [activeSlotIndex, setActiveSlotIndex] = useState<number | null>(null);
   const [savingWidgets, setSavingWidgets] = useState(false);
 
@@ -213,7 +219,6 @@ export default function DashboardPage() {
   // Export State
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
-  const exportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const cached = restoreState();
@@ -246,16 +251,6 @@ export default function DashboardPage() {
     };
   }, [stats, activities, revenueData, weeklyData, widgetLayout, persist]);
 
-  // ─── Close export dropdown on outside click ──────────
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (exportRef.current && !exportRef.current.contains(e.target as Node)) {
-        setExportDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   // ─── Fetch User Role First ────────────────────────────
   useEffect(() => {
@@ -567,26 +562,80 @@ export default function DashboardPage() {
 
   // ─── Widget Handlers ───────────────────────────────────
   const saveWidgetLayout = async (newLayout: WidgetConfig[]) => {
+    const previousLayout = [...widgetLayout];
+    setWidgetLayout(newLayout);
     setSavingWidgets(true);
     try {
-      await fetch("/api/dashboard/widgets", {
+      const res = await fetch("/api/dashboard/widgets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ widgets: newLayout }),
       });
-      setWidgetLayout(newLayout);
+      if (!res.ok) {
+        throw new Error("Failed to save widget layout");
+      }
     } catch (error) {
       console.error("Failed to save widgets", error);
+      setWidgetLayout(previousLayout);
+      toast.error("Failed to save changes. Please try again.");
     } finally {
       setSavingWidgets(false);
     }
+  };
+
+  const handleToggleWidget = (widgetType: string, visible: boolean) => {
+    const currentVisible = widgetLayout.filter((w) => w.is_visible);
+
+    if (visible) {
+      if (currentVisible.length >= 4) return;
+
+      const occupiedPositions = new Set(currentVisible.map((w) => w.widget_position));
+      let freePosition = 0;
+      while (freePosition < 4 && occupiedPositions.has(freePosition)) {
+        freePosition++;
+      }
+
+      const existingIndex = widgetLayout.findIndex((w) => w.widget_type === widgetType);
+      let newLayout: WidgetConfig[];
+
+      if (existingIndex !== -1) {
+        newLayout = widgetLayout.map((w, idx) =>
+          idx === existingIndex
+            ? { ...w, is_visible: true, widget_position: freePosition }
+            : w
+        );
+      } else {
+        newLayout = [
+          ...widgetLayout,
+          { widget_type: widgetType, widget_position: freePosition, is_visible: true },
+        ];
+      }
+      saveWidgetLayout(newLayout);
+    } else {
+      const newLayout = widgetLayout.map((w) =>
+        w.widget_type === widgetType ? { ...w, is_visible: false } : w
+      );
+
+      let pos = 0;
+      const compacted = newLayout.map((w) => {
+        if (w.is_visible) {
+          return { ...w, widget_position: pos++ };
+        }
+        return w;
+      });
+
+      saveWidgetLayout(compacted);
+    }
+  };
+
+  const handleReorderWidgets = (newLayout: WidgetConfig[]) => {
+    saveWidgetLayout(newLayout);
   };
 
   const handleRemoveWidget = (position: number) => {
     const updated = widgetLayout.map((w) =>
       w.widget_position === position ? { ...w, is_visible: false } : w
     );
-    // If widget didn't exist in layout array yet, add it as hidden
     if (!updated.find((w) => w.widget_position === position)) {
       updated.push({ widget_type: "", widget_position: position, is_visible: false });
     }
@@ -596,16 +645,12 @@ export default function DashboardPage() {
   const handleAddWidget = (widgetType: string) => {
     if (activeSlotIndex === null) return;
 
-    // Check if widget is already used elsewhere
     const updated = [...widgetLayout];
-
-    // If this widget type is already active in another slot, remove it from there
     const existingIndex = updated.findIndex((w) => w.widget_type === widgetType && w.is_visible);
     if (existingIndex !== -1) {
       updated[existingIndex].is_visible = false;
     }
 
-    // Assign to the selected slot
     const slotIndex = updated.findIndex((w) => w.widget_position === activeSlotIndex);
     if (slotIndex !== -1) {
       updated[slotIndex] = { widget_type: widgetType, widget_position: activeSlotIndex, is_visible: true };
@@ -653,14 +698,32 @@ export default function DashboardPage() {
           <div className="h-[34px] w-[200px] rounded-[10px] bg-[var(--muted)] shimmer" />
           <div className="h-[20px] w-[300px] rounded-[8px] bg-[var(--muted)] shimmer" />
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-[140px] rounded-[16px] bg-[var(--muted)] shimmer" />
-          ))}
+        {/* Stat Cards Skeleton — shares .kpi-panel / .kpi-grid / .kpi-card with real content */}
+        <div className="kpi-panel">
+          <div className="kpi-panel__glow"></div>
+          <div className="kpi-grid">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div
+                key={i}
+                className="kpi-card flex flex-col justify-center min-h-[140px]"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-[48px] w-[48px] rounded-[14px] bg-[var(--muted)] shimmer" />
+                  <div className="h-[24px] w-[50px] rounded-full bg-[var(--muted)] shimmer" />
+                </div>
+                <div className="h-[34px] w-[120px] rounded-[8px] bg-[var(--muted)] shimmer mb-2" />
+                <div className="h-[16px] w-[90px] rounded-[6px] bg-[var(--muted)] shimmer" />
+              </div>
+            ))}
+          </div>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 h-[340px] rounded-[16px] bg-[var(--muted)] shimmer" />
           <div className="h-[340px] rounded-[16px] bg-[var(--muted)] shimmer" />
+        </div>
+        <div className="flex flex-col lg:flex-row items-stretch gap-4">
+          <div className="lg:w-1/3 h-[300px] rounded-[16px] bg-[var(--muted)] shimmer" />
+          <div className="lg:flex-1 h-[300px] rounded-[16px] bg-[var(--muted)] shimmer" />
         </div>
       </div>
     );
@@ -692,143 +755,128 @@ export default function DashboardPage() {
         />
       )}
       {/* ── Page Header ── */}
-      <motion.div variants={staggerItem} className="flex items-end justify-between">
-        <div>
-          <h1 className="text-[34px] font-bold text-[var(--foreground)] leading-[41px] tracking-[0.37px]">
-            {t("title")}
-          </h1>
-          <p className="text-[15px] text-[var(--muted-foreground)] mt-1 leading-[20px]">
-            {t("welcome")}
-          </p>
-        </div>
-        <div className="hidden sm:flex items-center gap-2">
-          {/* ── Export Dropdown ── */}
-          <div ref={exportRef} style={{ position: "relative" }}>
-            <IOSButton
-              variant="gray"
-              size="medium"
-              icon={exportLoading ? undefined : <Download className="h-4 w-4" />}
-              iconRight={<ChevronDown className={cn("h-3.5 w-3.5 transition-transform", exportDropdownOpen && "rotate-180")} />}
-              loading={exportLoading}
-              loadingText={t("exporting")}
-              onClick={() => setExportDropdownOpen((v) => !v)}
-            >
-              {tCommon("export")}
-            </IOSButton>
-            {exportDropdownOpen && (
-              <div
-                style={{
-                  position: "absolute",
-                  right: 0,
-                  top: "calc(100% + 6px)",
-                  minWidth: "190px",
-                  background: "var(--bg-elevated, rgba(30,30,40,0.92))",
-                  backdropFilter: "blur(20px)",
-                  border: "1px solid var(--border-card, rgba(255,255,255,0.12))",
-                  borderRadius: "12px",
-                  padding: "6px",
-                  boxShadow: "0 8px 32px rgba(0,0,0,0.35)",
-                  zIndex: 50,
-                }}
-              >
-                <button
-                  onClick={handleExportExcel}
-                  className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-[8px] text-[14px] font-medium text-[var(--foreground)] hover:bg-[var(--muted)] transition-colors text-left"
+      <motion.div variants={staggerItem}>
+        <CollapsingTitle
+          title={t("title")}
+          subtitle={t("welcome")}
+          collapseProgress={collapseProgress}
+          actions={
+            <>
+              {/* ── Export Dropdown ── */}
+              <DropdownMenu open={exportDropdownOpen} onOpenChange={setExportDropdownOpen}>
+                <DropdownMenuTrigger asChild>
+                  <IOSButton
+                    variant="gray"
+                    size="medium"
+                    icon={exportLoading ? undefined : <Download className="h-4 w-4" />}
+                    iconRight={
+                      <ChevronDown
+                        className={cn(
+                          "h-3.5 w-3.5 transition-transform duration-200",
+                          exportDropdownOpen && "rotate-180"
+                        )}
+                      />
+                    }
+                    loading={exportLoading}
+                    loadingText={t("exporting")}
+                  >
+                    {tCommon("export")}
+                  </IOSButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  sideOffset={8}
+                  className={cn(
+                    "w-[240px] max-w-[min(90vw,260px)] p-[10px] rounded-[18px]",
+                    "bg-white/80 dark:bg-[#141824]/78 backdrop-blur-xl [-webkit-backdrop-filter:blur(20px)]",
+                    "border border-white/20 dark:border-white/[0.08]",
+                    "shadow-[0_24px_60px_rgba(0,0,0,0.15)] dark:shadow-[0_24px_60px_rgba(0,0,0,0.45)]"
+                  )}
                 >
-                  <FileSpreadsheet className="h-4 w-4 text-[#34C759]" />
-                  {t("exportAsExcel")}
-                </button>
-                <button
-                  onClick={handleExportPDF}
-                  className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-[8px] text-[14px] font-medium text-[var(--foreground)] hover:bg-[var(--muted)] transition-colors text-left"
-                >
-                  <FileText className="h-4 w-4 text-[#FF453A]" />
-                  {t("exportAsPDF")}
-                </button>
-              </div>
-            )}
-          </div>
-          <Link href="/dashboard/orders">
-            <IOSButton variant="filled" size="medium" icon={<Plus className="h-4 w-4" />}>
-              {t("newOrder")}
-            </IOSButton>
-          </Link>
-        </div>
+                  <DropdownMenuItem
+                    onClick={handleExportExcel}
+                    className={cn(
+                      "h-[48px] px-[16px] py-[14px] rounded-[12px] cursor-pointer flex items-center justify-between gap-3 text-[14px] font-medium text-[var(--foreground)]",
+                      "hover:bg-slate-100 dark:hover:bg-white/[0.06] focus:bg-slate-100 dark:focus:bg-white/[0.06] transition-colors"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <FileSpreadsheet className="h-4 w-4 text-[#34C759]" />
+                      <span>{t("exportAsExcel")}</span>
+                    </div>
+                    <span className="text-[12px] font-mono text-[var(--muted-foreground)]">XLSX</span>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem
+                    onClick={handleExportPDF}
+                    className={cn(
+                      "h-[48px] px-[16px] py-[14px] rounded-[12px] cursor-pointer flex items-center justify-between gap-3 text-[14px] font-medium text-[var(--foreground)]",
+                      "hover:bg-slate-100 dark:hover:bg-white/[0.06] focus:bg-slate-100 dark:focus:bg-white/[0.06] transition-colors"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <FileText className="h-4 w-4 text-[#FF453A]" />
+                      <span>{t("exportAsPDF")}</span>
+                    </div>
+                    <span className="text-[12px] font-mono text-[var(--muted-foreground)]">PDF</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Link href="/dashboard/orders">
+                <IOSButton variant="filled" size="medium" icon={<Plus className="h-4 w-4" />}>
+                  {t("newOrder")}
+                </IOSButton>
+              </Link>
+            </>
+          }
+        />
       </motion.div>
 
       {/* ── Stat Widgets ── */}
       <section className="kpi-panel" aria-label="Key Performance Indicators" style={{ position: "relative" }}>
-        {/* ── Container-level 3-dot widget menu ── */}
-        {stats && (() => {
-          const visibleWidgets = [0, 1, 2, 3]
-            .map((pos) => {
-              const cfg = widgetLayout.find((w) => w.widget_position === pos && w.is_visible);
-              if (!cfg) return null;
-              const meta = AVAILABLE_WIDGETS.find((w) => w.id === cfg.widget_type);
-              if (!meta) return null;
-              return { position: pos, label: meta.id };
-            })
-            .filter(Boolean) as { position: number; label: string }[];
-
-          return visibleWidgets.length > 0 ? (
-            <div
-              style={{
-                position: "absolute",
-                top: "12px",
-                left: "12px",
-                zIndex: 10,
+        {/* ── Container-level widget customize button ── */}
+        {stats && (
+          <div
+            style={{
+              position: "absolute",
+              top: "12px",
+              left: "12px",
+              zIndex: 10,
+            }}
+          >
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setCustomizeSheetOpen(true);
               }}
+              style={{
+                width: "32px",
+                height: "32px",
+                borderRadius: "50%",
+                background: "rgba(255,255,255,0.10)",
+                border: "1px solid rgba(255,255,255,0.15)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "rgba(255,255,255,0.65)",
+                cursor: "pointer",
+                backdropFilter: "blur(8px)",
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(255,255,255,0.18)";
+                e.currentTarget.style.color = "rgba(255,255,255,0.9)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "rgba(255,255,255,0.10)";
+                e.currentTarget.style.color = "rgba(255,255,255,0.65)";
+              }}
+              aria-label="Customize dashboard"
             >
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    onClick={(e) => e.stopPropagation()}
-                    style={{
-                      width: "32px",
-                      height: "32px",
-                      borderRadius: "50%",
-                      background: "rgba(255,255,255,0.10)",
-                      border: "1px solid rgba(255,255,255,0.15)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "rgba(255,255,255,0.65)",
-                      cursor: "pointer",
-                      backdropFilter: "blur(8px)",
-                      transition: "all 0.2s ease",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = "rgba(255,255,255,0.18)";
-                      e.currentTarget.style.color = "rgba(255,255,255,0.9)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "rgba(255,255,255,0.10)";
-                      e.currentTarget.style.color = "rgba(255,255,255,0.65)";
-                    }}
-                    aria-label="Manage widgets"
-                  >
-                    <MoreHorizontal style={{ width: "18px", height: "18px" }} />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" sideOffset={8} className="min-w-[200px]">
-                  {visibleWidgets.map(({ position, label }) => (
-                    <DropdownMenuItem
-                      key={position}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRemoveWidget(position);
-                      }}
-                      className="cursor-pointer gap-2 text-red-400 focus:text-red-400"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      <span>Remove {label}</span>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          ) : null;
-        })()}
+              <MoreHorizontal style={{ width: "18px", height: "18px" }} />
+            </button>
+          </div>
+        )}
 
         <div className="kpi-grid">
           {stats && [0, 1, 2, 3].map((position) => {
@@ -1115,6 +1163,16 @@ export default function DashboardPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── Customize Dashboard Bottom Sheet ── */}
+      <CustomizeDashboardSheet
+        open={customizeSheetOpen}
+        onClose={() => setCustomizeSheetOpen(false)}
+        widgetLayout={widgetLayout}
+        availableWidgets={AVAILABLE_WIDGETS}
+        onToggleWidget={handleToggleWidget}
+        onReorderWidgets={handleReorderWidgets}
+      />
     </motion.div>
   );
 }

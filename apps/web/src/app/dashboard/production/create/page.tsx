@@ -665,7 +665,7 @@ export default function CreateProductionPage() {
                                                             <SelectTrigger className="h-9 bg-card" id={`machine-select-${row.id}`}>
                                                                 <SelectValue placeholder="Select machine..." />
                                                             </SelectTrigger>
-                                                            <SelectContent>
+                                                            <SelectContent className="max-h-[220px] overflow-y-auto scrollbar-thin">
                                                                 {machines.map((m) => (
                                                                     <SelectItem key={m.id} value={m.id} disabled={m.status !== "active"}>
                                                                         <div className="flex items-center gap-2">
@@ -727,7 +727,7 @@ export default function CreateProductionPage() {
                                                             <SelectTrigger className="h-9 bg-card" id={`operator-select-${row.id}`}>
                                                                 <SelectValue placeholder="Select operator..." />
                                                             </SelectTrigger>
-                                                            <SelectContent>
+                                                            <SelectContent className="max-h-[220px] overflow-y-auto scrollbar-thin">
                                                                 {operators.map((op) => (
                                                                     <SelectItem key={op.id} value={op.id}>
                                                                         <div className="flex items-center gap-2">

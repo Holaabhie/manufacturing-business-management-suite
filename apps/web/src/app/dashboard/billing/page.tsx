@@ -58,6 +58,8 @@ import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import type { InvoicePayload } from "@/lib/invoice/types";
 import { cn } from "@/lib/utils";
+import { CollapsingTitle } from "@/components/ui/CollapsingTitle";
+import { useCollapseProgress } from "@/hooks/useCollapseProgress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -138,6 +140,7 @@ interface CompanyInfo {
 }
 
 export default function BillingPage() {
+    const { progress: collapseProgress } = useCollapseProgress();
     const [bills, setBills] = useState<Bill[]>([]);
     const [clients, setClients] = useState<any[]>([]);
     const [orders, setOrders] = useState<any[]>([]);
@@ -720,15 +723,14 @@ export default function BillingPage() {
 
     return (
         <div className="space-y-8 bg-[var(--background)] min-h-screen p-6 rounded-3xl overflow-x-hidden">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-                        <FileText className="h-8 w-8 text-[var(--erp-success)]" />
-                        Tally-Style Billing
-                    </h1>
-                    <p className="text-[var(--muted-foreground)] mt-1">Generate professional GST invoices for your orders</p>
-                </div>
+            <CollapsingTitle
+                title="Tally-Style Billing"
+                subtitle={`${bills.length} invoices · \u20B9${(stats.totalValue / 100000).toFixed(1)}L total billed · ${stats.paid} paid`}
+                subtitleLoading={loading}
+                collapseProgress={collapseProgress}
+            />
 
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 {/* Company Details Warning */}
                 {!companyLoading && !companyInfo?.companyName && (
                     <Alert variant="default" className="border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800">

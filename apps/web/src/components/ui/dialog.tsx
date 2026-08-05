@@ -69,7 +69,7 @@ function DialogContent({
           fullScreen
             ? [
                 "fixed inset-0 z-[1001] flex flex-col overflow-hidden",
-                "p-0 outline-none",
+                "p-0 outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0",
                 "data-[state=open]:animate-[sheetSlideUp_0.28s_ease] data-[state=closed]:animate-[sheetSlideDown_0.22s_ease_forwards]",
               ]
             : [
@@ -78,7 +78,7 @@ function DialogContent({
                 "w-full max-w-[480px]",
                 "max-h-[88dvh] flex flex-col",
                 "rounded-t-[32px] rounded-b-none",
-                "p-0 outline-none",
+                "p-0 outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0",
                 "data-[state=open]:animate-[sheetSlideUp_0.28s_ease] data-[state=closed]:animate-[sheetSlideDown_0.22s_ease_forwards]",
                 /* ── Desktop md+: centered dialog ── */
                 "md:top-1/2 md:bottom-auto",

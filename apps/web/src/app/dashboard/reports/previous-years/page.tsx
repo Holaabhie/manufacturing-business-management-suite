@@ -23,6 +23,7 @@ import { exportToExcel } from "@/lib/excel-export";
 import { toast } from "sonner";
 import { usePermissions } from "@/lib/hooks/use-permissions";
 import { AccessDenied } from "@/components/AccessDenied";
+import { MobileTableCards } from "@/components/ui/MobileTableCards";
 
 // ─── Types ───────────────────────────────────────────────
 interface FYData {
@@ -96,14 +97,14 @@ function KPICard({ label, value, icon: Icon, color }: {
     };
 
     return (
-        <IOSCard variant="elevated" padding="lg" className="bg-white dark:bg-[var(--card)] !border !border-black/[0.09] dark:!border-[var(--border)] shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] dark:shadow-none">
-            <div className="flex items-center gap-3 mb-3">
-                <div className={cn("w-[40px] h-[40px] rounded-[10px] flex items-center justify-center", bgMap[color])}>
-                    <Icon className={cn("h-[18px] w-[18px]", iconColorMap[color])} />
+        <IOSCard variant="elevated" padding="none" className="p-3 sm:p-4 md:p-5 bg-white dark:bg-[var(--card)] !border !border-black/[0.09] dark:!border-[var(--border)] shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] dark:shadow-none">
+            <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                <div className={cn("w-8 h-8 sm:w-[40px] sm:h-[40px] rounded-[10px] flex items-center justify-center flex-shrink-0", bgMap[color])}>
+                    <Icon className={cn("h-4 w-4 sm:h-[18px] sm:w-[18px]", iconColorMap[color])} />
                 </div>
-                <span className="text-[13px] text-[var(--muted-foreground)] leading-[18px]">{label}</span>
+                <span className="text-[12px] sm:text-[13px] text-[var(--muted-foreground)] leading-[16px] sm:leading-[18px] min-w-0 truncate">{label}</span>
             </div>
-            <span className="text-[28px] font-bold tracking-[0.36px] text-[var(--foreground)]">{value}</span>
+            <span className="text-[20px] sm:text-[24px] md:text-[28px] font-bold tracking-tight tabular-nums text-[var(--foreground)] block truncate">{value}</span>
         </IOSCard>
     );
 }
@@ -207,28 +208,28 @@ export default function PreviousYearsPage() {
 
     return (
         <motion.div
-            className="space-y-6 max-w-[1200px] mx-auto"
+            className="space-y-4 sm:space-y-6 max-w-[1200px] mx-auto scroll-mt-14 sm:scroll-mt-16 pb-28 sm:pb-8"
             variants={staggerContainer}
             initial="hidden"
             animate="visible"
         >
             {/* ─── Header ──────────────────────────────────── */}
-            <motion.div variants={staggerItem} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-[28px] font-bold tracking-[0.36px] text-[var(--foreground)]">
+            <motion.div variants={staggerItem} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 min-w-0">
+                <div className="min-w-0 flex-1">
+                    <h1 className="text-[22px] sm:text-[24px] md:text-[28px] font-bold tracking-[0.36px] text-[var(--foreground)] truncate">
                         Previous Years
                     </h1>
-                    <p className="text-[15px] text-[var(--muted-foreground)] mt-1">
+                    <p className="text-[15px] text-[var(--muted-foreground)] mt-1 break-words">
                         Browse archived financial year data — read-only view
                     </p>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap sm:flex-nowrap">
                     {/* FY Selector */}
                     <div className="relative">
                         <button
                             onClick={() => setShowFYDropdown(!showFYDropdown)}
-                            className="flex items-center gap-2 px-4 py-2.5 rounded-[12px] bg-white dark:bg-[var(--card)] border border-black/[0.09] dark:border-[var(--border)] shadow-[0_1px_3px_rgba(0,0,0,0.06)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all duration-200 text-[15px] font-medium text-[var(--foreground)] min-w-[160px]"
+                            className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-[12px] bg-white dark:bg-[var(--card)] border border-black/[0.09] dark:border-[var(--border)] shadow-[0_1px_3px_rgba(0,0,0,0.06)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all duration-200 text-[14px] sm:text-[15px] font-medium text-[var(--foreground)] min-w-[140px] sm:min-w-[160px]"
                         >
                             <Calendar className="h-4 w-4 text-[var(--primary)]" />
                             <span>FY {selectedFY || "Select"}</span>
@@ -292,7 +293,7 @@ export default function PreviousYearsPage() {
 
             {/* ─── KPI Summary Cards ─────────────────────── */}
             {data?.summary && (
-                <motion.div variants={staggerItem} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <motion.div variants={staggerItem} className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
                     <KPICard
                         label="Total Revenue"
                         value={formatCurrency(data.summary.totalRevenue)}
@@ -322,7 +323,7 @@ export default function PreviousYearsPage() {
 
             {/* ─── Tab Navigation (Pill Style) ───────────── */}
             <motion.div variants={staggerItem}>
-                <div className="flex gap-1.5 p-1.5 bg-[var(--accent)]/50 dark:bg-[var(--accent)]/30 rounded-[14px] overflow-x-auto">
+                <div className="flex gap-1 sm:gap-1.5 p-1 sm:p-1.5 bg-[var(--accent)]/50 dark:bg-[var(--accent)]/30 rounded-[14px] overflow-x-auto scrollbar-hide">
                     {TABS.map((tab) => {
                         const Icon = tab.icon;
                         const isActive = activeTab === tab.id;
@@ -337,7 +338,7 @@ export default function PreviousYearsPage() {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={cn(
-                                    "flex items-center gap-2 px-4 py-2.5 rounded-[10px] text-[14px] font-medium whitespace-nowrap transition-all duration-200",
+                                    "flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-[10px] text-[13px] sm:text-[14px] font-medium whitespace-nowrap transition-all duration-200",
                                     isActive
                                         ? "bg-white dark:bg-[var(--card)] text-[var(--foreground)] shadow-[0_1px_4px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.2)]"
                                         : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-white/50 dark:hover:bg-white/5"
@@ -375,7 +376,7 @@ export default function PreviousYearsPage() {
                     </IOSCard>
                 ) : (
                     <IOSCard variant="elevated" padding="none" className="overflow-hidden bg-white dark:bg-[var(--card)] !border !border-black/[0.09] dark:!border-[var(--border)]">
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto scrollbar-thin">
                             {activeTab === "orders" && <OrdersTable data={data.orders || []} />}
                             {activeTab === "productions" && <ProductionsTable data={data.productions || []} />}
                             {activeTab === "bills" && <BillsTable data={data.bills || []} />}
@@ -404,129 +405,200 @@ function EmptyState({ label }: { label: string }) {
     );
 }
 
-const thClass = "px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] bg-[var(--accent)]/30";
-const tdClass = "px-4 py-3.5 text-[14px] text-[var(--foreground)] border-t border-[var(--border)]/50";
+const thClass = "px-3 sm:px-4 py-2.5 sm:py-3 text-left text-[11px] sm:text-[12px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] bg-[var(--accent)]/30 whitespace-nowrap";
+const tdClass = "px-3 sm:px-4 py-3 sm:py-3.5 text-[13px] sm:text-[14px] text-[var(--foreground)] border-t border-[var(--border)]/50";
 
 function OrdersTable({ data }: { data: any[] }) {
     if (data.length === 0) return <EmptyState label="orders" />;
     return (
-        <table className="w-full">
-            <thead>
-                <tr>
-                    <th className={thClass}>Product</th>
-                    <th className={thClass}>Quantity</th>
-                    <th className={thClass}>Amount</th>
-                    <th className={thClass}>Status</th>
-                    <th className={thClass}>Payment</th>
-                    <th className={thClass}>Date</th>
-                </tr>
-            </thead>
-            <tbody>
-                {data.map((o) => (
-                    <tr key={o.id} className="hover:bg-[var(--accent)]/20 transition-colors">
-                        <td className={cn(tdClass, "font-medium")}>{o.product_name}</td>
-                        <td className={tdClass}>{o.quantity} {o.unit}</td>
-                        <td className={cn(tdClass, "font-semibold tabular-nums")}>{formatCurrency(o.total_amount || 0)}</td>
-                        <td className={tdClass}><StatusBadge status={(() => {
-                            const ps = o.production_status || o.status;
-                            if (ps === "completed" && o.payment_status === "paid") return "completed";
-                            if (ps === "completed") return "awaiting_payment";
-                            return ps || "pending";
-                        })()} /></td>
-                        <td className={tdClass}><StatusBadge status={o.payment_status} /></td>
-                        <td className={cn(tdClass, "text-[var(--muted-foreground)] tabular-nums")}>{o.createdAt ? new Date(o.createdAt).toLocaleDateString("en-IN") : "—"}</td>
+        <>
+            {/* Mobile cards */}
+            <MobileTableCards
+                data={data}
+                className="md:hidden"
+                fields={[
+                    { key: "product_name", label: "Product", primary: true },
+                    { key: "quantity", label: "Quantity", render: (_v, o) => `${o.quantity} ${o.unit || ""}` },
+                    { key: "total_amount", label: "Amount", render: (_v, o) => formatCurrency(o.total_amount || 0) },
+                    { key: "status", label: "Status", render: (_v, o) => {
+                        const ps = o.production_status || o.status;
+                        const s = ps === "completed" && o.payment_status === "paid" ? "completed" : ps === "completed" ? "awaiting_payment" : ps || "pending";
+                        return <StatusBadge status={s} />;
+                    }},
+                    { key: "payment_status", label: "Payment", render: (_v, o) => <StatusBadge status={o.payment_status} /> },
+                    { key: "createdAt", label: "Date", render: (_v, o) => o.createdAt ? new Date(o.createdAt).toLocaleDateString("en-IN") : "—" },
+                ]}
+            />
+            {/* Desktop table */}
+            <table className="hidden md:table min-w-[600px] w-full">
+                <thead>
+                    <tr>
+                        <th className={cn(thClass, "sticky left-0 z-10 bg-[var(--accent)]/30")}>Product</th>
+                        <th className={thClass}>Quantity</th>
+                        <th className={cn(thClass, "text-right")}>Amount</th>
+                        <th className={thClass}>Status</th>
+                        <th className={thClass}>Payment</th>
+                        <th className={thClass}>Date</th>
                     </tr>
-                ))}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    {data.map((o) => (
+                        <tr key={o.id} className="hover:bg-[var(--accent)]/20 transition-colors">
+                            <td className={cn(tdClass, "font-medium max-w-[180px] truncate sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>{o.product_name}</td>
+                            <td className={cn(tdClass, "whitespace-nowrap")}>{o.quantity} {o.unit}</td>
+                            <td className={cn(tdClass, "font-semibold tabular-nums text-right whitespace-nowrap")}>{formatCurrency(o.total_amount || 0)}</td>
+                            <td className={tdClass}><StatusBadge status={(() => {
+                                const ps = o.production_status || o.status;
+                                if (ps === "completed" && o.payment_status === "paid") return "completed";
+                                if (ps === "completed") return "awaiting_payment";
+                                return ps || "pending";
+                            })()} /></td>
+                            <td className={tdClass}><StatusBadge status={o.payment_status} /></td>
+                            <td className={cn(tdClass, "text-[var(--muted-foreground)] tabular-nums whitespace-nowrap")}>{o.createdAt ? new Date(o.createdAt).toLocaleDateString("en-IN") : "—"}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </>
     );
 }
 
 function ProductionsTable({ data }: { data: any[] }) {
     if (data.length === 0) return <EmptyState label="production records" />;
     return (
-        <table className="w-full">
-            <thead>
-                <tr>
-                    <th className={thClass}>Batch</th>
-                    <th className={thClass}>Product</th>
-                    <th className={thClass}>Target</th>
-                    <th className={thClass}>Produced</th>
-                    <th className={thClass}>Rejected</th>
-                    <th className={thClass}>Status</th>
-                    <th className={thClass}>Date</th>
-                </tr>
-            </thead>
-            <tbody>
-                {data.map((p) => (
-                    <tr key={p.id} className="hover:bg-[var(--accent)]/20 transition-colors">
-                        <td className={cn(tdClass, "font-mono text-[13px]")}>{p.batchNumber}</td>
-                        <td className={cn(tdClass, "font-medium")}>{p.orderProductName}</td>
-                        <td className={cn(tdClass, "tabular-nums")}>{p.orderQuantity}</td>
-                        <td className={cn(tdClass, "tabular-nums font-semibold text-[var(--erp-success)]")}>{p.producedQuantity}</td>
-                        <td className={cn(tdClass, "tabular-nums", p.rejectQuantity > 0 ? "text-[var(--erp-danger)]" : "")}>{p.rejectQuantity}</td>
-                        <td className={tdClass}><StatusBadge status={p.status} /></td>
-                        <td className={cn(tdClass, "text-[var(--muted-foreground)] tabular-nums")}>{p.createdAt ? new Date(p.createdAt).toLocaleDateString("en-IN") : "—"}</td>
+        <>
+            {/* Mobile cards */}
+            <MobileTableCards
+                data={data}
+                className="md:hidden"
+                fields={[
+                    { key: "batchNumber", label: "Batch", primary: true, render: (v) => <span className="font-mono text-[13px]">{v}</span> },
+                    { key: "orderProductName", label: "Product" },
+                    { key: "orderQuantity", label: "Target" },
+                    { key: "producedQuantity", label: "Produced", render: (v) => <span className="font-semibold text-[var(--erp-success)]">{v}</span> },
+                    { key: "rejectQuantity", label: "Rejected", render: (v) => <span className={v > 0 ? "text-[var(--erp-danger)]" : ""}>{v}</span> },
+                    { key: "status", label: "Status", render: (_v, p) => <StatusBadge status={p.status} /> },
+                    { key: "createdAt", label: "Date", render: (_v, p) => p.createdAt ? new Date(p.createdAt).toLocaleDateString("en-IN") : "—" },
+                ]}
+            />
+            {/* Desktop table */}
+            <table className="hidden md:table min-w-[650px] w-full">
+                <thead>
+                    <tr>
+                        <th className={thClass}>Batch</th>
+                        <th className={cn(thClass, "sticky left-0 z-10 bg-[var(--accent)]/30")}>Product</th>
+                        <th className={thClass}>Target</th>
+                        <th className={thClass}>Produced</th>
+                        <th className={thClass}>Rejected</th>
+                        <th className={thClass}>Status</th>
+                        <th className={thClass}>Date</th>
                     </tr>
-                ))}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    {data.map((p) => (
+                        <tr key={p.id} className="hover:bg-[var(--accent)]/20 transition-colors">
+                            <td className={cn(tdClass, "font-mono text-[13px] whitespace-nowrap")}>{p.batchNumber}</td>
+                            <td className={cn(tdClass, "font-medium max-w-[180px] truncate sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>{p.orderProductName}</td>
+                            <td className={cn(tdClass, "tabular-nums whitespace-nowrap")}>{p.orderQuantity}</td>
+                            <td className={cn(tdClass, "tabular-nums font-semibold text-[var(--erp-success)] whitespace-nowrap")}>{p.producedQuantity}</td>
+                            <td className={cn(tdClass, "tabular-nums whitespace-nowrap", p.rejectQuantity > 0 ? "text-[var(--erp-danger)]" : "")}>{p.rejectQuantity}</td>
+                            <td className={tdClass}><StatusBadge status={p.status} /></td>
+                            <td className={cn(tdClass, "text-[var(--muted-foreground)] tabular-nums whitespace-nowrap")}>{p.createdAt ? new Date(p.createdAt).toLocaleDateString("en-IN") : "—"}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </>
     );
 }
 
 function BillsTable({ data }: { data: any[] }) {
     if (data.length === 0) return <EmptyState label="bills/invoices" />;
     return (
-        <table className="w-full">
-            <thead>
-                <tr>
-                    <th className={thClass}>Invoice #</th>
-                    <th className={thClass}>Client</th>
-                    <th className={thClass}>Amount</th>
-                    <th className={thClass}>Status</th>
-                    <th className={thClass}>Date</th>
-                </tr>
-            </thead>
-            <tbody>
-                {data.map((b) => (
-                    <tr key={b.id} className="hover:bg-[var(--accent)]/20 transition-colors">
-                        <td className={cn(tdClass, "font-mono text-[13px] font-medium")}>{b.billNumber}</td>
-                        <td className={cn(tdClass, "font-medium")}>{b.clientName}</td>
-                        <td className={cn(tdClass, "font-semibold tabular-nums")}>{formatCurrency(b.totalAmount || 0)}</td>
-                        <td className={tdClass}><StatusBadge status={b.status} /></td>
-                        <td className={cn(tdClass, "text-[var(--muted-foreground)] tabular-nums")}>{b.billDate || "—"}</td>
+        <>
+            {/* Mobile cards */}
+            <MobileTableCards
+                data={data}
+                className="md:hidden"
+                fields={[
+                    { key: "billNumber", label: "Invoice #", primary: true, render: (v) => <span className="font-mono text-[13px] font-medium">{v}</span> },
+                    { key: "clientName", label: "Client" },
+                    { key: "totalAmount", label: "Amount", render: (_v, b) => formatCurrency(b.totalAmount || 0) },
+                    { key: "status", label: "Status", render: (_v, b) => <StatusBadge status={b.status} /> },
+                    { key: "billDate", label: "Date", render: (v) => v || "—" },
+                ]}
+            />
+            {/* Desktop table */}
+            <table className="hidden md:table min-w-[550px] w-full">
+                <thead>
+                    <tr>
+                        <th className={thClass}>Invoice #</th>
+                        <th className={cn(thClass, "sticky left-0 z-10 bg-[var(--accent)]/30")}>Client</th>
+                        <th className={cn(thClass, "text-right")}>Amount</th>
+                        <th className={thClass}>Status</th>
+                        <th className={thClass}>Date</th>
                     </tr>
-                ))}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    {data.map((b) => (
+                        <tr key={b.id} className="hover:bg-[var(--accent)]/20 transition-colors">
+                            <td className={cn(tdClass, "font-mono text-[13px] font-medium whitespace-nowrap")}>{b.billNumber}</td>
+                            <td className={cn(tdClass, "font-medium max-w-[180px] truncate sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>{b.clientName}</td>
+                            <td className={cn(tdClass, "font-semibold tabular-nums text-right whitespace-nowrap")}>{formatCurrency(b.totalAmount || 0)}</td>
+                            <td className={tdClass}><StatusBadge status={b.status} /></td>
+                            <td className={cn(tdClass, "text-[var(--muted-foreground)] tabular-nums whitespace-nowrap")}>{b.billDate || "—"}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </>
     );
 }
 
 function PaymentsTable({ data }: { data: any[] }) {
     if (data.length === 0) return <EmptyState label="payments" />;
     return (
-        <table className="w-full">
-            <thead>
-                <tr>
-                    <th className={thClass}>Amount</th>
-                    <th className={thClass}>Method</th>
-                    <th className={thClass}>Notes</th>
-                    <th className={thClass}>Date</th>
-                </tr>
-            </thead>
-            <tbody>
-                {data.map((p) => (
-                    <tr key={p.id} className="hover:bg-[var(--accent)]/20 transition-colors">
-                        <td className={cn(tdClass, "font-semibold tabular-nums text-[var(--erp-success)]")}>{formatCurrency(p.amount || 0)}</td>
-                        <td className={cn(tdClass, "capitalize")}>{(p.payment_method || "").replace(/_/g, " ")}</td>
-                        <td className={cn(tdClass, "text-[var(--muted-foreground)] max-w-[250px] truncate")}>{p.notes || "—"}</td>
-                        <td className={cn(tdClass, "text-[var(--muted-foreground)] tabular-nums")}>
-                            {p.payment_date ? new Date(p.payment_date).toLocaleDateString("en-IN") : (p.createdAt ? new Date(p.createdAt).toLocaleDateString("en-IN") : "—")}
-                        </td>
+        <>
+            {/* Mobile cards */}
+            <MobileTableCards
+                data={data}
+                className="md:hidden"
+                fields={[
+                    { key: "amount", label: "Amount", primary: true, render: (_v, p) => (
+                        <span className="font-semibold text-[var(--erp-success)]">{formatCurrency(p.amount || 0)}</span>
+                    )},
+                    { key: "payment_method", label: "Method", render: (v) => <span className="capitalize">{(v || "").replace(/_/g, " ")}</span> },
+                    { key: "notes", label: "Notes", render: (v) => v || "\u2014" },
+                    { key: "payment_date", label: "Date", render: (_v, p) => {
+                        const d = p.payment_date || p.createdAt;
+                        return d ? new Date(d).toLocaleDateString("en-IN") : "\u2014";
+                    }},
+                ]}
+            />
+            {/* Desktop table */}
+            <table className="hidden md:table min-w-[500px] w-full">
+                <thead>
+                    <tr>
+                        <th className={cn(thClass, "text-right")}>Amount</th>
+                        <th className={thClass}>Method</th>
+                        <th className={thClass}>Notes</th>
+                        <th className={thClass}>Date</th>
                     </tr>
-                ))}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    {data.map((p) => (
+                        <tr key={p.id} className="hover:bg-[var(--accent)]/20 transition-colors">
+                            <td className={cn(tdClass, "font-semibold tabular-nums text-[var(--erp-success)] text-right whitespace-nowrap")}>{formatCurrency(p.amount || 0)}</td>
+                            <td className={cn(tdClass, "capitalize whitespace-nowrap")}>{(p.payment_method || "").replace(/_/g, " ")}</td>
+                            <td className={cn(tdClass, "text-[var(--muted-foreground)] max-w-[200px] truncate")}>{p.notes || "\u2014"}</td>
+                            <td className={cn(tdClass, "text-[var(--muted-foreground)] tabular-nums whitespace-nowrap")}>
+                                {p.payment_date ? new Date(p.payment_date).toLocaleDateString("en-IN") : (p.createdAt ? new Date(p.createdAt).toLocaleDateString("en-IN") : "\u2014")}
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </>
     );
 }
 
@@ -565,53 +637,82 @@ function InventoryUsageTable({ usage, traceability }: { usage: any[]; traceabili
                 usage.length === 0 ? (
                     <EmptyState label="material deduction records" />
                 ) : (
-                    <table className="w-full">
-                        <thead>
-                            <tr>
-                                <th className={thClass}>Material</th>
-                                <th className={thClass}>Qty Deducted</th>
-                                <th className={thClass}>Order ID</th>
-                                <th className={thClass}>Date</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {usage.map((u) => (
-                                <tr key={u.id} className="hover:bg-[var(--accent)]/20 transition-colors">
-                                    <td className={cn(tdClass, "font-medium")}>{u.item_name || "—"}</td>
-                                    <td className={cn(tdClass, "tabular-nums font-semibold")}>{u.quantity_deducted}</td>
-                                    <td className={cn(tdClass, "font-mono text-[12px] text-[var(--muted-foreground)]")}>{u.order_id?.slice(0, 8)}...</td>
-                                    <td className={cn(tdClass, "text-[var(--muted-foreground)] tabular-nums")}>{u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-IN") : "—"}</td>
+                    <>
+                        {/* Mobile cards */}
+                        <MobileTableCards
+                            data={usage}
+                            className="md:hidden"
+                            fields={[
+                                { key: "item_name", label: "Material", primary: true, render: (v) => v || "\u2014" },
+                                { key: "quantity_deducted", label: "Qty Deducted", render: (v) => <span className="font-semibold tabular-nums">{v}</span> },
+                                { key: "order_id", label: "Order ID", render: (v) => <span className="font-mono text-[12px]">{v?.slice(0, 8)}...</span> },
+                                { key: "createdAt", label: "Date", render: (v) => v ? new Date(v).toLocaleDateString("en-IN") : "\u2014" },
+                            ]}
+                        />
+                        {/* Desktop table */}
+                        <table className="hidden md:table min-w-[500px] w-full">
+                            <thead>
+                                <tr>
+                                    <th className={cn(thClass, "sticky left-0 z-10 bg-[var(--accent)]/30")}>Material</th>
+                                    <th className={thClass}>Qty Deducted</th>
+                                    <th className={thClass}>Order ID</th>
+                                    <th className={thClass}>Date</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {usage.map((u) => (
+                                    <tr key={u.id} className="hover:bg-[var(--accent)]/20 transition-colors">
+                                        <td className={cn(tdClass, "font-medium max-w-[180px] truncate sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>{u.item_name || "\u2014"}</td>
+                                        <td className={cn(tdClass, "tabular-nums font-semibold whitespace-nowrap")}>{u.quantity_deducted}</td>
+                                        <td className={cn(tdClass, "font-mono text-[12px] text-[var(--muted-foreground)] whitespace-nowrap")}>{u.order_id?.slice(0, 8)}...</td>
+                                        <td className={cn(tdClass, "text-[var(--muted-foreground)] tabular-nums whitespace-nowrap")}>{u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-IN") : "\u2014"}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </>
                 )
             ) : (
                 traceability.length === 0 ? (
                     <EmptyState label="batch traceability records" />
                 ) : (
-                    <table className="w-full">
-                        <thead>
-                            <tr>
-                                <th className={thClass}>Material</th>
-                                <th className={thClass}>Qty Used</th>
-                                <th className={thClass}>Unit</th>
-                                <th className={thClass}>Production Job</th>
-                                <th className={thClass}>Date</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {traceability.map((m) => (
-                                <tr key={m.id} className="hover:bg-[var(--accent)]/20 transition-colors">
-                                    <td className={cn(tdClass, "font-medium")}>{m.itemName || "—"}</td>
-                                    <td className={cn(tdClass, "tabular-nums font-semibold")}>{m.quantityUsed}</td>
-                                    <td className={tdClass}>{m.unit || "—"}</td>
-                                    <td className={cn(tdClass, "font-mono text-[12px] text-[var(--muted-foreground)]")}>{m.productionJobId?.slice(0, 8)}...</td>
-                                    <td className={cn(tdClass, "text-[var(--muted-foreground)] tabular-nums")}>{m.createdAt ? new Date(m.createdAt).toLocaleDateString("en-IN") : "—"}</td>
+                    <>
+                        {/* Mobile cards */}
+                        <MobileTableCards
+                            data={traceability}
+                            className="md:hidden"
+                            fields={[
+                                { key: "itemName", label: "Material", primary: true, render: (v) => v || "\u2014" },
+                                { key: "quantityUsed", label: "Qty Used", render: (v) => <span className="font-semibold tabular-nums">{v}</span> },
+                                { key: "unit", label: "Unit", render: (v) => v || "\u2014" },
+                                { key: "productionJobId", label: "Production Job", render: (v) => <span className="font-mono text-[12px]">{v?.slice(0, 8)}...</span> },
+                                { key: "createdAt", label: "Date", render: (v) => v ? new Date(v).toLocaleDateString("en-IN") : "\u2014" },
+                            ]}
+                        />
+                        {/* Desktop table */}
+                        <table className="hidden md:table min-w-[550px] w-full">
+                            <thead>
+                                <tr>
+                                    <th className={cn(thClass, "sticky left-0 z-10 bg-[var(--accent)]/30")}>Material</th>
+                                    <th className={thClass}>Qty Used</th>
+                                    <th className={thClass}>Unit</th>
+                                    <th className={thClass}>Production Job</th>
+                                    <th className={thClass}>Date</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {traceability.map((m) => (
+                                    <tr key={m.id} className="hover:bg-[var(--accent)]/20 transition-colors">
+                                        <td className={cn(tdClass, "font-medium max-w-[180px] truncate sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>{m.itemName || "\u2014"}</td>
+                                        <td className={cn(tdClass, "tabular-nums font-semibold whitespace-nowrap")}>{m.quantityUsed}</td>
+                                        <td className={cn(tdClass, "whitespace-nowrap")}>{m.unit || "\u2014"}</td>
+                                        <td className={cn(tdClass, "font-mono text-[12px] text-[var(--muted-foreground)] whitespace-nowrap")}>{m.productionJobId?.slice(0, 8)}...</td>
+                                        <td className={cn(tdClass, "text-[var(--muted-foreground)] tabular-nums whitespace-nowrap")}>{m.createdAt ? new Date(m.createdAt).toLocaleDateString("en-IN") : "\u2014"}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </>
                 )
             )}
         </div>

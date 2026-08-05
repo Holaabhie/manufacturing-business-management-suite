@@ -57,7 +57,9 @@ import { IOSButton } from "@/components/ui/ios/IOSButton";
 import { IOSBadge } from "@/components/ui/ios/IOSBadge";
 import { staggerContainer, staggerItem } from "@/styles/animations";
 import { StatWidget } from "@/components/ui/StatWidget";
+import { MobileTableCards } from "@/components/ui/MobileTableCards";
 import { useCachedPage } from "@/hooks/useCachedPage";
+import { ConfirmDeleteSheet } from "@/components/ui/ConfirmDeleteSheet";
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -479,16 +481,16 @@ export default function PurchasingPage() {
   return (
     <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-6">
       {/* ── Header ── */}
-      <motion.div variants={staggerItem} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-[34px] font-bold text-[var(--foreground)] leading-[41px] tracking-[0.37px]">
+      <motion.div variants={staggerItem} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 min-w-0">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-[24px] sm:text-[28px] md:text-[34px] font-bold text-[var(--foreground)] leading-[1.2] md:leading-[41px] tracking-[0.37px] truncate">
             Purchasing
           </h1>
-          <p className="text-[15px] text-[var(--muted-foreground)] mt-1 leading-[20px]">
+          <p className="text-[15px] text-[var(--muted-foreground)] mt-1 leading-[20px] break-words">
             Manage vendors, create purchase orders, and track deliveries.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <IOSButton
             variant="tinted"
             color="green"
@@ -586,7 +588,29 @@ export default function PurchasingPage() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2 }}
           >
-            <IOSCard variant="elevated" padding="none" className="overflow-hidden glass-premium !rounded-[20px]">
+            {/* ── Mobile Card View ── */}
+            {!ordersLoading && filteredOrders.length > 0 && (
+              <MobileTableCards
+                data={filteredOrders}
+                className="md:hidden"
+                fields={[
+                  { key: "poNumber", label: "PO #", primary: true, render: (_v, o) => (
+                    <span className="text-[var(--primary)] font-bold">{o.poNumber} <span className="text-[var(--muted-foreground)] font-normal">— {o.vendorName}</span></span>
+                  )},
+                  { key: "items", label: "Items", render: (_v, o) => `${o.items.length} item${o.items.length !== 1 ? "s" : ""}` },
+                  { key: "totalAmount", label: "Amount", render: (_v, o) => (
+                    <span className="font-semibold">{formatCurrency(o.totalAmount)}</span>
+                  )},
+                  { key: "status", label: "Status", render: (_v, o) => (
+                    <IOSBadge color={STATUS_CONFIG[o.status].color} variant="tinted" dot size="medium">{STATUS_CONFIG[o.status].label}</IOSBadge>
+                  )},
+                  { key: "createdAt", label: "Date", render: (_v, o) => new Date(o.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "2-digit" }) },
+                ]}
+                emptyMessage="No purchase orders yet"
+              />
+            )}
+            {/* ── Desktop Table ── */}
+            <IOSCard variant="elevated" padding="none" className="overflow-hidden glass-premium !rounded-[20px] hidden md:block">
               <Table>
                 <TableHeader>
                   <TableRow className="glass-table-header hover:bg-transparent border-b border-white/[0.07]">
@@ -757,7 +781,26 @@ export default function PurchasingPage() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2 }}
           >
-            <IOSCard variant="elevated" padding="none" className="overflow-hidden glass-premium !rounded-[20px]">
+            {/* ── Mobile Card View ── */}
+            {!vendorsLoading && filteredVendors.length > 0 && (
+              <MobileTableCards
+                data={filteredVendors}
+                className="md:hidden"
+                fields={[
+                  { key: "name", label: "Vendor", primary: true, render: (_v, vendor) => (
+                    <span>{vendor.name} <span className="text-[var(--muted-foreground)] font-normal text-[13px]">({vendor.contactPerson})</span></span>
+                  )},
+                  { key: "phone", label: "Phone", render: (_v, vendor) => (
+                    <span className="text-[var(--primary)] font-medium">{vendor.phone}</span>
+                  )},
+                  { key: "email", label: "Email" },
+                  { key: "gstin", label: "GSTIN", render: (v) => v || "—" },
+                ]}
+                emptyMessage="No vendors added"
+              />
+            )}
+            {/* ── Desktop Table ── */}
+            <IOSCard variant="elevated" padding="none" className="overflow-hidden glass-premium !rounded-[20px] hidden md:block">
               <Table>
                 <TableHeader>
                   <TableRow className="glass-table-header hover:bg-transparent border-b border-white/[0.07]">
@@ -1305,27 +1348,22 @@ export default function PurchasingPage() {
       </Dialog>
 
       {/* ════════════ DELETE CONFIRM ════════════ */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="max-w-[350px] rounded-[24px] border-[var(--glass-border)] glass-dialog">
-          <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid var(--glass-border)" }}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, rgba(239,68,68,0.4), rgba(255,255,255,0.06))", border: "1px solid var(--glass-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Trash2 className="h-[18px] w-[18px] text-[#f87171]" />
-            </div>
-            <div>
-              <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "var(--g-text-primary)", lineHeight: "22px", margin: 0 }}>Delete {deleteTarget?.type === "order" ? "Purchase Order" : "Vendor"}</DialogTitle>
-              <DialogDescription style={{ fontSize: 13, color: "var(--g-text-secondary)", lineHeight: "18px", margin: "2px 0 0" }}>This action cannot be undone.</DialogDescription>
-            </div>
-          </div>
-          <DialogFooter className="flex gap-2">
-            <IOSButton variant="gray" size="large" onClick={() => setIsDeleteDialogOpen(false)} fullWidth>
-              Cancel
-            </IOSButton>
-            <IOSButton variant="destructive" size="large" onClick={handleDelete} fullWidth>
-              Delete
-            </IOSButton>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDeleteSheet
+        open={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={handleDelete}
+        entityLabel={deleteTarget?.type === "order" ? "purchase order" : "vendor"}
+        entityName={
+          deleteTarget?.type === "order"
+            ? orders.find((o) => o.id === deleteTarget.id)?.poNumber
+            : vendors.find((v) => v.id === deleteTarget?.id)?.name
+        }
+        consequenceText={
+          deleteTarget?.type === "order"
+            ? "will be permanently removed from purchasing records. This cannot be undone."
+            : "will be permanently removed along with its purchase history. This cannot be undone."
+        }
+      />
     </motion.div>
   );
 }

@@ -103,7 +103,7 @@ export default function ActivityLogPage() {
 
   if (loading && activities.length === 0) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 max-w-4xl mx-auto">
         <div className="h-[34px] w-[200px] rounded-[10px] bg-[var(--muted)] shimmer" />
         <div className="h-[40px] w-full max-w-md rounded-[10px] bg-[var(--muted)] shimmer" />
         <div className="h-[500px] w-full rounded-[16px] bg-[var(--muted)] shimmer" />

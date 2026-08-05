@@ -65,6 +65,7 @@ import { generateDataExportPDF } from "@/lib/pdf-generator";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useCachedPage } from "@/hooks/useCachedPage";
+import { ConfirmDeleteSheet } from "@/components/ui/ConfirmDeleteSheet";
 
 export default function ClientsPage() {
   const { isAdmin, isPro } = useRole();
@@ -1045,25 +1046,22 @@ export default function ClientsPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isDeleteDialogOpenConfirm} onOpenChange={setIsDeleteDialogOpenConfirm}>
-        <DialogContent className="max-w-[350px]">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px 12px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg, rgba(239,68,68,0.4), rgba(255,255,255,0.06))', border: '1px solid rgba(255,255,255,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Trash2 className="h-[18px] w-[18px] text-[#f87171]" />
-            </div>
-            <div>
-              <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', lineHeight: '22px', margin: 0 }}>Delete Client</DialogTitle>
-              <DialogDescription style={{ fontSize: 13, color: '#64748b', lineHeight: '18px', margin: '2px 0 0' }}>This action cannot be undone.</DialogDescription>
-            </div>
-          </div>
-          <div style={{ padding: '16px 20px 20px' }}>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setIsDeleteDialogOpenConfirm(false)} style={{ flex: 1, height: 48, borderRadius: 14, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.10)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-              <button onClick={() => clientToDeleteId && handleDeleteClient(clientToDeleteId)} style={{ flex: 1, height: 48, borderRadius: 14, background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: '#fff', border: '1px solid rgba(239,68,68,0.3)', boxShadow: '0 4px 16px rgba(239,68,68,0.25)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Delete</button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDeleteSheet
+        open={isDeleteDialogOpenConfirm}
+        onClose={() => setIsDeleteDialogOpenConfirm(false)}
+        onConfirm={async () => {
+          if (clientToDeleteId) {
+            await handleDeleteClient(clientToDeleteId);
+          }
+        }}
+        entityLabel="client"
+        entityName={
+          clients.find((c) => c.id === clientToDeleteId)?.name ||
+          clients.find((c) => c.id === clientToDeleteId)?.companyName ||
+          clients.find((c) => c.id === clientToDeleteId)?.contactPerson
+        }
+        consequenceText="will be permanently removed along with their contact & order history. This cannot be undone."
+      />
     </motion.div>
   );
 }

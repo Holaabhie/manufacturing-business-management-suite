@@ -204,7 +204,7 @@ export function CreateOrderDialog({
                       <SelectTrigger className="h-[44px] pl-10 bg-white dark:bg-[rgba(255,255,255,0.03)] border border-gray-200 dark:border-[rgba(255,255,255,0.08)] rounded-[10px] text-[14px] text-gray-900 dark:text-[rgba(255,255,255,0.9)] focus:ring-2 focus:ring-blue-500/30 dark:focus:ring-1 dark:focus:ring-[#60a5fa] transition-all">
                         <SelectValue placeholder="Select from directory..." />
                       </SelectTrigger>
-                      <SelectContent className="rounded-[10px] bg-white dark:bg-[#1a2235] border border-gray-200 dark:border-[rgba(255,255,255,0.1)]">
+                      <SelectContent className="rounded-[10px] bg-white dark:bg-[#1a2235] border border-gray-200 dark:border-[rgba(255,255,255,0.1)] max-h-[220px] overflow-y-auto scrollbar-thin">
                         {clients.map((c: any) => (
                           <SelectItem key={c.id} value={c.id} className="rounded-[8px] text-gray-700 dark:text-[rgba(255,255,255,0.8)] focus:bg-gray-50 dark:focus:bg-[rgba(255,255,255,0.05)] focus:text-gray-900 dark:focus:text-white">
                             {c.name}
@@ -415,7 +415,7 @@ export function CreateOrderDialog({
                                     <SelectTrigger className="h-[36px] bg-gray-50 dark:bg-[rgba(0,0,0,0.2)] border-gray-200 dark:border-[rgba(255,255,255,0.05)] rounded-[8px] text-[13px]">
                                       <SelectValue placeholder={!hasClientSelected ? "Select client..." : "Select stock..."} />
                                     </SelectTrigger>
-                                    <SelectContent className="rounded-[10px] bg-white dark:bg-[#1a2235] border border-gray-200 dark:border-[rgba(255,255,255,0.1)]">
+                                    <SelectContent className="rounded-[10px] bg-white dark:bg-[#1a2235] border border-gray-200 dark:border-[rgba(255,255,255,0.1)] max-h-[220px] overflow-y-auto scrollbar-thin">
                                       {sourceMaterials.map((i: any) => (
                                         <SelectItem key={i.id} value={i.id} disabled={i.quantity <= 0} className="rounded-[8px] text-[13px]">
                                           {i.name} ({i.quantity} left)

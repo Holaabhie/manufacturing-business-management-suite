@@ -6,7 +6,7 @@ import { z } from "zod";
 
 const widgetSchema = z.object({
     widget_type: z.string().min(1),
-    widget_position: z.number().min(0).max(3),
+    widget_position: z.number().min(0).max(99),
     is_visible: z.boolean(),
 });
 

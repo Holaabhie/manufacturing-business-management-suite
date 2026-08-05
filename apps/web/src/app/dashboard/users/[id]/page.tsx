@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import { ConfirmDeleteSheet } from "@/components/ui/ConfirmDeleteSheet";
 
 // ─── Types ──────────────────────────────────────────────────────
 interface EmployeeDetail {
@@ -1056,23 +1057,15 @@ export default function EmployeeDetailPage() {
                 </Dialog>
 
                 {/* ═══ DELETE CONFIRMATION ═══════════════════════════ */}
-                <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-                    <DialogContent className="sm:max-w-md">
-                        <DialogHeader>
-                            <DialogTitle className="text-red-500">Delete Employee</DialogTitle>
-                            <DialogDescription>
-                                This will permanently delete <strong>{employee.fullName}</strong> ({employee.employeeId}) and all associated data. This action cannot be undone.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <DialogFooter>
-                            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
-                            <Button onClick={handleDelete} disabled={actionLoading} className="bg-red-600 hover:bg-red-700 text-white">
-                                {actionLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
-                                Delete Permanently
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
+                <ConfirmDeleteSheet
+                    open={showDeleteConfirm}
+                    onClose={() => setShowDeleteConfirm(false)}
+                    onConfirm={handleDelete}
+                    isDeleting={actionLoading}
+                    entityLabel="employee"
+                    entityName={employee ? `${employee.fullName} (${employee.employeeId})` : undefined}
+                    consequenceText="will be permanently removed from staff records. This cannot be undone."
+                />
             </div>
         </TooltipProvider>
     );

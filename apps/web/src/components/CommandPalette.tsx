@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useCommandPaletteSearch } from "@/hooks/useCommandPaletteSearch";
 import { useRouter } from "next/navigation";
 import {
     CommandDialog,
@@ -57,100 +58,26 @@ const navigationItems = [
 
 // Quick actions
 const quickActions = [
-    { name: "New Order", icon: ShoppingCart, href: "/dashboard/orders?new=true", color: "text-blue-500", bgColor: "bg-blue-500/10" },
-    { name: "New Client", icon: Users, href: "/dashboard/clients?new=true", color: "text-emerald-500", bgColor: "bg-emerald-500/10" },
-    { name: "Add Inventory Item", icon: Package, href: "/dashboard/inventory?new=true", color: "text-amber-500", bgColor: "bg-amber-500/10" },
-    { name: "Generate Report", icon: FileText, href: "/dashboard/assistant", color: "text-purple-500", bgColor: "bg-purple-500/10" },
+    { name: "New Order", icon: ShoppingCart, href: "/dashboard/orders?new=true" },
+    { name: "New Client", icon: Users, href: "/dashboard/clients?new=true" },
+    { name: "Add Inventory Item", icon: Package, href: "/dashboard/inventory?new=true" },
+    { name: "Generate Report", icon: FileText, href: "/dashboard/assistant" },
 ];
 
 export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
-    const router = useRouter();
-    const [searchQuery, setSearchQuery] = React.useState("");
-    const [searchResults, setSearchResults] = React.useState<any[]>([]);
-    const [isSearching, setIsSearching] = React.useState(false);
-
-    // Search across orders, clients, inventory
-    const performSearch = React.useCallback(async (query: string) => {
-        if (!query || query.length < 2) {
-            setSearchResults([]);
-            return;
-        }
-
-        setIsSearching(true);
-        try {
-            // Parallel search across all entities
-            const [ordersRes, clientsRes, inventoryRes] = await Promise.allSettled([
-                fetch(`/api/orders?search=${encodeURIComponent(query)}&limit=3`).then(r => r.json()),
-                fetch(`/api/clients?search=${encodeURIComponent(query)}&limit=3`).then(r => r.json()),
-                fetch(`/api/inventory?search=${encodeURIComponent(query)}&limit=3`).then(r => r.json()),
-            ]);
-
-            const results: any[] = [];
-
-            // Process orders
-            if (ordersRes.status === "fulfilled" && Array.isArray(ordersRes.value)) {
-                ordersRes.value.slice(0, 3).forEach((order: any) => {
-                    results.push({
-                        type: "order",
-                        id: order.id,
-                        name: `Order #${order.id} - ${order.product_name || "Unknown"}`,
-                        description: order.clients?.name || "No client",
-                        href: `/dashboard/orders?id=${order.id}`,
-                        icon: ShoppingCart,
-                    });
-                });
-            }
-
-            // Process clients
-            if (clientsRes.status === "fulfilled" && Array.isArray(clientsRes.value)) {
-                clientsRes.value.slice(0, 3).forEach((client: any) => {
-                    results.push({
-                        type: "client",
-                        id: client.id,
-                        name: client.name,
-                        description: client.email || client.company || "",
-                        href: `/dashboard/clients?id=${client.id}`,
-                        icon: Users,
-                    });
-                });
-            }
-
-            // Process inventory
-            if (inventoryRes.status === "fulfilled" && Array.isArray(inventoryRes.value)) {
-                inventoryRes.value.slice(0, 3).forEach((item: any) => {
-                    results.push({
-                        type: "inventory",
-                        id: item.id,
-                        name: item.name,
-                        description: `${item.quantity} ${item.unit} in stock`,
-                        href: `/dashboard/inventory?id=${item.id}`,
-                        icon: Package,
-                    });
-                });
-            }
-
-            setSearchResults(results);
-        } catch (error) {
-            console.error("Search error:", error);
-            setSearchResults([]);
-        } finally {
-            setIsSearching(false);
-        }
-    }, []);
-
-    // Debounced search
-    React.useEffect(() => {
-        const timer = setTimeout(() => {
-            performSearch(searchQuery);
-        }, 300);
-
-        return () => clearTimeout(timer);
-    }, [searchQuery, performSearch]);
+    const {
+        searchQuery,
+        setSearchQuery,
+        searchResults,
+        isSearching,
+        quickActions,
+        recentItems,
+        navigationItems,
+        handleSelect: selectAndNavigate,
+    } = useCommandPaletteSearch();
 
     const handleSelect = (href: string) => {
-        onOpenChange(false);
-        setSearchQuery("");
-        router.push(href);
+        selectAndNavigate(href, () => onOpenChange(false));
     };
 
     return (
@@ -161,7 +88,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                     onValueChange={setSearchQuery}
                     className="text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]"
                 />
-                <CommandList className="max-h-[400px] bg-[var(--erp-elevated)]">
+                <CommandList className="max-h-[400px] bg-[var(--erp-elevated)] border-t border-white/[0.06]">
                     <CommandEmpty>
                         {isSearching ? (
                             <div className="flex items-center justify-center py-6 gap-2">
@@ -186,13 +113,10 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                                 <CommandItem
                                     key={`${result.type}-${result.id}`}
                                     onSelect={() => handleSelect(result.href)}
-                                    className="flex items-center gap-3 py-3 rounded-[var(--radius-md)] aria-selected:bg-[var(--erp-surface)] aria-selected:text-[var(--foreground)] text-[var(--foreground)]"
+                                    className="flex items-center gap-3 py-3 rounded-[var(--radius-md)] aria-selected:bg-white/[0.05] aria-selected:text-[var(--foreground)] text-[var(--foreground)]"
                                 >
-                                    <div className={`p-2 rounded-lg ${result.type === "order" ? "bg-blue-500/10 text-blue-500" :
-                                        result.type === "client" ? "bg-emerald-500/10 text-emerald-500" :
-                                            "bg-amber-500/10 text-amber-500"
-                                        }`}>
-                                        <result.icon className="h-4 w-4" />
+                                    <div className="p-2 rounded-[var(--radius-md)] bg-[#2563EB]/10">
+                                        <result.icon className="h-4 w-4 text-[var(--muted-foreground)]" />
                                     </div>
                                     <div className="flex flex-col flex-1 min-w-0">
                                         <span className="font-medium truncate">{result.name}</span>
@@ -214,13 +138,12 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                                     <CommandItem
                                         key={action.name}
                                         onSelect={() => handleSelect(action.href)}
-                                        className="flex items-center gap-3 py-2 rounded-[var(--radius-md)] aria-selected:bg-[var(--erp-surface)] aria-selected:text-[var(--foreground)] text-[var(--foreground)]"
+                                        className="flex items-center gap-3 py-2.5 rounded-[var(--radius-md)] aria-selected:bg-white/[0.05] aria-selected:text-[var(--foreground)] text-[var(--foreground)]"
                                     >
-                                        <div className={`p-2 rounded-lg ${action.bgColor} ${action.color}`}>
-                                            <action.icon className="h-3.5 w-3.5" />
+                                        <div className="p-2 rounded-[var(--radius-md)] bg-[#2563EB]/10">
+                                            <action.icon className="h-4 w-4 text-[var(--muted-foreground)]" />
                                         </div>
                                         <span>{action.name}</span>
-                                        <ArrowRight className="ml-auto h-4 w-4 text-muted-foreground" />
                                     </CommandItem>
                                 ))}
                             </CommandGroup>
@@ -233,7 +156,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                                     <CommandItem
                                         key={`${item.type}-${item.id}`}
                                         onSelect={() => handleSelect(item.href)}
-                                        className="flex items-center gap-3 py-2 rounded-[var(--radius-md)] aria-selected:bg-[var(--erp-surface)] aria-selected:text-[var(--foreground)] text-[var(--foreground)]"
+                                        className="flex items-center gap-3 py-2.5 rounded-[var(--radius-md)] aria-selected:bg-white/[0.05] aria-selected:text-[var(--foreground)] text-[var(--foreground)]"
                                     >
                                         <item.icon className="h-4 w-4 text-muted-foreground" />
                                         <span className="flex-1 truncate">{item.name}</span>
@@ -251,7 +174,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                                     <CommandItem
                                         key={item.name}
                                         onSelect={() => handleSelect(item.href)}
-                                        className="flex items-center gap-3 py-2 rounded-[var(--radius-md)] aria-selected:bg-[var(--erp-surface)] aria-selected:text-[var(--foreground)] text-[var(--foreground)]"
+                                        className="flex items-center gap-3 py-2.5 rounded-[var(--radius-md)] aria-selected:bg-white/[0.05] aria-selected:text-[var(--foreground)] text-[var(--foreground)]"
                                     >
                                         <item.icon className="h-4 w-4 text-muted-foreground" />
                                         <span>{item.name}</span>

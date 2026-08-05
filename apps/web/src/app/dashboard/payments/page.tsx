@@ -53,6 +53,7 @@ import {
   IOSSelect
 } from "@/components/ui/ios";
 import { StatWidget } from "@/components/ui/StatWidget";
+import { ConfirmDeleteSheet } from "@/components/ui/ConfirmDeleteSheet";
 
 // Animations
 import { motion } from "framer-motion";
@@ -1153,32 +1154,22 @@ export default function PaymentsPage() {
         )}
       </div>
 
-      <Dialog open={isDeleteDialogOpenConfirm} onOpenChange={setIsDeleteDialogOpenConfirm}>
-        <DialogContent className="max-w-[350px] bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px]">
-          <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, rgba(239,68,68,0.4), rgba(255,255,255,0.06))", border: "1px solid rgba(255,255,255,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Trash2 className="h-[18px] w-[18px] text-[#f87171]" />
-            </div>
-            <div>
-              <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "#f1f5f9", lineHeight: "22px", margin: 0 }}>Delete Payment</DialogTitle>
-              <DialogDescription style={{ fontSize: 13, color: "#64748b", lineHeight: "18px", margin: "2px 0 0" }}>This action cannot be undone.</DialogDescription>
-            </div>
-          </div>
-          <DialogFooter className="flex gap-2 pt-4 border-t border-[var(--border)]">
-            <IOSButton variant="gray" onClick={() => setIsDeleteDialogOpenConfirm(false)} className="flex-1">
-              Cancel
-            </IOSButton>
-            <IOSButton
-              variant="destructive"
-              onClick={() => paymentToDeleteId && handleDeletePayment(paymentToDeleteId)}
-              className="flex-1"
-              disabled={deletePayment.isPending}
-            >
-              {deletePayment.isPending ? "Deleting..." : "Delete"}
-            </IOSButton>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDeleteSheet
+        open={isDeleteDialogOpenConfirm}
+        onClose={() => setIsDeleteDialogOpenConfirm(false)}
+        onConfirm={async () => {
+          if (paymentToDeleteId) {
+            await handleDeletePayment(paymentToDeleteId);
+          }
+        }}
+        isDeleting={deletePayment.isPending}
+        entityLabel="payment"
+        entityName={
+          payments.find((p) => p.id === paymentToDeleteId)?.id ||
+          payments.find((p) => p.id === paymentToDeleteId)?.transaction_id
+        }
+        consequenceText="transaction record will be permanently removed. This cannot be undone."
+      />
 
       {/* ── Long Press Action Sheet ── */}
       <MobileSheet open={showPaymentActions} onClose={closePaymentSheet}>

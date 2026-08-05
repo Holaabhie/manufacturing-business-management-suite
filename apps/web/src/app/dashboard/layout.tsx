@@ -40,6 +40,9 @@ import {
 
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useCallback } from "react";
+import { useCollapseProgress } from "@/hooks/useCollapseProgress";
+import { LOCALES, LOCALE_NAMES, LOCALE_FLAGS, type Locale } from "@/lib/i18n";
+import { useAppLocale } from "@/components/LocaleProvider";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   transitionSidebar,
@@ -60,6 +63,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CommandPalette } from "@/components/CommandPalette";
+import { InlineMobileSearch } from "@/components/ui/InlineMobileSearch";
 import { IOSToastContainer } from "@/components/ui/ios/IOSToast";
 import {
   filterNavigationByRole,
@@ -71,6 +75,7 @@ import { useTranslations } from "next-intl";
 import { LanguageSwitcherCompact } from "@/components/LanguageSwitcher";
 import { useModules, type ModuleConfig } from "@/hooks/useModules";
 import { MoreMenuSheet } from "@/components/MoreMenuSheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // Map navigation nameKeys to module config keys
 // Items NOT in this map are always shown (e.g., dashboard, machines, folio)
@@ -214,10 +219,12 @@ export default function DashboardLayout({
   const tSidebar = useTranslations("sidebar");
   const tNav = useTranslations("nav");
   const { modules: enabledModules } = useModules();
+  const isMobile = useIsMobile();
+  const { locale, switchLocale } = useAppLocale();
+  const { progress: collapseProgress, scrolled } = useCollapseProgress();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState<UserRole | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -227,6 +234,7 @@ export default function DashboardLayout({
     "INTELLIGENCE",
   ]);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [isMobileSearchActive, setIsMobileSearchActive] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -264,9 +272,6 @@ export default function DashboardLayout({
     const onUserUpdated = () => fetchUser();
     window.addEventListener(USER_UPDATED_EVENT, onUserUpdated);
 
-    const handleScroll = () => setScrolled(window.scrollY > 10);
-    window.addEventListener("scroll", handleScroll);
-
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
@@ -277,10 +282,16 @@ export default function DashboardLayout({
 
     return () => {
       window.removeEventListener(USER_UPDATED_EVENT, onUserUpdated);
-      window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, []);
+
+  // Guarantee per-tab scroll reset when changing routes
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.scrollTo(0, 0);
+    }
+  }, [pathname]);
 
   const handleLogout = async () => {
     usePageStateCache.getState().clearAll();
@@ -533,194 +544,303 @@ export default function DashboardLayout({
           isCollapsed && "md:pl-[72px]"
         )}
       >
-        {/* ── Enterprise Header ── */}
+        {/* ── Immersive Header — 44px mobile / 56px desktop ── */}
         <header
           className={cn(
-            "sticky top-0 z-40 h-[56px] w-auto flex items-center justify-between px-4 md:px-5 transition-all duration-200",
+            "sticky top-0 z-40 w-auto flex items-center justify-between px-4 md:px-5 transition-all duration-200",
+            "h-[44px] md:h-[56px]",
             scrolled ? "bg-[var(--erp-topbar-bg)] backdrop-blur-sm border-b border-border shadow-sm" : "bg-transparent border-b border-transparent"
           )}
         >
-          {/* Left */}
-          <div className="flex items-center gap-3">
-            {/* Mobile Logo */}
-            <div className="md:hidden flex items-center gap-2.5">
-              <div
-                className="w-[30px] h-[30px] rounded-md flex items-center justify-center bg-primary"
-              >
-                <Factory className="h-3.5 w-3.5 text-white" />
+          {/* Mobile Inline Morph Search Bar (when active) */}
+          <AnimatePresence>
+            {isMobileSearchActive && (
+              <div className="md:hidden flex-1 h-full flex items-center">
+                <InlineMobileSearch
+                  key="mobile-search-active"
+                  isActive={isMobileSearchActive}
+                  onClose={() => setIsMobileSearchActive(false)}
+                />
               </div>
-              <span className="font-semibold text-[14px] text-foreground">
-                {tSidebar("appName")}
+            )}
+          </AnimatePresence>
+
+          {/* Standard Header Content (fades out on mobile when search is active) */}
+          <motion.div
+            animate={{
+              opacity: isMobileSearchActive ? 0 : 1,
+              scale: isMobileSearchActive ? 0.95 : 1,
+            }}
+            transition={{ duration: 0.16 }}
+            className={cn(
+              "flex-1 flex items-center justify-between w-full h-full",
+              isMobileSearchActive && "hidden md:flex"
+            )}
+          >
+            {/* Left zone */}
+            <div className="flex items-center gap-3 min-w-0">
+              {/* Mobile: Decorative logo mark only (no link, no wordmark) */}
+              <div className="md:hidden flex items-center">
+                <div
+                  className="w-[28px] h-[28px] rounded-[7px] flex items-center justify-center bg-primary flex-shrink-0"
+                >
+                  <Factory className="h-3.5 w-3.5 text-white" />
+                </div>
+              </div>
+
+              {/* Desktop Breadcrumbs (unchanged) */}
+              <div className="hidden md:flex items-center gap-2 text-[13px]">
+                {pathname === "/dashboard" ? (
+                  <span className="font-medium text-foreground">
+                    {tNav("dashboard")}
+                  </span>
+                ) : (
+                  <>
+                    <Link
+                      href="/dashboard"
+                      className="text-muted-foreground hover:text-foreground transition-colors duration-150"
+                    >
+                      {tNav("dashboard")}
+                    </Link>
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
+                    <span className="font-medium text-foreground">
+                      {getPageName()}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Center zone: Collapsed bar title (mobile only, aria-hidden) */}
+            <div
+              className="md:hidden absolute left-1/2 -translate-x-1/2 pointer-events-none"
+              aria-hidden="true"
+              style={{
+                opacity: collapseProgress,
+                transform: `translateX(-50%) translateY(${(1 - collapseProgress) * 4}px)`,
+                transition: "opacity 150ms ease, transform 150ms ease",
+              }}
+            >
+              <span className="text-[15px] font-semibold text-foreground whitespace-nowrap">
+                {getPageName()}
               </span>
             </div>
 
-            {/* Desktop Breadcrumbs */}
-            <div className="hidden md:flex items-center gap-2 text-[13px]">
-              {pathname === "/dashboard" ? (
-                <span className="font-medium text-foreground">
-                  {tNav("dashboard")}
-                </span>
-              ) : (
-                <>
-                  <Link
-                    href="/dashboard"
-                    className="text-muted-foreground hover:text-foreground transition-colors duration-150"
-                  >
-                    {tNav("dashboard")}
-                  </Link>
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
-                  <span className="font-medium text-foreground">
-                    {getPageName()}
-                  </span>
-                </>
-              )}
-            </div>
-          </div>
+            {/* Right zone: Actions */}
+            <div className="flex items-center gap-1.5 md:gap-2">
+              {/* Command Palette Trigger (⌘K) — desktop only */}
+              <button
+                onClick={() => setCommandPaletteOpen(true)}
+                className={cn(
+                  "hidden md:flex items-center gap-2 h-[34px] px-3",
+                  "bg-muted rounded-md",
+                  "text-muted-foreground text-[13px]",
+                  "border border-border",
+                  "hover:bg-accent/10 hover:border-primary/20 transition-all cursor-pointer"
+                )}
+              >
+                <Search className="h-4 w-4" />
+                <span>{tCommon("search")}</span>
+                <kbd className="ml-3 inline-flex h-[18px] items-center gap-0.5 rounded border border-border bg-background px-1.5 font-mono text-[10px] text-muted-foreground">
+                  ⌘K
+                </kbd>
+              </button>
 
-          {/* Right: Actions */}
-          <div className="flex items-center gap-2">
-            {/* Command Palette Trigger (⌘K) */}
-            <button
-              onClick={() => setCommandPaletteOpen(true)}
-              className={cn(
-                "hidden md:flex items-center gap-2 h-[34px] px-3",
-                "bg-muted rounded-md",
-                "text-muted-foreground text-[13px]",
-                "border border-border",
-                "hover:bg-accent/10 hover:border-primary/20 transition-all cursor-pointer"
-              )}
-            >
-              <Search className="h-4 w-4" />
-              <span>{tCommon("search")}</span>
-              <kbd className="ml-3 inline-flex h-[18px] items-center gap-0.5 rounded border border-border bg-background px-1.5 font-mono text-[10px] text-muted-foreground">
-                ⌘K
-              </kbd>
-            </button>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  className="hidden md:flex h-[34px] px-3 items-center gap-2 text-[12px] font-medium text-muted-foreground rounded-md border border-border hover:bg-muted transition-colors cursor-pointer"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  <span>Quick actions</span>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52 rounded-lg p-1">
-                <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                  Actions
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {quickActions.map((action) => (
-                  <DropdownMenuItem key={action.href} asChild className="rounded-md h-8">
-                    <Link href={action.href} className="flex items-center gap-2.5">
-                      <action.icon className="h-4 w-4 text-primary" />
-                      <span className="text-[13px]">{action.label}</span>
-                    </Link>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* Theme Toggle */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  className="h-[34px] w-[34px] flex items-center justify-center text-muted-foreground rounded-md border border-border hover:bg-muted transition-colors cursor-pointer"
-                >
-                  <Sun className="h-[16px] w-[16px] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                  <Moon className="absolute h-[16px] w-[16px] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                  <span className="sr-only">{tCommon("toggleTheme")}</span>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="rounded-lg min-w-[150px]">
-                <DropdownMenuItem onClick={() => setTheme("light")} className="rounded-md gap-2 text-[13px]">
-                  <Sun className="h-4 w-4" /> {tCommon("light")}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTheme("dark")} className="rounded-md gap-2 text-[13px]">
-                  <Moon className="h-4 w-4" /> {tCommon("dark")}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTheme("system")} className="rounded-md gap-2 text-[13px]">
-                  <Monitor className="h-4 w-4" /> {tCommon("system")}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <LanguageSwitcherCompact />
-
-            <NotificationDropdown />
-
-            {/* Mobile Search */}
-            <button
-              className="md:hidden h-[34px] w-[34px] flex items-center justify-center text-muted-foreground rounded-md border border-border hover:bg-muted transition-colors"
-              onClick={() => setCommandPaletteOpen(true)}
-            >
-              <Search className="h-[16px] w-[16px]" />
-            </button>
-
-            {/* User Avatar Dropdown */}
-            {user && (
+              {/* Quick actions — desktop only */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="cursor-pointer relative">
-                    <UserAvatar src={user.avatar_url} name={user.fullName} email={user.email} size="sm" className="ring-2 ring-primary/20 hover:ring-primary/40 transition-all duration-150" />
-                    <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-background" />
+                  <button
+                    className="hidden md:flex h-[34px] px-3 items-center gap-2 text-[12px] font-medium text-muted-foreground rounded-md border border-border hover:bg-muted transition-colors cursor-pointer"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Quick actions</span>
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  className="w-[220px] rounded-lg p-0 overflow-hidden"
-                  align="end"
-                  forceMount
-                >
-                  {/* Header Section */}
-                  <div className="p-3 flex items-center gap-3 border-b border-border">
-                    <UserAvatar src={user.avatar_url} name={user.fullName} email={user.email} size="md" />
-                    <div className="flex-1 min-w-0 overflow-hidden">
-                      <p className="text-[13px] font-medium text-foreground truncate">
-                        {user.fullName || user.email?.split("@")[0]}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground truncate">
-                        {user.email}
-                      </p>
+                <DropdownMenuContent align="end" className="w-52 rounded-lg p-1">
+                  <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                    Actions
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {quickActions.map((action) => (
+                    <DropdownMenuItem key={action.href} asChild className="rounded-md h-8">
+                      <Link href={action.href} className="flex items-center gap-2.5">
+                        <action.icon className="h-4 w-4 text-primary" />
+                        <span className="text-[13px]">{action.label}</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Theme Toggle — desktop only (on mobile, lives in avatar menu) */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="hidden md:flex h-[34px] w-[34px] items-center justify-center text-muted-foreground rounded-md border border-border hover:bg-muted transition-colors cursor-pointer"
+                  >
+                    <Sun className="h-[16px] w-[16px] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                    <Moon className="absolute h-[16px] w-[16px] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                    <span className="sr-only">{tCommon("toggleTheme")}</span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="rounded-lg min-w-[150px]">
+                  <DropdownMenuItem onClick={() => setTheme("light")} className="rounded-md gap-2 text-[13px]">
+                    <Sun className="h-4 w-4" /> {tCommon("light")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setTheme("dark")} className="rounded-md gap-2 text-[13px]">
+                    <Moon className="h-4 w-4" /> {tCommon("dark")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setTheme("system")} className="rounded-md gap-2 text-[13px]">
+                    <Monitor className="h-4 w-4" /> {tCommon("system")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Language Switcher — desktop only (on mobile, lives in avatar menu) */}
+              <div className="hidden md:block">
+                <LanguageSwitcherCompact />
+              </div>
+
+              <NotificationDropdown />
+
+              {/* Mobile Search */}
+              <button
+                className="md:hidden h-[30px] w-[30px] flex items-center justify-center text-muted-foreground rounded-[7px] hover:bg-muted transition-colors cursor-pointer"
+                onClick={() => setIsMobileSearchActive(true)}
+                aria-label="Open search"
+              >
+                <Search className="h-[15px] w-[15px]" />
+              </button>
+
+              {/* User Avatar Dropdown (enhanced with theme + language on mobile) */}
+              {user && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="cursor-pointer relative">
+                      <UserAvatar src={user.avatar_url} name={user.fullName} email={user.email} size="sm" className="ring-2 ring-primary/20 hover:ring-primary/40 transition-all duration-150" />
+                      <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-background" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    className="w-[240px] max-h-[calc(100vh-70px)] overflow-y-auto rounded-lg p-0 scrollbar-thin"
+                    align="end"
+                    forceMount
+                  >
+                    {/* Header Section */}
+                    <div className="p-3 flex items-center gap-3 border-b border-border">
+                      <UserAvatar src={user.avatar_url} name={user.fullName} email={user.email} size="md" />
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <p className="text-[13px] font-medium text-foreground truncate">
+                          {user.fullName || user.email?.split("@")[0]}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground truncate">
+                          {user.email}
+                        </p>
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Role badge */}
-                  <div className="px-3 py-2 border-b border-border">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-primary/10 text-primary">
-                      {role || "User"}
-                    </span>
-                  </div>
+                    {/* Role badge */}
+                    <div className="px-3 py-2 border-b border-border">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-primary/10 text-primary">
+                        {role || "User"}
+                      </span>
+                    </div>
 
-                  {/* Menu Items */}
-                  <div className="p-1 flex flex-col gap-0.5">
-                    <DropdownMenuItem asChild className="h-[36px] rounded-md flex items-center gap-3 px-3 cursor-pointer">
-                      <Link href="/dashboard/profile" className="w-full">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-[13px]">{tCommon("profile")}</span>
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild className="h-[36px] rounded-md flex items-center gap-3 px-3 cursor-pointer">
-                      <Link href="/dashboard/settings" className="w-full">
-                        <Settings className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-[13px]">{tCommon("settings")}</span>
-                      </Link>
-                    </DropdownMenuItem>
+                    {/* Menu Items */}
+                    <div className="p-1 flex flex-col gap-0.5">
+                      <DropdownMenuItem asChild className="h-[36px] rounded-md flex items-center gap-3 px-3 cursor-pointer">
+                        <Link href="/dashboard/profile" className="w-full">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-[13px]">{tCommon("profile")}</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild className="h-[36px] rounded-md flex items-center gap-3 px-3 cursor-pointer">
+                        <Link href="/dashboard/settings" className="w-full">
+                          <Settings className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-[13px]">{tCommon("settings")}</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    </div>
+
+                    {/* ── Mobile-only: Theme segmented control ── */}
+                    {isMobile && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <div className="px-3 py-2">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground mb-2">
+                            {tCommon("toggleTheme")}
+                          </p>
+                          <div className="flex gap-1 bg-muted rounded-[8px] p-0.5">
+                            {([
+                              { value: "light" as const, icon: Sun, label: tCommon("light") },
+                              { value: "dark" as const, icon: Moon, label: tCommon("dark") },
+                              { value: "system" as const, icon: Monitor, label: tCommon("system") },
+                            ] as const).map(({ value, icon: Icon, label }) => (
+                              <button
+                                key={value}
+                                onClick={() => setTheme(value)}
+                                className={cn(
+                                  "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-[6px] text-[11px] font-medium transition-all cursor-pointer",
+                                  theme === value
+                                    ? "bg-background text-foreground shadow-sm"
+                                    : "text-muted-foreground hover:text-foreground"
+                                )}
+                              >
+                                <Icon className="h-3.5 w-3.5" />
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {/* ── Mobile-only: Language picker ── */}
+                    {isMobile && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <div className="px-3 py-2">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground mb-1.5">
+                            {tCommon("language")}
+                          </p>
+                          <div className="flex flex-col gap-0.5">
+                            {LOCALES.map((loc) => (
+                              <DropdownMenuItem
+                                key={loc}
+                                onClick={() => switchLocale(loc)}
+                                className={cn(
+                                  "rounded-[6px] gap-2 text-[13px] cursor-pointer h-[32px]",
+                                  locale === loc && "bg-muted font-semibold"
+                                )}
+                              >
+                                <span className="text-[14px]">{LOCALE_FLAGS[loc]}</span>
+                                <span>{LOCALE_NAMES[loc]}</span>
+                                {locale === loc && (
+                                  <span className="ml-auto text-primary text-[13px] font-bold">✓</span>
+                                )}
+                              </DropdownMenuItem>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
 
                     <DropdownMenuSeparator />
 
-                    <DropdownMenuItem
-                      className="h-[36px] rounded-md flex items-center gap-3 px-3 text-destructive hover:text-destructive cursor-pointer"
-                      onClick={handleLogout}
-                    >
-                      <LogOut className="h-4 w-4" />
-                      <span className="text-[13px]">{tCommon("logout")}</span>
-                    </DropdownMenuItem>
-                  </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
+                    <div className="p-1">
+                      <DropdownMenuItem
+                        className="h-[36px] rounded-md flex items-center gap-3 px-3 text-destructive hover:text-destructive cursor-pointer"
+                        onClick={handleLogout}
+                      >
+                        <LogOut className="h-4 w-4" />
+                        <span className="text-[13px]">{tCommon("logout")}</span>
+                      </DropdownMenuItem>
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+          </motion.div>
         </header>
 
         {/* ════════════ MORE MENU — Enterprise Operational Launcher ════════════ */}
@@ -734,7 +854,14 @@ export default function DashboardLayout({
         />
 
         {/* Main Content */}
-        <main className="flex-1 p-4 md:p-6 lg:p-8 pb-24 md:pb-8">
+        <main
+          className={cn(
+            "flex-1 p-4 md:p-6 lg:p-8 pb-24 md:pb-8 transition-opacity duration-200",
+            isMobileSearchActive && "opacity-35 pointer-events-none md:opacity-100 md:pointer-events-auto"
+          )}
+          aria-hidden={isMobileSearchActive ? "true" : undefined}
+          {...(isMobileSearchActive ? { inert: "" } : {})}
+        >
           {/* PageTransition: AnimatePresence mode="wait", keyed on full pathname.
                Exit animation plays before new page mounts — prevents double-fetch
                on manual useEffect pages (users/, settings/team/) and keeps
@@ -749,7 +876,12 @@ export default function DashboardLayout({
 
       {/* ════════════ MOBILE BOTTOM NAVIGATION — Floating Iconbar ════════════ */}
       <div
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50 pointer-events-none"
+        className={cn(
+          "md:hidden fixed bottom-0 left-0 right-0 z-50 pointer-events-none transition-opacity duration-200",
+          isMobileSearchActive && "opacity-35 pointer-events-none"
+        )}
+        aria-hidden={isMobileSearchActive ? "true" : undefined}
+        {...(isMobileSearchActive ? { inert: "" } : {})}
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         {/* Gradient fade — NOT a visible bar */}

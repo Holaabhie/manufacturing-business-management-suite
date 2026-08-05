@@ -61,6 +61,7 @@ import { NumericInput, parseNumericValue } from "@/components/ui/numeric-input";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { exportToExcel } from "@/lib/excel-export";
+import { ConfirmDeleteSheet } from "@/components/ui/ConfirmDeleteSheet";
 import { IOSCard, IOSCardContent } from "@/components/ui/ios/IOSCard";
 import { IOSButton } from "@/components/ui/ios/IOSButton";
 import { IOSBadge } from "@/components/ui/ios/IOSBadge";
@@ -70,8 +71,11 @@ import { TogglePill } from "@/components/ui/glass";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { MaterialUsageDrawer } from "@/components/ui/MaterialUsageDrawer";
 import { AddMaterialModal } from "@/components/inventory/AddMaterialModal";
+import { CollapsingTitle } from "@/components/ui/CollapsingTitle";
+import { useCollapseProgress } from "@/hooks/useCollapseProgress";
 
 export default function InventoryPage() {
+  const { progress: collapseProgress } = useCollapseProgress();
   const { isAdmin, isPro } = useRole();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -310,11 +314,12 @@ export default function InventoryPage() {
   const handleDelete = async (id: string) => {
     try {
       const res = await fetch(`/api/v1/inventory/${id}`, { method: "DELETE" });
-      const data = await res.json();
-      if (data.error) toast.error("Failed to delete item");
-      else {
+      if (res.ok) {
         toast.success("Item deleted");
         fetchInventory();
+      } else {
+        const data = await res.json().catch(() => ({ error: "Failed to delete item" }));
+        toast.error(data.error || "Failed to delete item");
       }
     } catch (error) {
       toast.error("Failed to delete item");
@@ -531,72 +536,72 @@ export default function InventoryPage() {
   return (
     <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-6 overflow-x-hidden">
       {/* ── Header ── */}
-      <motion.div variants={staggerItem} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-[34px] font-bold text-[var(--foreground)] leading-[41px] tracking-[0.37px]">
-            Inventory
-          </h1>
-          <p className="text-[15px] text-[var(--muted-foreground)] mt-1 leading-[20px]">
-            Track raw materials, costs, and supplier connectivity.
-          </p>
-          {/* View Mode Toggle */}
-          <div className="flex mt-2 gap-1 bg-[var(--muted)] rounded-[10px] p-0.5 w-fit">
+      <motion.div variants={staggerItem}>
+        <CollapsingTitle
+          title="Inventory"
+          subtitle={`${items.length} materials registered · ${items.filter(i => Number(i.quantity || 0) <= Number(i.min_stock_level || 10)).length} low stock`}
+          subtitleLoading={loading}
+          collapseProgress={collapseProgress}
+          actions={
+            <>
+              {/* PDF Export */}
+              <button
+                onClick={exportToPDF}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/15 bg-gray-100 dark:bg-[rgba(255,255,255,0.08)] hover:bg-gray-200 dark:hover:bg-white/15 text-gray-700 dark:text-white text-xs font-medium cursor-pointer transition-all duration-150"
+                title="Print PDF"
+              >
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+                  <rect width="24" height="24" rx="4" fill="#FF0000"/>
+                  <text x="12" y="15" textAnchor="middle" fontFamily="Arial" fontWeight="bold" fontSize="8" fill="#fff">PDF</text>
+                </svg>
+                <span>PDF</span>
+              </button>
+              {/* Excel Export */}
+              <button
+                onClick={exportToXLSX}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/15 bg-gray-100 dark:bg-[rgba(255,255,255,0.08)] hover:bg-gray-200 dark:hover:bg-white/15 text-gray-700 dark:text-white text-xs font-medium cursor-pointer transition-all duration-150"
+                title="Excel Export"
+              >
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+                  <rect width="24" height="24" rx="4" fill="#217346"/>
+                  <path d="M14 3v5h4" fill="none" stroke="#fff" strokeWidth="1" opacity="0.5"/>
+                  <text x="12" y="15" textAnchor="middle" fontFamily="Arial" fontWeight="bold" fontSize="8" fill="#fff">XLS</text>
+                </svg>
+                <span>Export</span>
+              </button>
+              {/* Add Material */}
+              <IOSButton variant="filled" color="blue" size="medium" onClick={handleAddNewClick} className="!bg-[#2563EB] text-white hover:!bg-[#1D51C8] dark:!bg-[#2563EB] dark:text-white dark:hover:!bg-[#1D51C8]" icon={<Plus className="h-4 w-4" />}>
+                Add Material
+              </IOSButton>
+            </>
+          }
+        />
+        {/* View Mode Toggle */}
+        <div className="flex mt-2 gap-1 bg-[var(--muted)] rounded-[10px] p-0.5 w-fit">
+          <button
+            onClick={() => setViewMode("table")}
+            className={cn(
+              "px-3 py-1.5 rounded-[8px] text-[13px] font-medium transition-all duration-200 cursor-pointer flex items-center gap-1.5",
+              viewMode === "table"
+                ? "bg-[var(--card)] text-[var(--foreground)] shadow-sm"
+                : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            )}
+          >
+            <Package className="h-3.5 w-3.5" /> Stock
+          </button>
+          {isAdmin && (
             <button
-              onClick={() => setViewMode("table")}
+              onClick={() => setViewMode("forecast")}
               className={cn(
                 "px-3 py-1.5 rounded-[8px] text-[13px] font-medium transition-all duration-200 cursor-pointer flex items-center gap-1.5",
-                viewMode === "table"
+                viewMode === "forecast"
                   ? "bg-[var(--card)] text-[var(--foreground)] shadow-sm"
                   : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
               )}
             >
-              <Package className="h-3.5 w-3.5" /> Stock
+              <Activity className="h-3.5 w-3.5" /> Forecast
             </button>
-            {isAdmin && (
-              <button
-                onClick={() => setViewMode("forecast")}
-                className={cn(
-                  "px-3 py-1.5 rounded-[8px] text-[13px] font-medium transition-all duration-200 cursor-pointer flex items-center gap-1.5",
-                  viewMode === "forecast"
-                    ? "bg-[var(--card)] text-[var(--foreground)] shadow-sm"
-                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                )}
-              >
-                <Activity className="h-3.5 w-3.5" /> Forecast
-              </button>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          {/* PDF Export */}
-          <button
-            onClick={exportToPDF}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/15 bg-gray-100 dark:bg-[rgba(255,255,255,0.08)] hover:bg-gray-200 dark:hover:bg-white/15 text-gray-700 dark:text-white text-xs font-medium cursor-pointer transition-all duration-150"
-            title="Print PDF"
-          >
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
-              <rect width="24" height="24" rx="4" fill="#FF0000"/>
-              <text x="12" y="15" textAnchor="middle" fontFamily="Arial" fontWeight="bold" fontSize="8" fill="#fff">PDF</text>
-            </svg>
-            <span>PDF</span>
-          </button>
-          {/* Excel Export */}
-          <button
-            onClick={exportToXLSX}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/15 bg-gray-100 dark:bg-[rgba(255,255,255,0.08)] hover:bg-gray-200 dark:hover:bg-white/15 text-gray-700 dark:text-white text-xs font-medium cursor-pointer transition-all duration-150"
-            title="Excel Export"
-          >
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
-              <rect width="24" height="24" rx="4" fill="#217346"/>
-              <path d="M14 3v5h4" fill="none" stroke="#fff" strokeWidth="1" opacity="0.5"/>
-              <text x="12" y="15" textAnchor="middle" fontFamily="Arial" fontWeight="bold" fontSize="8" fill="#fff">XLS</text>
-            </svg>
-            <span>Export</span>
-          </button>
-          {/* Add Material */}
-          <IOSButton variant="filled" color="blue" size="medium" onClick={handleAddNewClick} className="!bg-[#2563EB] text-white hover:!bg-[#1D51C8] dark:!bg-[#2563EB] dark:text-white dark:hover:!bg-[#1D51C8]" icon={<Plus className="h-4 w-4" />}>
-            Add Material
-          </IOSButton>
+          )}
         </div>
       </motion.div>
 
@@ -1100,63 +1105,18 @@ export default function InventoryPage() {
       />
 
       {/* ── Delete Confirm ── */}
-      <Dialog open={isDeleteDialogOpenConfirm} onOpenChange={setIsDeleteDialogOpenConfirm}>
-        <DialogContent className="max-w-[350px]" showCloseButton={false}>
-          {/* Premium Header */}
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '12px 20px 12px', borderBottom: '1px solid rgba(255,255,255,0.07)',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{
-                width: 40, height: 40, borderRadius: 12,
-                background: 'linear-gradient(135deg, rgba(239,68,68,0.4), rgba(255,255,255,0.06))',
-                border: '1px solid rgba(255,255,255,0.10)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <Trash2 className="h-[18px] w-[18px] text-[#f87171]" />
-              </div>
-              <div>
-                <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', lineHeight: '22px', margin: 0 }}>
-                  Delete Material
-                </DialogTitle>
-                <DialogDescription style={{ fontSize: 13, color: '#64748b', lineHeight: '18px', margin: '2px 0 0' }}>
-                  This action cannot be undone.
-                </DialogDescription>
-              </div>
-            </div>
-          </div>
-          <div style={{ padding: '16px 20px 20px' }}>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                onClick={() => setIsDeleteDialogOpenConfirm(false)}
-                style={{
-                  flex: 1, height: 48, borderRadius: 14,
-                  background: 'rgba(255,255,255,0.06)', color: '#94a3b8',
-                  border: '1px solid rgba(255,255,255,0.10)',
-                  fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                  fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif",
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => itemToDeleteId && handleDelete(itemToDeleteId)}
-                style={{
-                  flex: 1, height: 48, borderRadius: 14,
-                  background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-                  color: '#fff', border: '1px solid rgba(239,68,68,0.3)',
-                  boxShadow: '0 4px 16px rgba(239,68,68,0.25)',
-                  fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                  fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif",
-                }}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDeleteSheet
+        open={isDeleteDialogOpenConfirm}
+        onClose={() => setIsDeleteDialogOpenConfirm(false)}
+        onConfirm={async () => {
+          if (itemToDeleteId) {
+            await handleDelete(itemToDeleteId);
+          }
+        }}
+        entityLabel="item"
+        entityName={items.find((i) => i.id === itemToDeleteId)?.name}
+        consequenceText="will be removed from inventory stock records. This cannot be undone."
+      />
 
       {/* ── Material Usage Drawer ── */}
       <MaterialUsageDrawer

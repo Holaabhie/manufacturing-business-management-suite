@@ -72,6 +72,21 @@ export class MongoInventoryRepository implements IInventoryRepository {
         return db.collection<InventoryDocument>(this.collectionName);
     }
 
+    /**
+     * Build an ownership filter that matches documents regardless of whether
+     * they were created by the new repository (userId) or the legacy Mongoose
+     * Item model (organizationId / created_by).
+     */
+    private ownerFilter(userId: string): Record<string, unknown> {
+        return {
+            $or: [
+                { userId },
+                { organizationId: userId },
+                { created_by: userId },
+            ],
+        };
+    }
+
     async findById(id: string, userId: string): Promise<InventoryItem | null> {
         const col = await this.collection();
         let objectId: ObjectId;
@@ -80,13 +95,13 @@ export class MongoInventoryRepository implements IInventoryRepository {
         } catch {
             return null;
         }
-        const doc = await col.findOne({ _id: objectId, userId });
+        const doc = await col.findOne({ _id: objectId, ...this.ownerFilter(userId) });
         return doc ? toDomainEntity(doc) : null;
     }
 
     async findAll(userId: string): Promise<InventoryItem[]> {
         const col = await this.collection();
-        const docs = await col.find({ userId }).sort({ name: 1 }).toArray();
+        const docs = await col.find(this.ownerFilter(userId)).sort({ name: 1 }).toArray();
         return docs.map(toDomainEntity);
     }
 
@@ -150,7 +165,7 @@ export class MongoInventoryRepository implements IInventoryRepository {
         if (data.item_type !== undefined) updateFields.item_type = data.item_type;
 
         const result = await col.findOneAndUpdate(
-            { _id: objectId, userId },
+            { _id: objectId, ...this.ownerFilter(userId) },
             { $set: updateFields },
             { returnDocument: "after" },
         );
@@ -166,14 +181,14 @@ export class MongoInventoryRepository implements IInventoryRepository {
         } catch {
             return false;
         }
-        const result = await col.deleteOne({ _id: objectId, userId });
+        const result = await col.deleteOne({ _id: objectId, ...this.ownerFilter(userId) });
         return result.deletedCount === 1;
     }
 
     async findLowStock(userId: string): Promise<StockLevel[]> {
         const col = await this.collection();
         const docs = await col
-            .find({ userId })
+            .find(this.ownerFilter(userId))
             .sort({ name: 1 })
             .toArray();
 
@@ -203,7 +218,7 @@ export class MongoInventoryRepository implements IInventoryRepository {
         }
 
         const result = await col.findOneAndUpdate(
-            { _id: objectId, userId },
+            { _id: objectId, ...this.ownerFilter(userId) },
             {
                 $inc: { quantity: -quantity },
                 $set: { updatedAt: new Date() },
@@ -234,7 +249,7 @@ export class MongoInventoryRepository implements IInventoryRepository {
         }
 
         const result = await col.findOneAndUpdate(
-            { _id: objectId, userId },
+            { _id: objectId, ...this.ownerFilter(userId) },
             {
                 $inc: { quantity },
                 $set: {
