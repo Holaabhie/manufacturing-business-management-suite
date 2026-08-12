@@ -883,7 +883,7 @@ export default function FolioPage() {
 
       {/* ════════════ EXPENSE MODAL ════════════ */}
       <Dialog open={expenseModalOpen} onOpenChange={setExpenseModalOpen}>
-        <DialogContent className="sm:max-w-[480px] !rounded-3xl !p-6 gap-0 overflow-hidden border border-gray-100 dark:border-white/10 bg-white dark:bg-[#161B27] shadow-xl shadow-black/5 dark:shadow-black/40">
+        <DialogContent fullScreenMobile className="sm:max-w-[480px] !rounded-3xl !p-6 gap-0 overflow-hidden border border-gray-100 dark:border-white/10 bg-white dark:bg-[#161B27] shadow-xl shadow-black/5 dark:shadow-black/40">
           {/* Header */}
           <div className="flex items-center gap-3 mb-6">
             <div className="w-11 h-11 rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center flex-shrink-0">
@@ -990,7 +990,7 @@ export default function FolioPage() {
 
       {/* ════════════ NOTE MODAL ════════════ */}
       <Dialog open={noteModalOpen} onOpenChange={setNoteModalOpen}>
-        <DialogContent className="sm:max-w-[520px] !rounded-3xl !p-6 gap-0 overflow-hidden border border-gray-100 dark:border-white/10 bg-white dark:bg-[#161B27] shadow-xl shadow-black/5 dark:shadow-black/40">
+        <DialogContent fullScreenMobile className="sm:max-w-[520px] !rounded-3xl !p-6 gap-0 overflow-hidden border border-gray-100 dark:border-white/10 bg-white dark:bg-[#161B27] shadow-xl shadow-black/5 dark:shadow-black/40">
           {/* Header */}
           <div className="flex items-center gap-3 mb-6">
             <div className="w-11 h-11 rounded-2xl bg-purple-50 dark:bg-purple-500/10 flex items-center justify-center flex-shrink-0">

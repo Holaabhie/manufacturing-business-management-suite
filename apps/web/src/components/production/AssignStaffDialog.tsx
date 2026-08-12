@@ -133,7 +133,7 @@ export function AssignStaffDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-[440px] p-0 gap-0 rounded-2xl overflow-hidden">
+            <DialogContent fullScreenMobile className="max-w-[440px] p-0 gap-0 rounded-2xl overflow-hidden">
                 <DialogHeader className="px-5 pt-5 pb-3">
                     <DialogTitle className="text-[16px] font-semibold flex items-center gap-2">
                         <Users className="h-4.5 w-4.5 text-primary" />

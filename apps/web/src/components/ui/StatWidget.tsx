@@ -88,7 +88,7 @@ export function StatWidget({
     );
 
     return (
-        <motion.div variants={staggerItem} custom={delay}>
+        <motion.div variants={staggerItem} custom={delay} className="min-w-0 w-full overflow-hidden rounded-[20px]">
             <div
                 className="kpi-card relative min-w-0"
                 tabIndex={0}
@@ -115,14 +115,14 @@ export function StatWidget({
                 </div>
 
                 {/* Metric + Label */}
-                <div className="kpi-card__value truncate !text-gray-900 dark:!text-white">
+                <div className="kpi-card__value !text-gray-900 dark:!text-white truncate text-sm sm:text-base lg:text-lg xl:text-xl">
                     {displayValue != null ? (
                         <span>{displayValue}</span>
                     ) : (
                         <AnimatedValue value={value} prefix={prefix} suffix={suffix} />
                     )}
                 </div>
-                <div className="kpi-card__label truncate !text-gray-500 dark:!text-[rgba(255,255,255,0.5)]">{label}</div>
+                <div className="kpi-card__label !text-gray-500 dark:!text-[rgba(255,255,255,0.5)] text-xs truncate">{label}</div>
 
                 {/* Stitch mini-progress bar (decorative, color-keyed) */}
                 <div className="kpi-card__progress">

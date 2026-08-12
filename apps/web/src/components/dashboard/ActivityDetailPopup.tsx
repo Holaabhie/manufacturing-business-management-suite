@@ -127,7 +127,7 @@ export default function ActivityDetailPopup({ activity, open, onOpenChange }: Pr
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[480px] overflow-y-auto">
+      <DialogContent fullScreenMobile className="sm:max-w-[480px] overflow-y-auto">
         <DialogTitle className="sr-only">{activity?.title || "Activity Details"}</DialogTitle>
         {renderContent()}
       </DialogContent>

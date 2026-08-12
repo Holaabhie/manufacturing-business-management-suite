@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useCachedPage } from "@/hooks/useCachedPage";
 import { useLongPress } from "@/hooks/useLongPress";
 import { MobileSheet } from "@/components/ui/MobileSheet";
@@ -283,7 +284,10 @@ export default function PaymentsPage() {
 
   // ─── Modal animation state ───────────────────────────
   const [animateOpen, setAnimateOpen] = useState(false);
+  const [portalMounted, setPortalMounted] = useState(false);
   const firstInputRef = useRef<HTMLSelectElement>(null);
+
+  useEffect(() => setPortalMounted(true), []);
 
   useEffect(() => {
     if (isDialogOpen) {
@@ -494,10 +498,10 @@ export default function PaymentsPage() {
       {/* ════════════════════════════════════════════════════════════
           RECORD PAYMENT MODAL — Custom overlay + panel
           ════════════════════════════════════════════════════════════ */}
-      {isDialogOpen && (
+      {portalMounted && isDialogOpen && createPortal(
         <div
           className={cn(
-            "fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 transition-opacity duration-[220ms] ease-out",
+            "fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-opacity duration-[220ms] ease-out",
             animateOpen ? "opacity-100" : "opacity-0"
           )}
           style={{ backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}
@@ -508,10 +512,10 @@ export default function PaymentsPage() {
             aria-modal="true"
             aria-labelledby="record-payment-title"
             className={cn(
-              "relative w-full sm:max-w-[780px] xl:max-w-[860px] bg-white dark:bg-[#161B27] rounded-t-[24px] sm:rounded-[20px] shadow-2xl flex flex-col transition-all duration-[220ms] ease-out",
-              animateOpen ? "translate-y-0 scale-100" : "translate-y-5 scale-95"
+              "relative w-full sm:max-w-[780px] xl:max-w-[860px] bg-white dark:bg-[#161B27] rounded-none sm:rounded-[20px] shadow-2xl flex flex-col transition-all duration-[220ms] ease-out",
+              "h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[90vh]",
+              animateOpen ? "translate-y-0 sm:scale-100" : "translate-y-full sm:translate-y-5 sm:scale-95"
             )}
-            style={{ maxHeight: '90dvh' }}
             onClick={e => e.stopPropagation()}
           >
             {/* ── Scrollable content area ── */}
@@ -753,8 +757,8 @@ export default function PaymentsPage() {
 
               </div>
 
-              {/* ── STICKY FOOTER — always pinned at bottom, never scrolls ── */}
-              <div className="sticky bottom-0 left-0 right-0 z-10 bg-white dark:bg-[#161B27] border-t border-[rgba(15,23,42,0.06)] dark:border-white/[0.06] px-6 py-4" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
+              {/* ── PINNED FOOTER — always visible at bottom, never scrolls ── */}
+              <div className="shrink-0 bg-white dark:bg-[#161B27] border-t border-[rgba(15,23,42,0.06)] dark:border-white/[0.06] px-6 py-4" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
                 <div className="flex items-center justify-between gap-3">
                   <button
                     type="button"
@@ -784,7 +788,8 @@ export default function PaymentsPage() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <div className="kpi-panel">

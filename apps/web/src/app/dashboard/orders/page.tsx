@@ -2181,7 +2181,7 @@ function OrdersContent() {
         // GUARD: only accept close
         if (!open) closePaymentDialog();
       }}>
-        <DialogContent className="max-w-[480px]" showCloseButton={false}>
+        <DialogContent fullScreenMobile className="max-w-[480px]" showCloseButton={false}>
           {/* Premium Header */}
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',

@@ -742,7 +742,7 @@ export default function DashboardPage() {
       variants={staggerContainer}
       initial="initial"
       animate="animate"
-      className="space-y-6 hero-glow bg-[#F1F4F9] dark:bg-transparent min-h-screen -m-6 p-6"
+      className="space-y-6 lg:space-y-4 hero-glow bg-[#F1F4F9] dark:bg-transparent -m-6 p-6"
     >
       {/* Onboarding Modal */}
       <OnboardingModal />
@@ -918,9 +918,9 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <motion.div variants={staggerItem} className="lg:col-span-2">
           <IOSCard variant="stitch-elevated" padding="lg" className="bg-white dark:bg-[#1C1C1E] !rounded-2xl shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] hover:shadow-[0_4px_20px_rgba(15,23,42,0.10),0_2px_8px_rgba(15,23,42,0.06)] transition-shadow duration-200 !border !border-black/[0.09] dark:!border-[var(--border)] dark:shadow-none dark:hover:shadow-none">
-            <IOSCardHeader title={t("revenueOverview")} subtitle={t("last6Months")} />
+            <IOSCardHeader title={t("revenueOverview")} subtitle={t("last6Months")} className="lg:mb-2" />
             <IOSCardContent>
-              <div className="h-[260px] -ml-4" style={{ minWidth: 0, overflow: 'hidden' }}>
+              <div className="h-[260px] lg:h-[200px] -ml-4" style={{ minWidth: 0, overflow: 'hidden' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
                     <defs>
@@ -963,7 +963,7 @@ export default function DashboardPage() {
 
         <motion.div variants={staggerItem}>
           <IOSCard variant="stitch-elevated" padding="lg" className="h-full bg-white dark:bg-[#1C1C1E] !rounded-2xl shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] hover:shadow-[0_4px_20px_rgba(15,23,42,0.10),0_2px_8px_rgba(15,23,42,0.06)] transition-shadow duration-200 !border !border-black/[0.09] dark:!border-[var(--border)] dark:shadow-none dark:hover:shadow-none">
-            <IOSCardHeader title={t("quickActions")} />
+            <IOSCardHeader title={t("quickActions")} className="lg:mb-2" />
             <IOSCardContent className="space-y-1">
               {[
                 { label: t("createOrder"), icon: ShoppingCart, href: "/dashboard/orders", bg: "bg-blue-50 dark:bg-[rgba(10,132,255,0.12)]", text: "text-blue-600 dark:text-[var(--primary)]" },
@@ -991,9 +991,9 @@ export default function DashboardPage() {
       <div className="flex flex-col lg:flex-row items-stretch gap-4">
         <motion.div variants={staggerItem} className="lg:w-1/3" style={{ minWidth: 0, minHeight: 0 }}>
           <IOSCard variant="elevated" padding="lg" className="h-full bg-white dark:bg-[#1C1C1E] !rounded-2xl shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] hover:shadow-[0_4px_20px_rgba(15,23,42,0.10),0_2px_8px_rgba(15,23,42,0.06)] transition-shadow duration-200 !border !border-black/[0.09] dark:!border-[var(--border)] dark:shadow-none dark:hover:shadow-none">
-            <IOSCardHeader title={t("thisWeek")} subtitle={t("ordersByDay")} />
+            <IOSCardHeader title={t("thisWeek")} subtitle={t("ordersByDay")} className="lg:mb-2" />
             <IOSCardContent>
-              <div className="h-[200px] -ml-4" style={{ minWidth: 0, overflow: 'hidden' }}>
+              <div className="h-[200px] lg:h-[160px] -ml-4" style={{ minWidth: 0, overflow: 'hidden' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={weeklyData}>
                     <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 13 }} />
@@ -1011,6 +1011,7 @@ export default function DashboardPage() {
           <IOSCard variant="elevated" padding="lg" className="h-full bg-white dark:bg-[#1C1C1E] !rounded-2xl shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] hover:shadow-[0_4px_20px_rgba(15,23,42,0.10),0_2px_8px_rgba(15,23,42,0.06)] transition-shadow duration-200 !border !border-black/[0.09] dark:!border-[var(--border)] dark:shadow-none dark:hover:shadow-none">
             <IOSCardHeader
               title={t("recentActivity")}
+              className="lg:mb-2"
               action={
                 <Link href="/dashboard/activity">
                   <IOSButton variant="plain" size="small">{tCommon("viewAll")}</IOSButton>
@@ -1098,6 +1099,7 @@ export default function DashboardPage() {
       {/* ── Widget Selection Modal ── */}
       <Dialog open={isWidgetModalOpen} onOpenChange={setIsWidgetModalOpen}>
         <DialogContent
+          fullScreenMobile
           className="sm:max-w-[500px] md:max-w-2xl glass-dialog !p-0 !overflow-hidden"
         >
           {/* Fixed Header */}

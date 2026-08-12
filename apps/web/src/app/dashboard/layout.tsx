@@ -539,7 +539,7 @@ export default function DashboardLayout({
       {/* ════════════ MAIN CONTENT AREA ════════════ */}
       <div
         className={cn(
-          "flex flex-col transition-all duration-200 ease-in-out",
+          "flex flex-col min-w-0 overflow-x-clip transition-all duration-200 ease-in-out",
           "md:pl-[240px]",
           isCollapsed && "md:pl-[72px]"
         )}
@@ -856,18 +856,18 @@ export default function DashboardLayout({
         {/* Main Content */}
         <main
           className={cn(
-            "flex-1 p-4 md:p-6 lg:p-8 pb-24 md:pb-8 transition-opacity duration-200",
+            "flex-1 min-w-0 w-full max-w-full p-4 md:p-6 lg:p-8 pb-24 md:pb-8 transition-opacity duration-200 overflow-x-clip",
             isMobileSearchActive && "opacity-35 pointer-events-none md:opacity-100 md:pointer-events-auto"
           )}
           aria-hidden={isMobileSearchActive ? "true" : undefined}
-          {...(isMobileSearchActive ? { inert: "" } : {})}
+          {...(isMobileSearchActive ? { inert: true } : {})}
         >
           {/* PageTransition: AnimatePresence mode="wait", keyed on full pathname.
                Exit animation plays before new page mounts — prevents double-fetch
                on manual useEffect pages (users/, settings/team/) and keeps
                Suspense fallbacks from appearing mid-transition. */}
           <PageTransition>
-            <div className="max-w-[1400px] mx-auto">
+            <div className="max-w-[1400px] mx-auto overflow-x-hidden min-w-0">
               {children}
             </div>
           </PageTransition>
@@ -881,7 +881,7 @@ export default function DashboardLayout({
           isMobileSearchActive && "opacity-35 pointer-events-none"
         )}
         aria-hidden={isMobileSearchActive ? "true" : undefined}
-        {...(isMobileSearchActive ? { inert: "" } : {})}
+        {...(isMobileSearchActive ? { inert: true } : {})}
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         {/* Gradient fade — NOT a visible bar */}

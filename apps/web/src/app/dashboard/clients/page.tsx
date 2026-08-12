@@ -451,16 +451,16 @@ export default function ClientsPage() {
                   </IOSButton>
                 </DialogTrigger>
               )}
-              <DialogContent className="max-w-md p-0 overflow-hidden">
+              <DialogContent fullScreenMobile className="max-w-md p-0 overflow-hidden">
                 <ScrollArea className="max-h-[90vh]">
                   <div className="p-6">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 16, marginBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                      <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg, rgba(59,130,246,0.4), rgba(255,255,255,0.06))', border: '1px solid rgba(255,255,255,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <User className="h-[18px] w-[18px] text-[#60a5fa]" />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 16, marginBottom: 16, borderBottom: '1px solid var(--border)' }}>
+                      <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--muted)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <User className="h-[18px] w-[18px] text-[var(--primary)]" />
                       </div>
                       <div>
-                        <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', lineHeight: '22px', margin: 0 }}>Add New Client</DialogTitle>
-                        <p style={{ fontSize: 13, color: '#64748b', lineHeight: '18px', margin: '2px 0 0' }}>Create a new client profile</p>
+                        <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: 'var(--foreground)', lineHeight: '22px', margin: 0 }}>Add New Client</DialogTitle>
+                        <p style={{ fontSize: 13, color: 'var(--muted-foreground)', lineHeight: '18px', margin: '2px 0 0' }}>Create a new client profile</p>
                       </div>
                     </div>
                     <form onSubmit={handleAddClient} className="space-y-4 pt-4">
@@ -612,27 +612,22 @@ export default function ClientsPage() {
 
       {/* Client profile modal (name, company, profile, orders, sum) */}
       <Dialog open={!!selectedClient} onOpenChange={(open) => { if (!open) setSelectedClient(null); }}>
-        <DialogContent className="max-w-[900px] w-full p-0 overflow-hidden rounded-2xl" aria-describedby={undefined}>
+        <DialogContent fullScreenMobile className="max-w-[900px] w-full p-0 overflow-hidden rounded-2xl" aria-describedby={undefined}>
           <DialogTitle className="sr-only">Client Profile</DialogTitle>
           {selectedClient && (
             <div
-              className="flex flex-col overflow-hidden"
-              style={{
-                background: 'linear-gradient(180deg, rgba(13,17,28,0.97) 0%, rgba(10,13,22,0.99) 100%)',
-                border: '1px solid rgba(255,255,255,0.06)',
-                boxShadow: '0 8px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04)',
-              }}
+              className="flex flex-col overflow-hidden bg-[var(--background)] border border-[var(--border)] shadow-lg"
             >
               {/* -- Header Bar -- */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                <button onClick={() => setSelectedClient(null)} style={{ width: 38, height: 38, borderRadius: 12, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#94a3b8' }}>
+              <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+                <button onClick={() => setSelectedClient(null)} className="w-[38px] h-[38px] rounded-xl bg-[var(--muted)] border border-[var(--border)] flex items-center justify-center cursor-pointer text-[var(--muted-foreground)] hover:bg-[var(--accent)]/10 transition-colors">
                   <X className="h-4 w-4" />
                 </button>
-                <h2 style={{ fontSize: 17, fontWeight: 700, color: '#f1f5f9', letterSpacing: '-0.2px' }}>
+                <h2 className="text-[17px] font-bold text-[var(--foreground)] tracking-tight">
                   {selectedClient?.name ? `Client: ${selectedClient.name}` : "Client Profile"}
                 </h2>
                 {isAdmin ? (
-                  <button onClick={handleUpdateClient} style={{ width: 38, height: 38, borderRadius: 12, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#94a3b8' }}>
+                  <button onClick={handleUpdateClient} className="w-[38px] h-[38px] rounded-xl bg-[var(--muted)] border border-[var(--border)] flex items-center justify-center cursor-pointer text-[var(--muted-foreground)] hover:bg-[var(--accent)]/10 transition-colors">
                     <Edit2 className="h-4 w-4" />
                   </button>
                 ) : <div style={{ width: 38 }} />}
@@ -687,7 +682,7 @@ export default function ClientsPage() {
                         width: 72, height: 72, borderRadius: '50%',
                         background: selectedClient?.avatarUrl ? 'transparent' : 'linear-gradient(135deg, #007AFF, #5856D6)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        boxShadow: '0 4px 24px rgba(0,122,255,0.35), 0 0 0 3px rgba(10,13,22,1), 0 0 0 5px rgba(0,122,255,0.25)',
+                        boxShadow: '0 4px 24px rgba(0,122,255,0.35), 0 0 0 3px var(--background), 0 0 0 5px rgba(0,122,255,0.25)',
                         fontSize: 24, fontWeight: 800, color: '#fff', letterSpacing: 1,
                         overflow: 'hidden', position: 'relative',
                         cursor: isAdmin ? 'pointer' : 'default',
@@ -723,48 +718,48 @@ export default function ClientsPage() {
                         </div>
                       )}
                     </div>
-                    <div style={{ position: 'absolute', bottom: 2, left: 2, width: 14, height: 14, borderRadius: '50%', background: '#30D158', border: '3px solid rgba(10,13,22,1)', boxShadow: '0 0 8px rgba(48,209,88,0.5)' }} />
+                    <div style={{ position: 'absolute', bottom: 2, left: 2, width: 14, height: 14, borderRadius: '50%', background: '#30D158', border: '3px solid var(--background)', boxShadow: '0 0 8px rgba(48,209,88,0.5)' }} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <h3 style={{ fontSize: 22, fontWeight: 800, color: '#f1f5f9', letterSpacing: '-0.4px', margin: 0 }}>{selectedClient.name || "Unnamed Client"}</h3>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-[22px] font-extrabold text-[var(--foreground)] tracking-tight m-0">{selectedClient.name || "Unnamed Client"}</h3>
                       {!!(selectedClient.company || editData.company) && (
-                        <span style={{ fontSize: 11, fontWeight: 800, color: '#93bbfd', background: 'rgba(0,122,255,0.12)', border: '1px solid rgba(0,122,255,0.2)', padding: '2px 10px', borderRadius: 20, letterSpacing: '0.4px', whiteSpace: 'nowrap' }}>
+                        <span className="text-[11px] font-extrabold text-[var(--primary)] bg-[var(--primary)]/10 border border-[var(--primary)]/20 px-2.5 py-0.5 rounded-full tracking-wide whitespace-nowrap">
                           {selectedClient.company || editData.company}
                         </span>
                       )}
                     </div>
-                    <p style={{ fontSize: 13, color: '#64748b', marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <History className="h-3.5 w-3.5" style={{ opacity: 0.6 }} />
+                    <p className="text-[13px] text-[var(--muted-foreground)] mt-1.5 flex items-center gap-1.5">
+                      <History className="h-3.5 w-3.5 opacity-60" />
                       Customer since {new Date(selectedClient.createdAt || selectedClient.created_at || Date.now()).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
                     </p>
                   </div>
                 </div>
 
                 {/* -- Orders summary -- */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-                  <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: '14px 14px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <ShoppingCart className="h-4 w-4" style={{ color: '#34d399' }} />
-                      <span style={{ fontSize: 11, fontWeight: 800, color: '#6ee7b7', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Orders</span>
+                <div className="grid grid-cols-2 gap-3 mb-3.5">
+                  <div className="bg-[var(--muted)]/50 border border-[var(--border)] rounded-2xl p-3.5">
+                    <div className="flex items-center gap-2">
+                      <ShoppingCart className="h-4 w-4 text-emerald-400" />
+                      <span className="text-[11px] font-extrabold text-emerald-400 uppercase tracking-wide">Orders</span>
                     </div>
-                    <div style={{ marginTop: 8, fontSize: 22, fontWeight: 900, color: '#e2e8f0' }}>{clientOrders.length}</div>
+                    <div className="mt-2 text-[22px] font-black text-[var(--foreground)]">{clientOrders.length}</div>
                   </div>
-                  <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: '14px 14px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <IndianRupee className="h-4 w-4" style={{ color: '#60a5fa' }} />
-                      <span style={{ fontSize: 11, fontWeight: 800, color: '#93bbfd', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total sum</span>
+                  <div className="bg-[var(--muted)]/50 border border-[var(--border)] rounded-2xl p-3.5">
+                    <div className="flex items-center gap-2">
+                      <IndianRupee className="h-4 w-4 text-blue-400" />
+                      <span className="text-[11px] font-extrabold text-blue-400 uppercase tracking-wide">Total sum</span>
                     </div>
-                    <div style={{ marginTop: 8, fontSize: 22, fontWeight: 900, color: '#e2e8f0' }}>₹{selectedOrdersTotal.toLocaleString('en-IN')}</div>
+                    <div className="mt-2 text-[22px] font-black text-[var(--foreground)]">₹{selectedOrdersTotal.toLocaleString('en-IN')}</div>
                   </div>
                 </div>
 
                 {/* -- Segmented Tabs -- */}
                 <Tabs defaultValue="profile" className="flex flex-col">
-            <TabsList style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: 3, display: 'flex', gap: 2, width: '100%' }}>
-              <TabsTrigger value="profile" style={{ flex: 1, borderRadius: 11, fontSize: 13, fontWeight: 600, padding: '8px 0', transition: 'all 0.2s' }} className="data-[state=active]:!bg-[#007AFF] data-[state=active]:!text-white data-[state=active]:!shadow-[0_2px_12px_rgba(0,122,255,0.35)] text-[#64748b]">Profile</TabsTrigger>
-              <TabsTrigger value="materials" style={{ flex: 1, borderRadius: 11, fontSize: 13, fontWeight: 600, padding: '8px 0', transition: 'all 0.2s' }} className="data-[state=active]:!bg-[#007AFF] data-[state=active]:!text-white data-[state=active]:!shadow-[0_2px_12px_rgba(0,122,255,0.35)] text-[#64748b]">Materials</TabsTrigger>
-              <TabsTrigger value="orders" style={{ flex: 1, borderRadius: 11, fontSize: 13, fontWeight: 600, padding: '8px 0', transition: 'all 0.2s' }} className="data-[state=active]:!bg-[#007AFF] data-[state=active]:!text-white data-[state=active]:!shadow-[0_2px_12px_rgba(0,122,255,0.35)] text-[#64748b]">Orders</TabsTrigger>
+            <TabsList className="bg-[var(--muted)] border border-[var(--border)] rounded-[14px] p-[3px] flex gap-0.5 w-full">
+              <TabsTrigger value="profile" className="flex-1 rounded-[11px] text-[13px] font-semibold py-2 transition-all data-[state=active]:!bg-[#007AFF] data-[state=active]:!text-white data-[state=active]:!shadow-[0_2px_12px_rgba(0,122,255,0.35)] text-[var(--muted-foreground)]">Profile</TabsTrigger>
+              <TabsTrigger value="materials" className="flex-1 rounded-[11px] text-[13px] font-semibold py-2 transition-all data-[state=active]:!bg-[#007AFF] data-[state=active]:!text-white data-[state=active]:!shadow-[0_2px_12px_rgba(0,122,255,0.35)] text-[var(--muted-foreground)]">Materials</TabsTrigger>
+              <TabsTrigger value="orders" className="flex-1 rounded-[11px] text-[13px] font-semibold py-2 transition-all data-[state=active]:!bg-[#007AFF] data-[state=active]:!text-white data-[state=active]:!shadow-[0_2px_12px_rgba(0,122,255,0.35)] text-[var(--muted-foreground)]">Orders</TabsTrigger>
             </TabsList>
 
             {/* --- PROFILE TAB --- */}
@@ -772,47 +767,47 @@ export default function ClientsPage() {
               {!isAdmin && <ReadOnlyBanner feature="client management" />}
 
               {/* Contact Information Card */}
-              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 18, overflow: 'hidden' }}>
-                <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(0,122,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <User className="h-3.5 w-3.5" style={{ color: '#60a5fa' }} />
+              <div className="bg-[var(--card)] border border-[var(--border)] rounded-[18px] overflow-hidden">
+                <div className="px-4 py-3.5 border-b border-[var(--border)] flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-[var(--primary)]/10 flex items-center justify-center">
+                    <User className="h-3.5 w-3.5 text-[var(--primary)]" />
                   </div>
-                  <span style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9' }}>Contact Information</span>
+                  <span className="text-[16px] font-bold text-[var(--foreground)]">Contact Information</span>
                 </div>
-                <div style={{ padding: 16 }}>
+                <div className="p-4">
                   <fieldset disabled={!isAdmin} style={{ border: 'none', padding: 0, margin: 0 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div className="grid grid-cols-2 gap-3">
                       {/* Full Name */}
                       <div>
-                        <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'block' }}>Full Name</label>
-                        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '10px 14px', fontSize: 14, color: '#e2e8f0' }}>
-                          <input value={editData.name} onChange={(e) => setEditData({ ...editData, name: e.target.value })} style={{ background: 'transparent', border: 'none', outline: 'none', color: 'inherit', fontSize: 'inherit', width: '100%' }} />
+                        <label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wide mb-1.5 block">Full Name</label>
+                        <div className="bg-[var(--muted)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-[14px] text-[var(--foreground)]">
+                          <input value={editData.name} onChange={(e) => setEditData({ ...editData, name: e.target.value })} className="bg-transparent border-none outline-none text-inherit text-[inherit] w-full" />
                         </div>
                       </div>
                       {/* Company */}
                       <div>
-                        <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'block' }}>Company</label>
-                        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '10px 14px', fontSize: 14, color: '#e2e8f0' }}>
-                          <input value={editData.company} onChange={(e) => setEditData({ ...editData, company: e.target.value })} style={{ background: 'transparent', border: 'none', outline: 'none', color: 'inherit', fontSize: 'inherit', width: '100%' }} />
+                        <label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wide mb-1.5 block">Company</label>
+                        <div className="bg-[var(--muted)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-[14px] text-[var(--foreground)]">
+                          <input value={editData.company} onChange={(e) => setEditData({ ...editData, company: e.target.value })} className="bg-transparent border-none outline-none text-inherit text-[inherit] w-full" />
                         </div>
                       </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+                    <div className="grid grid-cols-2 gap-3 mt-3">
                       {/* Email */}
                       <div>
-                        <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'block' }}>Email Address</label>
-                        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '10px 14px', fontSize: 14, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <Mail className="h-4 w-4" style={{ color: '#64748b', flexShrink: 0 }} />
-                          <input value={editData.email} onChange={(e) => setEditData({ ...editData, email: e.target.value })} style={{ background: 'transparent', border: 'none', outline: 'none', color: 'inherit', fontSize: 'inherit', width: '100%', minWidth: 0 }} />
+                        <label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wide mb-1.5 block">Email Address</label>
+                        <div className="bg-[var(--muted)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-[14px] text-[var(--foreground)] flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-[var(--muted-foreground)] shrink-0" />
+                          <input value={editData.email} onChange={(e) => setEditData({ ...editData, email: e.target.value })} className="bg-transparent border-none outline-none text-inherit text-[inherit] w-full min-w-0" />
                         </div>
                       </div>
                       {/* Phone */}
                       <div>
-                        <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'block' }}>Phone Number</label>
-                        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '10px 14px', fontSize: 14, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <Phone className="h-4 w-4" style={{ color: '#64748b', flexShrink: 0 }} />
-                          <input value={editData.phone} onChange={(e) => setEditData({ ...editData, phone: e.target.value })} style={{ background: 'transparent', border: 'none', outline: 'none', color: 'inherit', fontSize: 'inherit', width: '100%' }} />
+                        <label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wide mb-1.5 block">Phone Number</label>
+                        <div className="bg-[var(--muted)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-[14px] text-[var(--foreground)] flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-[var(--muted-foreground)] shrink-0" />
+                          <input value={editData.phone} onChange={(e) => setEditData({ ...editData, phone: e.target.value })} className="bg-transparent border-none outline-none text-inherit text-[inherit] w-full" />
                         </div>
                       </div>
                     </div>
@@ -821,19 +816,19 @@ export default function ClientsPage() {
               </div>
 
               {/* Billing Address Card */}
-              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 18, overflow: 'hidden' }}>
-                <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Billing Address</span>
+              <div className="bg-[var(--card)] border border-[var(--border)] rounded-[18px] overflow-hidden">
+                <div className="px-4 py-3.5 border-b border-[var(--border)]">
+                  <span className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wide">Billing Address</span>
                 </div>
-                <div style={{ padding: 16 }}>
-                  <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '12px 14px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                    <MapPin className="h-4 w-4" style={{ color: '#64748b', flexShrink: 0, marginTop: 2 }} />
+                <div className="p-4">
+                  <div className="bg-[var(--muted)] border border-[var(--border)] rounded-xl px-3.5 py-3 flex items-start gap-2.5">
+                    <MapPin className="h-4 w-4 text-[var(--muted-foreground)] shrink-0 mt-0.5" />
                     <textarea
                       value={editData.address}
                       onChange={(e) => setEditData({ ...editData, address: e.target.value })}
                       disabled={!isAdmin}
                       rows={2}
-                      style={{ background: 'transparent', border: 'none', outline: 'none', color: '#e2e8f0', fontSize: 14, lineHeight: '20px', width: '100%', resize: 'none' }}
+                      className="bg-transparent border-none outline-none text-[var(--foreground)] text-[14px] leading-5 w-full resize-none"
                     />
                   </div>
                 </div>
@@ -846,40 +841,32 @@ export default function ClientsPage() {
               )}
 
               {/* -- Stat Cards -- */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="grid grid-cols-2 gap-3">
                 {/* Total Orders */}
-                <div style={{
-                  background: 'linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(16,185,129,0.03) 100%)',
-                  border: '1px solid rgba(16,185,129,0.15)',
-                  borderRadius: 18, padding: '18px 16px',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                    <ShoppingCart className="h-4 w-4" style={{ color: '#34d399' }} />
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#6ee7b7', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Orders</span>
+                <div className="bg-emerald-500/[0.08] dark:bg-emerald-500/[0.12] border border-emerald-500/15 rounded-[18px] px-4 py-[18px]">
+                  <div className="flex items-center gap-2 mb-3">
+                    <ShoppingCart className="h-4 w-4 text-emerald-400" />
+                    <span className="text-[11px] font-bold text-emerald-300 dark:text-emerald-300 uppercase tracking-wide">Total Orders</span>
                   </div>
-                  <p style={{ fontSize: 32, fontWeight: 800, color: '#34d399', letterSpacing: '-1px', lineHeight: 1 }}>{clientOrders.length}</p>
+                  <p className="text-[32px] font-extrabold text-emerald-400 tracking-tight leading-none">{clientOrders.length}</p>
                   {clientOrders.filter(o => { const d = new Date(o.createdAt); const now = new Date(); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).length > 0 && (
-                    <span style={{ display: 'inline-block', marginTop: 8, fontSize: 11, fontWeight: 600, color: '#6ee7b7', background: 'rgba(16,185,129,0.15)', padding: '3px 10px', borderRadius: 20 }}>
+                    <span className="inline-block mt-2 text-[11px] font-semibold text-emerald-300 bg-emerald-500/15 px-2.5 py-0.5 rounded-full">
                       +{clientOrders.filter(o => { const d = new Date(o.createdAt); const now = new Date(); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).length} this month
                     </span>
                   )}
                 </div>
 
                 {/* Total Spent */}
-                <div style={{
-                  background: 'linear-gradient(135deg, rgba(0,122,255,0.08) 0%, rgba(0,122,255,0.03) 100%)',
-                  border: '1px solid rgba(0,122,255,0.15)',
-                  borderRadius: 18, padding: '18px 16px',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                    <IndianRupee className="h-4 w-4" style={{ color: '#60a5fa' }} />
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#93bbfd', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Spent</span>
+                <div className="bg-blue-500/[0.08] dark:bg-blue-500/[0.12] border border-blue-500/15 rounded-[18px] px-4 py-[18px]">
+                  <div className="flex items-center gap-2 mb-3">
+                    <IndianRupee className="h-4 w-4 text-blue-400" />
+                    <span className="text-[11px] font-bold text-blue-300 dark:text-blue-300 uppercase tracking-wide">Total Spent</span>
                   </div>
-                  <p style={{ fontSize: 32, fontWeight: 800, color: '#60a5fa', letterSpacing: '-1px', lineHeight: 1 }}>
+                  <p className="text-[32px] font-extrabold text-blue-400 tracking-tight leading-none">
                     ₹{(() => { const total = clientOrders.reduce((acc, o) => acc + (Number(o.totalAmount || o.total_amount) || 0), 0); return total >= 100000 ? (total / 100000).toFixed(1) + 'L' : total.toLocaleString('en-IN'); })()}
                   </p>
                   {(() => { const thisMonth = clientOrders.filter(o => { const d = new Date(o.createdAt); const now = new Date(); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).reduce((acc, o) => acc + (Number(o.totalAmount || o.total_amount) || 0), 0); return thisMonth > 0 ? (
-                    <span style={{ display: 'inline-block', marginTop: 8, fontSize: 11, fontWeight: 600, color: '#93bbfd', background: 'rgba(0,122,255,0.15)', padding: '3px 10px', borderRadius: 20 }}>
+                    <span className="inline-block mt-2 text-[11px] font-semibold text-blue-300 bg-blue-500/15 px-2.5 py-0.5 rounded-full">
                       ₹{thisMonth >= 1000 ? (thisMonth / 1000).toFixed(0) + 'K' : thisMonth.toLocaleString('en-IN')} this month
                     </span>
                   ) : null; })()}
@@ -890,7 +877,7 @@ export default function ClientsPage() {
               <TabsContent value="materials" className="m-0 space-y-6">
                 {isAdmin && (
                 <IOSCard variant="elevated" padding="none">
-                    <h3 className="text-[17px] font-semibold mb-4 border-b border-[var(--border)] pb-4 text-[var(--foreground)]">Add Client Product</h3>
+                    <h3 className="text-[17px] font-semibold mb-4 border-b border-[var(--border)] pb-4 px-4 pt-4 text-[var(--foreground)]">Add Client Product</h3>
                     <div className="p-4">
                       <form onSubmit={handleAddProduct} className="grid sm:grid-cols-3 gap-4 items-end">
                         <div className="space-y-2 sm:col-span-1">
@@ -1000,36 +987,36 @@ export default function ClientsPage() {
 
               <TabsContent value="orders" className="m-0 mt-5 space-y-4">
                 <div className="flex justify-between items-center px-1">
-                  <h3 style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Historical Records</h3>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: '#93bbfd' }}>
+                  <h3 className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wide">Historical Records</h3>
+                  <div className="text-[12px] font-extrabold text-blue-400">
                     Total: ₹{selectedOrdersTotal.toLocaleString('en-IN')}
                   </div>
                 </div>
                 {loadingDetails ? (
-                  <div className="text-center py-10" style={{ color: '#64748b' }}><Loader2 className="h-6 w-6 animate-spin mx-auto" /></div>
+                  <div className="text-center py-10 text-[var(--muted-foreground)]"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></div>
                 ) : clientOrders.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '48px 20px', borderRadius: 16, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                    <Package className="h-10 w-10 mx-auto mb-3" style={{ color: '#334155' }} />
-                    <p style={{ fontSize: 15, color: '#64748b' }}>No previous orders found for this client.</p>
+                  <div className="text-center py-12 px-5 rounded-2xl bg-[var(--muted)]/30 border border-[var(--border)]">
+                    <Package className="h-10 w-10 mx-auto mb-3 text-[var(--muted-foreground)] opacity-50" />
+                    <p className="text-[15px] text-[var(--muted-foreground)]">No previous orders found for this client.</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {clientOrders.map((order) => (
                       <div
                         key={order.id}
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14 }}
+                        className="flex items-center justify-between p-4 bg-[var(--card)] border border-[var(--border)] rounded-[14px]"
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                          <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(10,132,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <ShoppingCart className="h-5 w-5" style={{ color: '#60a5fa' }} />
+                        <div className="flex items-center gap-3.5">
+                          <div className="w-10 h-10 rounded-xl bg-[var(--primary)]/10 flex items-center justify-center">
+                            <ShoppingCart className="h-5 w-5 text-blue-400" />
                           </div>
                           <div>
-                            <p style={{ fontWeight: 700, color: '#f1f5f9', fontSize: 15 }}>{order.productName || order.product_name || 'Unnamed Order'}</p>
-                            <p style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>{order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}</p>
+                            <p className="font-bold text-[var(--foreground)] text-[15px]">{order.productName || order.product_name || 'Unnamed Order'}</p>
+                            <p className="text-[12px] text-[var(--muted-foreground)] mt-0.5">{order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}</p>
                           </div>
                         </div>
-                        <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                          <span style={{ fontWeight: 700, color: '#60a5fa', fontSize: 15 }}>₹{(Number(order.totalAmount || order.total_amount) || 0).toLocaleString('en-IN')}</span>
+                        <div className="text-right flex flex-col items-end gap-1">
+                          <span className="font-bold text-blue-400 text-[15px]">₹{(Number(order.totalAmount || order.total_amount) || 0).toLocaleString('en-IN')}</span>
                           <IOSBadge color={order.status === 'completed' ? 'green' : order.status === 'pending' ? 'orange' : 'blue'}>
                             {order.status}
                           </IOSBadge>

@@ -472,7 +472,7 @@ export default function EmployeeManagementPage() {
 
     return (
         <TooltipProvider delayDuration={0}>
-            <div className="space-y-6 max-w-[1400px] mx-auto pb-20">
+            <div className="space-y-6 max-w-[1400px] mx-auto pb-20 overflow-x-hidden min-w-0">
                 {/* ─── Legacy Accounts Banner ─────────────────────── */}
                 {employees.some(e => e.email?.endsWith("@staff.local") || !e.email) && (
                     <div className="p-4 rounded-[14px] bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
@@ -525,9 +525,9 @@ export default function EmployeeManagementPage() {
                 </div>
 
                 {/* ─── KPI Summary ─────────────────────────────────── */}
-                <div className="kpi-panel">
+                <div className="kpi-panel min-w-0 w-full overflow-hidden">
                     <div className="kpi-panel__glow"></div>
-                    <div className="kpi-grid">
+                    <div className="kpi-grid min-w-0 w-full">
                         <StatWidget
                             label="Total Staff"
                             value={stats.total}
@@ -624,17 +624,17 @@ export default function EmployeeManagementPage() {
 
                 {/* ─── Employee Table ──────────────────────────────── */}
                 <IOSCard variant="elevated" className="border-0 shadow-[var(--shadow-sm)] overflow-hidden bg-[var(--muted)] dark:bg-[var(--muted)] p-0">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-[13px]">
+                    <div className="overflow-x-auto scrollbar-hide">
+                        <table className="w-full text-left text-[13px] table-fixed">
                             <thead>
                                 <tr className="border-b border-[var(--border)]">
-                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 min-w-[80px]">ID</th>
-                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 w-full">Employee</th>
-                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 hidden md:table-cell min-w-[120px]">Department</th>
-                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 hidden lg:table-cell min-w-[140px]">Permissions</th>
-                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 min-w-[120px]">Status</th>
-                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 hidden md:table-cell min-w-[120px]">Last Active</th>
-                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 text-right">Actions</th>
+                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 w-[90px]">ID</th>
+                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3">Employee</th>
+                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 hidden md:table-cell w-[130px]">Department</th>
+                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 hidden lg:table-cell w-[140px]">Permissions</th>
+                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 w-[110px]">Status</th>
+                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 hidden md:table-cell w-[120px]">Last Active</th>
+                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 text-right w-[60px]">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -685,19 +685,19 @@ export default function EmployeeManagementPage() {
                                                     {emp.employeeId}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-3.5">
-                                                <div className="flex items-center gap-3">
+                                            <td className="px-6 py-3.5 min-w-0">
+                                                <div className="flex items-center gap-3 min-w-0">
                                                     <div className="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-[15px] flex-shrink-0 bg-gradient-to-br from-[#007AFF] to-[#5856D6] shadow-sm">
                                                         {emp.fullName.charAt(0).toUpperCase()}
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <span className="font-semibold text-[15px] text-[var(--foreground)] truncate">{emp.fullName}</span>
+                                                        <div className="flex items-center gap-1.5 min-w-0">
+                                                            <span className="font-semibold text-[15px] text-[var(--foreground)] truncate min-w-0">{emp.fullName}</span>
                                                             {!emp.firstLoginCompleted && (
-                                                                <IOSBadge variant="outline" color="orange" className="text-[9px] px-1 py-0 border-amber-300">NEW</IOSBadge>
+                                                                <IOSBadge variant="outline" color="orange" className="text-[9px] px-1 py-0 border-amber-300 flex-shrink-0">NEW</IOSBadge>
                                                             )}
                                                         </div>
-                                                        <div className="flex items-center gap-2 text-[12px] text-[var(--muted-foreground)]">
+                                                        <div className="flex items-center gap-2 text-[12px] text-[var(--muted-foreground)] min-w-0">
                                                             {emp.email && !emp.email.endsWith("@staff.local") && (
                                                                 <span className="flex items-center gap-0.5 truncate">
                                                                     <Mail className="h-3 w-3" />{emp.email}
@@ -710,8 +710,8 @@ export default function EmployeeManagementPage() {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-3.5 hidden md:table-cell text-[14px] text-[var(--muted-foreground)]">
-                                                {emp.department}
+                                            <td className="px-6 py-3.5 hidden md:table-cell text-[14px] text-[var(--muted-foreground)] min-w-0">
+                                                <span className="truncate block">{emp.department}</span>
                                             </td>
                                             <td className="px-6 py-3.5 hidden lg:table-cell">
                                                 <IOSBadge variant="outline" color="gray" className="text-[11px] font-medium uppercase tracking-wider">
@@ -780,7 +780,7 @@ export default function EmployeeManagementPage() {
             ADD EMPLOYEE DIALOG
         ═══════════════════════════════════════════════════════ */}
                 <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-                    <DialogContent className="sm:max-w-lg bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px] p-0 overflow-hidden">
+                    <DialogContent fullScreenMobile className="sm:max-w-lg bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px] p-0 overflow-hidden">
                         <div className="p-6">
                             <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
                                 <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, rgba(59,130,246,0.4), rgba(255,255,255,0.06))", border: "1px solid rgba(255,255,255,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -949,7 +949,7 @@ export default function EmployeeManagementPage() {
             CREDENTIALS DIALOG (shown after creation)
         ═══════════════════════════════════════════════════════ */}
                 <Dialog open={showCredentials} onOpenChange={(open) => { if (!open) { setShowCredentials(false); setCreatedEmployee(null); setCopiedId(false); setCopiedPwd(false); } }}>
-                    <DialogContent className="sm:max-w-md bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px] p-0 overflow-hidden">
+                    <DialogContent fullScreenMobile className="sm:max-w-md bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px] p-0 overflow-hidden">
                         <div className="p-6 text-center space-y-4">
                             <div className="h-14 w-14 rounded-[16px] bg-[#34C759]/10 mx-auto flex items-center justify-center mb-2">
                                 <BadgeCheck className="h-7 w-7 text-[#34C759]" />
@@ -1130,7 +1130,7 @@ export default function EmployeeManagementPage() {
             CHANGE PASSWORD DIALOG
         ═══════════════════════════════════════════════════════ */}
                 <Dialog open={!!changePwdTarget} onOpenChange={(open) => { if (!open) resetChangePwdDialog(); }}>
-                    <DialogContent className="sm:max-w-lg bg-[var(--muted)] dark:bg-[var(--muted)] backdrop-blur-[40px] border border-[var(--border)] shadow-[var(--shadow-lg)] rounded-[24px] p-0 overflow-hidden">
+                    <DialogContent fullScreenMobile className="sm:max-w-lg bg-[var(--muted)] dark:bg-[var(--muted)] backdrop-blur-[40px] border border-[var(--border)] shadow-[var(--shadow-lg)] rounded-[24px] p-0 overflow-hidden">
                         <div className="p-6">
                             <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
                                 <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, rgba(245,158,11,0.4), rgba(255,255,255,0.06))", border: "1px solid rgba(255,255,255,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>

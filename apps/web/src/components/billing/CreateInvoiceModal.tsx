@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FileText,
@@ -221,6 +222,22 @@ export default function CreateInvoiceModal({
 
   const clientDropdownRef = useRef<HTMLDivElement>(null);
   const formScrollRef = useRef<HTMLDivElement>(null);
+
+  // ─── Lock body scroll while modal is open ──────────────
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [open]);
+
+  // ─── Portal mount guard (SSR-safe) ───────────────────
+  const [portalMounted, setPortalMounted] = useState(false);
+  useEffect(() => setPortalMounted(true), []);
 
   // ─── Selected Client ───────────────────────────────────
   const selectedClient = useMemo(
@@ -622,11 +639,12 @@ export default function CreateInvoiceModal({
   );
 
   if (!open) return null;
+  if (!portalMounted) return null;
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -634,7 +652,7 @@ export default function CreateInvoiceModal({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={onClose}
+            onPointerDown={onClose}
           />
 
           {/* Modal */}
@@ -645,10 +663,10 @@ export default function CreateInvoiceModal({
             transition={{ duration: 0.22, ease: "easeOut" }}
             className={cn(
               "relative z-10 flex flex-col",
-              "w-[calc(100vw-16px)] md:w-[95vw] max-w-[1280px] 2xl:max-w-[1400px]",
-              "min-h-screen md:min-h-0 md:max-h-[92vh]",
+              "w-full md:w-[95vw] max-w-[1280px] 2xl:max-w-[1400px]",
+              "h-[100dvh] md:h-auto md:min-h-0 md:max-h-[92vh]",
               "bg-[#F3F5F9] dark:bg-[#0F1117]",
-              "md:rounded-2xl overflow-hidden",
+              "md:rounded-2xl md:overflow-hidden",
               "border-0 md:border md:border-[rgba(15,23,42,0.06)] md:dark:border-[rgba(148,163,184,0.10)]",
               "shadow-2xl"
             )}
@@ -1400,20 +1418,50 @@ export default function CreateInvoiceModal({
                       )}
                     </AnimatePresence>
                   </div>
+                </div>
 
-                  {/* Mobile Save Button */}
+                {/* ═══ MOBILE FOOTER (inline, inside scroll) ═══ */}
+                <div className="md:hidden bg-[#F3F5F9] dark:bg-[#0F1117] px-4 py-3 mt-3 rounded-xl" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
                   <button
                     type="submit"
+                    form="create-invoice-form"
                     disabled={submitting}
                     className={cn(
-                      "mt-3 h-[48px] w-full bg-[#2563EB] hover:bg-[#1d4ed8] text-white font-semibold rounded-[10px] text-[14px] transition-colors cursor-pointer flex items-center justify-center gap-2",
+                      "h-[48px] w-full bg-[#2563EB] hover:bg-[#1d4ed8] text-white font-semibold rounded-[10px] text-[14px] transition-colors cursor-pointer flex items-center justify-center gap-2",
                       submitting && "opacity-60 cursor-not-allowed"
                     )}
                   >
                     {submitting ? (
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : (
-                      <Receipt size={16} />
+                      <Receipt size={14} />
+                    )}
+                    <span>Generate Invoice</span>
+                  </button>
+                </div>
+
+                {/* ═══ DESKTOP FOOTER (inline, inside scroll) ═══ */}
+                <div className="hidden md:flex items-center justify-between px-5 py-3 mt-3 rounded-xl bg-[#EEF2F7] dark:bg-[#161B27] border border-[rgba(15,23,42,0.06)] dark:border-[rgba(148,163,184,0.10)]">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="h-[38px] px-5 rounded-[8px] text-[13px] font-medium text-[#64748B] dark:text-[#94A3B8] bg-white/40 dark:bg-white/[0.04] border border-[rgba(15,23,42,0.06)] dark:border-[rgba(148,163,184,0.10)] hover:bg-white/60 dark:hover:bg-white/[0.08] transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    form="create-invoice-form"
+                    disabled={submitting}
+                    className={cn(
+                      "h-[38px] px-6 rounded-[8px] text-[13px] font-semibold text-white bg-[#2563EB] hover:bg-[#1d4ed8] transition-colors cursor-pointer flex items-center gap-2",
+                      submitting && "opacity-60 cursor-not-allowed"
+                    )}
+                  >
+                    {submitting ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <Receipt size={14} />
                     )}
                     <span>Generate Invoice</span>
                   </button>
@@ -1431,35 +1479,10 @@ export default function CreateInvoiceModal({
               </div>
             </form>
 
-            {/* ═══ DESKTOP FOOTER ═══ */}
-            <div className="hidden md:flex sticky bottom-0 z-20 items-center justify-between px-5 py-3 bg-[#EEF2F7] dark:bg-[#161B27] border-t border-[rgba(15,23,42,0.06)] dark:border-[rgba(148,163,184,0.10)]">
-              <button
-                type="button"
-                onClick={onClose}
-                className="h-[38px] px-5 rounded-[8px] text-[13px] font-medium text-[#64748B] dark:text-[#94A3B8] bg-white/40 dark:bg-white/[0.04] border border-[rgba(15,23,42,0.06)] dark:border-[rgba(148,163,184,0.10)] hover:bg-white/60 dark:hover:bg-white/[0.08] transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                form="create-invoice-form"
-                disabled={submitting}
-                className={cn(
-                  "h-[38px] px-6 rounded-[8px] text-[13px] font-semibold text-white bg-[#2563EB] hover:bg-[#1d4ed8] transition-colors cursor-pointer flex items-center gap-2",
-                  submitting && "opacity-60 cursor-not-allowed"
-                )}
-              >
-                {submitting ? (
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <Receipt size={14} />
-                )}
-                <span>Generate Invoice</span>
-              </button>
-            </div>
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

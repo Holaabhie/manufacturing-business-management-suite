@@ -35,6 +35,12 @@ export function useCompanyProfile() {
     setError(null);
     try {
       const res = await fetch("/api/profile/company");
+      if (res.status === 401) {
+        // Not authenticated (yet) — treat as "no profile", not an error.
+        // This happens during initial load before auth session bridges.
+        setCompany(null);
+        return;
+      }
       if (!res.ok) {
         throw new Error("Failed to fetch company profile");
       }

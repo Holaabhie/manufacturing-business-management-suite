@@ -870,7 +870,7 @@ export default function EmployeeDetailPage() {
 
                 {/* ═══ CHANGE PASSWORD DIALOG ═════════════════════════ */}
                 <Dialog open={showChangePwd} onOpenChange={(open) => { if (!open) resetChangePwdDialog(); }}>
-                    <DialogContent className="sm:max-w-lg">
+                    <DialogContent fullScreenMobile className="sm:max-w-lg">
                         <DialogHeader>
                             <DialogTitle className="flex items-center gap-2">
                                 <div className="p-1.5 rounded-lg" style={{ background: "#F59E0B" }}>
@@ -1016,7 +1016,7 @@ export default function EmployeeDetailPage() {
 
                 {/* ═══ AUTO-RESET PASSWORD DIALOG (legacy) ═══════════ */}
                 <Dialog open={showResetPwd} onOpenChange={(open) => { if (!open) { setShowResetPwd(false); setResetPwdResult(null); } }}>
-                    <DialogContent className="sm:max-w-md">
+                    <DialogContent fullScreenMobile className="sm:max-w-md">
                         <DialogHeader>
                             <DialogTitle>Auto-Generate Password</DialogTitle>
                             <DialogDescription>

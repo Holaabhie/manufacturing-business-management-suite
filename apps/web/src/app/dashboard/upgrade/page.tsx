@@ -574,7 +574,7 @@ export default function UpgradePage() {
       <Dialog open={showCheckout && !!clientSecret} onOpenChange={(open) => {
         if (!open) handleCheckoutCancel();
       }}>
-        <DialogContent className="sm:max-w-[480px] bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px] overflow-hidden p-0">
+        <DialogContent fullScreenMobile className="sm:max-w-[480px] bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px] overflow-hidden p-0">
           <div className="p-6">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-[20px] font-semibold text-[var(--foreground)]">
@@ -616,7 +616,7 @@ export default function UpgradePage() {
       </Dialog>
 
       <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
-        <DialogContent className="sm:max-w-[440px] bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px] overflow-hidden p-0">
+        <DialogContent fullScreenMobile className="sm:max-w-[440px] bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px] overflow-hidden p-0">
           <div className="p-6">
             <DialogHeader>
               <DialogTitle className="text-[20px] font-semibold text-[var(--foreground)]">Cancel Subscription</DialogTitle>

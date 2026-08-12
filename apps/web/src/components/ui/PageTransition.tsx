@@ -50,7 +50,7 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
         exit="exit"
         // flex column so pages that use flex-1 / min-h-0 internally
         // still fill available height correctly.
-        style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
+        style={{ flex: 1, minHeight: 0, minWidth: 0, width: '100%', display: 'flex', flexDirection: 'column' }}
       >
         {children}
       </motion.div>

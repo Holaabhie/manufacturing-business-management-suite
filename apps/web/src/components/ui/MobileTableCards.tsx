@@ -69,32 +69,32 @@ export function MobileTableCards<T extends Record<string, any>>({
         return (
           <div
             key={key}
-            className="rounded-[14px] border border-[var(--border)] bg-[var(--card)] p-3 sm:p-4 space-y-2.5 overflow-hidden"
+            className="rounded-[14px] border border-[var(--border)] bg-[var(--card)] p-3 sm:p-4 space-y-2.5 overflow-hidden min-w-0 w-full"
           >
             {/* Card title — primary field */}
             <div className="min-w-0">
-              <span className="text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] font-medium">
+              <span className="block text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] font-medium">
                 {primaryField.label}
               </span>
-              <div className="text-[15px] font-semibold text-[var(--foreground)] truncate mt-0.5">
+              <div className="mt-0.5 truncate text-[15px] font-semibold text-[var(--foreground)]">
                 {titleValue ?? "—"}
               </div>
             </div>
 
             {/* Detail fields — 2-col grid */}
             {detailFields.length > 0 && (
-              <div className="grid grid-cols-2 gap-x-3 sm:gap-x-4 gap-y-2 pt-2 border-t border-[var(--border)]/50">
+              <div className="grid grid-cols-2 gap-x-3 sm:gap-x-4 gap-y-2 pt-2 border-t border-[var(--border)]/50 min-w-0 w-full">
                 {detailFields.map((field) => {
                   const value = field.render
                     ? field.render(row[field.key], row)
                     : row[field.key];
 
                   return (
-                    <div key={field.key} className="min-w-0">
+                    <div key={field.key} className="min-w-0 overflow-hidden">
                       <span className="text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] font-medium block">
                         {field.label}
                       </span>
-                      <div className="text-[14px] text-[var(--foreground)] mt-0.5 break-words">
+                      <div className="text-[14px] text-[var(--foreground)] mt-0.5 break-words min-w-0 truncate">
                         {value ?? "—"}
                       </div>
                     </div>

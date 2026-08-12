@@ -47,10 +47,13 @@ declare global {
 
 // ─── MongoClient (for raw driver queries via getDb()) ──────────
 const clientOptions: MongoClientOptions = {
-  connectTimeoutMS: 5_000,
-  socketTimeoutMS: 45_000,
-  serverSelectionTimeoutMS: 5_000,
+  connectTimeoutMS: 15_000,
+  socketTimeoutMS: 30_000,
+  serverSelectionTimeoutMS: 30_000,
+  heartbeatFrequencyMS: 10_000,
   maxPoolSize: 10,
+  minPoolSize: 1,
+  maxIdleTimeMS: 30_000,
   retryWrites: true,
   retryReads: true,
 };
@@ -118,9 +121,13 @@ export async function connectToDatabase() {
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
-      connectTimeoutMS: 5_000,
-      socketTimeoutMS: 45_000,
-      serverSelectionTimeoutMS: 5_000,
+      connectTimeoutMS: 15_000,
+      socketTimeoutMS: 30_000,
+      serverSelectionTimeoutMS: 30_000,
+      heartbeatFrequencyMS: 10_000,
+      maxPoolSize: 10,
+      minPoolSize: 1,
+      maxIdleTimeMS: 30_000,
     };
 
     cached.promise = mongoose.connect(resolvedUri!, opts).then(() => {

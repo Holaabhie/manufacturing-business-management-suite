@@ -722,7 +722,7 @@ export default function BillingPage() {
     }
 
     return (
-        <div className="space-y-8 bg-[var(--background)] min-h-screen p-6 rounded-3xl overflow-x-hidden">
+        <div className="space-y-8 bg-[var(--background)] p-6 rounded-3xl overflow-x-hidden">
             <CollapsingTitle
                 title="Tally-Style Billing"
                 subtitle={`${bills.length} invoices · \u20B9${(stats.totalValue / 100000).toFixed(1)}L total billed · ${stats.paid} paid`}
@@ -764,17 +764,10 @@ export default function BillingPage() {
                         Tally Export
                     </IOSButton>
 
-                    <Dialog open={isDialogOpen} onOpenChange={(open) => {
-                        setIsDialogOpen(open);
-                        if (!open) resetForm();
-                    }}>
-                        <DialogTrigger asChild>
-                            <IOSButton variant="filled">
-                                <Plus className="min-w-4 h-5 w-5 mr-1.5" />
-                                Create New Invoice
-                            </IOSButton>
-                        </DialogTrigger>
-                    </Dialog>
+                    <IOSButton variant="filled" onClick={() => setIsDialogOpen(true)}>
+                        <Plus className="min-w-4 h-5 w-5 mr-1.5" />
+                        Create New Invoice
+                    </IOSButton>
 
                     {/* New Redesigned Invoice Modal */}
                     <CreateInvoiceModal
@@ -1382,7 +1375,7 @@ export default function BillingPage() {
 
             {/* Delete Confirmation Dialog */}
             <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                <DialogContent className="max-w-[350px] bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px]">
+                <DialogContent fullScreenMobile className="max-w-[350px] bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px]">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
                       <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg, rgba(239,68,68,0.4), rgba(255,255,255,0.06))', border: '1px solid rgba(255,255,255,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <Trash2 className="h-[18px] w-[18px] text-[#f87171]" />

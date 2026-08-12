@@ -421,7 +421,7 @@ export default function AnalyticsPage() {
     const funnelColors = ["var(--primary)", "#2563EB", "#16A34A", "#059669"];
 
     return (
-        <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-6 bg-[#F1F4F9] dark:bg-transparent min-h-screen -m-6 p-6">
+        <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-6 bg-[#F1F4F9] dark:bg-transparent -m-6 p-6">
             {/* Header */}
             <motion.div variants={staggerItem} className="flex items-end justify-between">
                 <div>

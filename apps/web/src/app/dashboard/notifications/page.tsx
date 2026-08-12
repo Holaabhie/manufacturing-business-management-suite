@@ -197,7 +197,7 @@ export default function NotificationsPage() {
       variants={staggerContainer}
       initial="initial"
       animate="animate"
-      className="space-y-6 ind-page bg-[#F1F4F9] dark:bg-transparent min-h-screen -m-6 p-6"
+      className="space-y-6 ind-page bg-[#F1F4F9] dark:bg-transparent -m-6 p-6"
     >
       {/* ── Header ── */}
       <motion.div variants={staggerItem}>

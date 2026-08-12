@@ -12,7 +12,7 @@ import {
     Download,
     ChevronDown,
     TrendingUp,
-    Layers,
+    Wallet,
 } from "lucide-react";
 import { IOSCard, IOSCardHeader, IOSCardContent } from "@/components/ui/ios/IOSCard";
 import { IOSButton } from "@/components/ui/ios/IOSButton";
@@ -97,14 +97,14 @@ function KPICard({ label, value, icon: Icon, color }: {
     };
 
     return (
-        <IOSCard variant="elevated" padding="none" className="p-3 sm:p-4 md:p-5 bg-white dark:bg-[var(--card)] !border !border-black/[0.09] dark:!border-[var(--border)] shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] dark:shadow-none">
+        <IOSCard variant="elevated" padding="none" className="p-2.5 sm:p-4 md:p-5 bg-white dark:bg-[var(--card)] !border !border-black/[0.09] dark:!border-[var(--border)] shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] dark:shadow-none min-w-0 w-full overflow-hidden">
             <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-                <div className={cn("w-8 h-8 sm:w-[40px] sm:h-[40px] rounded-[10px] flex items-center justify-center flex-shrink-0", bgMap[color])}>
+                <div className={cn("w-7 h-7 sm:w-[40px] sm:h-[40px] rounded-[10px] flex items-center justify-center flex-shrink-0", bgMap[color])}>
                     <Icon className={cn("h-4 w-4 sm:h-[18px] sm:w-[18px]", iconColorMap[color])} />
                 </div>
-                <span className="text-[12px] sm:text-[13px] text-[var(--muted-foreground)] leading-[16px] sm:leading-[18px] min-w-0 truncate">{label}</span>
+                <span className="text-[11px] sm:text-[13px] text-[var(--muted-foreground)] leading-[16px] sm:leading-[18px] min-w-0 truncate">{label}</span>
             </div>
-            <span className="text-[20px] sm:text-[24px] md:text-[28px] font-bold tracking-tight tabular-nums text-[var(--foreground)] block truncate">{value}</span>
+            <span className="text-[16px] sm:text-[24px] md:text-[28px] font-bold tracking-tight tabular-nums text-[var(--foreground)] block truncate">{value}</span>
         </IOSCard>
     );
 }
@@ -208,13 +208,13 @@ export default function PreviousYearsPage() {
 
     return (
         <motion.div
-            className="space-y-4 sm:space-y-6 max-w-[1200px] mx-auto scroll-mt-14 sm:scroll-mt-16 pb-28 sm:pb-8"
+            className="w-full min-w-0 overflow-x-clip space-y-4 sm:space-y-6 max-w-[1200px] mx-auto scroll-mt-14 sm:scroll-mt-16 pb-28 sm:pb-8"
             variants={staggerContainer}
             initial="hidden"
             animate="visible"
         >
             {/* ─── Header ──────────────────────────────────── */}
-            <motion.div variants={staggerItem} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 min-w-0">
+            <motion.div variants={staggerItem} className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 min-w-0">
                 <div className="min-w-0 flex-1">
                     <h1 className="text-[22px] sm:text-[24px] md:text-[28px] font-bold tracking-[0.36px] text-[var(--foreground)] truncate">
                         Previous Years
@@ -293,7 +293,7 @@ export default function PreviousYearsPage() {
 
             {/* ─── KPI Summary Cards ─────────────────────── */}
             {data?.summary && (
-                <motion.div variants={staggerItem} className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+                <motion.div variants={staggerItem} className="grid grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-4 gap-3 w-full min-w-0">
                     <KPICard
                         label="Total Revenue"
                         value={formatCurrency(data.summary.totalRevenue)}
@@ -313,17 +313,18 @@ export default function PreviousYearsPage() {
                         color="orange"
                     />
                     <KPICard
-                        label="Materials Used"
-                        value={data.summary.totalMaterialDeducted.toLocaleString("en-IN")}
-                        icon={Layers}
+                        label="Payments to Collect"
+                        value={formatCurrency(Math.max(0, data.summary.totalRevenue - data.summary.totalPaid))}
+                        icon={Wallet}
                         color="purple"
                     />
                 </motion.div>
             )}
 
             {/* ─── Tab Navigation (Pill Style) ───────────── */}
-            <motion.div variants={staggerItem}>
-                <div className="flex gap-1 sm:gap-1.5 p-1 sm:p-1.5 bg-[var(--accent)]/50 dark:bg-[var(--accent)]/30 rounded-[14px] overflow-x-auto scrollbar-hide">
+            <motion.div variants={staggerItem} className="w-full min-w-0">
+                <div className="w-full min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden p-1 sm:p-1.5 bg-[var(--accent)]/50 dark:bg-[var(--accent)]/30 rounded-[14px]">
+                  <div className="flex gap-1 sm:gap-1.5 w-max">
                     {TABS.map((tab) => {
                         const Icon = tab.icon;
                         const isActive = activeTab === tab.id;
@@ -338,14 +339,14 @@ export default function PreviousYearsPage() {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={cn(
-                                    "flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-[10px] text-[13px] sm:text-[14px] font-medium whitespace-nowrap transition-all duration-200",
+                                    "flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-[10px] text-[13px] sm:text-[14px] font-medium transition-all duration-200 min-w-0 flex-shrink-0",
                                     isActive
                                         ? "bg-white dark:bg-[var(--card)] text-[var(--foreground)] shadow-[0_1px_4px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.2)]"
                                         : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-white/50 dark:hover:bg-white/5"
                                 )}
                             >
-                                <Icon className="h-4 w-4" />
-                                {tab.label}
+                                <Icon className="h-4 w-4 flex-shrink-0" />
+                                <span className="truncate">{tab.label}</span>
                                 {(count ?? 0) > 0 && (
                                     <span className={cn(
                                         "text-[11px] px-1.5 py-0.5 rounded-full font-medium",
@@ -359,11 +360,12 @@ export default function PreviousYearsPage() {
                             </button>
                         );
                     })}
+                  </div>
                 </div>
             </motion.div>
 
             {/* ─── Data Table ─────────────────────────────── */}
-            <motion.div variants={staggerItem}>
+            <motion.div variants={staggerItem} className="w-full min-w-0 overflow-hidden">
                 {dataLoading ? (
                     <div className="flex items-center justify-center py-20">
                         <div className="w-8 h-8 border-[3px] border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
@@ -376,7 +378,7 @@ export default function PreviousYearsPage() {
                     </IOSCard>
                 ) : (
                     <IOSCard variant="elevated" padding="none" className="overflow-hidden bg-white dark:bg-[var(--card)] !border !border-black/[0.09] dark:!border-[var(--border)]">
-                        <div className="overflow-x-auto scrollbar-thin">
+                        <div className="w-full min-w-0 overflow-x-auto">
                             {activeTab === "orders" && <OrdersTable data={data.orders || []} />}
                             {activeTab === "productions" && <ProductionsTable data={data.productions || []} />}
                             {activeTab === "bills" && <BillsTable data={data.bills || []} />}
@@ -420,11 +422,13 @@ function OrdersTable({ data }: { data: any[] }) {
                     { key: "product_name", label: "Product", primary: true },
                     { key: "quantity", label: "Quantity", render: (_v, o) => `${o.quantity} ${o.unit || ""}` },
                     { key: "total_amount", label: "Amount", render: (_v, o) => formatCurrency(o.total_amount || 0) },
-                    { key: "status", label: "Status", render: (_v, o) => {
-                        const ps = o.production_status || o.status;
-                        const s = ps === "completed" && o.payment_status === "paid" ? "completed" : ps === "completed" ? "awaiting_payment" : ps || "pending";
-                        return <StatusBadge status={s} />;
-                    }},
+                    {
+                        key: "status", label: "Status", render: (_v, o) => {
+                            const ps = o.production_status || o.status;
+                            const s = ps === "completed" && o.payment_status === "paid" ? "completed" : ps === "completed" ? "awaiting_payment" : ps || "pending";
+                            return <StatusBadge status={s} />;
+                        }
+                    },
                     { key: "payment_status", label: "Payment", render: (_v, o) => <StatusBadge status={o.payment_status} /> },
                     { key: "createdAt", label: "Date", render: (_v, o) => o.createdAt ? new Date(o.createdAt).toLocaleDateString("en-IN") : "—" },
                 ]}
@@ -564,15 +568,19 @@ function PaymentsTable({ data }: { data: any[] }) {
                 data={data}
                 className="md:hidden"
                 fields={[
-                    { key: "amount", label: "Amount", primary: true, render: (_v, p) => (
-                        <span className="font-semibold text-[var(--erp-success)]">{formatCurrency(p.amount || 0)}</span>
-                    )},
+                    {
+                        key: "amount", label: "Amount", primary: true, render: (_v, p) => (
+                            <span className="font-semibold text-[var(--erp-success)]">{formatCurrency(p.amount || 0)}</span>
+                        )
+                    },
                     { key: "payment_method", label: "Method", render: (v) => <span className="capitalize">{(v || "").replace(/_/g, " ")}</span> },
                     { key: "notes", label: "Notes", render: (v) => v || "\u2014" },
-                    { key: "payment_date", label: "Date", render: (_v, p) => {
-                        const d = p.payment_date || p.createdAt;
-                        return d ? new Date(d).toLocaleDateString("en-IN") : "\u2014";
-                    }},
+                    {
+                        key: "payment_date", label: "Date", render: (_v, p) => {
+                            const d = p.payment_date || p.createdAt;
+                            return d ? new Date(d).toLocaleDateString("en-IN") : "\u2014";
+                        }
+                    },
                 ]}
             />
             {/* Desktop table */}

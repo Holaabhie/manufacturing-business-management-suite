@@ -55,10 +55,13 @@ function DialogContent({
   children,
   showCloseButton = true,
   fullScreen = false,
+  fullScreenMobile = false,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
   fullScreen?: boolean
+  /** Full-bleed on mobile (<md), standard centered dialog on md+. */
+  fullScreenMobile?: boolean
 }) {
   return (
     <DialogPortal data-slot="dialog-portal">
@@ -72,30 +75,42 @@ function DialogContent({
                 "p-0 outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0",
                 "data-[state=open]:animate-[sheetSlideUp_0.28s_ease] data-[state=closed]:animate-[sheetSlideDown_0.22s_ease_forwards]",
               ]
-            : [
-                /* ── Mobile: bottom sheet ── */
-                "fixed bottom-0 left-1/2 z-[1001]",
-                "w-full max-w-[480px]",
-                "max-h-[88dvh] flex flex-col",
-                "rounded-t-[32px] rounded-b-none",
-                "p-0 outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0",
-                "data-[state=open]:animate-[sheetSlideUp_0.28s_ease] data-[state=closed]:animate-[sheetSlideDown_0.22s_ease_forwards]",
-                /* ── Desktop md+: centered dialog ── */
-                "md:top-1/2 md:bottom-auto",
-                "md:max-h-[85dvh]",
-                "md:rounded-[24px]",
-                "md:data-[state=open]:animate-[dialogScaleIn_0.22s_ease] md:data-[state=closed]:animate-[dialogScaleOut_0.18s_ease_forwards]",
-              ],
+            : fullScreenMobile
+              ? [
+                  /* ── Mobile: true full-bleed page ── */
+                  "fixed inset-0 z-[1001] flex flex-col overflow-hidden",
+                  "p-0 outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0",
+                  "data-[state=open]:animate-[sheetSlideUp_0.28s_ease] data-[state=closed]:animate-[sheetSlideDown_0.22s_ease_forwards]",
+                  /* ── Desktop md+: centered dialog (same as default) ── */
+                  "md:inset-auto md:fixed md:bottom-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2",
+                  "md:w-full md:max-h-[85dvh]",
+                  "md:rounded-[24px]",
+                  "md:data-[state=open]:animate-[dialogScaleIn_0.22s_ease] md:data-[state=closed]:animate-[dialogScaleOut_0.18s_ease_forwards]",
+                ]
+              : [
+                  /* ── Mobile: bottom sheet ── */
+                  "fixed bottom-0 left-1/2 -translate-x-1/2 z-[1001]",
+                  "w-full max-w-[480px]",
+                  "max-h-[88dvh] flex flex-col",
+                  "rounded-t-[32px] rounded-b-none",
+                  "p-0 outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0",
+                  "data-[state=open]:animate-[sheetSlideUp_0.28s_ease] data-[state=closed]:animate-[sheetSlideDown_0.22s_ease_forwards]",
+                  /* ── Desktop md+: centered dialog ── */
+                  "md:top-1/2 md:bottom-auto md:-translate-y-1/2",
+                  "md:max-h-[85dvh]",
+                  "md:rounded-[24px]",
+                  "md:data-[state=open]:animate-[dialogScaleIn_0.22s_ease] md:data-[state=closed]:animate-[dialogScaleOut_0.18s_ease_forwards]",
+                ],
           className
         )}
         style={
-          fullScreen
+          (fullScreen || fullScreenMobile)
             ? {
                 background: 'var(--overlay-sheet-bg)',
                 color: 'var(--overlay-text-primary)',
               }
             : {
-                transform: 'translateX(-50%)',
+
                 background: 'var(--overlay-sheet-bg)',
                 color: 'var(--overlay-text-primary)',
                 border: '1px solid var(--overlay-border)',
@@ -106,7 +121,7 @@ function DialogContent({
         {...props}
       >
         {/* Drag handle — only for bottom sheet variant (hidden on md+) */}
-        {!fullScreen && (
+        {!fullScreen && !fullScreenMobile && (
           <div className="flex justify-center pt-4 pb-2 md:hidden">
             <div
               style={{

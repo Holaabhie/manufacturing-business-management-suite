@@ -926,7 +926,7 @@ export default function PurchasingPage() {
           if (!open) setVendorForm(emptyVendorForm);
         }}
       >
-        <DialogContent className="max-w-md md:max-w-lg p-0 overflow-hidden rounded-[24px] border-[var(--glass-border)] glass-dialog">
+        <DialogContent fullScreenMobile className="max-w-md md:max-w-lg p-0 overflow-hidden rounded-[24px] border-[var(--glass-border)] glass-dialog">
           <ScrollArea className="max-h-[90vh]">
             <div className="p-6">
               <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid var(--glass-border)" }}>
@@ -1013,7 +1013,7 @@ export default function PurchasingPage() {
 
       {/* ════════════ NEW PURCHASE ORDER DIALOG ════════════ */}
       <Dialog open={isPODialogOpen} onOpenChange={setIsPODialogOpen}>
-        <DialogContent className="w-full max-w-[420px] sm:max-w-[560px] md:max-w-[680px] lg:max-w-[750px] p-0 max-h-[90vh] overflow-hidden rounded-[24px] border-[var(--glass-border)] glass-dialog flex flex-col">
+        <DialogContent fullScreenMobile className="w-full max-w-[420px] sm:max-w-[560px] md:max-w-[680px] lg:max-w-[750px] p-0 max-h-[90vh] overflow-hidden rounded-[24px] border-[var(--glass-border)] glass-dialog flex flex-col">
           <div className="overflow-y-auto flex-1">
             <div className="p-4 sm:p-6 md:p-8">
               <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid var(--glass-border)" }}>
@@ -1258,7 +1258,7 @@ export default function PurchasingPage() {
 
       {/* ════════════ ORDER DETAIL DIALOG ════════════ */}
       <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-        <DialogContent className="max-w-md md:max-w-lg p-0 overflow-hidden rounded-[24px] border-[var(--glass-border)] glass-dialog">
+        <DialogContent fullScreenMobile className="max-w-md md:max-w-lg p-0 overflow-hidden rounded-[24px] border-[var(--glass-border)] glass-dialog">
           {detailOrder && (
             <ScrollArea className="max-h-[90vh]">
               <div className="p-6 space-y-4">

@@ -86,7 +86,7 @@ export const IOSBadge = React.forwardRef<HTMLSpanElement, IOSBadgeProps>(
             <span
                 ref={ref}
                 className={cn(
-                    'inline-flex items-center gap-1.5 font-medium leading-none whitespace-nowrap',
+                    'inline-flex items-center gap-1.5 font-medium leading-none whitespace-nowrap truncate max-w-full',
                     sizeMap[size],
                     colorMap[color][variant],
                     className
