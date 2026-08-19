@@ -16,13 +16,21 @@ import {
   Settings,
   ChevronDown,
   CheckCheck,
+  ExternalLink,
+  Copy,
 } from "lucide-react";
+import {
+  buildWhatsAppLink,
+  buildEmailLink,
+  buildSmsLink,
+} from "@/lib/notifications/deepLinks";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { IOSCard } from "@/components/ui/ios/IOSCard";
 import { staggerContainer, staggerItem } from "@/styles/animations";
 import { StatWidget } from "@/components/ui/StatWidget";
 import { useRole } from "@/lib/hooks/use-role";
+import { useTranslations } from "next-intl";
 import { AccessDenied } from "@/components/AccessDenied";
 import { useAppNotifications } from "@/lib/hooks/use-app-notifications";
 import {
@@ -55,6 +63,7 @@ interface LogEntry {
 }
 
 export default function NotificationsPage() {
+  const tCommon = useTranslations("common");
   const { isStaff, loading: roleLoading } = useRole();
   const [activeTab, setActiveTab] = useState<
     "activity" | "templates" | "logs"
@@ -141,12 +150,52 @@ export default function NotificationsPage() {
     }
   };
 
+  const handleDispatchSend = async (log: LogEntry) => {
+    try {
+      const ch = log.channel?.toLowerCase();
+      if (ch === "telegram") {
+        await navigator.clipboard.writeText(log.message || "");
+        toast.success("Message copied — paste it in Telegram");
+      } else {
+        let url = "";
+        if (ch === "whatsapp") {
+          url = buildWhatsAppLink(log.recipientContact || "", log.message || "");
+        } else if (ch === "email") {
+          url = buildEmailLink(log.recipientContact || "", log.templateName || "Notification", log.message || "");
+        } else if (ch === "sms") {
+          url = buildSmsLink(log.recipientContact || "", log.message || "");
+        }
+        if (url) window.open(url, "_blank");
+      }
+
+      // Optimistically update status
+      setLogs((prev) =>
+        prev.map((l) => (l.id === log.id ? { ...l, status: "sent" } : l)),
+      );
+
+      // Persist via PATCH
+      fetch("/api/v1/notifications/logs", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: log.id, status: "sent" }),
+      }).catch(() => {
+        // Revert on failure
+        setLogs((prev) =>
+          prev.map((l) => (l.id === log.id ? { ...l, status: log.status } : l)),
+        );
+        toast.error("Failed to update log status");
+      });
+    } catch {
+      toast.error("Action failed");
+    }
+  };
+
   // Block staff
   if (!roleLoading && isStaff) {
     return (
       <AccessDenied
-        title="Notifications Access Restricted"
-        description="Notification management is only accessible to business owners."
+        title={tCommon("notificationsAccessRestricted")}
+        description={tCommon("notificationsAccessRestrictedDesc")}
       />
     );
   }
@@ -714,6 +763,34 @@ export default function NotificationsPage() {
                           )}
                           {log.status}
                         </span>
+                        {/* ── Send action button ── */}
+                        {(log.status === "queued" ||
+                          log.status === "pending" ||
+                          log.status === "failed") && (
+                          <button
+                            title={
+                              !log.recipientContact &&
+                              log.channel?.toLowerCase() !== "telegram"
+                                ? "No contact info available"
+                                : log.channel?.toLowerCase() === "telegram"
+                                  ? "Copy message"
+                                  : "Send now"
+                            }
+                            disabled={
+                              !log.recipientContact &&
+                              log.channel?.toLowerCase() !== "telegram"
+                            }
+                            onClick={() => handleDispatchSend(log)}
+                            className="flex items-center justify-center w-[26px] h-[26px] rounded-[7px] transition-colors disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--ind-input-bg)]"
+                            style={{ color: "var(--ind-text-muted)" }}
+                          >
+                            {log.channel?.toLowerCase() === "telegram" ? (
+                              <Copy className="h-3.5 w-3.5" />
+                            ) : (
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                        )}
                         <span
                           className="text-[10px]"
                           style={{ color: "var(--ind-text-muted)" }}

@@ -34,6 +34,7 @@ import { StatWidget } from "@/components/ui/StatWidget";
 import { ConfirmDeleteSheet } from "@/components/ui/ConfirmDeleteSheet";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { exportToExcel } from "@/lib/excel-export";
+import { useTranslations } from "next-intl";
 import { AccessDenied } from "@/components/AccessDenied";
 
 // ─── Types ──────────────────────────────────────────────────────
@@ -111,6 +112,7 @@ function StatusBadge({ status }: { status: string }) {
 // MAIN PAGE
 // ═════════════════════════════════════════════════════════════════
 export default function EmployeeManagementPage() {
+    const tCommon = useTranslations("common");
     const router = useRouter();
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [loading, setLoading] = useState(true);
@@ -464,8 +466,8 @@ export default function EmployeeManagementPage() {
     if (currentUserRole !== "Admin") {
         return (
             <AccessDenied
-                title="Restricted Access"
-                description="Employee management is restricted to administrators only."
+                title={tCommon("restrictedAccess")}
+                description={tCommon("employeeAccessRestricted")}
             />
         );
     }
@@ -1030,9 +1032,9 @@ export default function EmployeeManagementPage() {
                     onClose={() => { setActionTarget(null); setActionType(null); }}
                     onConfirm={handleAction}
                     isDeleting={actionLoading}
-                    entityLabel="employee"
+                    entityLabel={tCommon("entityEmployee")}
                     entityName={actionTarget ? `${actionTarget.fullName} (${actionTarget.employeeId})` : undefined}
-                    consequenceText="will be permanently removed from staff records. This cannot be undone."
+                    consequenceText={tCommon("consequenceEmployee")}
                 />
 
                 <Dialog

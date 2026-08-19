@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
 // Framer motion animation variants matching the dashboard's staggerItem
@@ -72,6 +73,7 @@ export function StatWidget({
     href?: string;
 }) {
     const router = useRouter();
+    const t = useTranslations("common");
     // Guard: if change is null, undefined, or NaN, hide the badge entirely
     const hasValidChange = change != null && !isNaN(change);
     const isPositive = hasValidChange && change >= 0;
@@ -93,7 +95,7 @@ export function StatWidget({
                 className="kpi-card relative min-w-0"
                 tabIndex={0}
                 role={href ? "link" : "article"}
-                aria-label={`${label}: ${prefix}${value.toLocaleString("en-IN")}${suffix}${hasValidChange && change !== 0 ? `, ${isPositive ? "up" : "down"} ${Math.abs(change)}%` : ""}`}
+                aria-label={`${label}: ${prefix}${value.toLocaleString("en-IN")}${suffix}${hasValidChange && change !== 0 ? `, ${isPositive ? t("up") : t("down")} ${Math.abs(change)}%` : ""}`}
                 onClick={href ? () => router.push(href) : undefined}
             >
                 {/* Header: Icon + Badge */}
@@ -145,6 +147,7 @@ export function EmptyWidgetSlot({
     onAdd: () => void;
     delay?: number;
 }) {
+    const t = useTranslations("common");
     return (
         <motion.div variants={staggerItem} custom={delay}>
             <div
@@ -152,7 +155,7 @@ export function EmptyWidgetSlot({
                 onClick={onAdd}
                 role="button"
                 tabIndex={0}
-                aria-label="Add Widget"
+                aria-label={t("addWidget")}
                 style={{ height: "100%" }}
             >
                 <div
@@ -163,7 +166,7 @@ export function EmptyWidgetSlot({
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                 </div>
-                <div className="text-sm font-medium dark:text-[rgba(186,214,243,0.6)] text-gray-400 tracking-[0.01em]">Add Widget</div>
+                <div className="text-sm font-medium dark:text-[rgba(186,214,243,0.6)] text-gray-400 tracking-[0.01em]">{t("addWidget")}</div>
             </div>
         </motion.div>
     );

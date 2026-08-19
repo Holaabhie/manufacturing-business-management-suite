@@ -191,3 +191,66 @@ export const GET = withRateLimit(
     ),
     { tier: "read" },
 );
+
+export const PATCH = withRateLimit(
+    withApiRoute(
+        withAuth(async (request: NextRequest, user: AuthenticatedUser) => {
+            const db = await getDb();
+            const ownerId = getDataOwnerId(user);
+
+            const body = await request.json();
+            const { id, status } = body as { id?: string; status?: string };
+
+            if (!id || !status) {
+                return envelope.error("id and status are required", 400, "VALIDATION_ERROR");
+            }
+            if (status !== "sent" && status !== "failed") {
+                return envelope.error(
+                    'status must be "sent" or "failed"',
+                    400,
+                    "VALIDATION_ERROR",
+                );
+            }
+
+            let objectId: ObjectId;
+            try {
+                objectId = new ObjectId(id);
+            } catch {
+                return envelope.error("Invalid log id", 400, "VALIDATION_ERROR");
+            }
+
+            // Ensure the log belongs to the authenticated user
+            const updateFields: Record<string, unknown> = { status };
+            if (status === "sent") {
+                updateFields.sentAt = new Date();
+            }
+
+            const result = await db
+                .collection("notification_logs")
+                .findOneAndUpdate(
+                    { _id: objectId, userId: ownerId },
+                    { $set: updateFields },
+                    { returnDocument: "after" },
+                );
+
+            if (!result) {
+                return envelope.error("Log not found", 404, "NOT_FOUND");
+            }
+
+            return envelope.ok({
+                id: result._id.toString(),
+                templateId: result.templateId,
+                templateName: result.templateName || "Unknown",
+                channel: result.channel,
+                eventType: result.eventType || "unknown",
+                recipientName: result.recipientName || "Unknown",
+                recipientContact: result.recipientContact || "",
+                status: result.status,
+                message: result.message || result.renderedContent || "",
+                sentAt: result.sentAt,
+                createdAt: result.createdAt,
+            });
+        }),
+    ),
+    { tier: "write" },
+);

@@ -207,12 +207,28 @@ export default function PreviousYearsPage() {
     if (!isOwner) return <AccessDenied />;
 
     return (
-        <motion.div
-            className="w-full min-w-0 overflow-x-clip space-y-4 sm:space-y-6 max-w-[1200px] mx-auto scroll-mt-14 sm:scroll-mt-16 pb-28 sm:pb-8"
-            variants={staggerContainer}
-            initial="hidden"
-            animate="visible"
+        <div
+            className={[
+                "w-full min-w-0 overflow-x-clip",
+                // let the offending row wrap instead of inflating
+                "[&_.justify-between.items-start]:flex-wrap",
+                "[&_.justify-between.items-start]:gap-x-3",
+                "[&_.justify-between.items-start]:gap-y-1",
+                "[&_.justify-between.items-start]:min-w-0",
+                // allow both children to shrink below min-content
+                "[&_.justify-between.items-start>*]:min-w-0",
+                "[&_.justify-between.items-start>*]:max-w-full",
+                // stop long IDs / currency from setting the min-content floor
+                "[&_.justify-between.items-start_*]:!whitespace-normal",
+                "[&_.justify-between.items-start_.font-mono]:truncate",
+            ].join(" ")}
         >
+            <motion.div
+                className="w-full min-w-0 overflow-x-clip space-y-4 sm:space-y-6 max-w-[1200px] mx-auto scroll-mt-14 sm:scroll-mt-16 pb-28 sm:pb-8"
+                variants={staggerContainer}
+                initial="hidden"
+                animate="visible"
+            >
             {/* ─── Header ──────────────────────────────────── */}
             <motion.div variants={staggerItem} className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 min-w-0">
                 <div className="min-w-0 flex-1">
@@ -293,7 +309,7 @@ export default function PreviousYearsPage() {
 
             {/* ─── KPI Summary Cards ─────────────────────── */}
             {data?.summary && (
-                <motion.div variants={staggerItem} className="grid grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-4 gap-3 w-full min-w-0">
+                <motion.div variants={staggerItem} className="grid grid-cols-2 lg:grid-cols-4 gap-3 w-full min-w-0">
                     <KPICard
                         label="Total Revenue"
                         value={formatCurrency(data.summary.totalRevenue)}
@@ -339,7 +355,7 @@ export default function PreviousYearsPage() {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={cn(
-                                    "flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-[10px] text-[13px] sm:text-[14px] font-medium transition-all duration-200 min-w-0 flex-shrink-0",
+                                    "flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-[10px] text-[13px] sm:text-[14px] font-medium transition-all duration-200 shrink-0 whitespace-nowrap",
                                     isActive
                                         ? "bg-white dark:bg-[var(--card)] text-[var(--foreground)] shadow-[0_1px_4px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.2)]"
                                         : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-white/50 dark:hover:bg-white/5"
@@ -365,7 +381,7 @@ export default function PreviousYearsPage() {
             </motion.div>
 
             {/* ─── Data Table ─────────────────────────────── */}
-            <motion.div variants={staggerItem} className="w-full min-w-0 overflow-hidden">
+            <motion.div variants={staggerItem} className="w-full min-w-0 overflow-x-clip">
                 {dataLoading ? (
                     <div className="flex items-center justify-center py-20">
                         <div className="w-8 h-8 border-[3px] border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
@@ -377,8 +393,8 @@ export default function PreviousYearsPage() {
                         <p className="text-[15px] text-[var(--muted-foreground)] mt-1">Choose a year from the dropdown to view archived data.</p>
                     </IOSCard>
                 ) : (
-                    <IOSCard variant="elevated" padding="none" className="overflow-hidden bg-white dark:bg-[var(--card)] !border !border-black/[0.09] dark:!border-[var(--border)]">
-                        <div className="w-full min-w-0 overflow-x-auto">
+                    <IOSCard variant="elevated" padding="none" className="overflow-x-clip bg-white dark:bg-[var(--card)] !border !border-black/[0.09] dark:!border-[var(--border)]">
+                        <div className="w-full min-w-0">
                             {activeTab === "orders" && <OrdersTable data={data.orders || []} />}
                             {activeTab === "productions" && <ProductionsTable data={data.productions || []} />}
                             {activeTab === "bills" && <BillsTable data={data.bills || []} />}
@@ -394,6 +410,7 @@ export default function PreviousYearsPage() {
                 )}
             </motion.div>
         </motion.div>
+        </div>
     );
 }
 
@@ -434,35 +451,37 @@ function OrdersTable({ data }: { data: any[] }) {
                 ]}
             />
             {/* Desktop table */}
-            <table className="hidden md:table min-w-[600px] w-full">
-                <thead>
-                    <tr>
-                        <th className={cn(thClass, "sticky left-0 z-10 bg-[var(--accent)]/30")}>Product</th>
-                        <th className={thClass}>Quantity</th>
-                        <th className={cn(thClass, "text-right")}>Amount</th>
-                        <th className={thClass}>Status</th>
-                        <th className={thClass}>Payment</th>
-                        <th className={thClass}>Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {data.map((o) => (
-                        <tr key={o.id} className="hover:bg-[var(--accent)]/20 transition-colors">
-                            <td className={cn(tdClass, "font-medium max-w-[180px] truncate sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>{o.product_name}</td>
-                            <td className={cn(tdClass, "whitespace-nowrap")}>{o.quantity} {o.unit}</td>
-                            <td className={cn(tdClass, "font-semibold tabular-nums text-right whitespace-nowrap")}>{formatCurrency(o.total_amount || 0)}</td>
-                            <td className={tdClass}><StatusBadge status={(() => {
-                                const ps = o.production_status || o.status;
-                                if (ps === "completed" && o.payment_status === "paid") return "completed";
-                                if (ps === "completed") return "awaiting_payment";
-                                return ps || "pending";
-                            })()} /></td>
-                            <td className={tdClass}><StatusBadge status={o.payment_status} /></td>
-                            <td className={cn(tdClass, "text-[var(--muted-foreground)] tabular-nums whitespace-nowrap")}>{o.createdAt ? new Date(o.createdAt).toLocaleDateString("en-IN") : "—"}</td>
+            <div className="w-full min-w-0 overflow-x-auto">
+                <table className="hidden md:table min-w-[600px] w-full">
+                    <thead>
+                        <tr>
+                            <th className={cn(thClass, "sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>Product</th>
+                            <th className={thClass}>Quantity</th>
+                            <th className={cn(thClass, "text-right")}>Amount</th>
+                            <th className={thClass}>Status</th>
+                            <th className={thClass}>Payment</th>
+                            <th className={thClass}>Date</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {data.map((o) => (
+                            <tr key={o.id} className="hover:bg-[var(--accent)]/20 transition-colors">
+                                <td className={cn(tdClass, "font-medium max-w-[180px] truncate sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>{o.product_name}</td>
+                                <td className={cn(tdClass, "whitespace-nowrap")}>{o.quantity} {o.unit}</td>
+                                <td className={cn(tdClass, "font-semibold tabular-nums text-right whitespace-nowrap")}>{formatCurrency(o.total_amount || 0)}</td>
+                                <td className={tdClass}><StatusBadge status={(() => {
+                                    const ps = o.production_status || o.status;
+                                    if (ps === "completed" && o.payment_status === "paid") return "completed";
+                                    if (ps === "completed") return "awaiting_payment";
+                                    return ps || "pending";
+                                })()} /></td>
+                                <td className={tdClass}><StatusBadge status={o.payment_status} /></td>
+                                <td className={cn(tdClass, "text-[var(--muted-foreground)] tabular-nums whitespace-nowrap")}>{o.createdAt ? new Date(o.createdAt).toLocaleDateString("en-IN") : "—"}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         </>
     );
 }
@@ -486,32 +505,34 @@ function ProductionsTable({ data }: { data: any[] }) {
                 ]}
             />
             {/* Desktop table */}
-            <table className="hidden md:table min-w-[650px] w-full">
-                <thead>
-                    <tr>
-                        <th className={thClass}>Batch</th>
-                        <th className={cn(thClass, "sticky left-0 z-10 bg-[var(--accent)]/30")}>Product</th>
-                        <th className={thClass}>Target</th>
-                        <th className={thClass}>Produced</th>
-                        <th className={thClass}>Rejected</th>
-                        <th className={thClass}>Status</th>
-                        <th className={thClass}>Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {data.map((p) => (
-                        <tr key={p.id} className="hover:bg-[var(--accent)]/20 transition-colors">
-                            <td className={cn(tdClass, "font-mono text-[13px] whitespace-nowrap")}>{p.batchNumber}</td>
-                            <td className={cn(tdClass, "font-medium max-w-[180px] truncate sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>{p.orderProductName}</td>
-                            <td className={cn(tdClass, "tabular-nums whitespace-nowrap")}>{p.orderQuantity}</td>
-                            <td className={cn(tdClass, "tabular-nums font-semibold text-[var(--erp-success)] whitespace-nowrap")}>{p.producedQuantity}</td>
-                            <td className={cn(tdClass, "tabular-nums whitespace-nowrap", p.rejectQuantity > 0 ? "text-[var(--erp-danger)]" : "")}>{p.rejectQuantity}</td>
-                            <td className={tdClass}><StatusBadge status={p.status} /></td>
-                            <td className={cn(tdClass, "text-[var(--muted-foreground)] tabular-nums whitespace-nowrap")}>{p.createdAt ? new Date(p.createdAt).toLocaleDateString("en-IN") : "—"}</td>
+            <div className="w-full min-w-0 overflow-x-auto">
+                <table className="hidden md:table min-w-[650px] w-full">
+                    <thead>
+                        <tr>
+                            <th className={thClass}>Batch</th>
+                            <th className={cn(thClass, "sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>Product</th>
+                            <th className={thClass}>Target</th>
+                            <th className={thClass}>Produced</th>
+                            <th className={thClass}>Rejected</th>
+                            <th className={thClass}>Status</th>
+                            <th className={thClass}>Date</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {data.map((p) => (
+                            <tr key={p.id} className="hover:bg-[var(--accent)]/20 transition-colors">
+                                <td className={cn(tdClass, "font-mono text-[13px] whitespace-nowrap")}>{p.batchNumber}</td>
+                                <td className={cn(tdClass, "font-medium max-w-[180px] truncate sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>{p.orderProductName}</td>
+                                <td className={cn(tdClass, "tabular-nums whitespace-nowrap")}>{p.orderQuantity}</td>
+                                <td className={cn(tdClass, "tabular-nums font-semibold text-[var(--erp-success)] whitespace-nowrap")}>{p.producedQuantity}</td>
+                                <td className={cn(tdClass, "tabular-nums whitespace-nowrap", p.rejectQuantity > 0 ? "text-[var(--erp-danger)]" : "")}>{p.rejectQuantity}</td>
+                                <td className={tdClass}><StatusBadge status={p.status} /></td>
+                                <td className={cn(tdClass, "text-[var(--muted-foreground)] tabular-nums whitespace-nowrap")}>{p.createdAt ? new Date(p.createdAt).toLocaleDateString("en-IN") : "—"}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         </>
     );
 }
@@ -533,28 +554,30 @@ function BillsTable({ data }: { data: any[] }) {
                 ]}
             />
             {/* Desktop table */}
-            <table className="hidden md:table min-w-[550px] w-full">
-                <thead>
-                    <tr>
-                        <th className={thClass}>Invoice #</th>
-                        <th className={cn(thClass, "sticky left-0 z-10 bg-[var(--accent)]/30")}>Client</th>
-                        <th className={cn(thClass, "text-right")}>Amount</th>
-                        <th className={thClass}>Status</th>
-                        <th className={thClass}>Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {data.map((b) => (
-                        <tr key={b.id} className="hover:bg-[var(--accent)]/20 transition-colors">
-                            <td className={cn(tdClass, "font-mono text-[13px] font-medium whitespace-nowrap")}>{b.billNumber}</td>
-                            <td className={cn(tdClass, "font-medium max-w-[180px] truncate sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>{b.clientName}</td>
-                            <td className={cn(tdClass, "font-semibold tabular-nums text-right whitespace-nowrap")}>{formatCurrency(b.totalAmount || 0)}</td>
-                            <td className={tdClass}><StatusBadge status={b.status} /></td>
-                            <td className={cn(tdClass, "text-[var(--muted-foreground)] tabular-nums whitespace-nowrap")}>{b.billDate || "—"}</td>
+            <div className="w-full min-w-0 overflow-x-auto">
+                <table className="hidden md:table min-w-[550px] w-full">
+                    <thead>
+                        <tr>
+                            <th className={thClass}>Invoice #</th>
+                            <th className={cn(thClass, "sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>Client</th>
+                            <th className={cn(thClass, "text-right")}>Amount</th>
+                            <th className={thClass}>Status</th>
+                            <th className={thClass}>Date</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {data.map((b) => (
+                            <tr key={b.id} className="hover:bg-[var(--accent)]/20 transition-colors">
+                                <td className={cn(tdClass, "font-mono text-[13px] font-medium whitespace-nowrap")}>{b.billNumber}</td>
+                                <td className={cn(tdClass, "font-medium max-w-[180px] truncate sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>{b.clientName}</td>
+                                <td className={cn(tdClass, "font-semibold tabular-nums text-right whitespace-nowrap")}>{formatCurrency(b.totalAmount || 0)}</td>
+                                <td className={tdClass}><StatusBadge status={b.status} /></td>
+                                <td className={cn(tdClass, "text-[var(--muted-foreground)] tabular-nums whitespace-nowrap")}>{b.billDate || "—"}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         </>
     );
 }
@@ -584,28 +607,30 @@ function PaymentsTable({ data }: { data: any[] }) {
                 ]}
             />
             {/* Desktop table */}
-            <table className="hidden md:table min-w-[500px] w-full">
-                <thead>
-                    <tr>
-                        <th className={cn(thClass, "text-right")}>Amount</th>
-                        <th className={thClass}>Method</th>
-                        <th className={thClass}>Notes</th>
-                        <th className={thClass}>Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {data.map((p) => (
-                        <tr key={p.id} className="hover:bg-[var(--accent)]/20 transition-colors">
-                            <td className={cn(tdClass, "font-semibold tabular-nums text-[var(--erp-success)] text-right whitespace-nowrap")}>{formatCurrency(p.amount || 0)}</td>
-                            <td className={cn(tdClass, "capitalize whitespace-nowrap")}>{(p.payment_method || "").replace(/_/g, " ")}</td>
-                            <td className={cn(tdClass, "text-[var(--muted-foreground)] max-w-[200px] truncate")}>{p.notes || "\u2014"}</td>
-                            <td className={cn(tdClass, "text-[var(--muted-foreground)] tabular-nums whitespace-nowrap")}>
-                                {p.payment_date ? new Date(p.payment_date).toLocaleDateString("en-IN") : (p.createdAt ? new Date(p.createdAt).toLocaleDateString("en-IN") : "\u2014")}
-                            </td>
+            <div className="w-full min-w-0 overflow-x-auto">
+                <table className="hidden md:table min-w-[500px] w-full">
+                    <thead>
+                        <tr>
+                            <th className={cn(thClass, "text-right")}>Amount</th>
+                            <th className={thClass}>Method</th>
+                            <th className={thClass}>Notes</th>
+                            <th className={thClass}>Date</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {data.map((p) => (
+                            <tr key={p.id} className="hover:bg-[var(--accent)]/20 transition-colors">
+                                <td className={cn(tdClass, "font-semibold tabular-nums text-[var(--erp-success)] text-right whitespace-nowrap")}>{formatCurrency(p.amount || 0)}</td>
+                                <td className={cn(tdClass, "capitalize whitespace-nowrap")}>{(p.payment_method || "").replace(/_/g, " ")}</td>
+                                <td className={cn(tdClass, "text-[var(--muted-foreground)] max-w-[200px] truncate")}>{p.notes || "\u2014"}</td>
+                                <td className={cn(tdClass, "text-[var(--muted-foreground)] tabular-nums whitespace-nowrap")}>
+                                    {p.payment_date ? new Date(p.payment_date).toLocaleDateString("en-IN") : (p.createdAt ? new Date(p.createdAt).toLocaleDateString("en-IN") : "\u2014")}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         </>
     );
 }
@@ -658,26 +683,28 @@ function InventoryUsageTable({ usage, traceability }: { usage: any[]; traceabili
                             ]}
                         />
                         {/* Desktop table */}
-                        <table className="hidden md:table min-w-[500px] w-full">
-                            <thead>
-                                <tr>
-                                    <th className={cn(thClass, "sticky left-0 z-10 bg-[var(--accent)]/30")}>Material</th>
-                                    <th className={thClass}>Qty Deducted</th>
-                                    <th className={thClass}>Order ID</th>
-                                    <th className={thClass}>Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {usage.map((u) => (
-                                    <tr key={u.id} className="hover:bg-[var(--accent)]/20 transition-colors">
-                                        <td className={cn(tdClass, "font-medium max-w-[180px] truncate sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>{u.item_name || "\u2014"}</td>
-                                        <td className={cn(tdClass, "tabular-nums font-semibold whitespace-nowrap")}>{u.quantity_deducted}</td>
-                                        <td className={cn(tdClass, "font-mono text-[12px] text-[var(--muted-foreground)] whitespace-nowrap")}>{u.order_id?.slice(0, 8)}...</td>
-                                        <td className={cn(tdClass, "text-[var(--muted-foreground)] tabular-nums whitespace-nowrap")}>{u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-IN") : "\u2014"}</td>
+                        <div className="w-full min-w-0 overflow-x-auto">
+                            <table className="hidden md:table min-w-[500px] w-full">
+                                <thead>
+                                    <tr>
+                                        <th className={cn(thClass, "sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>Material</th>
+                                        <th className={thClass}>Qty Deducted</th>
+                                        <th className={thClass}>Order ID</th>
+                                        <th className={thClass}>Date</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {usage.map((u) => (
+                                        <tr key={u.id} className="hover:bg-[var(--accent)]/20 transition-colors">
+                                            <td className={cn(tdClass, "font-medium max-w-[180px] truncate sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>{u.item_name || "\u2014"}</td>
+                                            <td className={cn(tdClass, "tabular-nums font-semibold whitespace-nowrap")}>{u.quantity_deducted}</td>
+                                            <td className={cn(tdClass, "font-mono text-[12px] text-[var(--muted-foreground)] whitespace-nowrap")}>{u.order_id?.slice(0, 8)}...</td>
+                                            <td className={cn(tdClass, "text-[var(--muted-foreground)] tabular-nums whitespace-nowrap")}>{u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-IN") : "\u2014"}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </>
                 )
             ) : (
@@ -698,28 +725,30 @@ function InventoryUsageTable({ usage, traceability }: { usage: any[]; traceabili
                             ]}
                         />
                         {/* Desktop table */}
-                        <table className="hidden md:table min-w-[550px] w-full">
-                            <thead>
-                                <tr>
-                                    <th className={cn(thClass, "sticky left-0 z-10 bg-[var(--accent)]/30")}>Material</th>
-                                    <th className={thClass}>Qty Used</th>
-                                    <th className={thClass}>Unit</th>
-                                    <th className={thClass}>Production Job</th>
-                                    <th className={thClass}>Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {traceability.map((m) => (
-                                    <tr key={m.id} className="hover:bg-[var(--accent)]/20 transition-colors">
-                                        <td className={cn(tdClass, "font-medium max-w-[180px] truncate sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>{m.itemName || "\u2014"}</td>
-                                        <td className={cn(tdClass, "tabular-nums font-semibold whitespace-nowrap")}>{m.quantityUsed}</td>
-                                        <td className={cn(tdClass, "whitespace-nowrap")}>{m.unit || "\u2014"}</td>
-                                        <td className={cn(tdClass, "font-mono text-[12px] text-[var(--muted-foreground)] whitespace-nowrap")}>{m.productionJobId?.slice(0, 8)}...</td>
-                                        <td className={cn(tdClass, "text-[var(--muted-foreground)] tabular-nums whitespace-nowrap")}>{m.createdAt ? new Date(m.createdAt).toLocaleDateString("en-IN") : "\u2014"}</td>
+                        <div className="w-full min-w-0 overflow-x-auto">
+                            <table className="hidden md:table min-w-[550px] w-full">
+                                <thead>
+                                    <tr>
+                                        <th className={cn(thClass, "sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>Material</th>
+                                        <th className={thClass}>Qty Used</th>
+                                        <th className={thClass}>Unit</th>
+                                        <th className={thClass}>Production Job</th>
+                                        <th className={thClass}>Date</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {traceability.map((m) => (
+                                        <tr key={m.id} className="hover:bg-[var(--accent)]/20 transition-colors">
+                                            <td className={cn(tdClass, "font-medium max-w-[180px] truncate sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>{m.itemName || "\u2014"}</td>
+                                            <td className={cn(tdClass, "tabular-nums font-semibold whitespace-nowrap")}>{m.quantityUsed}</td>
+                                            <td className={cn(tdClass, "whitespace-nowrap")}>{m.unit || "\u2014"}</td>
+                                            <td className={cn(tdClass, "font-mono text-[12px] text-[var(--muted-foreground)] whitespace-nowrap")}>{m.productionJobId?.slice(0, 8)}...</td>
+                                            <td className={cn(tdClass, "text-[var(--muted-foreground)] tabular-nums whitespace-nowrap")}>{m.createdAt ? new Date(m.createdAt).toLocaleDateString("en-IN") : "\u2014"}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </>
                 )
             )}

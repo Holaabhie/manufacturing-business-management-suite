@@ -287,12 +287,28 @@ export async function PUT(
 
         // ── Trigger notification for production complete ──
         if (body.action === "complete" && updated) {
+            let recipientContact = "";
+            let recipientName = "Unknown Client";
+            if (updated.orderId) {
+                try {
+                    const order = await db.collection("orders").findOne({ _id: new ObjectId(updated.orderId) });
+                    if (order?.client_id) {
+                        const client = await db.collection("clients").findOne({ _id: new ObjectId(order.client_id) });
+                        if (client) {
+                            recipientContact = client.phone || "";
+                            recipientName = client.name || recipientName;
+                        }
+                    }
+                } catch { /* client lookup failed — use defaults */ }
+            }
             triggerNotification({
                 eventType: "production_complete",
+                recipientContact,
                 payload: {
                     productName: updated.orderProductName || "Unknown Product",
                     completedQty: updated.producedQuantity || 0,
                     orderId: updated.orderId || "",
+                    clientName: recipientName,
                 },
                 triggeredBy: getDataOwnerId(user),
             }).catch(() => {}); // fire-and-forget

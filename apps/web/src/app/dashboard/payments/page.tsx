@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useCachedPage } from "@/hooks/useCachedPage";
 import { useLongPress } from "@/hooks/useLongPress";
 import { MobileSheet } from "@/components/ui/MobileSheet";
+import { useTranslations } from "next-intl";
 import { AccessDenied } from "@/components/AccessDenied";
 import {
   Search,
@@ -223,6 +224,7 @@ function PaymentsSkeleton() {
 }
 
 export default function PaymentsPage() {
+  const tCommon = useTranslations("common");
   // ─── React Query: cached data ────────────────────────
   const { data: clients = [], isLoading: clientsLoading } = useClients();
   const { data: orders = [], isLoading: ordersLoading } = useOrders();
@@ -469,8 +471,8 @@ export default function PaymentsPage() {
   if (!roleLoading && isStaff) {
     return (
       <AccessDenied
-        title="Payments Access Restricted"
-        description="The payments section is only accessible to administrators. Please contact your admin if you need access to financial features."
+        title={tCommon("paymentsAccessRestricted")}
+        description={tCommon("paymentsAccessRestrictedDesc")}
       />
     );
   }
@@ -1168,12 +1170,12 @@ export default function PaymentsPage() {
           }
         }}
         isDeleting={deletePayment.isPending}
-        entityLabel="payment"
+        entityLabel={tCommon("entityPayment")}
         entityName={
           payments.find((p) => p.id === paymentToDeleteId)?.id ||
           payments.find((p) => p.id === paymentToDeleteId)?.transaction_id
         }
-        consequenceText="transaction record will be permanently removed. This cannot be undone."
+        consequenceText={tCommon("consequencePayment")}
       />
 
       {/* ── Long Press Action Sheet ── */}

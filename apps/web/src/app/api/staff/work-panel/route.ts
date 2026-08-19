@@ -82,6 +82,7 @@ export async function GET() {
         const formattedOrders = assignedOrders.map((order: any) => ({
             _id: order._id.toString(),
             orderNumber: order.order_number || order.orderNumber || `ORD-${order._id.toString().slice(-6)}`,
+            productName: order.product_name || order.productName || "",
             clientName: order.client_name || order.clientName || "—",
             status: order.status || "pending",
             priority: order.priority || "medium",

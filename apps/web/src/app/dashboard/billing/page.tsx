@@ -82,9 +82,8 @@ import {
     IOSSelect
 } from "@/components/ui/ios";
 
-// Import staggered animations
-import { motion, AnimatePresence } from "framer-motion";
-import { staggerContainer, staggerItem } from "@/styles/animations";
+import { exportWorkbook } from "@/lib/excel-export";
+import { useTranslations } from "next-intl";
 
 interface BillItem {
     id: string;
@@ -140,6 +139,7 @@ interface CompanyInfo {
 }
 
 export default function BillingPage() {
+    const tCommon = useTranslations("common");
     const { progress: collapseProgress } = useCollapseProgress();
     const [bills, setBills] = useState<Bill[]>([]);
     const [clients, setClients] = useState<any[]>([]);
@@ -715,8 +715,8 @@ export default function BillingPage() {
     if (!roleLoading && userRole === "Staff") {
         return (
             <AccessDenied
-                title="Billing Access Restricted"
-                description="The billing section is only accessible to administrators. Please contact your admin if you need access to financial features."
+                title={tCommon("billingAccessRestricted")}
+                description={tCommon("billingAccessRestrictedDesc")}
             />
         );
     }

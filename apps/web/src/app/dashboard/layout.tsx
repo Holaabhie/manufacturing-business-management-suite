@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
+  ChevronUp,
   Settings,
   Bell,
   User,
@@ -235,6 +236,7 @@ export default function DashboardLayout({
   ]);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [isMobileSearchActive, setIsMobileSearchActive] = useState(false);
+  const [isAvatarMenuOpen, setIsAvatarMenuOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -714,17 +716,34 @@ export default function DashboardLayout({
 
               {/* User Avatar Dropdown (enhanced with theme + language on mobile) */}
               {user && (
-                <DropdownMenu>
+                <DropdownMenu open={isAvatarMenuOpen} onOpenChange={setIsAvatarMenuOpen}>
                   <DropdownMenuTrigger asChild>
                     <button className="cursor-pointer relative">
-                      <UserAvatar src={user.avatar_url} name={user.fullName} email={user.email} size="sm" className="ring-2 ring-primary/20 hover:ring-primary/40 transition-all duration-150" />
-                      <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-background" />
+                      {/* Avatar — fades out when dropdown is open */}
+                      <div className={cn(
+                        "transition-all duration-200",
+                        isAvatarMenuOpen ? "opacity-0 scale-75" : "opacity-100 scale-100"
+                      )}>
+                        <UserAvatar src={user.avatar_url} name={user.fullName} email={user.email} size="sm" className="ring-2 ring-primary/20 hover:ring-primary/40 transition-all duration-150" />
+                      </div>
+                      {/* Chevron-up icon — fades in when dropdown is open */}
+                      <div className={cn(
+                        "absolute inset-0 flex items-center justify-center transition-all duration-200",
+                        isAvatarMenuOpen ? "opacity-100 scale-100" : "opacity-0 scale-75"
+                      )}>
+                        <div className="w-[32px] h-[32px] rounded-full bg-primary/10 flex items-center justify-center">
+                          <ChevronUp className="h-4 w-4 text-primary" />
+                        </div>
+                      </div>
+                      <div className={cn(
+                        "absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-background transition-opacity duration-200",
+                        isAvatarMenuOpen && "opacity-0"
+                      )} />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     className="w-[240px] max-h-[calc(100vh-70px)] overflow-y-auto rounded-lg p-0 scrollbar-thin"
                     align="end"
-                    forceMount
                   >
                     {/* Header Section */}
                     <div className="p-3 flex items-center gap-3 border-b border-border">

@@ -38,6 +38,7 @@ interface WorkPanelStats {
 interface AssignedOrder {
     _id: string;
     orderNumber: string;
+    productName?: string;
     clientName: string;
     status: string;
     priority: string;
@@ -575,12 +576,19 @@ export default function StaffWorkPanel({ userName }: { userName?: string }) {
                                                         {order.priority && (
                                                             <div className={cn("w-[6px] h-[6px] rounded-full flex-shrink-0", priorityDots[order.priority] || priorityDots.medium)} />
                                                         )}
-                                                        <p className="text-[15px] font-medium text-[var(--foreground)] truncate leading-[20px]">
-                                                            {order.orderNumber || `Order #${order._id.slice(-6)}`}
+                                                        <p
+                                                            className="text-[15px] font-medium text-[var(--foreground)] truncate leading-[20px]"
+                                                            title={order.productName || order.orderNumber || `Order #${order._id.slice(-6)}`}
+                                                        >
+                                                            {order.productName || order.orderNumber || `Order #${order._id.slice(-6)}`}
                                                         </p>
                                                     </div>
-                                                    <p className="text-[13px] text-[var(--muted-foreground)] truncate leading-[18px] ml-[14px]">
-                                                        {order.clientName || "—"} · Due {formatDate(order.dueDate)}
+                                                    <p className="text-[12px] text-[var(--muted-foreground)] truncate leading-[16px] ml-[14px]">
+                                                        {order.orderNumber || `ORD-${order._id.slice(-6)}`}
+                                                        {" · "}
+                                                        {order.dueDate
+                                                            ? `Due ${new Date(order.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+                                                            : order.clientName || "—"}
                                                     </p>
                                                 </div>
                                                 <span

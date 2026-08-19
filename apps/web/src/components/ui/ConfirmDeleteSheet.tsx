@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback } from "react";
 import { Trash2, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { MobileSheet } from "@/components/ui/MobileSheet";
 import { toast } from "sonner";
 import "./ConfirmDeleteSheet.css";
@@ -64,15 +65,19 @@ export function ConfirmDeleteSheet({
   entityLabel,
   entityName,
   title,
-  consequenceText = "This action cannot be undone.",
+  consequenceText,
   confirmText,
-  cancelText = "Cancel",
+  cancelText,
   isDeleting = false,
   ariaLabel,
 }: ConfirmDeleteSheetProps) {
+  const t = useTranslations("common");
   const [internalLoading, setInternalLoading] = useState(false);
 
   const loading = isDeleting || internalLoading;
+
+  const resolvedCancelText = cancelText || t("cancel");
+  const resolvedConsequenceText = consequenceText || t("deleteConsequence");
 
   const handleConfirm = useCallback(async () => {
     if (loading) return;
@@ -80,17 +85,17 @@ export function ConfirmDeleteSheet({
     try {
       await onConfirm();
     } catch (err: any) {
-      toast.error(err?.message || `Failed to delete ${entityLabel.toLowerCase()}`);
+      toast.error(err?.message || t("deleteFailed", { entity: entityLabel.toLowerCase() }));
     } finally {
       setInternalLoading(false);
     }
-  }, [loading, onConfirm, entityLabel]);
+  }, [loading, onConfirm, entityLabel, t]);
 
   // Formatted title, text, aria-label, and copy using exported helpers
-  const displayTitle = getDeleteTitle(entityLabel, title);
-  const displayConfirmText = getDeleteConfirmText(entityLabel, confirmText);
-  const dialogAriaLabel = getDeleteAriaLabel(entityLabel, ariaLabel);
-  const copyInfo = getDeleteBodyCopyInfo(entityLabel, entityName, consequenceText);
+  const displayTitle = title || t("deleteConfirmTitle", { entity: entityLabel.toLowerCase() });
+  const displayConfirmText = confirmText || t("deleteConfirm", { entity: entityLabel.toLowerCase() });
+  const dialogAriaLabel = ariaLabel || t("deleteAriaLabel", { entity: entityLabel.toLowerCase() });
+  const copyInfo = getDeleteBodyCopyInfo(entityLabel, entityName, resolvedConsequenceText);
 
   // Safe body copy formatting (prevents "undefined will be permanently removed...")
   const renderBodyCopy = () => {
@@ -102,7 +107,7 @@ export function ConfirmDeleteSheet({
         </>
       );
     }
-    return <>{copyInfo.text}</>;
+    return <>{t("deleteFallbackBody", { entity: entityLabel.toLowerCase(), consequence: resolvedConsequenceText })}</>;
   };
 
   return (
@@ -147,7 +152,7 @@ export function ConfirmDeleteSheet({
                 disabled={loading}
                 className="h-10 px-4 rounded-[12px] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium text-[14px] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed outline-none focus:ring-2 focus:ring-slate-400"
               >
-                {cancelText}
+                {resolvedCancelText}
               </button>
               <button
                 type="button"
@@ -158,7 +163,7 @@ export function ConfirmDeleteSheet({
                 {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Deleting...</span>
+                    <span>{t("deleting")}</span>
                   </>
                 ) : (
                   <span>{displayConfirmText}</span>
@@ -195,7 +200,7 @@ export function ConfirmDeleteSheet({
                 {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Deleting...</span>
+                    <span>{t("deleting")}</span>
                   </>
                 ) : (
                   <span>{displayConfirmText}</span>
@@ -208,13 +213,13 @@ export function ConfirmDeleteSheet({
                 disabled={loading}
                 className="w-full h-12 rounded-[14px] bg-slate-100 hover:bg-slate-200 active:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-[15px] flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed outline-none focus:ring-2 focus:ring-slate-400"
               >
-                {cancelText}
+                {resolvedCancelText}
               </button>
             </div>
 
             {/* Bottom microcopy */}
             <p className="text-[12px] text-slate-400 dark:text-slate-500 text-center mt-3.5 mb-0 font-medium select-none">
-              Tap outside or swipe down to cancel
+              {t("swipeHint")}
             </p>
           </div>
         </div>

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 interface AccessDeniedProps {
     title?: string;
@@ -14,12 +15,16 @@ interface AccessDeniedProps {
 }
 
 export function AccessDenied({
-    title = "Access Denied",
-    description = "You don't have permission to access this page. Please contact your administrator if you believe this is an error.",
+    title,
+    description,
     showBackButton = true,
     showHomeButton = true,
 }: AccessDeniedProps) {
     const router = useRouter();
+    const t = useTranslations("common");
+
+    const displayTitle = title || t("accessDenied");
+    const displayDescription = description || t("accessDeniedDescription");
 
     return (
         <div className="min-h-[60vh] flex items-center justify-center p-4">
@@ -28,9 +33,9 @@ export function AccessDenied({
                     <div className="mx-auto mb-4 w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center">
                         <ShieldX className="h-8 w-8 text-destructive" />
                     </div>
-                    <CardTitle className="text-2xl">{title}</CardTitle>
+                    <CardTitle className="text-2xl">{displayTitle}</CardTitle>
                     <CardDescription className="text-base mt-2">
-                        {description}
+                        {displayDescription}
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="pt-0">
@@ -42,14 +47,14 @@ export function AccessDenied({
                                 className="gap-2"
                             >
                                 <ArrowLeft className="h-4 w-4" />
-                                Go Back
+                                {t("goBack")}
                             </Button>
                         )}
                         {showHomeButton && (
                             <Button asChild className="gap-2">
                                 <Link href="/dashboard">
                                     <Home className="h-4 w-4" />
-                                    Dashboard
+                                    {t("dashboard")}
                                 </Link>
                             </Button>
                         )}
@@ -63,12 +68,14 @@ export function AccessDenied({
 /**
  * Simple inline access denied message for read-only modes
  */
-export function ReadOnlyBanner({ feature = "this section" }: { feature?: string }) {
+export function ReadOnlyBanner({ feature }: { feature?: string }) {
+    const t = useTranslations("common");
+    const resolvedFeature = feature || t("thisSection");
     return (
         <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-4 flex items-center gap-2">
             <ShieldX className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
             <p className="text-sm text-amber-800 dark:text-amber-200">
-                You have view-only access to {feature}. Contact an administrator for edit permissions.
+                {t("readOnlyBanner", { feature: resolvedFeature })}
             </p>
         </div>
     );

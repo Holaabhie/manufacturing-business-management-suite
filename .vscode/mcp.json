@@ -5,6 +5,10 @@
             "args": [
                 "@browsermcp/mcp@latest"
             ]
+        },
+        "sentry": {
+            "url": "https://mcp.sentry.dev/mcp",
+            "serverUrl": "https://mcp.sentry.dev/mcp"
         }
     }
 }

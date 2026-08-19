@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import { Search, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
 // ─── Types ───────────────────────────────────────────────
@@ -26,12 +27,16 @@ interface SearchBarProps {
 export function SearchBar({
   value,
   onChange,
-  placeholder = "Search...",
-  ariaLabel = "Search",
+  placeholder,
+  ariaLabel,
   className,
   id,
 }: SearchBarProps) {
+  const t = useTranslations("common");
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const resolvedPlaceholder = placeholder || t("searchPlaceholder");
+  const resolvedAriaLabel = ariaLabel || t("searchAriaLabel");
 
   // ── Ctrl+K / Cmd+K global shortcut ──
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -61,8 +66,8 @@ export function SearchBar({
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        aria-label={ariaLabel}
+        placeholder={resolvedPlaceholder}
+        aria-label={resolvedAriaLabel}
         className={cn(
           "w-full pl-9 pr-20 sm:pr-16",
           "h-10 sm:h-11",
@@ -95,7 +100,7 @@ export function SearchBar({
             "transition-all duration-150",
             "cursor-pointer"
           )}
-          aria-label="Clear search"
+          aria-label={t("clearSearch")}
         >
           <X className="h-3.5 w-3.5" />
         </button>

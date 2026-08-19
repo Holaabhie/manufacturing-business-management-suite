@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
 // ─── Types ───────────────────────────────────────────────
@@ -37,6 +38,8 @@ export function TablePagination({
   hideShowingText = false,
   className,
 }: TablePaginationProps) {
+  const t = useTranslations("common");
+
   // Don't render if there's only 1 page or no items
   if (totalPages <= 1 && totalItems <= pageSize) return null;
 
@@ -104,7 +107,7 @@ export function TablePagination({
       {!hideShowingText && (
         <p className="hidden sm:block text-[13px] text-[var(--muted-foreground)] tabular-nums">
           {showingText ||
-            `Showing ${startItem}–${endItem} of ${totalItems} results`}
+            t("showingResults", { start: startItem, end: endItem, total: totalItems })}
         </p>
       )}
 
@@ -112,14 +115,14 @@ export function TablePagination({
       <nav
         className="hidden sm:flex items-center gap-1"
         role="navigation"
-        aria-label="Pagination"
+        aria-label={t("pagination")}
       >
         {/* Previous */}
         <button
           type="button"
           onClick={() => !isFirstPage && onPageChange(currentPage - 1)}
           disabled={isFirstPage}
-          aria-label="Go to previous page"
+          aria-label={t("goToPreviousPage")}
           className={cn(
             pageButtonBase,
             "bg-[rgba(255,255,255,0.72)] dark:bg-[rgba(255,255,255,0.06)]",
@@ -153,7 +156,7 @@ export function TablePagination({
               type="button"
               onClick={() => onPageChange(page)}
               aria-current={isActive ? "page" : undefined}
-              aria-label={`Go to page ${page}`}
+              aria-label={t("goToPage", { page })}
               className={cn(
                 pageButtonBase,
                 isActive
@@ -176,7 +179,7 @@ export function TablePagination({
           type="button"
           onClick={() => !isLastPage && onPageChange(currentPage + 1)}
           disabled={isLastPage}
-          aria-label="Go to next page"
+          aria-label={t("goToNextPage")}
           className={cn(
             pageButtonBase,
             "bg-[rgba(255,255,255,0.72)] dark:bg-[rgba(255,255,255,0.06)]",
@@ -194,7 +197,7 @@ export function TablePagination({
       <nav
         className="flex sm:hidden items-center justify-center gap-3 w-full"
         role="navigation"
-        aria-label="Pagination"
+        aria-label={t("pagination")}
       >
         <button
           type="button"
@@ -210,7 +213,7 @@ export function TablePagination({
           )}
         >
           <ChevronLeft className="h-3.5 w-3.5" />
-          Prev
+          {t("prev")}
         </button>
 
         <span className="text-[13px] font-semibold text-[var(--foreground)] tabular-nums">
@@ -230,7 +233,7 @@ export function TablePagination({
             isLastPage && "opacity-40 cursor-not-allowed"
           )}
         >
-          Next
+          {t("next")}
           <ChevronRight className="h-3.5 w-3.5" />
         </button>
       </nav>

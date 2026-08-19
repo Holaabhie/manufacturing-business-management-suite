@@ -654,7 +654,7 @@ export default function MachinesPage() {
                 onConfirm={handleDelete}
                 isDeleting={deleting}
                 entityLabel="machine"
-                entityName={selectedMachine?.name}
+                entityName={deletingMachine?.machineName}
                 consequenceText="will be permanently removed from machine management. This cannot be undone."
             />
         </motion.div>

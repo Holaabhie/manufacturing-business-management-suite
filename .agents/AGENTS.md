@@ -159,3 +159,19 @@ When building a full-screen mobile sheet that acts as a page:
   3. Changed formula from `totalBilled - totalPaid` to `totalRevenue - totalPaid` (order-based: reflects all pending payments regardless of invoice status).
 
 **Correction**: Tabs row reverted from `grid-cols-3` back to scrollable `flex overflow-x-auto` — page has 5 tabs not 3; `grid-cols-3` caused an ugly 3+2 wrapped layout. Root cause of tab clipping was the KPI grid's missing `min-w-0` (Fix 1 above), not the tabs' own scroll behavior. Kept button-level improvements (`min-w-0`, `flex-shrink-0`, `<Icon flex-shrink-0>`, `<span truncate>` label wrapper) from the grid attempt since they improve resilience regardless of flex vs grid layout.
+
+### Fix 9: Avatar Dropdown Menu forceMount Removal
+
+- **Files Changed**:
+  - `apps/web/src/app/dashboard/layout.tsx`
+- **Root Cause**: Avatar dropdown menu had `forceMount` prop causing the dropdown's internal avatar to stay mounted in DOM permanently, overlapping with navbar trigger avatar.
+- **What Changed**: Fixed: Avatar dropdown menu had `forceMount` prop causing the dropdown's internal avatar to stay mounted in DOM permanently, overlapping with navbar trigger avatar. Removed forceMount from DropdownMenuContent in dashboard/layout.tsx — Radix now unmounts content naturally on close.
+
+## Notifications
+
+### Fix 10: production_complete Notification Missing recipientContact & recipientName
+
+- **Files Changed**:
+  - `apps/web/src/app/api/production/[id]/route.ts`
+- **Root Cause**: The `triggerNotification()` call for `eventType: "production_complete"` did not pass `recipientContact` (top-level on the event object) or `clientName` (inside `payload` for the dispatcher's `recipientName` fallback chain). This caused `notification_logs` entries to have an empty `recipientContact` field and a generic `recipientName` of `"Business Owner"`.
+- **What Changed**: Added a two-hop client lookup before the `triggerNotification()` call: `updated.orderId` → `orders` collection → `order.client_id` → `clients` collection. Passes `recipientContact: client.phone` at the event top level and `clientName: client.name` inside `payload`. Both lookups are wrapped in a single `try/catch` so that malformed `ObjectId` strings, missing orders, or missing clients all gracefully fall back to `recipientContact: ""` and `recipientName: "Unknown Client"` — never throws. Pattern reused from `orders/[id]/route.ts` lines 80–86.
