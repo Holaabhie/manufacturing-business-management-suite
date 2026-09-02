@@ -20,10 +20,25 @@ import { AIThinkingLoader } from "@/components/ai/AIThinkingLoader";
 import { SmartInputBar } from "@/components/ai/SmartInputBar";
 import { ResponseCard } from "@/components/ai/ResponseCard";
 import { UserMessageCard } from "@/components/ai/UserMessageCard";
-import { BentoWidgetGrid } from "@/components/ai/BentoWidgetGrid";
 
 // ── Hook ──
 import { useAIChat } from "@/hooks/useAIChat";
+
+// ─── Try Asking Prompts ──────────────────────────────────────
+const SUGGESTION_PROMPTS = [
+  {
+    label: "Revenue Summary",
+    prompt: "Give me a summary of my revenue for this month including total collected, pending, and growth trends.",
+  },
+  {
+    label: "Low Stock Alert",
+    prompt: "Which inventory items are running low and need to be restocked soon?",
+  },
+  {
+    label: "Outstanding Payments",
+    prompt: "List all clients with outstanding payments and the amounts due.",
+  },
+];
 
 // ─── Smart Reports Types ─────────────────────────────────────
 interface ReportEntry {
@@ -161,85 +176,107 @@ export default function AIAssistantPage() {
 
       {/* ═══════════ CHAT VIEW ═══════════ */}
       {viewMode === "chat" && (
-        <div className="flex-1 flex gap-5 min-h-0">
-          {/* ── Left: Conversation Stream ── */}
-          <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden rounded-2xl" style={{ background: "var(--ai-bg-secondary)" }}>
-            {/* AI Not Configured Banner */}
-            {aiNotConfigured && (
-              <div className="flex items-center gap-3 mx-4 mt-4 p-3 rounded-[14px] border border-[var(--ai-border-subtle)]" style={{ background: "rgba(245,158,11,0.06)" }}>
-                <div className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: "rgba(245,158,11,0.12)" }}>
-                  <Settings className="h-4 w-4 text-amber-400" />
-                </div>
-                <div>
-                  <p className="text-[13px] font-semibold text-[var(--ai-text-primary)]">AI not configured</p>
-                  <p className="text-[11px] text-[var(--ai-text-tertiary)]">Contact your admin to set up the AI webhook.</p>
-                </div>
+        <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden rounded-2xl" style={{ background: "var(--ai-bg-secondary)" }}>
+          {/* AI Not Configured Banner */}
+          {aiNotConfigured && (
+            <div className="flex items-center gap-3 mx-4 mt-4 p-3 rounded-[14px] border border-[var(--ai-border-subtle)]" style={{ background: "rgba(245,158,11,0.06)" }}>
+              <div className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: "rgba(245,158,11,0.12)" }}>
+                <Settings className="h-4 w-4 text-amber-400" />
               </div>
-            )}
-
-            {/* Messages Stream */}
-            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-3 space-y-3" ref={scrollRef}>
-              <div className="space-y-4 pb-4 max-w-4xl mx-auto">
-                <AnimatePresence mode="popLayout">
-                  {messages.map((message) => {
-                    if (message.isLoading) {
-                      return (
-                        <AIThinkingLoader
-                          key={message.id}
-                          message="Analyzing your data..."
-                        />
-                      );
-                    }
-
-                    if (message.role === "user") {
-                      return (
-                        <UserMessageCard
-                          key={message.id}
-                          content={message.displayedContent ?? message.content}
-                          timestamp={message.timestamp}
-                        />
-                      );
-                    }
-
-                    return (
-                      <ResponseCard
-                        key={message.id}
-                        id={message.id}
-                        content={message.content}
-                        displayedContent={message.displayedContent}
-                        timestamp={message.timestamp}
-                        isTyping={message.isTyping}
-                        isError={message.isError}
-                        errorMessage={message.errorMessage}
-                        onRetry={message.isError ? retryLastMessage : undefined}
-                      />
-                    );
-                  })}
-                </AnimatePresence>
+              <div>
+                <p className="text-[13px] font-semibold text-[var(--ai-text-primary)]">AI not configured</p>
+                <p className="text-[11px] text-[var(--ai-text-tertiary)]">Contact your admin to set up the AI webhook.</p>
               </div>
             </div>
+          )}
 
-            {/* Input bar — flex-shrink-0, safe-area padding on mobile */}
-            <div className="flex-shrink-0 w-full" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-              <SmartInputBar
-                value={input}
-                onChange={setInput}
-                onSubmit={handleSend}
-                isLoading={isLoading}
-              />
+          {/* Messages Stream */}
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-3 space-y-3" ref={scrollRef}>
+            <div className="space-y-4 pb-4 max-w-[900px] mx-auto">
+              <AnimatePresence mode="popLayout">
+                {messages.map((message) => {
+                  if (message.isLoading) {
+                    return (
+                      <AIThinkingLoader
+                        key={message.id}
+                        message="Analyzing your data..."
+                      />
+                    );
+                  }
+
+                  if (message.role === "user") {
+                    return (
+                      <UserMessageCard
+                        key={message.id}
+                        content={message.displayedContent ?? message.content}
+                        timestamp={message.timestamp}
+                      />
+                    );
+                  }
+
+                  return (
+                    <ResponseCard
+                      key={message.id}
+                      id={message.id}
+                      content={message.content}
+                      displayedContent={message.displayedContent}
+                      timestamp={message.timestamp}
+                      isTyping={message.isTyping}
+                      isError={message.isError}
+                      errorMessage={message.errorMessage}
+                      onRetry={message.isError ? retryLastMessage : undefined}
+                    />
+                  );
+                })}
+              </AnimatePresence>
             </div>
           </div>
 
-          {/* ── Right: Bento Sidebar ── */}
-          <div className="w-[320px] flex-shrink-0 hidden xl:block overflow-y-auto pr-1">
-            <BentoWidgetGrid
-              isContextLoaded={isContextLoaded}
-              onQuickAction={(prompt) => {
-                sendMessage(prompt);
-              }}
+          {/* "Try asking" Suggestion Box — visible when no user messages */}
+          {userMessageCount === 0 && !isLoading && (
+            <div className="px-4 pb-2 flex-shrink-0">
+              <div className="max-w-[900px] mx-auto">
+                <div
+                  className="max-w-[400px] rounded-xl p-2.5 border"
+                  style={{
+                    background: "var(--ai-bg-surface-elevated)",
+                    borderColor: "var(--ai-border-subtle)",
+                  }}
+                >
+                  <p
+                    className="text-[10px] font-semibold uppercase tracking-wider mb-1.5 px-0.5"
+                    style={{ color: "var(--ai-text-tertiary)" }}
+                  >
+                    Try asking
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {SUGGESTION_PROMPTS.map((item, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleSend(item.prompt)}
+                        className="text-[12px] font-medium px-2.5 py-1 rounded-lg border transition-all hover:scale-[1.02] active:scale-[0.98] text-left cursor-pointer"
+                        style={{
+                          background: "var(--ai-bg-surface)",
+                          borderColor: "var(--ai-border-subtle)",
+                          color: "var(--ai-text-primary)",
+                        }}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Input bar — flex-shrink-0, safe-area padding on mobile */}
+          <div className="flex-shrink-0 w-full" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+            <SmartInputBar
+              value={input}
+              onChange={setInput}
+              onSubmit={handleSend}
               isLoading={isLoading}
-              messageCount={userMessageCount}
-              onViewReports={() => setViewMode("reports")}
             />
           </div>
         </div>

@@ -12,7 +12,7 @@ export function AIThinkingLoader({ message = "Analyzing your data..." }: AIThink
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
-      transition={{ type: "spring", stiffness: 500, damping: 35 }}
+      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
       className="ai-thinking"
     >
       {/* Gradient orb indicator */}

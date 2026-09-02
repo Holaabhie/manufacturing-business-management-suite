@@ -19,7 +19,7 @@ export interface CompanyProfile {
 
 /**
  * Single source of truth hook for company profile data.
- * Used by BOTH the OnboardingModal AND the Settings page.
+ * Used by the Settings page (and any future consumers).
  *
  * - Fetches from GET /api/profile/company on mount
  * - Updates via PUT /api/profile/company

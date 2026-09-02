@@ -1,6 +1,6 @@
 "use client";
 
-import { SparklesIcon, TrashIcon, SettingsIcon } from "./icons";
+import { SparklesIcon, TrashIcon, SettingsIcon, FileTextIcon } from "./icons";
 
 interface TopBarProps {
   onClear: () => void;
@@ -16,42 +16,72 @@ export function TopBar({
   return (
     <div
       id="ai-topbar"
-      className="flex items-center gap-3 px-5 py-3 border-b border-black/[0.06] dark:border-white/[0.06] bg-white/88 dark:bg-[#161B27] backdrop-blur-sm flex-shrink-0"
+      className="flex items-center gap-3 px-4 sm:px-5 py-3 border-b bg-[var(--ai-bg-glass)] backdrop-blur-sm flex-shrink-0"
+      style={{ borderColor: "var(--ai-border-subtle)" }}
     >
-      {/* Left: Title */}
-      <div className="flex items-center gap-2.5 flex-1 min-w-0">
-        <div className="w-8 h-8 rounded-xl bg-[#2563EB] flex items-center justify-center flex-shrink-0">
-          <SparklesIcon className="w-4 h-4 text-white" />
-        </div>
-        <div className="min-w-0">
-          <h1 className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
-            AI Assistant
-          </h1>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-            आपका business advisor
-          </p>
+      {/* Left: Tab Pill */}
+      <div className="flex-1 min-w-0 flex items-center">
+        <div
+          className="inline-flex items-center rounded-full p-1 gap-0.5"
+          style={{ background: "var(--ai-bg-surface-elevated)" }}
+        >
+          {/* Chat tab — active */}
+          <button
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[13px] font-semibold text-white transition-colors ai-tab-active shadow-sm shadow-purple-500/25"
+          >
+            <SparklesIcon className="w-3.5 h-3.5" />
+            Chat
+          </button>
+
+          {/* Smart Reports tab — visual only, no click affordance */}
+          <span
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[13px] font-medium opacity-40 cursor-default select-none"
+            style={{ color: "var(--ai-text-secondary)" }}
+          >
+            <FileTextIcon className="w-3.5 h-3.5" />
+            Smart Reports
+          </span>
         </div>
       </div>
 
-      {/* Right: Status + Actions */}
+      {/* Right: Status Pill + Actions */}
       <div className="flex items-center gap-2 flex-shrink-0">
-        {/* Connection status dot */}
-        <div className="flex items-center gap-1.5 mr-1">
+        {/* Status pill */}
+        <div
+          className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-medium"
+          style={{
+            background: "var(--ai-bg-surface-elevated)",
+            color: "var(--ai-text-secondary)",
+          }}
+        >
           <span
-            className={`w-2 h-2 rounded-full ${
-              webhookConfigured ? "bg-emerald-500" : "bg-amber-500"
-            }`}
+            className="w-2 h-2 rounded-full flex-shrink-0"
+            style={{
+              background: webhookConfigured
+                ? "var(--ai-success)"
+                : "var(--ai-warning)",
+              animation: webhookConfigured
+                ? "ai-status-pulse 2s ease-in-out infinite"
+                : "none",
+            }}
           />
-          <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 hidden sm:inline">
-            {webhookConfigured ? "Connected" : "Not configured"}
-          </span>
+          {webhookConfigured ? "Ready" : "Not configured"}
         </div>
 
         {/* Settings button */}
         <button
           id="ai-settings-btn"
           onClick={onOpenSettings}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors"
+          className="w-8 h-8 rounded-xl flex items-center justify-center transition-colors"
+          style={{ color: "var(--ai-text-tertiary)" }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "var(--ai-bg-surface-elevated)";
+            e.currentTarget.style.color = "var(--ai-text-primary)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.color = "var(--ai-text-tertiary)";
+          }}
           aria-label="Webhook settings"
         >
           <SettingsIcon className="w-4 h-4" />
@@ -61,8 +91,17 @@ export function TopBar({
         <button
           id="ai-clear-btn"
           onClick={onClear}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
-          aria-label="Chat clear करें"
+          className="w-8 h-8 rounded-xl flex items-center justify-center transition-colors"
+          style={{ color: "var(--ai-text-tertiary)" }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "rgba(220,38,38,0.08)";
+            e.currentTarget.style.color = "var(--ai-error)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.color = "var(--ai-text-tertiary)";
+          }}
+          aria-label="Clear chat"
         >
           <TrashIcon className="w-4 h-4" />
         </button>

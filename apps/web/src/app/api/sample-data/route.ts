@@ -2,6 +2,34 @@ import { NextResponse } from "next/server";
 import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 
+// ─── GET: Count Sample Data ─────────────────────────────
+
+export async function GET() {
+  try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const db = await getDb();
+    const ownerId = getDataOwnerId(user);
+    const filter = { userId: ownerId, is_sample: true };
+
+    const [clients, inventory, orders] = await Promise.all([
+      db.collection("clients").countDocuments(filter),
+      db.collection("inventory").countDocuments(filter),
+      db.collection("orders").countDocuments(filter),
+    ]);
+
+    const total = clients + inventory + orders;
+
+    return NextResponse.json({
+      counts: { clients, inventory, orders, total },
+    });
+  } catch (error: any) {
+    console.error("Error counting sample data:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
 // ─── Sample Data Templates ─────────────────────────────
 
 const SAMPLE_CLIENTS = [

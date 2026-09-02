@@ -103,7 +103,7 @@ export default function ActivityLogPage() {
 
   if (loading && activities.length === 0) {
     return (
-      <div className="space-y-6 max-w-4xl mx-auto">
+      <div className="space-y-6 max-w-4xl mx-auto w-full min-w-0 overflow-x-clip">
         <div className="h-[34px] w-[200px] rounded-[10px] bg-[var(--muted)] shimmer" />
         <div className="h-[40px] w-full max-w-md rounded-[10px] bg-[var(--muted)] shimmer" />
         <div className="h-[500px] w-full rounded-[16px] bg-[var(--muted)] shimmer" />
@@ -116,7 +116,7 @@ export default function ActivityLogPage() {
       variants={staggerContainer}
       initial="initial"
       animate="animate"
-      className="space-y-6 hero-glow max-w-4xl mx-auto"
+      className="space-y-6 hero-glow max-w-4xl mx-auto w-full min-w-0 overflow-x-clip"
     >
       <motion.div variants={staggerItem}>
         <h1 className="text-[34px] font-bold text-[var(--foreground)] leading-[41px] tracking-[0.37px]">
@@ -128,22 +128,24 @@ export default function ActivityLogPage() {
       </motion.div>
 
       {/* Filter Tabs */}
-      <motion.div variants={staggerItem} className="flex overflow-x-auto hide-scrollbar pb-2">
-        <div className="flex gap-2 p-1 bg-[var(--muted)] rounded-[12px] border border-[var(--border)]">
-          {filterOptions.map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => setFilter(opt.value)}
-              className={cn(
-                "px-4 py-2 rounded-[8px] text-[14px] font-medium transition-all whitespace-nowrap",
-                filter === opt.value
-                  ? "bg-white dark:bg-[#2C2C2E] text-[var(--foreground)] shadow-sm"
-                  : "text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
-              )}
-            >
-              {opt.label}
-            </button>
-          ))}
+      <motion.div variants={staggerItem} className="w-full min-w-0">
+        <div className="w-full min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden p-1 bg-[var(--muted)] rounded-[12px] border border-[var(--border)]">
+          <div className="flex gap-1 sm:gap-2 w-max">
+            {filterOptions.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setFilter(opt.value)}
+                className={cn(
+                  "px-2.5 sm:px-4 py-2 rounded-[8px] text-[13px] sm:text-[14px] font-medium transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-95 shrink-0 whitespace-nowrap cursor-pointer",
+                  filter === opt.value
+                    ? "bg-white dark:bg-[#2C2C2E] text-[var(--foreground)] shadow-sm"
+                    : "text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
       </motion.div>
 
@@ -170,10 +172,10 @@ export default function ActivityLogPage() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ delay: index * 0.03 }}
+                      transition={{ delay: index * 0.03, duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
                     >
                       <Link href={activity.href || "#"} className="block group">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 border-b border-[var(--border-divider)] group-hover:bg-[var(--muted)] transition-colors">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 border-b border-[var(--border-divider)] group-hover:bg-[var(--muted)] transition-colors duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.99]">
 
                           <div className="flex items-center gap-4 flex-1 min-w-0">
                             <div className={cn("w-10 h-10 rounded-[10px] flex items-center justify-center flex-shrink-0", colorClass)}>
@@ -192,22 +194,22 @@ export default function ActivityLogPage() {
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between sm:justify-end gap-6 sm:w-[200px] flex-shrink-0 ml-14 sm:ml-0">
+                          <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-6 sm:w-[200px] min-w-0 flex-shrink sm:flex-shrink-0 ml-14 sm:ml-0">
                             {activity.amount !== null && (
-                              <p className="text-[15px] font-medium text-[var(--foreground)]">
+                              <p className="text-[15px] font-medium text-[var(--foreground)] shrink-0">
                                 {"\u20B9"}{activity.amount.toLocaleString("en-IN")}
                               </p>
                             )}
-                            <div className="flex items-center gap-3 text-right">
-                              <div className="flex flex-col items-end">
-                                <span className="text-[13px] text-[var(--muted-foreground)] font-medium">
+                            <div className="flex items-center gap-2 sm:gap-3 text-right min-w-0">
+                              <div className="flex flex-col items-end min-w-0">
+                                <span className="text-[13px] text-[var(--muted-foreground)] font-medium whitespace-nowrap">
                                   {formatTimeAgo(activity.createdAt)}
                                 </span>
-                                <span className="text-[11px] text-[var(--muted-foreground)]">
+                                <span className="text-[11px] text-[var(--muted-foreground)] hidden sm:block whitespace-nowrap">
                                   {formatDateTime(activity.createdAt)}
                                 </span>
                               </div>
-                              <ChevronRight className="h-4 w-4 text-[var(--muted-foreground)] group-hover:text-[var(--muted-foreground)] transition-colors" />
+                              <ChevronRight className="h-4 w-4 text-[var(--muted-foreground)] group-hover:text-[var(--muted-foreground)] transition-colors shrink-0" />
                             </div>
                           </div>
 

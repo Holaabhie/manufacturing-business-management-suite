@@ -38,22 +38,6 @@ function formatContent(content: string): string {
     .replace(/\n/g, '<br />');
 }
 
-// ── Extract title from content ──────────────────────────────
-function extractTitle(content: string): string | null {
-  // Look for first bold text or heading
-  const boldMatch = content.match(/^\*\*(.*?)\*\*/);
-  if (boldMatch && boldMatch[1].length < 60) return boldMatch[1];
-  
-  const headingMatch = content.match(/^#{1,3}\s+(.*$)/m);
-  if (headingMatch) return headingMatch[1];
-  
-  // Check for emoji-prefixed title
-  const emojiMatch = content.match(/^([^\n]{5,50})\n/);
-  if (emojiMatch && !emojiMatch[1].includes('.')) return emojiMatch[1];
-  
-  return null;
-}
-
 export function ResponseCard({
   id,
   content,
@@ -65,9 +49,9 @@ export function ResponseCard({
   onRetry,
 }: ResponseCardProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [isShared, setIsShared] = useState(false);
   const [isExpanded, setIsExpanded] = useState(true);
   const displayText = displayedContent ?? content;
-  const title = extractTitle(content);
   const isLong = content.length > 600;
 
   const copyToClipboard = () => {
@@ -77,12 +61,45 @@ export function ResponseCard({
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const handleShare = async () => {
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+      try {
+        await navigator.share({
+          text: content,
+        });
+        setIsShared(true);
+        setTimeout(() => setIsShared(false), 2000);
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === "AbortError") {
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(content);
+          setIsShared(true);
+          toast.success("Copied to share");
+          setTimeout(() => setIsShared(false), 2000);
+        } catch {
+          // Ignore
+        }
+      }
+    } else if (typeof navigator !== "undefined" && navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(content);
+        setIsShared(true);
+        toast.success("Copied to share");
+        setTimeout(() => setIsShared(false), 2000);
+      } catch {
+        // Ignore
+      }
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -8 }}
-      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
       className="flex gap-3 items-start"
     >
       {/* AI Avatar */}
@@ -107,13 +124,6 @@ export function ResponseCard({
         }`}
         style={isError ? { background: "rgba(244,63,94,0.06)" } : undefined}
       >
-        {/* Title */}
-        {title && !isError && (
-          <div className="ai-response-card__title flex items-center gap-2">
-            <span>{title.replace(/\*\*/g, '')}</span>
-          </div>
-        )}
-
         {/* Body */}
         <div
           className="ai-response-card__body"
@@ -171,8 +181,13 @@ export function ResponseCard({
               )}
               {copiedId === id ? "Copied" : "Copy"}
             </button>
-            <button className="ai-response-card__action-btn">
-              <Share2 className="h-3 w-3" /> Share
+            <button onClick={handleShare} className="ai-response-card__action-btn">
+              {isShared ? (
+                <Check className="h-3 w-3 text-[var(--ai-success)]" />
+              ) : (
+                <Share2 className="h-3 w-3" />
+              )}
+              {isShared ? "Shared" : "Share"}
             </button>
             {onRetry && (
               <button onClick={onRetry} className="ai-response-card__action-btn">

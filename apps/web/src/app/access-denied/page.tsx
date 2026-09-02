@@ -13,14 +13,14 @@ export default function AccessDeniedPage() {
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
+                transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
                 className="max-w-md w-full text-center"
             >
                 {/* Icon */}
                 <motion.div
                     initial={{ scale: 0.8 }}
                     animate={{ scale: 1 }}
-                    transition={{ delay: 0.2, type: "spring" }}
+                    transition={{ delay: 0.05, duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
                     className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-red-500/10 border border-red-500/20 mb-6"
                 >
                     <Shield className="h-10 w-10 text-red-400" />

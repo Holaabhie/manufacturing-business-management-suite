@@ -77,7 +77,7 @@ export default function ProductionPage() {
     const [restoredFromCache, setRestoredFromCache] = useState(false);
 
     // ── Page State Persistence ───────────────────────────
-    const { restoreState, persist, scrollYRef } = useCachedPage({ pageKey: "production" });
+    const { restoreState, persist, scrollYRef } = useCachedPage({ pageKey: "production", maxAgeMs: 5 * 60 * 1000 });
 
     // Staff users should see only their assigned productions
     useEffect(() => {
@@ -102,10 +102,11 @@ export default function ProductionPage() {
     useEffect(() => {
         // Don't fetch if staff (they'll be redirected)
         if (roleLoading || isStaff) return;
-        if (!restoredFromCache) fetchProductions();
+        // Always fetch fresh data on mount — cache only suppresses the loading spinner
+        fetchProductions();
         const interval = setInterval(fetchProductions, 15000);
         return () => clearInterval(interval);
-    }, [roleLoading, isStaff, restoredFromCache]);
+    }, [roleLoading, isStaff]);
 
     const handleDelete = async (id: string) => {
         try {

@@ -72,8 +72,8 @@ export function IOSNavigationBar({
                         <motion.button
                             onClick={onBack}
                             className="flex items-center gap-0.5 text-[var(--primary)] cursor-pointer"
-                            whileTap={{ scale: 0.95 }}
-                            transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                            whileTap={{ scale: 0.97 }}
+                            transition={{ duration: 0.1, ease: [0.7, 0, 0.84, 0] }}
                         >
                             <ChevronLeft size={28} strokeWidth={2.5} />
                             <span className="text-[17px]">{backLabel}</span>
@@ -106,8 +106,8 @@ export function IOSNavigationBar({
                                     ? 'bg-[var(--primary)] text-white px-3 py-1.5 rounded-[8px] text-[15px] font-semibold'
                                     : 'text-[var(--primary)] text-[17px]'
                             )}
-                            whileTap={{ scale: 0.95 }}
-                            transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                            whileTap={{ scale: 0.97 }}
+                            transition={{ duration: 0.1, ease: [0.7, 0, 0.84, 0] }}
                         >
                             {rightButton.icon}
                             {rightButton.label}

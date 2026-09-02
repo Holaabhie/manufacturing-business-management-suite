@@ -90,7 +90,7 @@ export function TablePagination({
   const pageButtonBase = cn(
     "h-9 w-9 rounded-[10px] text-[13px] font-medium",
     "flex items-center justify-center",
-    "transition-all duration-150",
+    "transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-95",
     "border",
     "cursor-pointer",
     "select-none"
@@ -208,7 +208,7 @@ export function TablePagination({
             "flex items-center gap-1",
             "bg-[rgba(255,255,255,0.72)] dark:bg-[rgba(255,255,255,0.06)]",
             "border border-[rgba(15,23,42,0.08)] dark:border-[rgba(255,255,255,0.08)]",
-            "transition-all duration-150 cursor-pointer",
+            "transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-95 cursor-pointer",
             isFirstPage && "opacity-40 cursor-not-allowed"
           )}
         >
@@ -229,7 +229,7 @@ export function TablePagination({
             "flex items-center gap-1",
             "bg-[rgba(255,255,255,0.72)] dark:bg-[rgba(255,255,255,0.06)]",
             "border border-[rgba(15,23,42,0.08)] dark:border-[rgba(255,255,255,0.08)]",
-            "transition-all duration-150 cursor-pointer",
+            "transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-95 cursor-pointer",
             isLastPage && "opacity-40 cursor-not-allowed"
           )}
         >

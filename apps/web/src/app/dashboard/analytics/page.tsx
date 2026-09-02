@@ -358,7 +358,7 @@ export default function AnalyticsPage() {
     }, [dateRange]);
 
     // ── Page State Persistence ────────────────────────────
-    const { restoreState, persist, scrollYRef } = useCachedPage({ pageKey: "analytics" });
+    const { restoreState, persist, scrollYRef } = useCachedPage({ pageKey: "analytics", maxAgeMs: 5 * 60 * 1000 });
     const persistRef = useRef({ dateRange, data });
     useEffect(() => { persistRef.current = { dateRange, data }; });
     useEffect(() => {

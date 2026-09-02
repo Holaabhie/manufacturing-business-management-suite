@@ -274,9 +274,9 @@ export function NotificationDropdown() {
       {unreadCount > 0 && (
         <span
           className={cn(
-            "absolute -top-[6px] -right-[6px] flex items-center justify-center",
-            "min-w-[18px] h-[18px] rounded-full px-1",
-            "bg-[var(--accent-red,#EF4444)] text-white text-[10px] font-extrabold",
+            "absolute top-1.5 right-1.5",
+            "h-2.5 w-2.5 rounded-full",
+            "bg-[var(--accent-red,#EF4444)]",
             "border-2 border-[var(--bg-card,#fff)] dark:border-[var(--bg-page,#000)]",
             "shadow-lg shadow-red-500/30"
           )}
@@ -284,7 +284,7 @@ export function NotificationDropdown() {
             animation: hasNewPulse ? "notif-pulse 2s ease-in-out infinite" : "none",
           }}
         >
-          {unreadCount > 9 ? "9+" : unreadCount}
+          <span className="sr-only">{unreadCount} unread notifications</span>
         </span>
       )}
     </button>

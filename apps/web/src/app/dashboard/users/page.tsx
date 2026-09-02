@@ -678,8 +678,8 @@ export default function EmployeeManagementPage() {
                                             key={emp.id}
                                             initial={{ opacity: 0, y: 10 }}
                                             animate={{ opacity: 1, y: 0 }}
-                                            transition={{ delay: idx * 0.03, type: "spring", stiffness: 400, damping: 30 }}
-                                            className="group border-b border-[var(--border)] last:border-0 hover:bg-[var(--muted)] transition-colors cursor-pointer"
+                                            transition={{ delay: idx * 0.03, duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                                            className="group border-b border-[var(--border)] last:border-0 hover:bg-[var(--muted)] transition-colors duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.99] cursor-pointer"
                                             onClick={() => router.push(`/dashboard/users/${emp.id}`)}
                                         >
                                             <td className="px-6 py-3.5">

@@ -67,6 +67,10 @@ const envSchema = z.object({
 
     // ── Cron / Internal ───────────────────────────────────
     CRON_SECRET: z.string().min(1).optional(),
+
+    // ── Gemini AI ────────────────────────────────────────
+    GEMINI_API_KEY: z.string().min(1).optional(),
+    GEMINI_MODEL: z.string().default("gemini-3.6-flash"),
 });
 
 // ─── Derived Type ───────────────────────────────────────────────

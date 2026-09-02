@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getSessionUser } from "@/lib/auth-session";
+import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { isOwnerRole, hasPermission, resolvePermissions, type FlatPermissionMap, countPermissions } from "@/lib/permissions";
 
@@ -51,6 +51,18 @@ export async function PUT(
         const targetUser = await db.collection("users").findOne({ _id: userId as any });
         if (!targetUser) {
             return NextResponse.json({ error: "User not found" }, { status: 404 });
+        }
+
+        // Tenant isolation: verify target user belongs to same organization
+        const dataOwnerId = getDataOwnerId(user);
+        const isSameTeam =
+            targetUser.adminId === dataOwnerId ||
+            String(targetUser._id) === dataOwnerId;
+        if (!isSameTeam) {
+            return NextResponse.json(
+                { error: "Forbidden - User does not belong to your organization" },
+                { status: 403 }
+            );
         }
 
         // Prevent non-owners from modifying owner permissions

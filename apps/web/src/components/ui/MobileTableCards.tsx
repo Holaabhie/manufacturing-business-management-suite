@@ -38,6 +38,10 @@ interface MobileTableCardsProps<T = any> {
   keyExtractor?: (row: T, index: number) => string;
   /** Optional empty state message */
   emptyMessage?: string;
+  /** Optional render-prop for a per-card action trigger (e.g. three-dot menu button) */
+  actionsTrigger?: (row: T) => React.ReactNode;
+  /** Optional click handler for each card */
+  onCardClick?: (row: T) => void;
 }
 
 export function MobileTableCards<T extends Record<string, any>>({
@@ -46,6 +50,8 @@ export function MobileTableCards<T extends Record<string, any>>({
   className,
   keyExtractor,
   emptyMessage = "No data available",
+  actionsTrigger,
+  onCardClick,
 }: MobileTableCardsProps<T>) {
   if (data.length === 0) {
     return (
@@ -69,8 +75,20 @@ export function MobileTableCards<T extends Record<string, any>>({
         return (
           <div
             key={key}
-            className="rounded-[14px] border border-[var(--border)] bg-[var(--card)] p-3 sm:p-4 space-y-2.5 overflow-hidden min-w-0 w-full"
+            className={cn(
+              "rounded-[14px] border border-[var(--border)] bg-[var(--card)] p-3 sm:p-4 space-y-2.5 overflow-hidden min-w-0 w-full",
+              actionsTrigger && "relative",
+              onCardClick && "cursor-pointer active:bg-[var(--muted)] active:scale-[0.98] hover:border-primary/30 transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)]",
+            )}
+            onClick={onCardClick ? () => onCardClick(row) : undefined}
           >
+            {/* Per-card action trigger (top-right) — only rendered when prop is provided */}
+            {actionsTrigger && (
+              <div className="absolute top-2 right-2 z-[1]">
+                {actionsTrigger(row)}
+              </div>
+            )}
+
             {/* Card title — primary field */}
             <div className="min-w-0">
               <span className="block text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] font-medium">

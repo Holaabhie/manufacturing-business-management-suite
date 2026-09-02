@@ -24,8 +24,9 @@ export function LanguageSwitcherCompact() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <motion.button
-          className="h-[36px] w-[36px] rounded-[10px] flex items-center justify-center text-[var(--muted-foreground)] hover:bg-[var(--muted)] transition-colors cursor-pointer"
-          whileTap={{ scale: 0.9 }}
+          className="h-[36px] w-[36px] rounded-[10px] flex items-center justify-center text-[var(--muted-foreground)] hover:bg-[var(--muted)] transition-colors duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer"
+          whileTap={{ scale: 0.97 }}
+          transition={{ duration: 0.1, ease: [0.7, 0, 0.84, 0] }}
           title={t("language")}
         >
           <Globe className="h-[18px] w-[18px]" />
@@ -76,7 +77,7 @@ export function LanguageSwitcherFull() {
               if (loc !== locale) switchLocale(loc);
             }}
             className={cn(
-              "flex items-center gap-3 p-4 rounded-[16px] border transition-all text-left cursor-pointer",
+              "flex items-center gap-3 p-4 rounded-[16px] border transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.98] text-left cursor-pointer",
               locale === loc
                 ? "bg-[var(--primary)]/10 border-[var(--primary)]/40 ring-2 ring-[var(--primary)]/20"
                 : "bg-[var(--muted)] border-[var(--border)] hover:bg-[var(--muted)]"

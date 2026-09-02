@@ -25,7 +25,7 @@ import { Loader2 } from 'lucide-react';
 const buttonVariants = cva(
     [
         'inline-flex items-center justify-center gap-2 font-semibold',
-        'transition-colors duration-200',
+        'transition-colors duration-150 ease-[cubic-bezier(0.16,1,0.3,1)]',
         'disabled:opacity-40 disabled:pointer-events-none',
         'outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2',
         'select-none cursor-pointer',
@@ -116,12 +116,11 @@ export const IOSButton = React.forwardRef<HTMLButtonElement, IOSButtonProps>(
                 ref={ref}
                 className={cn(buttonVariants({ variant, size, fullWidth, className }))}
                 disabled={isDisabled}
-                whileHover={{ scale: isDisabled ? 1 : 1.02 }}
-                whileTap={{ scale: isDisabled ? 1 : 0.95 }}
+                whileHover={!isDisabled ? { scale: 1.01 } : undefined}
+                whileTap={!isDisabled ? { scale: 0.97 } : undefined}
                 transition={{
-                    type: 'spring',
-                    stiffness: 400,
-                    damping: 17,
+                    duration: 0.1,
+                    ease: [0.7, 0, 0.84, 0],
                 }}
                 {...props}
             >

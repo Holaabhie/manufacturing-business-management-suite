@@ -4,9 +4,11 @@ export function TypingIndicator() {
   return (
     <div className="flex items-start gap-3" id="typing-indicator">
       {/* Avatar */}
-      <div className="w-8 h-8 rounded-xl bg-[#2563EB] flex items-center justify-center flex-shrink-0">
+      <div
+        className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ai-avatar-square shadow-md shadow-purple-500/20 ring-2 ring-purple-500/20"
+      >
         <svg
-          className="w-4 h-4 text-white"
+          className="w-5 h-5 text-white"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -19,40 +21,38 @@ export function TypingIndicator() {
       </div>
 
       {/* Bubble with pulsing dots */}
-      <div className="bg-white dark:bg-[#1C2333] border border-black/[0.06] dark:border-white/[0.06] rounded-[0_16px_16px_16px] px-4 py-3 shadow-[0_8px_30px_rgba(15,23,42,0.06)]">
+      <div
+        className="rounded-[20px] px-4 py-3 border"
+        style={{
+          background: "var(--ai-bg-surface)",
+          borderColor: "var(--ai-border-subtle)",
+          boxShadow: "var(--ai-card-shadow)",
+        }}
+      >
         <div className="flex items-center gap-1.5">
           <span
-            className="w-2 h-2 rounded-full bg-[#2563EB]/60"
-            style={{ animation: "ai-pulse 1.4s ease-in-out infinite" }}
+            className="w-2 h-2 rounded-full bg-[#7C3AED] dark:bg-[#8B5CF6]"
+            style={{
+              opacity: 0.6,
+              animation: "ai-pulse 1.4s ease-in-out infinite",
+            }}
           />
           <span
-            className="w-2 h-2 rounded-full bg-[#2563EB]/60"
+            className="w-2 h-2 rounded-full bg-[#7C3AED] dark:bg-[#8B5CF6]"
             style={{
+              opacity: 0.6,
               animation: "ai-pulse 1.4s ease-in-out 0.2s infinite",
             }}
           />
           <span
-            className="w-2 h-2 rounded-full bg-[#2563EB]/60"
+            className="w-2 h-2 rounded-full bg-[#7C3AED] dark:bg-[#8B5CF6]"
             style={{
+              opacity: 0.6,
               animation: "ai-pulse 1.4s ease-in-out 0.4s infinite",
             }}
           />
         </div>
       </div>
-
-      {/* CSS keyframes for the pulse animation */}
-      <style>{`
-        @keyframes ai-pulse {
-          0%, 80%, 100% {
-            transform: scale(0.6);
-            opacity: 0.4;
-          }
-          40% {
-            transform: scale(1);
-            opacity: 1;
-          }
-        }
-      `}</style>
     </div>
   );
 }

@@ -48,7 +48,8 @@ export const IOSInput = React.forwardRef<HTMLInputElement, IOSInputProps>(
                             'text-[17px] text-[var(--foreground)]',
                             'placeholder:text-[var(--muted-foreground)]',
                             'outline-none border-none',
-                            'transition-shadow duration-200',
+                            'transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)]',
+                            'hover:ring-1 hover:ring-[var(--primary)]/30',
                             'focus:ring-2 focus:ring-[var(--primary)]',
                             error && 'ring-2 ring-[var(--destructive)]',
                             leftIcon ? 'pl-10' : 'pl-4',
@@ -104,7 +105,8 @@ export const IOSTextarea = React.forwardRef<HTMLTextAreaElement, IOSTextareaProp
                         'text-[17px] text-[var(--foreground)]',
                         'placeholder:text-[var(--muted-foreground)]',
                         'outline-none border-none resize-y',
-                        'transition-shadow duration-200',
+                        'transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)]',
+                        'hover:ring-1 hover:ring-[var(--primary)]/30',
                         'focus:ring-2 focus:ring-[var(--primary)]',
                         error && 'ring-2 ring-[var(--destructive)]',
                         'disabled:opacity-40',
@@ -159,7 +161,8 @@ export const IOSSelect = React.forwardRef<HTMLSelectElement, IOSSelectProps>(
                             'text-[17px] text-[var(--foreground)]',
                             'outline-none border-none',
                             'pl-4 pr-10',
-                            'transition-shadow duration-200',
+                            'transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)]',
+                            'hover:ring-1 hover:ring-[var(--primary)]/30',
                             'focus:ring-2 focus:ring-[var(--primary)]',
                             'dark:[color-scheme:dark] [color-scheme:light]',
                             error && 'ring-2 ring-[var(--destructive)]',
@@ -222,17 +225,26 @@ export function IOSCheckbox({
                 onClick={() => !disabled && onCheckedChange?.(!checked)}
                 className={cn(
                     'w-[22px] h-[22px] rounded-[6px] flex items-center justify-center',
-                    'transition-colors duration-200 cursor-pointer',
+                    'transition-colors duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer',
                     'outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2',
                     checked
                         ? 'bg-[var(--primary)]'
                         : 'bg-transparent border-2 border-[var(--muted-foreground)] dark:border-[var(--border)]',
                     disabled && 'opacity-40 cursor-not-allowed'
                 )}
-                whileTap={!disabled ? { scale: 0.85 } : undefined}
-                transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                whileTap={!disabled ? { scale: 0.95 } : undefined}
+                transition={{ duration: 0.1, ease: [0.7, 0, 0.84, 0] }}
             >
-                {checked && <Check size={14} className="text-white" strokeWidth={3} />}
+                {checked && (
+                    <motion.div
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0, opacity: 0 }}
+                        transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+                    >
+                        <Check size={14} className="text-white" strokeWidth={3} />
+                    </motion.div>
+                )}
             </motion.button>
             {label && (
                 <label
@@ -287,23 +299,29 @@ export function IOSRadioGroup({
                         onClick={() => !disabled && onValueChange?.(opt.value)}
                         className={cn(
                             'w-full flex items-center gap-3 min-h-[44px] px-4 py-2.5 text-left cursor-pointer',
-                            'transition-colors duration-150',
+                            'transition-colors duration-150 ease-[cubic-bezier(0.16,1,0.3,1)]',
                             'active:bg-[rgba(0,0,0,0.04)] dark:active:bg-[rgba(255,255,255,0.04)]',
                             disabled && 'opacity-40 cursor-not-allowed'
                         )}
                         whileTap={!disabled ? { scale: 0.98 } : undefined}
+                        transition={{ duration: 0.1, ease: [0.7, 0, 0.84, 0] }}
                     >
                         <span
                             className={cn(
                                 'w-[22px] h-[22px] rounded-full border-2 flex items-center justify-center flex-shrink-0',
-                                'transition-colors duration-200',
+                                'transition-colors duration-150 ease-[cubic-bezier(0.16,1,0.3,1)]',
                                 value === opt.value
                                     ? 'border-[var(--primary)] bg-[var(--primary)]'
                                     : 'border-[var(--muted-foreground)] dark:border-[var(--border)]'
                             )}
                         >
                             {value === opt.value && (
-                                <span className="w-[8px] h-[8px] rounded-full bg-white" />
+                                <motion.span
+                                    initial={{ scale: 0 }}
+                                    animate={{ scale: 1 }}
+                                    transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+                                    className="w-[8px] h-[8px] rounded-full bg-white"
+                                />
                             )}
                         </span>
                         <div className="flex-1 min-w-0">

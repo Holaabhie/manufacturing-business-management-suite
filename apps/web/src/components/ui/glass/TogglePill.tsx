@@ -51,7 +51,7 @@ export function TogglePill({
             className={cn(
               "relative flex-1 flex items-center justify-center gap-1.5",
               "px-4 py-2 rounded-[10px] text-[14px] font-medium",
-              "transition-all duration-200 cursor-pointer select-none",
+              "transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.98] cursor-pointer select-none",
               isActive
                 ? [
                     // Light active
@@ -76,7 +76,7 @@ export function TogglePill({
                   initial={{ scale: 0, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0, opacity: 0 }}
-                  transition={{ duration: 0.2, type: "spring", stiffness: 400, damping: 20 }}
+                  transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
                 >
                   <CheckCircle2 className="h-3.5 w-3.5" />
                 </motion.span>

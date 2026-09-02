@@ -21,6 +21,7 @@ import {
   Package,
   Eye,
   FileText,
+  Wallet,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -45,8 +46,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { playCompletionSound } from "@/hooks/useCompletionSound";
 import { useRole } from "@/lib/hooks/use-role";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { NumericInput, parseNumericValue } from "@/components/ui/numeric-input";
@@ -60,6 +69,10 @@ import { StatWidget } from "@/components/ui/StatWidget";
 import { MobileTableCards } from "@/components/ui/MobileTableCards";
 import { useCachedPage } from "@/hooks/useCachedPage";
 import { ConfirmDeleteSheet } from "@/components/ui/ConfirmDeleteSheet";
+import { AddMaterialModal } from "@/components/inventory/AddMaterialModal";
+import { RecordPaymentModal } from "@/components/purchasing/RecordPaymentModal";
+import { VendorDetailDrawer } from "@/components/purchasing/VendorDetailDrawer";
+import { getPaymentStatus } from "@/modules/purchasing/domain/types";
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -92,6 +105,7 @@ interface PurchaseOrder {
   subtotal: number;
   taxAmount: number;
   totalAmount: number;
+  paidAmount: number;
   notes?: string;
   orderedAt?: string;
   receivedAt?: string;
@@ -115,6 +129,12 @@ const STATUS_CONFIG = {
   Pending: { color: "orange" as const, icon: Clock, label: "Pending" },
   Ordered: { color: "blue" as const, icon: Truck, label: "Ordered" },
   Received: { color: "green" as const, icon: PackageCheck, label: "Received" },
+};
+
+const PAYMENT_STATUS_CONFIG = {
+  pending: { color: "orange" as const, label: "Unpaid" },
+  partial: { color: "blue" as const, label: "Partial" },
+  paid: { color: "green" as const, label: "Paid" },
 };
 
 // ─── Component ──────────────────────────────────────────────────
@@ -153,6 +173,13 @@ export default function PurchasingPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ type: "order" | "vendor"; id: string } | null>(null);
   const [detailOrder, setDetailOrder] = useState<PurchaseOrder | null>(null);
 
+  // Record Payment state
+  const [paymentPO, setPaymentPO] = useState<PurchaseOrder | null>(null);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+
+  // Vendor Detail Drawer state
+  const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
+
   // Vendor form
   const emptyVendorForm = {
     name: "",
@@ -172,6 +199,24 @@ export default function PurchasingPage() {
     { inventoryItemId: string; materialName: string; quantity: string; unit: string; unitPrice: string }[]
   >([]);
   const [addToInventory, setAddToInventory] = useState(false);
+
+  // Inline Add Material (nested inside PO dialog)
+  const [addMaterialTargetRow, setAddMaterialTargetRow] = useState<number | null>(null);
+  const [isAddMaterialOpen, setIsAddMaterialOpen] = useState(false);
+  const emptyMaterialForm = {
+    name: "",
+    quantity: "" as string,
+    unit: "kg",
+    min_stock_level: "" as string,
+    supplier_whatsapp: "",
+    purchase_cost_per_unit: "" as string,
+    hsn_code: "",
+    tax_rate: "18",
+    track_inventory: true,
+    track_batches: false,
+    item_type: "Goods",
+  };
+  const [materialFormData, setMaterialFormData] = useState(emptyMaterialForm);
 
   // ─── Data Fetching ────────────────────────────────────────────
 
@@ -223,7 +268,7 @@ export default function PurchasingPage() {
 
   // ── Page State Persistence ────────────────────────────
   const [restoredFromCache, setRestoredFromCache] = useState(false);
-  const { restoreState, persist, scrollYRef } = useCachedPage({ pageKey: "purchasing" });
+  const { restoreState, persist, scrollYRef } = useCachedPage({ pageKey: "purchasing", maxAgeMs: 5 * 60 * 1000 });
   const persistRef = useRef({ activeTab, orderSearch, vendorSearch, orders, vendors, stats });
   useEffect(() => { persistRef.current = { activeTab, orderSearch, vendorSearch, orders, vendors, stats }; });
   useEffect(() => {
@@ -322,6 +367,60 @@ export default function PurchasingPage() {
     });
   };
 
+  // ─── Inline Add Material Submit ────────────────────────────────
+
+  const handleAddMaterialSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!materialFormData.supplier_whatsapp) {
+      toast.error("Supplier WhatsApp is mandatory");
+      return;
+    }
+    try {
+      const payload = {
+        ...materialFormData,
+        quantity: parseNumericValue(materialFormData.quantity),
+        min_stock_level: parseNumericValue(materialFormData.min_stock_level, 10),
+        purchase_cost_per_unit: parseNumericValue(materialFormData.purchase_cost_per_unit),
+        tax_rate: parseNumericValue(materialFormData.tax_rate, 18),
+      };
+      const res = await fetch("/api/v1/inventory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.error || !data.success) {
+        toast.error(data.error?.message || "Failed to add material");
+        return;
+      }
+      toast.success("Material added to inventory");
+      // Auto-select in the triggering PO item row
+      const created = data.data;
+      if (addMaterialTargetRow !== null) {
+        setPoItems((prev) => {
+          const updated = [...prev];
+          if (updated[addMaterialTargetRow]) {
+            updated[addMaterialTargetRow] = {
+              ...updated[addMaterialTargetRow],
+              inventoryItemId: created.id,
+              materialName: created.name,
+              unit: created.unit,
+              unitPrice: String(created.purchase_cost_per_unit || 0),
+            };
+          }
+          return updated;
+        });
+      }
+      // Refresh shared inventory data so all rows / future POs see the new material
+      fetchInventory();
+      // Close nested modal and reset
+      setIsAddMaterialOpen(false);
+      setAddMaterialTargetRow(null);
+    } catch {
+      toast.error("Failed to add material");
+    }
+  };
+
   const handlePOSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!poVendorId) {
@@ -376,7 +475,7 @@ export default function PurchasingPage() {
     }
   };
 
-  const handleStatusChange = async (orderId: string, newStatus: "Ordered" | "Received") => {
+  const handleStatusChange = async (orderId: string, newStatus: "Received") => {
     try {
       const res = await fetch(`/api/purchasing/${orderId}`, {
         method: "PATCH",
@@ -385,11 +484,8 @@ export default function PurchasingPage() {
       });
       const data = await res.json();
       if (data.success) {
-        toast.success(
-          newStatus === "Received"
-            ? "Order received — inventory updated!"
-            : "Order marked as sent",
-        );
+        toast.success("Order received — inventory updated!");
+        playCompletionSound("general");
         fetchOrders();
         fetchStats();
         if (newStatus === "Received") fetchInventory();
@@ -594,19 +690,77 @@ export default function PurchasingPage() {
                 data={filteredOrders}
                 className="md:hidden"
                 fields={[
-                  { key: "poNumber", label: "PO #", primary: true, render: (_v, o) => (
-                    <span className="text-[var(--primary)] font-bold">{o.poNumber} <span className="text-[var(--muted-foreground)] font-normal">— {o.vendorName}</span></span>
-                  )},
+                  {
+                    key: "poNumber", label: "PO #", primary: true, render: (_v, o) => (
+                      <span className="text-[var(--primary)] font-bold">{o.poNumber} <span className="text-[var(--muted-foreground)] font-normal">— {o.vendorName}</span></span>
+                    )
+                  },
                   { key: "items", label: "Items", render: (_v, o) => `${o.items.length} item${o.items.length !== 1 ? "s" : ""}` },
-                  { key: "totalAmount", label: "Amount", render: (_v, o) => (
-                    <span className="font-semibold">{formatCurrency(o.totalAmount)}</span>
-                  )},
-                  { key: "status", label: "Status", render: (_v, o) => (
-                    <IOSBadge color={STATUS_CONFIG[o.status].color} variant="tinted" dot size="medium">{STATUS_CONFIG[o.status].label}</IOSBadge>
-                  )},
+                  {
+                    key: "totalAmount", label: "Amount", render: (_v, o) => (
+                      <span className="font-semibold">{formatCurrency(o.totalAmount)}</span>
+                    )
+                  },
+                  {
+                    key: "status", label: "Status", render: (_v, o) => (
+                      <div className="flex items-center justify-between w-full">
+                        <IOSBadge color={STATUS_CONFIG[o.status].color} variant="tinted" dot size="medium">{STATUS_CONFIG[o.status].label}</IOSBadge>
+                        {(o.status === "Pending" || o.status === "Ordered") && (
+                          <motion.button
+                            whileTap={{ scale: 0.95 }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStatusChange(o.id, "Received");
+                            }}
+                            className="text-[12px] font-medium text-[var(--primary)] bg-[var(--primary)]/10 px-[10px] py-[6px] rounded-[8px] active:bg-[var(--primary)]/15 cursor-pointer"
+                          >
+                            Received
+                          </motion.button>
+                        )}
+                      </div>
+                    )
+                  },
                   { key: "createdAt", label: "Date", render: (_v, o) => new Date(o.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "2-digit" }) },
                 ]}
                 emptyMessage="No purchase orders yet"
+                actionsTrigger={(order) => (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <motion.button
+                        whileTap={{ scale: 0.9 }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="h-[32px] w-[32px] rounded-[10px] flex items-center justify-center bg-[rgba(15,23,42,0.04)] active:bg-[rgba(15,23,42,0.08)] cursor-pointer"
+                      >
+                        <MoreVertical className="h-[16px] w-[16px] text-[var(--muted-foreground)]" />
+                      </motion.button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="rounded-[12px] w-[180px]">
+                      <DropdownMenuItem
+                        onClick={() => { setDetailOrder(order); setIsDetailDialogOpen(true); }}
+                        className="rounded-[8px]"
+                      >
+                        <Eye className="mr-2 h-4 w-4" /> View Details
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => { setPaymentPO(order); setIsPaymentModalOpen(true); }}
+                        className="rounded-[8px]"
+                      >
+                        <Wallet className="mr-2 h-4 w-4" /> Record Payment
+                      </DropdownMenuItem>
+                      {order.status !== "Received" && isAdmin && (
+                        <DropdownMenuItem
+                          className="text-[var(--destructive)] rounded-[8px]"
+                          onClick={() => {
+                            setDeleteTarget({ type: "order", id: order.id });
+                            setIsDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" /> Delete
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               />
             )}
             {/* ── Desktop Table ── */}
@@ -732,14 +886,14 @@ export default function PurchasingPage() {
                                 >
                                   <Eye className="mr-2 h-4 w-4" /> View Details
                                 </DropdownMenuItem>
-                                {order.status === "Pending" && (
-                                  <DropdownMenuItem
-                                    onClick={() => handleStatusChange(order.id, "Ordered")}
-                                    className="rounded-[8px] text-[var(--primary)]"
-                                  >
-                                    <Send className="mr-2 h-4 w-4" /> Mark as Ordered
-                                  </DropdownMenuItem>
-                                )}
+
+                                <DropdownMenuItem
+                                  onClick={() => { setPaymentPO(order); setIsPaymentModalOpen(true); }}
+                                  className="rounded-[8px]"
+                                >
+                                  <Wallet className="mr-2 h-4 w-4" /> Record Payment
+                                </DropdownMenuItem>
+
                                 {(order.status === "Pending" || order.status === "Ordered") && (
                                   <DropdownMenuItem
                                     onClick={() => handleStatusChange(order.id, "Received")}
@@ -787,16 +941,21 @@ export default function PurchasingPage() {
                 data={filteredVendors}
                 className="md:hidden"
                 fields={[
-                  { key: "name", label: "Vendor", primary: true, render: (_v, vendor) => (
-                    <span>{vendor.name} <span className="text-[var(--muted-foreground)] font-normal text-[13px]">({vendor.contactPerson})</span></span>
-                  )},
-                  { key: "phone", label: "Phone", render: (_v, vendor) => (
-                    <span className="text-[var(--primary)] font-medium">{vendor.phone}</span>
-                  )},
+                  {
+                    key: "name", label: "Vendor", primary: true, render: (_v, vendor) => (
+                      <span>{vendor.name} <span className="text-[var(--muted-foreground)] font-normal text-[13px]">({vendor.contactPerson})</span></span>
+                    )
+                  },
+                  {
+                    key: "phone", label: "Phone", render: (_v, vendor) => (
+                      <span className="text-[var(--primary)] font-medium">{vendor.phone}</span>
+                    )
+                  },
                   { key: "email", label: "Email" },
                   { key: "gstin", label: "GSTIN", render: (v) => v || "—" },
                 ]}
                 emptyMessage="No vendors added"
+                onCardClick={(vendor) => setSelectedVendor(vendor)}
               />
             )}
             {/* ── Desktop Table ── */}
@@ -857,7 +1016,8 @@ export default function PurchasingPage() {
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.03, duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                        className="group glass-table-row hover:bg-[var(--muted)] border-b border-[var(--border)] transition-colors"
+                        className="group glass-table-row hover:bg-[var(--muted)] border-b border-[var(--border)] transition-colors cursor-pointer"
+                        onClick={() => setSelectedVendor(vendor)}
                       >
                         <TableCell className="py-3.5 pl-5">
                           <div className="flex items-center gap-3">
@@ -926,8 +1086,8 @@ export default function PurchasingPage() {
           if (!open) setVendorForm(emptyVendorForm);
         }}
       >
-        <DialogContent fullScreenMobile className="max-w-md md:max-w-lg p-0 overflow-hidden rounded-[24px] border-[var(--glass-border)] glass-dialog">
-          <ScrollArea className="max-h-[90vh]">
+        <DialogContent fullScreenMobile className="max-w-md md:max-w-lg p-0 overflow-hidden rounded-[24px] border-[var(--glass-border)] glass-dialog md:max-h-[85dvh] flex flex-col">
+          <ScrollArea className="flex-1 min-h-0">
             <div className="p-6">
               <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid var(--glass-border)" }}>
                 <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, rgba(59,130,246,0.4), rgba(255,255,255,0.06))", border: "1px solid var(--glass-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1013,8 +1173,8 @@ export default function PurchasingPage() {
 
       {/* ════════════ NEW PURCHASE ORDER DIALOG ════════════ */}
       <Dialog open={isPODialogOpen} onOpenChange={setIsPODialogOpen}>
-        <DialogContent fullScreenMobile className="w-full max-w-[420px] sm:max-w-[560px] md:max-w-[680px] lg:max-w-[750px] p-0 max-h-[90vh] overflow-hidden rounded-[24px] border-[var(--glass-border)] glass-dialog flex flex-col">
-          <div className="overflow-y-auto flex-1">
+        <DialogContent fullScreenMobile className="w-full max-w-[420px] sm:max-w-[560px] md:max-w-[680px] lg:max-w-[750px] p-0 md:max-h-[85dvh] overflow-hidden rounded-[24px] border-[var(--glass-border)] glass-dialog flex flex-col">
+          <div className="overflow-y-auto flex-1 min-h-0">
             <div className="p-4 sm:p-6 md:p-8">
               <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid var(--glass-border)" }}>
                 <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, rgba(34,197,94,0.4), rgba(255,255,255,0.06))", border: "1px solid var(--glass-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1029,19 +1189,22 @@ export default function PurchasingPage() {
                 {/* Vendor Select */}
                 <div className="space-y-1.5">
                   <Label className="text-[13px] text-[var(--muted-foreground)]">Select Vendor *</Label>
-                  <select
+                  <Select
                     value={poVendorId}
-                    onChange={(e) => setPoVendorId(e.target.value)}
+                    onValueChange={setPoVendorId}
                     required
-                    className="w-full h-[44px] rounded-[10px] bg-[var(--muted)] px-3 text-[15px] text-[var(--foreground)] outline-none border-none focus:ring-2 focus:ring-[var(--primary)] transition-shadow appearance-none cursor-pointer"
                   >
-                    <option value="">Choose vendor...</option>
-                    {vendors.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.name} — {v.contactPerson}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="w-full h-[44px] rounded-[10px] bg-[var(--muted)] px-3 text-[15px] text-[var(--foreground)] border-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] transition-shadow cursor-pointer">
+                      <SelectValue placeholder="Choose vendor..." />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[220px] overflow-y-auto scrollbar-thin">
+                      {vendors.map((v) => (
+                        <SelectItem key={v.id} value={v.id}>
+                          {v.name} — {v.contactPerson}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   {vendors.length === 0 && (
                     <p className="text-[12px] text-[var(--erp-warning)]">
                       No vendors found. Add a vendor first.
@@ -1078,18 +1241,35 @@ export default function PurchasingPage() {
                           </button>
                         )}
                       </div>
-                      <select
-                        value={item.inventoryItemId}
-                        onChange={(e) => updatePOItem(idx, "inventoryItemId", e.target.value)}
-                        className="w-full h-[40px] rounded-[8px] bg-[var(--muted)] px-3 text-[14px] text-[var(--foreground)] outline-none border-none focus:ring-2 focus:ring-[var(--primary)] appearance-none cursor-pointer"
-                      >
-                        <option value="">Select material...</option>
-                        {inventoryItems.map((inv) => (
-                          <option key={inv.id} value={inv.id}>
-                            {inv.name} ({inv.quantity} {inv.unit} in stock)
-                          </option>
-                        ))}
-                      </select>
+                      <div className="flex items-center gap-1.5">
+                        <Select
+                          value={item.inventoryItemId}
+                          onValueChange={(val) => updatePOItem(idx, "inventoryItemId", val)}
+                        >
+                          <SelectTrigger className="w-full h-[40px] rounded-[8px] bg-[var(--muted)] px-3 text-[14px] text-[var(--foreground)] border-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] transition-shadow cursor-pointer">
+                            <SelectValue placeholder="Select material..." />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-[220px] overflow-y-auto scrollbar-thin">
+                            {inventoryItems.map((inv) => (
+                              <SelectItem key={inv.id} value={inv.id}>
+                                {inv.name} ({inv.quantity} {inv.unit} in stock)
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <button
+                          type="button"
+                          title="Create new material"
+                          onClick={() => {
+                            setMaterialFormData({ ...emptyMaterialForm });
+                            setAddMaterialTargetRow(idx);
+                            setIsAddMaterialOpen(true);
+                          }}
+                          className="p-1 hover:bg-[var(--muted)] rounded-[6px] cursor-pointer flex-shrink-0"
+                        >
+                          <Plus className="h-3.5 w-3.5 text-[var(--primary)]" />
+                        </button>
+                      </div>
                       <div className="grid grid-cols-3 gap-2 md:gap-4">
                         <div>
                           <Label className="text-[11px] text-[var(--muted-foreground)]">Qty</Label>
@@ -1169,7 +1349,7 @@ export default function PurchasingPage() {
                       <span>
                         {formatCurrency(
                           poItems.reduce((a, i) => a + parseNumericValue(i.quantity) * parseNumericValue(i.unitPrice), 0) *
-                            (parseNumericValue(poTaxPercent, 18) / 100),
+                          (parseNumericValue(poTaxPercent, 18) / 100),
                         )}
                       </span>
                     </div>
@@ -1178,7 +1358,7 @@ export default function PurchasingPage() {
                       <span className="text-[var(--primary)]">
                         {formatCurrency(
                           poItems.reduce((a, i) => a + parseNumericValue(i.quantity) * parseNumericValue(i.unitPrice), 0) *
-                            (1 + parseNumericValue(poTaxPercent, 18) / 100),
+                          (1 + parseNumericValue(poTaxPercent, 18) / 100),
                         )}
                       </span>
                     </div>
@@ -1256,11 +1436,25 @@ export default function PurchasingPage() {
         </DialogContent>
       </Dialog>
 
+      {/* ════════════ NESTED ADD MATERIAL MODAL (inside PO flow) ════════════ */}
+      <AddMaterialModal
+        isOpen={isAddMaterialOpen}
+        onClose={() => {
+          setIsAddMaterialOpen(false);
+          setAddMaterialTargetRow(null);
+        }}
+        formData={materialFormData}
+        setFormData={setMaterialFormData}
+        onSubmit={handleAddMaterialSubmit}
+        isEditing={false}
+        zIndex={1100}
+      />
+
       {/* ════════════ ORDER DETAIL DIALOG ════════════ */}
       <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-        <DialogContent fullScreenMobile className="max-w-md md:max-w-lg p-0 overflow-hidden rounded-[24px] border-[var(--glass-border)] glass-dialog">
+        <DialogContent fullScreenMobile className="max-w-md md:max-w-lg p-0 overflow-hidden rounded-[24px] border-[var(--glass-border)] glass-dialog md:max-h-[85dvh] flex flex-col">
           {detailOrder && (
-            <ScrollArea className="max-h-[90vh]">
+            <ScrollArea className="flex-1 min-h-0">
               <div className="p-6 space-y-4">
                 <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid var(--glass-border)" }}>
                   <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, rgba(168,85,247,0.4), rgba(255,255,255,0.06))", border: "1px solid var(--glass-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1364,6 +1558,31 @@ export default function PurchasingPage() {
             : "will be permanently removed along with its purchase history. This cannot be undone."
         }
       />
+
+      {/* ════════════ RECORD PAYMENT MODAL ════════════ */}
+      <RecordPaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => { setIsPaymentModalOpen(false); setPaymentPO(null); }}
+        purchaseOrder={paymentPO}
+        onPaymentRecorded={(updatedPO) => {
+          // Update local orders state in-place for instant UI refresh
+          setOrders((prev) =>
+            prev.map((o) =>
+              o.id === updatedPO.id
+                ? { ...o, paidAmount: updatedPO.paidAmount }
+                : o
+            )
+          );
+        }}
+      />
+
+      {/* ════════════ VENDOR DETAIL DRAWER ════════════ */}
+      <VendorDetailDrawer
+        vendor={selectedVendor}
+        orders={orders}
+        onClose={() => setSelectedVendor(null)}
+      />
+
     </motion.div>
   );
 }

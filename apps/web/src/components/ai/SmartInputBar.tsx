@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import { Send, Sparkles, Paperclip, Mic } from "lucide-react";
+import { Send, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -49,17 +49,8 @@ export function SmartInputBar({
 
   return (
     <div className="flex-shrink-0 px-4 py-3 border-t border-gray-200 dark:border-white/[0.06]">
-      <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
+      <form onSubmit={handleSubmit} className="max-w-[900px] mx-auto">
         <div className="ai-input-bar flex items-end gap-3">
-          {/* Attachment button */}
-          <button
-            type="button"
-            className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-[var(--ai-text-tertiary)] hover:text-[var(--ai-text-secondary)] hover:bg-gray-100 dark:hover:bg-white/5 transition-all"
-            title="Attach file"
-          >
-            <Paperclip className="h-4 w-4" />
-          </button>
-
           {/* Textarea */}
           <textarea
             ref={textareaRef}
@@ -75,15 +66,6 @@ export function SmartInputBar({
             )}
             style={{ maxHeight: 140 }}
           />
-
-          {/* Mic button */}
-          <button
-            type="button"
-            className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-[var(--ai-text-tertiary)] hover:text-[var(--ai-text-secondary)] hover:bg-gray-100 dark:hover:bg-white/5 transition-all"
-            title="Voice input"
-          >
-            <Mic className="h-4 w-4" />
-          </button>
 
           {/* Send button */}
           <motion.button

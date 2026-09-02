@@ -70,7 +70,7 @@ export const IOSSearchBar = React.forwardRef<HTMLInputElement, IOSSearchBarProps
                         'relative flex items-center flex-1',
                         'h-[36px] rounded-[10px]',
                         'bg-[var(--muted)]',
-                        'transition-all duration-200',
+                        'transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)]',
                         isFocused && 'ring-2 ring-[var(--primary)]'
                     )}
                 >
@@ -102,7 +102,7 @@ export const IOSSearchBar = React.forwardRef<HTMLInputElement, IOSSearchBarProps
                                 initial={{ opacity: 0, scale: 0.5 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.5 }}
-                                transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+                                transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
                                 onClick={handleClear}
                                 className={cn(
                                     'absolute right-[8px]',
@@ -125,7 +125,7 @@ export const IOSSearchBar = React.forwardRef<HTMLInputElement, IOSSearchBarProps
                             initial={{ opacity: 0, x: 20, width: 0 }}
                             animate={{ opacity: 1, x: 0, width: 'auto' }}
                             exit={{ opacity: 0, x: 20, width: 0 }}
-                            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
                             onClick={handleCancel}
                             className={cn(
                                 'text-[17px] font-normal text-[var(--primary)]',

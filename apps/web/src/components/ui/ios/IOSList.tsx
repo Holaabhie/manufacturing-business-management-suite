@@ -112,7 +112,7 @@ export function IOSListItem({
             )}
             onClick={onClick as () => void}
             whileTap={onClick ? { scale: 0.98 } : undefined}
-            transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+            transition={{ duration: 0.1, ease: [0.7, 0, 0.84, 0] }}
             {...(props as Record<string, unknown>)}
         >
             {leftIcon && (

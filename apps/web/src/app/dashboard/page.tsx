@@ -79,7 +79,6 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
-import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
 import { SampleDataBanner } from "@/components/SampleDataBanner";
 
 // ─── Types & Definitions ────────────────────────────────
@@ -744,8 +743,6 @@ export default function DashboardPage() {
       animate="animate"
       className="space-y-6 lg:space-y-4 hero-glow bg-[#F1F4F9] dark:bg-transparent -m-6 p-6"
     >
-      {/* Onboarding Modal */}
-      <OnboardingModal />
 
       {/* Sample Data Banner (shown when dashboard is empty) */}
       {isEmptyDashboard && (

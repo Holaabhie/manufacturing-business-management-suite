@@ -866,7 +866,7 @@ export default function FolioPage() {
             <motion.button
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              transition={{ delay: 0.3, type: "spring", stiffness: 300, damping: 20 }}
+              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
               onClick={openAddNote}
               className="fixed bottom-24 md:bottom-8 right-6 md:right-10 w-[56px] h-[56px] rounded-full flex items-center justify-center text-white cursor-pointer z-40 transition-transform hover:scale-105 active:scale-95"
               style={{

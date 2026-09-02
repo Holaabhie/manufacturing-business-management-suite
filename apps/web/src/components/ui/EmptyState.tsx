@@ -17,7 +17,7 @@ export function EmptyState({ icon, title, description, actionLabel, onAction, cl
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
       className={cn(
         "flex flex-col items-center justify-center py-16 px-8 text-center",
         className
@@ -27,7 +27,7 @@ export function EmptyState({ icon, title, description, actionLabel, onAction, cl
         className="text-5xl mb-4"
         initial={{ scale: 0.8 }}
         animate={{ scale: 1 }}
-        transition={{ duration: 0.5, delay: 0.1, type: "spring", stiffness: 200 }}
+        transition={{ duration: 0.18, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
       >
         {icon}
       </motion.div>
@@ -36,9 +36,9 @@ export function EmptyState({ icon, title, description, actionLabel, onAction, cl
       {actionLabel && onAction && (
         <motion.button
           onClick={onAction}
-          whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
-          className="px-6 py-3 rounded-xl text-sm font-semibold transition-all cursor-pointer"
+          transition={{ duration: 0.1, ease: [0.7, 0, 0.84, 0] }}
+          className="px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer"
           style={{
             background: "rgba(167,139,250,0.2)",
             border: "1px solid rgba(167,139,250,0.4)",

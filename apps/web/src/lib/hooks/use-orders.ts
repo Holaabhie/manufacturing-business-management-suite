@@ -11,6 +11,7 @@ import {
     useQueryClient,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { playCompletionSound } from "@/hooks/useCompletionSound";
 
 // ─── Query Keys ──────────────────────────────────────────
 export const queryKeys = {
@@ -216,6 +217,7 @@ export function useRecordPayment() {
                 qc.invalidateQueries({ queryKey: queryKeys.order(_variables.reference_id) });
             }
             toast.success("Payment recorded — status updated automatically");
+            playCompletionSound("payment");
         },
         onError: (err: Error) => {
             toast.error(err.message || "Failed to record payment");
@@ -402,6 +404,7 @@ export function useCreatePayment() {
         },
         onSuccess: () => {
             toast.success("Payment recorded successfully");
+            playCompletionSound("payment");
         },
         onSettled: async (_data: any, _error: any, payload: any) => {
             // Reconcile order payment status in DB if linked to an order

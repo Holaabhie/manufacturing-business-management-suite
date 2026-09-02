@@ -17,7 +17,7 @@ import { motion, type HTMLMotionProps } from 'framer-motion';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
-const cardVariants = cva('transition-all duration-300', {
+const cardVariants = cva('transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)]', {
     variants: {
         variant: {
             elevated: [
@@ -87,7 +87,7 @@ export const IOSCard = React.forwardRef<HTMLDivElement, IOSCardProps>(
                     interactive
                         ? {
                             scale: 1.01,
-                            transition: { type: 'spring', stiffness: 400, damping: 17 },
+                            transition: { duration: 0.18, ease: [0.16, 1, 0.3, 1] },
                         }
                         : undefined
                 }
@@ -95,7 +95,7 @@ export const IOSCard = React.forwardRef<HTMLDivElement, IOSCardProps>(
                     interactive
                         ? {
                             scale: 0.98,
-                            transition: { type: 'spring', stiffness: 400, damping: 17 },
+                            transition: { duration: 0.1, ease: [0.7, 0, 0.84, 0] },
                         }
                         : undefined
                 }

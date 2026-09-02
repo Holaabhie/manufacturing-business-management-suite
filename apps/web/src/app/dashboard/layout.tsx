@@ -886,7 +886,7 @@ export default function DashboardLayout({
                on manual useEffect pages (users/, settings/team/) and keeps
                Suspense fallbacks from appearing mid-transition. */}
           <PageTransition>
-            <div className="max-w-[1400px] mx-auto overflow-x-hidden min-w-0">
+            <div className="max-w-[1400px] mx-auto overflow-x-hidden min-w-0 w-full">
               {children}
             </div>
           </PageTransition>
@@ -896,19 +896,18 @@ export default function DashboardLayout({
       {/* ════════════ MOBILE BOTTOM NAVIGATION — Floating Iconbar ════════════ */}
       <div
         className={cn(
-          "md:hidden fixed bottom-0 left-0 right-0 z-50 pointer-events-none transition-opacity duration-200",
+          "md:hidden fixed bottom-4 left-4 right-4 z-50 pointer-events-none transition-opacity duration-200",
           isMobileSearchActive && "opacity-35 pointer-events-none"
         )}
         aria-hidden={isMobileSearchActive ? "true" : undefined}
         {...(isMobileSearchActive ? { inert: true } : {})}
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        {/* Gradient fade — NOT a visible bar */}
-        <div className="floating-nav-fade absolute inset-0 pointer-events-none" />
+        {/* floating-nav-fade gradient removed — redundant with solid rounded bar background */}
 
         {/* Floating nav items */}
         <nav
-          className="relative flex items-end justify-around px-2 pt-4 pb-2 pointer-events-auto"
+          className="relative flex items-end justify-around px-2 pt-4 pb-2 pointer-events-auto rounded-[28px] bg-card/90 dark:bg-card/95 backdrop-blur-xl border border-border shadow-xl shadow-black/10 dark:shadow-black/40"
         >
           {filterMobileNavByRole(mobileNavItems, role).filter((item) => {
             const moduleKey = NAV_MODULE_MAP[item.nameKey];

@@ -30,7 +30,7 @@ const WELCOME_MESSAGE: Message = {
   id: "welcome",
   role: "assistant",
   content:
-    "नमस्ते! आपके business का कोई भी सवाल पूछें — orders, inventory, payments, production सब कुछ।",
+    "Hello! Ask me anything about your business — orders, inventory, payments, production, and more.",
   timestamp: new Date().toISOString(),
   status: "sent",
 };

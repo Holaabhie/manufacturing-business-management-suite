@@ -5,6 +5,14 @@ import mongoose from "mongoose";
 const uri = process.env.MONGODB_URI;
 
 if (!uri) {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "FATAL: MONGODB_URI environment variable is not set in production. " +
+      "Refusing to start with localhost fallback. " +
+      "Set MONGODB_URI to your MongoDB connection string and restart."
+    );
+  }
+
   console.error(
     "\n" +
     "╔══════════════════════════════════════════════════════════╗\n" +

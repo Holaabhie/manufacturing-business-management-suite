@@ -1,13 +1,10 @@
 "use client";
 
-import { useState, useMemo, useCallback, useRef, useEffect, Suspense } from "react";
+import React, { useState, useMemo, useCallback, useRef, useEffect, Suspense } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useSearchParams, useRouter } from "next/navigation";
-import { usePaginatedSearch } from "@/hooks/usePaginatedSearch";
-import { useURLSyncedPagination } from "@/hooks/useURLSyncedPagination";
 import { useCachedPage } from "@/hooks/useCachedPage";
 import { SearchBar } from "@/components/ui/SearchBar";
-import { TablePagination } from "@/components/ui/TablePagination";
 import { TableEmptyState } from "@/components/ui/TableEmptyState";
 import {
   Plus,
@@ -103,7 +100,7 @@ import { CollapsingTitle } from "@/components/ui/CollapsingTitle";
 import { useCollapseProgress } from "@/hooks/useCollapseProgress";
 import { ConfirmDeleteSheet } from "@/components/ui/ConfirmDeleteSheet";
 
-// ──────────────── React Query Hooks ──────────────────────────────────────────
+// React Query Hooks 
 import {
   useOrders,
   useClients,
@@ -122,14 +119,26 @@ function OrdersContent() {
   const { role, isAdmin, isStaff, isPro, loading: roleLoading } = useRole();
   const { formatINR } = useFormatters();
 
-  const { initialPage, initialSearch, syncToURL } = useURLSyncedPagination();
+  // Search state (replaces usePaginatedSearch - pagination removed for monthly grouping)
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams.get("search") || "";
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
+  const [debouncedQuery, setDebouncedQuery] = useState(initialSearch);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleSearch = useCallback((val: string) => {
+    setSearchQuery(val);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedQuery(val), 300);
+  }, []);
+  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current); }, []);
 
-  // ─── Page-level UI state cache (search, filters, scroll) ───
+ // Page-level UI state cache (search, filters, scroll) 
   const { restoreState, persist, scrollYRef, restoreScroll } = useCachedPage({
     pageKey: "orders",
+    maxAgeMs: 5 * 60 * 1000,
   });
 
-  // â”€â”€â”€ React Query: data fetching â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ // React Query: data fetching ---
   const {
     data: orders = [],
     isLoading: ordersLoading,
@@ -139,21 +148,21 @@ function OrdersContent() {
   const { data: clients = [] } = useClients();
   const { data: inventory = [] } = useInventory();
 
-  // â”€â”€â”€ React Query: mutations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ // React Query: mutations ---
   const createOrder = useCreateOrder();
   const updateOrder = useUpdateOrder();
   const deleteOrder = useDeleteOrder();
   const recordPayment = useRecordPayment();
   const updateOrderStatus = useUpdateOrderStatus();
 
-  // â”€â”€â”€ Local UI state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ // Local UI state ---
   const [clientProducts, setClientProducts] = useState<any[]>([]);
   const [clientProductMaterials, setClientProductMaterials] = useState<any[]>(
     [],
   );
   const [isLoadingMaterials, setIsLoadingMaterials] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<any>(null);
-  // â”€â”€â”€ Strictly Isolated Modal Booleans â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ // Strictly Isolated Modal Booleans ---
   // Each modal has its own [isOpen, setIsOpen] boolean.
   // open=true is ONLY set by explicit user actions (button clicks).
   // open=false is set by onOpenChange(false) or programmatic close.
@@ -166,7 +175,7 @@ function OrdersContent() {
   const [paymentOrder, setPaymentOrder] = useState<any>(null);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
 
-  // ─── Fresh order data for payment modal (Bug #2 fix) ───
+ // Fresh order data for payment modal (Bug #2 fix) 
   const paymentOrderId = paymentOrder?.id as string | undefined;
   const { data: freshOrder } = useQuery<Record<string, unknown>>({
     queryKey: queryKeys.order(paymentOrderId ?? ""),
@@ -189,7 +198,7 @@ function OrdersContent() {
     }));
   }, [freshOrder]);
 
-  // â”€â”€â”€ Completion Confirmation Modal state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ // Completion Confirmation Modal state ---
   const [completionOrder, setCompletionOrder] = useState<any>(null);
   const [isCompletionModalOpen, setIsCompletionModalOpen] = useState(false);
   const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
@@ -197,7 +206,7 @@ function OrdersContent() {
   const [isInvoicePreviewOpen, setIsInvoicePreviewOpen] = useState(false);
   const [invoiceEditData, setInvoiceEditData] = useState<any>(null);
 
-  // â”€â”€â”€ Long-press & Bottom Sheet state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ // Long-press & Bottom Sheet state ---
   const [longPressedOrder, setLongPressedOrder] = useState<any>(null);
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
   const [pressedCardId, setPressedCardId] = useState<string | null>(null);
@@ -234,8 +243,8 @@ function OrdersContent() {
     setTimeout(() => setLongPressedOrder(null), 350);
   }, []);
 
-  // â”€â”€â”€ Status filter (React state, synced to URL via syncToURL) â”€â”€
-  const searchParams = useSearchParams();
+  // --- Status filter (React state) ---
+
   const [statusFilter, setStatusFilter] = useState<string | null>(
     () => searchParams.get("status") // seed from URL on mount
   );
@@ -286,7 +295,7 @@ function OrdersContent() {
     ];
     const rows = orders.map((order: any) => [
       order.product_name || order.productName,
-      order.client?.name || order.clients?.name || "â€”",
+      order.client?.name || order.clients?.name || "\u2014",
       String(order.quantity),
       formatINR(Number(order.rate)),
       formatINR(Number(order.total_amount || order.totalAmount)),
@@ -295,7 +304,7 @@ function OrdersContent() {
         ? new Date(
             order.delivery_date || order.deliveryDate,
           ).toLocaleDateString("en-IN")
-        : "â€”",
+        : "\u2014",
     ]);
     generateDataExportPDF({
       title: "Orders & Production Report",
@@ -318,12 +327,12 @@ function OrdersContent() {
 
     const dataToExport = orders.map((order: any) => ({
       order_id: order?.id ?? "",
-      client_name: order?.client?.name || order?.clients?.name || "â€”",
+      client_name: order?.client?.name || order?.clients?.name || "\u2014",
       status: order?.status ?? "",
       total_amount: order?.total_amount ?? order?.totalAmount ?? 0,
       date_formatted: order?.createdAt
         ? new Date(order.createdAt).toLocaleDateString("en-IN")
-        : "â€”",
+        : "\u2014",
     }));
 
     exportToExcel(
@@ -411,7 +420,7 @@ function OrdersContent() {
     setCurrentOrder(null);
   };
 
-  // â”€â”€â”€ Safe close helpers (prevent any state cascade) â”€â”€â”€â”€
+ // Safe close helpers (prevent any state cascade) ---
   const closeOrderDialog = () => {
     setIsDialogOpen(false);
     resetForm();
@@ -625,10 +634,10 @@ function OrdersContent() {
     }
   };
 
-  // â”€â”€ Status-only pre-filter (URL-based) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ // Status-only pre-filter (URL-based) ---
   const statusFilteredOrders = useMemo(() => {
     if (!Array.isArray(orders)) return [];
-    // No filter active â†’ return all
+ // No filter active return all
     if (!statusFilter) return orders;
     const activeStatus = statusFilter.toLowerCase().trim();
     // "active" = everything NOT completed
@@ -650,73 +659,83 @@ function OrdersContent() {
     });
   }, [orders, statusFilter]);
 
-  // ─── Pagination + Search ─────────────────────────────────
-  const {
-    searchQuery,
-    handleSearch,
-    currentPage,
-    setCurrentPage,
-    totalPages,
-    totalFiltered,
-    totalItems,
-    paginatedData,
-    debouncedQuery,
-  } = usePaginatedSearch({
-    data: statusFilteredOrders,
-    searchFields: ["productName", "product_name", "id", "status"],
-    pageSize: 15,
-    initialPage,
-    initialSearch,
-    filterFn: (order: any, normalizedQuery: string) => {
+  // --- Search filter (replaces usePaginatedSearch - full list, no pagination) ---
+  const searchFilteredOrders = useMemo(() => {
+    const normalized = debouncedQuery.replace(/\s+/g, " ").trim().toLowerCase();
+    if (!normalized) return statusFilteredOrders;
+    return statusFilteredOrders.filter((order: any) => {
       const productName = String(order.productName ?? order.product_name ?? "").toLowerCase();
       const clientName = String(order.client?.name ?? order.clients?.name ?? "").toLowerCase();
       const orderId = String(order.id ?? "").toLowerCase();
       return (
-        productName.includes(normalizedQuery) ||
-        clientName.includes(normalizedQuery) ||
-        orderId.includes(normalizedQuery)
+        productName.includes(normalized) ||
+        clientName.includes(normalized) ||
+        orderId.includes(normalized)
       );
-    },
-  });
-
-  // Keep filteredOrders name for backward compatibility with count displays
-  const filteredOrders = paginatedData;
-
-  // ─── Sync to URL on state change ──────────────────────────
-  useEffect(() => {
-    syncToURL({
-      page: currentPage,
-      search: debouncedQuery,
-      filters: { status: statusFilter },
     });
-  }, [currentPage, debouncedQuery, statusFilter, syncToURL]);
+  }, [statusFilteredOrders, debouncedQuery]);
 
-  // ─── Scroll-to-top on page change + Table scroll Ref ──────
-  const tableContainerRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (currentPage > 1) {
-      tableContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  const totalFiltered = searchFilteredOrders.length;
+
+  // Keep filteredOrders alias for backward compat (staff view, empty states)
+  const filteredOrders = searchFilteredOrders;
+
+  // --- Monthly grouping (Paytm-inspired history view) ---
+  type MonthGroup = {
+    key: string;
+    label: string;
+    orders: any[];
+    orderCount: number;
+    totalValue: number;
+  };
+
+  const monthGroupedOrders: MonthGroup[] = useMemo(() => {
+    const sorted = [...searchFilteredOrders].sort(
+      (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    const groups = new Map<string, MonthGroup>();
+
+    for (const order of sorted) {
+      const d = new Date(order.createdAt);
+      const year = d.getFullYear();
+      const month = d.getMonth();
+      const key = `${year}-${String(month + 1).padStart(2, "0")}`;
+
+      if (!groups.has(key)) {
+        groups.set(key, {
+          key,
+          label: d
+            .toLocaleDateString("en-IN", { month: "long", year: "numeric" })
+            .toUpperCase(),
+          orders: [],
+          orderCount: 0,
+          totalValue: 0,
+        });
+      }
+
+      const group = groups.get(key)!;
+      group.orders.push(order);
+      group.orderCount += 1;
+      group.totalValue += Number(order.totalAmount ?? (order as any).total_amount ?? 0);
     }
-  }, [currentPage]);
 
-  // ─── Restore cached UI state on mount ────────────────────
-  // URL params win — cache is only used as a fallback
+    return Array.from(groups.values());
+  }, [searchFilteredOrders]);
+
+  // --- Table scroll Ref ---
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+
+  // --- Restore cached UI state on mount ---
   useEffect(() => {
     const cached = restoreState();
     if (cached) {
-      // Only apply cached search if URL didn't provide one
       if (!initialSearch && cached.searchQuery) {
         handleSearch(cached.searchQuery as string);
       }
-      // Only apply cached page if URL is at default (page 1)
-      if (initialPage === 1 && typeof cached.currentPage === "number" && cached.currentPage > 1) {
-        setCurrentPage(cached.currentPage as number);
-      }
-      // Only apply cached status filter if URL didn't provide one
       if (!searchParams.get("status") && cached.statusFilter !== undefined) {
         setStatusFilter(cached.statusFilter as string | null);
       }
-      // Restore scroll position
       if (typeof cached.scrollY === "number" && cached.scrollY > 0) {
         restoreScroll(cached.scrollY);
       }
@@ -724,10 +743,10 @@ function OrdersContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ─── Persist UI state on unmount ─────────────────────────
-  const cachedStateRef = useRef({ searchQuery, currentPage, statusFilter });
+  // --- Persist UI state on unmount ---
+  const cachedStateRef = useRef({ searchQuery, statusFilter });
   useEffect(() => {
-    cachedStateRef.current = { searchQuery, currentPage, statusFilter };
+    cachedStateRef.current = { searchQuery, statusFilter };
   });
   useEffect(() => {
     return () => {
@@ -736,7 +755,7 @@ function OrdersContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ─── Track scroll position for cache ─────────────────────
+  // --- Track scroll position for cache ---
   useEffect(() => {
     const el = tableContainerRef.current;
     if (!el) return;
@@ -745,7 +764,8 @@ function OrdersContent() {
     return () => el.removeEventListener("scroll", handleScroll);
   }, [scrollYRef]);
 
-  // â”€â”€â”€ Payment Status Color Helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+ // Payment Status Color Helper ---
   const getPaymentBadgeColor = (
     status: string,
   ): "green" | "orange" | "red" | "gray" => {
@@ -754,7 +774,7 @@ function OrdersContent() {
     return "orange";
   };
 
-  // â”€â”€â”€ Mutation pending state (for disabling buttons) â”€â”€â”€
+ // Mutation pending state (for disabling buttons) ---
   const isMutating =
     createOrder.isPending ||
     updateOrder.isPending ||
@@ -762,7 +782,7 @@ function OrdersContent() {
     recordPayment.isPending ||
     updateOrderStatus.isPending;
 
-  // â”€â”€â”€ Status helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ // Status helpers ---
   const getStatusBadgeColor = (status: string): "green" | "orange" | "gray" | "blue" | "red" | "purple" => {
     if (status === "completed") return "green";
     if (status === "processing") return "orange";
@@ -837,7 +857,7 @@ function OrdersContent() {
     );
   };
 
-  // â”€â”€â”€ Memoized KPI stats (prevent recalc on every render) â”€â”€â”€â”€â”€
+ // Memoized KPI stats (prevent recalc on every render) ---
   const orderStats = useMemo(() => {
     if (!Array.isArray(orders)) return { total: 0, pending: 0, processing: 0, completed: 0, revenue: 0, pendingPayment: 0 };
     return {
@@ -850,7 +870,7 @@ function OrdersContent() {
     };
   }, [orders]);
 
-  // â”€â”€â”€ Auto-computed Material Cost from Inventory â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ // Auto-computed Material Cost from Inventory ---
   const computedMaterialCost = useMemo(() => {
     const sourceMaterials = formData.material_source === "own" ? inventory : clientProductMaterials;
     let total = 0;
@@ -898,24 +918,24 @@ function OrdersContent() {
       animate="animate"
       className="space-y-6 overflow-x-hidden"
     >
-      {/* ── Header ── */}
+ {/* Header */}
       <motion.div variants={staggerItem}>
         <CollapsingTitle
           title="Orders & Production"
-          subtitle={`${orderStats.total} orders · ${orderStats.processing} in progress · ${orderStats.pending} pending`}
+          subtitle={`${orderStats.total} orders \u00B7 ${orderStats.processing} in progress \u00B7 ${orderStats.pending} pending`}
           subtitleLoading={ordersLoading}
           collapseProgress={collapseProgress}
         />
       </motion.div>
 
-      {/* â”€â”€ Enterprise Toolbar (3-Layer Hierarchy) â”€â”€ */}
+ {/* Enterprise Toolbar (3-Layer Hierarchy) */}
       <motion.div
         variants={staggerItem}
         className={cn(
           // Normal flow on mobile, sticky on desktop
           "md:sticky md:top-[56px] md:z-30",
           "shrink-0 pb-4 -mx-1 px-1 mb-2",
-          // Glass surface â€” only needed on desktop where sticky is active
+          // Glass surface -- only needed on desktop where sticky is active
           "md:bg-[rgba(243,245,249,0.88)] md:backdrop-blur-xl",
           "md:dark:bg-[rgba(8,12,24,0.82)]",
           // Bottom hairline
@@ -924,7 +944,7 @@ function OrdersContent() {
       >
         <div className="space-y-3">
 
-          {/* ROW 1 â€” Search + Primary Actions */}
+          {/* ROW 1 -- Search + Primary Actions */}
           <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
             {/* Search Bar */}
             <div className="flex-1 relative">
@@ -944,7 +964,7 @@ function OrdersContent() {
                   "bg-[rgba(255,255,255,0.72)] border border-[rgba(15,23,42,0.08)]",
                   "text-foreground placeholder:text-[#94A3B8]",
                   "shadow-[0_2px_8px_rgba(15,23,42,0.04)]",
-                  // Dark mode â€” deep navy glass surface
+                  // Dark mode -- deep navy glass surface
                   "dark:bg-[rgba(15,23,42,0.50)] dark:border-[rgba(148,163,184,0.12)]",
                   "dark:text-[#E2E8F0] dark:placeholder:text-[rgba(148,163,184,0.50)]",
                   "dark:shadow-[0_2px_8px_rgba(0,0,0,0.15)]",
@@ -967,9 +987,9 @@ function OrdersContent() {
               )}
             </div>
 
-            {/* Action Buttons â€” shrink-0 so they never wrap oddly */}
+            {/* Action Buttons -- shrink-0 so they never wrap oddly */}
             <div className="flex items-center gap-2 shrink-0">
-              {/* Add Order â€” PRIMARY CTA */}
+              {/* Add Order -- PRIMARY CTA */}
               <button
                 type="button"
                 onClick={handleAddNewClick}
@@ -980,7 +1000,7 @@ function OrdersContent() {
                 <span className="sm:hidden">Add</span>
               </button>
 
-              {/* Export â€” SECONDARY */}
+              {/* Export -- SECONDARY */}
               <button
                 type="button"
                 onClick={exportToXLSX}
@@ -989,7 +1009,7 @@ function OrdersContent() {
                   // Light
                   "bg-[rgba(255,255,255,0.72)] hover:bg-[rgba(255,255,255,0.95)] border border-[rgba(15,23,42,0.08)] hover:border-[rgba(15,23,42,0.14)]",
                   "text-[#64748B] hover:text-[#0F172A] shadow-[0_2px_8px_rgba(15,23,42,0.04)]",
-                  // Dark â€” deep navy glass surface
+                  // Dark -- deep navy glass surface
                   "dark:bg-[rgba(15,23,42,0.50)] dark:hover:bg-[rgba(30,41,59,0.70)]",
                   "dark:border-[rgba(148,163,184,0.12)] dark:hover:border-[rgba(148,163,184,0.20)]",
                   "dark:text-[#94A3B8] dark:hover:text-[#E2E8F0] dark:shadow-[0_2px_8px_rgba(0,0,0,0.15)]",
@@ -1001,7 +1021,7 @@ function OrdersContent() {
             </div>
           </div>
 
-          {/* ROW 2 + ROW 3 â€” Filters + Result Count */}
+          {/* ROW 2 + ROW 3 -- Filters + Result Count */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
             {/* Status Filter Pills */}
             <div className="flex flex-wrap items-center gap-1.5">
@@ -1017,7 +1037,7 @@ function OrdersContent() {
                   type="button"
                   onClick={() => {
                     setStatusShortcut(item.key);
-                    setCurrentPage(1);
+
                   }}
                   className={cn(
                     "h-8 px-3.5 rounded-[10px] text-[12.5px] font-medium border transition-all duration-150 cursor-pointer",
@@ -1027,7 +1047,7 @@ function OrdersContent() {
                           // Light
                           "bg-[rgba(255,255,255,0.60)] hover:bg-[rgba(255,255,255,0.90)] text-[#64748B] hover:text-[#0F172A]",
                           "border-[rgba(15,23,42,0.08)] hover:border-[rgba(15,23,42,0.14)]",
-                          // Dark â€” deep navy glass surface
+                          // Dark -- deep navy glass surface
                           "dark:bg-[rgba(15,23,42,0.50)] dark:hover:bg-[rgba(30,41,59,0.70)]",
                           "dark:text-[#94A3B8] dark:hover:text-[#E2E8F0]",
                           "dark:border-[rgba(148,163,184,0.12)] dark:hover:border-[rgba(148,163,184,0.20)]",
@@ -1038,14 +1058,14 @@ function OrdersContent() {
                 </button>
               ))}
 
-              {/* Clear â€” only when filters/search active */}
+              {/* Clear -- only when filters/search active */}
               {(searchQuery || statusFilter) && (
                 <button
                   type="button"
                   onClick={() => {
                     handleSearch("");
                     setStatusShortcut(null);
-                    setCurrentPage(1);
+
                   }}
                   className={cn(
                     "h-8 px-3 rounded-[10px] text-[12.5px] font-medium transition-all duration-150 cursor-pointer",
@@ -1061,7 +1081,7 @@ function OrdersContent() {
               )}
             </div>
 
-            {/* Result Count â€” passive, right-aligned */}
+            {/* Result Count -- passive, right-aligned */}
             <p className="text-[12.5px] text-muted-foreground/70 font-medium whitespace-nowrap shrink-0 sm:text-right tabular-nums">
               {statusFilter
                 ? `Showing ${totalFiltered} ${statusFilter} orders`
@@ -1073,7 +1093,7 @@ function OrdersContent() {
         </div>
       </motion.div>
 
-        {/* â”€â”€â”€ Error State Banner â”€â”€ */}
+ {/* Error State Banner */}
         {ordersError && (
           <motion.div
             variants={staggerItem}
@@ -1087,7 +1107,7 @@ function OrdersContent() {
                 Failed to load orders
               </p>
               <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5 truncate">
-                {ordersErrorObj?.message || "Unknown error â€” please try refreshing."}
+                {ordersErrorObj?.message || "Unknown error -- please try refreshing."}
               </p>
             </div>
             <IOSButton
@@ -1101,9 +1121,9 @@ function OrdersContent() {
           </motion.div>
         )}
 
-        {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-        â”€â”€ LOADING STATE â”€â”€
-        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+ {/* 
+ LOADING STATE 
+ */}
         {roleLoading || ordersLoading ? (
           <div className="flex items-center justify-center py-20">
             <div className="flex flex-col items-center gap-3">
@@ -1119,7 +1139,7 @@ function OrdersContent() {
           <motion.div initial="initial" animate="animate" variants={staggerContainer} className="w-full">
             {/* 3-Column Grid: Orders (30%) | Widgets (40%) | Production (30%) */}
             <div className="grid grid-cols-1 lg:grid-cols-[30fr_40fr_30fr] gap-5">
-              {/* â”€â”€ LEFT: Orders Panel â”€â”€ */}
+ {/* LEFT: Orders Panel */}
               <motion.div variants={staggerItem} className="order-2 lg:order-1">
                 <IOSCard variant="elevated" padding="lg" className="h-full">
                   <div className="flex items-center justify-between mb-4">
@@ -1256,10 +1276,10 @@ function OrdersContent() {
                                   />
                                   <div className="flex-1 min-w-0">
                                     <p className="text-[13px] font-medium text-[var(--foreground)] truncate">
-                                      {order.productName ?? order.product_name ?? "â€”"}
+                                      {order.productName ?? order.product_name ?? "\u2014"}
                                     </p>
                                     <p className="text-[11px] text-[var(--muted-foreground)] truncate">
-                                      {order.client?.name ?? order.clients?.name ?? "â€”"} Â·{" "}
+                                      {order.client?.name ?? order.clients?.name ?? "\u2014"} \u00B7{" "}
                                       {order.quantity ?? 0} {order.unit ?? "kg"}
                                     </p>
                                   </div>
@@ -1292,7 +1312,7 @@ function OrdersContent() {
                 </IOSCard>
               </motion.div>
 
-              {/* â”€â”€ CENTER: Summary Widgets â”€â”€ */}
+ {/* CENTER: Summary Widgets */}
               <motion.div
                 variants={staggerItem}
                 className="flex flex-col items-center justify-center gap-5 order-1 lg:order-2 py-2 lg:py-0"
@@ -1388,7 +1408,7 @@ function OrdersContent() {
                 </motion.div>
               </motion.div>
 
-              {/* â”€â”€ RIGHT: Production Panel â”€â”€ */}
+ {/* RIGHT: Production Panel */}
               <motion.div variants={staggerItem} className="order-3">
                 <IOSCard variant="elevated" padding="lg" className="h-full">
                   <div className="mb-4">
@@ -1599,9 +1619,9 @@ function OrdersContent() {
           </motion.div>
         ) : (
           <motion.div initial="initial" animate="animate" variants={staggerContainer} className="space-y-6">
-            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-            â”€â”€ ADMIN/OWNER VIEW: KPI Stats + Table â”€â”€
-            â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+ {/* 
+ ADMIN/OWNER VIEW: KPI Stats + Table 
+ */}
             {/* KPI Stats */}
             <div className="kpi-panel">
               <div className="kpi-panel__glow"></div>
@@ -1642,7 +1662,7 @@ function OrdersContent() {
               </div>
             </div>
 
-            {/* â”€â”€ Table (Admin/Owner only) â”€â”€ */}
+ {/* Table (Admin/Owner only) */}
             <motion.div variants={staggerItem}>
               <IOSCard
                 variant="elevated"
@@ -1702,7 +1722,34 @@ function OrdersContent() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredOrders.map((order: any, index: number) => {
+                    monthGroupedOrders.map((group) => (
+                      <React.Fragment key={group.key}>
+                        {/* Month group header row */}
+                        <tr>
+                          <td
+                            colSpan={isStaff ? 3 : 4}
+                            className="px-0 pt-6 pb-2"
+                            style={{ background: 'transparent', border: 'none' }}
+                          >
+                            <div className="flex items-center justify-between px-5">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[11px] font-bold tracking-[0.08em] text-[var(--muted-foreground)] uppercase">
+                                  {group.label}
+                                </span>
+                                <span className="text-[10px] font-medium text-[var(--muted-foreground)]/60 tabular-nums">
+                                  {group.orderCount} {group.orderCount === 1 ? 'order' : 'orders'}
+                                </span>
+                              </div>
+                              {!isStaff && (
+                                <span className="text-[11px] font-semibold text-[var(--primary)] tabular-nums">
+                                  {formatINR(group.totalValue)}
+                                </span>
+                              )}
+                            </div>
+                            <div className="mt-1.5 h-px bg-[var(--border)]" />
+                          </td>
+                        </tr>
+                        {group.orders.map((order: any, index: number) => {
                       const derived = deriveOrderStatusFromOrder(order);
                       return (
                       <motion.tr
@@ -1719,10 +1766,10 @@ function OrdersContent() {
                         <TableCell className="pl-5 py-4">
                           <div className="flex flex-col">
                             <span className="text-[17px] font-bold text-[var(--foreground)] leading-[22px]">
-                              {order.productName ?? order.product_name ?? "â€”"}
+                              {order.productName ?? order.product_name ?? "\u2014"}
                             </span>
                             <span className="text-[13px] text-[var(--muted-foreground)] mt-0.5">
-                              Client: {order.client?.name ?? order.clients?.name ?? "â€”"}
+                              Client: {order.client?.name ?? order.clients?.name ?? "\u2014"}
                             </span>
                             <div className="flex items-center gap-2 mt-1.5">
                               <IOSBadge
@@ -1738,7 +1785,7 @@ function OrdersContent() {
                             </div>
                           </div>
                         </TableCell>
-                        {/* Financials column â€” Owner only */}
+                        {/* Financials column -- Owner only */}
                         {!isStaff && (
                           <TableCell className="py-4">
                             <div className="flex flex-col gap-1">
@@ -1817,7 +1864,7 @@ function OrdersContent() {
                         </TableCell>
                         <TableCell className="pr-5 text-right py-4">
                           <div className="flex items-center justify-end gap-1">
-                            {/* Invoice download – Owner only */}
+ {/* Invoice download Owner only */}
                             {!isStaff && (
                               <motion.button
                                 whileTap={{ scale: 0.9 }}
@@ -1841,7 +1888,7 @@ function OrdersContent() {
                                 className="w-52 rounded-[12px]"
                               >
 
-                                {/* Edit Order – Owner only */}
+ {/* Edit Order Owner only */}
                                 {!isStaff && (
                                   <DropdownMenuItem
                                     onClick={() => openEditDialog(order)}
@@ -1851,7 +1898,7 @@ function OrdersContent() {
                                     Order
                                   </DropdownMenuItem>
                                 )}
-                                {/* Record Payment – Owner only */}
+ {/* Record Payment Owner only */}
                                 {!isStaff && (
                                   <DropdownMenuItem
                                     onClick={() => openPaymentDialog(order)}
@@ -1879,23 +1926,17 @@ function OrdersContent() {
                         </TableCell>
                       </motion.tr>
                     );
-                    })
+                        })}
+                      </React.Fragment>
+                    ))
                   )}
                 </TableBody>
               </Table>
               </div>
             </IOSCard>
 
-            {/* ── Pagination ── */}
-            <TablePagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalItems={totalFiltered}
-              pageSize={15}
-              onPageChange={setCurrentPage}
-            />
 
-            {/* ═══ PREMIUM MOBILE ORDER CARDS ═══ */}
+ {/* PREMIUM MOBILE ORDER CARDS */}
             <div style={{ padding: '0 2px' }} className="block md:hidden">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {ordersLoading ? (
@@ -1911,7 +1952,25 @@ function OrdersContent() {
                   <Factory style={{ height: 40, width: 40, margin: '0 auto 12px', color: '#475569' }} />
                   <p style={{ color: '#94a3b8', fontSize: 14, fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif" }}>No active orders</p>
                 </div>
-              ) : filteredOrders.map((order: any, idx: number) => {
+              ) : monthGroupedOrders.map((group) => (
+                <React.Fragment key={group.key}>
+                  {/* Mobile month header */}
+                  <div className="flex items-center justify-between px-1 pt-4 pb-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-bold tracking-[0.08em] text-[var(--muted-foreground)] uppercase">
+                        {group.label}
+                      </span>
+                      <span className="text-[10px] font-medium text-[var(--muted-foreground)]/60 tabular-nums">
+                        {group.orderCount} {group.orderCount === 1 ? 'order' : 'orders'}
+                      </span>
+                    </div>
+                    {!isStaff && (
+                      <span className="text-[11px] font-semibold text-[var(--primary)] tabular-nums">
+                        {formatINR(group.totalValue)}
+                      </span>
+                    )}
+                  </div>
+                  {group.orders.map((order: any, idx: number) => {
                 const derived = deriveOrderStatusFromOrder(order);
                 const s = derived;
                 const borderColor =
@@ -1970,10 +2029,10 @@ function OrdersContent() {
                     }}
                   >
                     <div className="px-4 py-3">
-                      {/* Row 1: Product name (bold, truncate) · status badge */}
+                      {/* Row 1: Product name (bold, truncate) \u00B7 status badge */}
                       <div className="flex justify-between items-center min-h-[22px]">
                         <span className="text-gray-900 dark:text-white text-sm font-bold truncate mr-2">
-                          {productName || '—'}
+                          {productName || '\u2014'}
                         </span>
                         <span className={cn(
                           "text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap uppercase shrink-0",
@@ -1983,10 +2042,10 @@ function OrdersContent() {
                         </span>
                       </div>
 
-                      {/* Row 2: ₹ amount (blue) · qty + payment badge */}
+                      {/* Row 2: \u20B9 amount (blue) \u00B7 qty + payment badge */}
                       <div className="flex justify-between items-center mt-1 min-h-[22px]">
                         <span className="text-blue-500 dark:text-blue-400 text-sm font-semibold tabular-nums">
-                          ₹{Number(amount).toLocaleString('en-IN')}
+                          {formatINR(amount)}
                         </span>
                         <div className="flex items-center gap-2">
                           {qty != null && (
@@ -2007,25 +2066,27 @@ function OrdersContent() {
                         </div>
                       </div>
 
-                      {/* Row 3: client · date · chevron */}
+                      {/* Row 3: client \u00B7 date \u00B7 chevron */}
                       <div className="flex justify-between items-center mt-1 min-h-[20px]">
                         <span className="text-gray-500 dark:text-gray-400 text-xs truncate mr-2">
-                          {clientName || '—'}
-                          {createdAt && ` · ${new Date(createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`}
+                          {clientName || '\u2014'}
+                          {createdAt && ` \u00B7 ${new Date(createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`}
                         </span>
                         <ChevronRight className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
                       </div>
                     </div>
                   </div>
                 );
-              })}
+                  })}
+                </React.Fragment>
+              ))}
               </div>
             </div>
           </motion.div>
         </motion.div>
       )}
 
-      {/* â•â•â• LONG-PRESS BOTTOM SHEET â€” MobileSheet â•â•â• */}
+ {/* LONG-PRESS BOTTOM SHEET -- MobileSheet */}
       <MobileSheet open={isBottomSheetOpen} onClose={closeBottomSheet}>
         {longPressedOrder && (
           <>
@@ -2132,7 +2193,7 @@ function OrdersContent() {
         )}
       </MobileSheet>
 
-      {/* â•â•â• TOAST NOTIFICATION â•â•â• */}
+ {/* TOAST NOTIFICATION */}
       {toastMessage && (
         <div style={{
           position: 'fixed', bottom: 90, left: '50%', transform: 'translateX(-50%)',
@@ -2150,7 +2211,7 @@ function OrdersContent() {
         </div>
       )}
 
-      {/* â•â•â•â•â•â•â• DIALOGS â•â•â•â•â•â•â• */}
+ {/* DIALOGS */}
 
 
 
@@ -2228,7 +2289,7 @@ function OrdersContent() {
             <form id="payment-form" onSubmit={handlePaymentSubmit} className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-[10px] font-medium tracking-[0.07em] text-[var(--muted-foreground)] uppercase block mb-1.5">
-                  Amount (₹)
+                  Amount (\u20B9)
                 </label>
                 <NumericInput
                   value={paymentFormData.amount}
@@ -2303,7 +2364,7 @@ function OrdersContent() {
                   placeholder="e.g. UPI Ref #1234..."
                 />
               </div>
-              {/* Action buttons â€” inline at end of form */}
+              {/* Action buttons -- inline at end of form */}
               <div style={{ paddingTop: 24, paddingBottom: 'max(20px, env(safe-area-inset-bottom, 20px))' }}>
                 <div className="flex gap-2">
                   <IOSButton
@@ -2329,7 +2390,7 @@ function OrdersContent() {
         </DialogContent>
       </Dialog>
 
-      {/* â•â•â• COMPLETION CONFIRMATION MODAL â•â•â• */}
+ {/* COMPLETION CONFIRMATION MODAL */}
       <CompletionConfirmationModal
         open={isCompletionModalOpen}
         order={completionOrder}
@@ -2339,7 +2400,7 @@ function OrdersContent() {
         isLoading={isGeneratingInvoice}
       />
 
-      {/* â•â•â• INVOICE PREVIEW MODAL â•â•â• */}
+ {/* INVOICE PREVIEW MODAL */}
       <InvoicePreviewModal
         open={isInvoicePreviewOpen}
         invoiceData={generatedInvoice}
@@ -2350,7 +2411,7 @@ function OrdersContent() {
         onSendWhatsApp={() => {}}
       />
 
-      {/* â•â•â• GENERATING INVOICE OVERLAY â•â•â• */}
+ {/* GENERATING INVOICE OVERLAY */}
       <AnimatePresence>
         {isGeneratingInvoice && (
           <motion.div
@@ -2409,7 +2470,7 @@ export default function OrdersPage() {
               <div className="h-[48px] w-full sm:w-[280px] rounded-[12px] bg-[var(--muted)] shimmer" />
               <div className="h-[40px] w-[120px] rounded-[10px] bg-[var(--muted)] shimmer" />
             </div>
-            {/* Table Skeleton — matches real admin order table */}
+ {/* Table Skeleton matches real admin order table */}
             <div className="hidden md:block rounded-[20px] border border-[var(--border)] overflow-hidden">
               <div className="h-[44px] bg-[var(--muted)]/30 border-b border-[var(--border)]" />
               <div className="divide-y divide-[var(--border)]">
@@ -2426,7 +2487,7 @@ export default function OrdersPage() {
                 ))}
               </div>
             </div>
-            {/* Mobile Card Skeleton — matches mobile card-based order list */}
+ {/* Mobile Card Skeleton matches mobile card-based order list */}
             <div className="md:hidden space-y-3">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="rounded-[16px] border border-[var(--border)] p-4 space-y-3">

@@ -84,6 +84,8 @@ import {
 
 import { exportWorkbook } from "@/lib/excel-export";
 import { useTranslations } from "next-intl";
+import { motion } from "framer-motion";
+import { staggerItem } from "@/styles/animations";
 
 interface BillItem {
     id: string;
@@ -246,7 +248,7 @@ export default function BillingPage() {
     };
 
     // ── Page State Persistence ────────────────────────────
-    const { restoreState, persist, scrollYRef } = useCachedPage({ pageKey: "billing" });
+    const { restoreState, persist, scrollYRef } = useCachedPage({ pageKey: "billing", maxAgeMs: 5 * 60 * 1000 });
     const persistRef = useRef({ searchTerm, bills });
     useEffect(() => { persistRef.current = { searchTerm, bills }; });
     useEffect(() => {

@@ -240,12 +240,12 @@ export default function PreviousYearsPage() {
                     </p>
                 </div>
 
-                <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap sm:flex-nowrap">
+                <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap min-w-0">
                     {/* FY Selector */}
                     <div className="relative">
                         <button
                             onClick={() => setShowFYDropdown(!showFYDropdown)}
-                            className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-[12px] bg-white dark:bg-[var(--card)] border border-black/[0.09] dark:border-[var(--border)] shadow-[0_1px_3px_rgba(0,0,0,0.06)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all duration-200 text-[14px] sm:text-[15px] font-medium text-[var(--foreground)] min-w-[140px] sm:min-w-[160px]"
+                            className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-[12px] bg-white dark:bg-[var(--card)] border border-black/[0.09] dark:border-[var(--border)] shadow-[0_1px_3px_rgba(0,0,0,0.06)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.98] text-[14px] sm:text-[15px] font-medium text-[var(--foreground)] sm:min-w-[160px] shrink-0 cursor-pointer"
                         >
                             <Calendar className="h-4 w-4 text-[var(--primary)]" />
                             <span>FY {selectedFY || "Select"}</span>
@@ -355,7 +355,7 @@ export default function PreviousYearsPage() {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={cn(
-                                    "flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-[10px] text-[13px] sm:text-[14px] font-medium transition-all duration-200 shrink-0 whitespace-nowrap",
+                                    "flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-[10px] text-[13px] sm:text-[14px] font-medium transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-95 shrink-0 whitespace-nowrap cursor-pointer",
                                     isActive
                                         ? "bg-white dark:bg-[var(--card)] text-[var(--foreground)] shadow-[0_1px_4px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.2)]"
                                         : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-white/50 dark:hover:bg-white/5"
@@ -383,17 +383,17 @@ export default function PreviousYearsPage() {
             {/* ─── Data Table ─────────────────────────────── */}
             <motion.div variants={staggerItem} className="w-full min-w-0 overflow-x-clip">
                 {dataLoading ? (
-                    <div className="flex items-center justify-center py-20">
+                    <div key="loading-state" className="flex items-center justify-center py-20">
                         <div className="w-8 h-8 border-[3px] border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
                     </div>
                 ) : !data ? (
-                    <IOSCard variant="elevated" padding="lg" className="text-center py-16">
+                    <IOSCard key="empty-state" variant="elevated" padding="lg" className="text-center py-16 min-w-0 w-full overflow-hidden">
                         <Calendar className="h-12 w-12 mx-auto text-[var(--muted-foreground)] mb-4 opacity-50" />
                         <p className="text-[17px] font-semibold text-[var(--foreground)]">Select a Financial Year</p>
                         <p className="text-[15px] text-[var(--muted-foreground)] mt-1">Choose a year from the dropdown to view archived data.</p>
                     </IOSCard>
                 ) : (
-                    <IOSCard variant="elevated" padding="none" className="overflow-x-clip bg-white dark:bg-[var(--card)] !border !border-black/[0.09] dark:!border-[var(--border)]">
+                    <IOSCard key="data-loaded" variant="elevated" padding="none" className="overflow-x-clip bg-white dark:bg-[var(--card)] !border !border-black/[0.09] dark:!border-[var(--border)]">
                         <div className="w-full min-w-0">
                             {activeTab === "orders" && <OrdersTable data={data.orders || []} />}
                             {activeTab === "productions" && <ProductionsTable data={data.productions || []} />}
@@ -465,7 +465,7 @@ function OrdersTable({ data }: { data: any[] }) {
                     </thead>
                     <tbody>
                         {data.map((o) => (
-                            <tr key={o.id} className="hover:bg-[var(--accent)]/20 transition-colors">
+                            <tr key={o.id} className="hover:bg-[var(--accent)]/20 transition-colors duration-150 ease-[cubic-bezier(0.16,1,0.3,1)]">
                                 <td className={cn(tdClass, "font-medium max-w-[180px] truncate sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>{o.product_name}</td>
                                 <td className={cn(tdClass, "whitespace-nowrap")}>{o.quantity} {o.unit}</td>
                                 <td className={cn(tdClass, "font-semibold tabular-nums text-right whitespace-nowrap")}>{formatCurrency(o.total_amount || 0)}</td>
@@ -520,7 +520,7 @@ function ProductionsTable({ data }: { data: any[] }) {
                     </thead>
                     <tbody>
                         {data.map((p) => (
-                            <tr key={p.id} className="hover:bg-[var(--accent)]/20 transition-colors">
+                            <tr key={p.id} className="hover:bg-[var(--accent)]/20 transition-colors duration-150 ease-[cubic-bezier(0.16,1,0.3,1)]">
                                 <td className={cn(tdClass, "font-mono text-[13px] whitespace-nowrap")}>{p.batchNumber}</td>
                                 <td className={cn(tdClass, "font-medium max-w-[180px] truncate sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>{p.orderProductName}</td>
                                 <td className={cn(tdClass, "tabular-nums whitespace-nowrap")}>{p.orderQuantity}</td>
@@ -567,7 +567,7 @@ function BillsTable({ data }: { data: any[] }) {
                     </thead>
                     <tbody>
                         {data.map((b) => (
-                            <tr key={b.id} className="hover:bg-[var(--accent)]/20 transition-colors">
+                            <tr key={b.id} className="hover:bg-[var(--accent)]/20 transition-colors duration-150 ease-[cubic-bezier(0.16,1,0.3,1)]">
                                 <td className={cn(tdClass, "font-mono text-[13px] font-medium whitespace-nowrap")}>{b.billNumber}</td>
                                 <td className={cn(tdClass, "font-medium max-w-[180px] truncate sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>{b.clientName}</td>
                                 <td className={cn(tdClass, "font-semibold tabular-nums text-right whitespace-nowrap")}>{formatCurrency(b.totalAmount || 0)}</td>
@@ -619,7 +619,7 @@ function PaymentsTable({ data }: { data: any[] }) {
                     </thead>
                     <tbody>
                         {data.map((p) => (
-                            <tr key={p.id} className="hover:bg-[var(--accent)]/20 transition-colors">
+                            <tr key={p.id} className="hover:bg-[var(--accent)]/20 transition-colors duration-150 ease-[cubic-bezier(0.16,1,0.3,1)]">
                                 <td className={cn(tdClass, "font-semibold tabular-nums text-[var(--erp-success)] text-right whitespace-nowrap")}>{formatCurrency(p.amount || 0)}</td>
                                 <td className={cn(tdClass, "capitalize whitespace-nowrap")}>{(p.payment_method || "").replace(/_/g, " ")}</td>
                                 <td className={cn(tdClass, "text-[var(--muted-foreground)] max-w-[200px] truncate")}>{p.notes || "\u2014"}</td>
@@ -641,11 +641,11 @@ function InventoryUsageTable({ usage, traceability }: { usage: any[]; traceabili
     return (
         <div>
             {/* Section toggle */}
-            <div className="flex gap-2 p-4 border-b border-[var(--border)]/50">
+            <div className="flex gap-2 p-4 border-b border-[var(--border)]/50 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <button
                     onClick={() => setShowTraceability(false)}
                     className={cn(
-                        "px-3 py-1.5 rounded-[8px] text-[13px] font-medium transition-all",
+                        "px-3 py-1.5 rounded-[8px] text-[13px] font-medium transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-95 shrink-0 whitespace-nowrap cursor-pointer",
                         !showTraceability
                             ? "bg-[var(--primary)] text-white"
                             : "text-[var(--muted-foreground)] hover:bg-[var(--accent)]"
@@ -656,7 +656,7 @@ function InventoryUsageTable({ usage, traceability }: { usage: any[]; traceabili
                 <button
                     onClick={() => setShowTraceability(true)}
                     className={cn(
-                        "px-3 py-1.5 rounded-[8px] text-[13px] font-medium transition-all",
+                        "px-3 py-1.5 rounded-[8px] text-[13px] font-medium transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-95 shrink-0 whitespace-nowrap cursor-pointer",
                         showTraceability
                             ? "bg-[var(--primary)] text-white"
                             : "text-[var(--muted-foreground)] hover:bg-[var(--accent)]"
@@ -695,7 +695,7 @@ function InventoryUsageTable({ usage, traceability }: { usage: any[]; traceabili
                                 </thead>
                                 <tbody>
                                     {usage.map((u) => (
-                                        <tr key={u.id} className="hover:bg-[var(--accent)]/20 transition-colors">
+                                        <tr key={u.id} className="hover:bg-[var(--accent)]/20 transition-colors duration-150 ease-[cubic-bezier(0.16,1,0.3,1)]">
                                             <td className={cn(tdClass, "font-medium max-w-[180px] truncate sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>{u.item_name || "\u2014"}</td>
                                             <td className={cn(tdClass, "tabular-nums font-semibold whitespace-nowrap")}>{u.quantity_deducted}</td>
                                             <td className={cn(tdClass, "font-mono text-[12px] text-[var(--muted-foreground)] whitespace-nowrap")}>{u.order_id?.slice(0, 8)}...</td>
@@ -738,7 +738,7 @@ function InventoryUsageTable({ usage, traceability }: { usage: any[]; traceabili
                                 </thead>
                                 <tbody>
                                     {traceability.map((m) => (
-                                        <tr key={m.id} className="hover:bg-[var(--accent)]/20 transition-colors">
+                                        <tr key={m.id} className="hover:bg-[var(--accent)]/20 transition-colors duration-150 ease-[cubic-bezier(0.16,1,0.3,1)]">
                                             <td className={cn(tdClass, "font-medium max-w-[180px] truncate sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>{m.itemName || "\u2014"}</td>
                                             <td className={cn(tdClass, "tabular-nums font-semibold whitespace-nowrap")}>{m.quantityUsed}</td>
                                             <td className={cn(tdClass, "whitespace-nowrap")}>{m.unit || "\u2014"}</td>

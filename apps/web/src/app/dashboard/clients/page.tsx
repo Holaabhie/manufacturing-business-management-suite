@@ -77,10 +77,12 @@ export default function ClientsPage() {
   const [isDeleteDialogOpenConfirm, setIsDeleteDialogOpenConfirm] = useState(false);
   const [clientToDeleteId, setClientToDeleteId] = useState<string | null>(null);
   const [restoredFromCache, setRestoredFromCache] = useState(false);
+  const restoredFromCacheRef = useRef(false);
 
   // ── Cache persistence ──
   const { restoreState, persist, scrollYRef, containerRef: cachedScrollRef, restoreScroll } = useCachedPage({
     pageKey: "clients",
+    maxAgeMs: 5 * 60 * 1000,
   });
 
   // Restore cached state on mount (runs before first fetch)
@@ -93,6 +95,7 @@ export default function ClientsPage() {
         setClients(cached.clients as any[]);
         setLoading(false);
         setRestoredFromCache(true);
+        restoredFromCacheRef.current = true;
       }
       if (typeof cached.scrollY === "number" && cached.scrollY > 0) {
         restoreScroll(cached.scrollY);
@@ -233,8 +236,8 @@ export default function ClientsPage() {
   };
 
   useEffect(() => {
-    // If cache served data, fetch silently in background; otherwise show loading
-    fetchClients(!restoredFromCache);
+    // Use ref (not state) to avoid stale-closure: state hasn't updated yet in this render frame
+    fetchClients(!restoredFromCacheRef.current);
     const interval = setInterval(() => fetchClients(false), 30000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -38,7 +38,11 @@ import {
   EyeOff,
   CheckCircle2,
   XCircle,
+  Database,
+  Trash2,
+  Volume2,
 } from "lucide-react";
+import { useCompletionSound } from "@/hooks/useCompletionSound";
 import {
   IOSCard,
   IOSButton,
@@ -93,7 +97,7 @@ function SettingsContent() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState<"company" | "security" | "notifications" | "modules" | "audit" | "language" | "integrations">("company");
+  const [activeTab, setActiveTab] = useState<"company" | "security" | "notifications" | "modules" | "audit" | "language" | "integrations" | "data">("company");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [exportingAll, setExportingAll] = useState(false);
   const t = useTranslations("settings");
@@ -111,7 +115,12 @@ function SettingsContent() {
   const [tallySaving, setTallySaving] = useState(false);
   const [showAuthToken, setShowAuthToken] = useState(false);
 
-  // Shared company profile hook — single source of truth with OnboardingModal
+  // Sample data state
+  const [sampleCounts, setSampleCounts] = useState<{ clients: number; inventory: number; orders: number; total: number } | null>(null);
+  const [sampleLoading, setSampleLoading] = useState(false);
+  const [sampleRemoving, setSampleRemoving] = useState(false);
+
+  // Shared company profile hook — single source of truth
   const {
     company: hookCompany,
     loading: companyLoading,
@@ -174,14 +183,36 @@ function SettingsContent() {
     pushNotifications: false,
   });
 
+  const { soundEnabled, setSoundEnabled } = useCompletionSound();
+
   const isStaff = user?.role === "Staff";
 
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab === "security" || tab === "notifications" || tab === "company" || tab === "audit" || tab === "language" || tab === "modules" || tab === "integrations") {
+    if (tab === "security" || tab === "notifications" || tab === "company" || tab === "audit" || tab === "language" || tab === "modules" || tab === "integrations" || tab === "data") {
       setActiveTab(tab as any);
     }
   }, [searchParams]);
+
+  // Fetch sample data counts when Data tab is active
+  useEffect(() => {
+    if (activeTab !== "data") return;
+    async function fetchSampleCounts() {
+      setSampleLoading(true);
+      try {
+        const res = await fetch("/api/sample-data");
+        if (res.ok) {
+          const data = await res.json();
+          setSampleCounts(data.counts);
+        }
+      } catch (err) {
+        console.error("Error fetching sample data counts:", err);
+      } finally {
+        setSampleLoading(false);
+      }
+    }
+    fetchSampleCounts();
+  }, [activeTab]);
 
   // Load tally config from bridge-health endpoint
   useEffect(() => {
@@ -256,7 +287,7 @@ function SettingsContent() {
 
     setCompanySaving(true);
     try {
-      // Use shared hook — same endpoint as OnboardingModal
+      // Use shared hook — updates both users + companyprofiles collections
       const updated = await updateCompanyProfile(companyData);
       toast.success("Company details saved successfully!");
       setCompanyData(updated);
@@ -581,6 +612,13 @@ function SettingsContent() {
               >
                 <Link2 size={18} className={activeTab === "integrations" ? "text-[#FF9500]" : "opacity-70"} />
                 {tTally("settings.title")}
+              </button>
+              <button
+                className={`w-full flex items-center gap-3 rounded-[12px] px-3.5 py-2.5 text-[15px] font-medium transition-colors ${activeTab === "data" ? "bg-[var(--muted)] text-[var(--foreground)]" : "text-[var(--muted-foreground)] hover:bg-[var(--muted)]"}`}
+                onClick={() => setActiveTab("data")}
+              >
+                <Database size={18} className={activeTab === "data" ? "text-[#FF3B30]" : "opacity-70"} />
+                Data
               </button>
             </div>
           </IOSCard>
@@ -1047,6 +1085,30 @@ function SettingsContent() {
                     </div>
                   </div>
                 </IOSCard>
+
+                <IOSCard className="p-1 sm:p-2">
+                  <div className="p-4 sm:p-5">
+                    <h3 className="text-[17px] font-semibold text-[var(--foreground)] mb-4 flex items-center gap-2">
+                      <Volume2 className="h-5 w-5 text-[#34C759]" />
+                      Sound Effects
+                    </h3>
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center justify-between p-4 rounded-[16px] bg-[var(--muted)] border border-[var(--border)]">
+                        <div className="space-y-0.5">
+                          <p className="text-[15px] font-semibold text-[var(--foreground)]">Sound Effects</p>
+                          <p className="text-[13px] text-[var(--muted-foreground)]">
+                            Play audio feedback for major task completions (orders, payments, invoices, batches)
+                          </p>
+                        </div>
+                        <Switch
+                          id="sound-effects-toggle"
+                          checked={soundEnabled}
+                          onCheckedChange={setSoundEnabled}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </IOSCard>
               </motion.div>
             )}
 
@@ -1395,6 +1457,96 @@ function SettingsContent() {
                 <IOSCard className="p-1 sm:p-2">
                   <div className="p-4 sm:p-5">
                     <LanguageSwitcherFull />
+                  </div>
+                </IOSCard>
+              </motion.div>
+            )}
+
+            {activeTab === "data" && (
+              <motion.div
+                key="data"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
+                <div className="flex flex-col gap-1.5 mb-6">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-11 h-11 rounded-2xl flex items-center justify-center"
+                      style={{ background: 'linear-gradient(135deg, #FF3B30, #FF6B6B)' }}
+                    >
+                      <Database size={22} color="white" />
+                    </div>
+                    <div>
+                      <h2 className="text-[22px] font-semibold text-[var(--foreground)]">Data Management</h2>
+                      <p className="text-[15px] text-[var(--muted-foreground)]">Manage sample data in your workspace</p>
+                    </div>
+                  </div>
+                </div>
+
+                <IOSCard className="p-1 sm:p-2">
+                  <div className="p-4 sm:p-5 space-y-4">
+                    <h3 className="text-[17px] font-semibold text-[var(--foreground)]">Sample Data</h3>
+                    <p className="text-[14px] text-[var(--muted-foreground)]">
+                      Sample data helps you explore the app with realistic entries. You can remove it anytime.
+                    </p>
+
+                    {sampleLoading ? (
+                      <div className="flex items-center gap-3 py-4">
+                        <Loader2 className="h-5 w-5 animate-spin text-[var(--muted-foreground)]" />
+                        <span className="text-[14px] text-[var(--muted-foreground)]">Checking for sample data…</span>
+                      </div>
+                    ) : sampleCounts && sampleCounts.total > 0 ? (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="rounded-xl bg-[var(--muted)] p-3 text-center">
+                            <p className="text-[22px] font-bold text-[var(--foreground)]">{sampleCounts.clients}</p>
+                            <p className="text-[12px] text-[var(--muted-foreground)]">Clients</p>
+                          </div>
+                          <div className="rounded-xl bg-[var(--muted)] p-3 text-center">
+                            <p className="text-[22px] font-bold text-[var(--foreground)]">{sampleCounts.inventory}</p>
+                            <p className="text-[12px] text-[var(--muted-foreground)]">Inventory</p>
+                          </div>
+                          <div className="rounded-xl bg-[var(--muted)] p-3 text-center">
+                            <p className="text-[22px] font-bold text-[var(--foreground)]">{sampleCounts.orders}</p>
+                            <p className="text-[12px] text-[var(--muted-foreground)]">Orders</p>
+                          </div>
+                        </div>
+                        <IOSButton
+                          variant="destructive"
+                          className="w-full"
+                          disabled={sampleRemoving}
+                          onClick={async () => {
+                            setSampleRemoving(true);
+                            try {
+                              const res = await fetch("/api/sample-data", { method: "DELETE" });
+                              if (!res.ok) throw new Error("Failed to remove");
+                              const data = await res.json();
+                              toast.success(`Removed ${(data.deleted?.clients || 0) + (data.deleted?.inventory || 0) + (data.deleted?.orders || 0)} sample records`);
+                              setSampleCounts({ clients: 0, inventory: 0, orders: 0, total: 0 });
+                            } catch (err: any) {
+                              toast.error(err.message || "Failed to remove sample data");
+                            } finally {
+                              setSampleRemoving(false);
+                            }
+                          }}
+                        >
+                          {sampleRemoving ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="mr-2 h-4 w-4" />
+                          )}
+                          Remove Sample Data
+                        </IOSButton>
+                      </div>
+                    ) : (
+                      <div className="py-4 text-center">
+                        <CheckCircle2 className="h-8 w-8 text-[#34C759] mx-auto mb-2" />
+                        <p className="text-[15px] font-medium text-[var(--foreground)]">No sample data active</p>
+                        <p className="text-[13px] text-[var(--muted-foreground)]">Your workspace contains only real data.</p>
+                      </div>
+                    )}
                   </div>
                 </IOSCard>
               </motion.div>

@@ -229,11 +229,10 @@ export default function InventoryPage() {
   }, []);
 
   useEffect(() => {
-    if (!restoredFromCache) {
-      fetchInventory();
-    }
+    // Always fetch fresh data on mount — cache only suppresses the loading spinner
+    fetchInventory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [restoredFromCache]);
+  }, []);
 
   // Fetch forecast when switching to forecast view
   useEffect(() => {
@@ -358,7 +357,7 @@ export default function InventoryPage() {
   const [inventoryFilter, setInventoryFilter] = useState<InventoryFilter>("all");
 
   // ── Page State Persistence ───────────────────────────
-  const { restoreState, persist, scrollYRef, restoreScroll } = useCachedPage({ pageKey: "inventory" });
+  const { restoreState, persist, scrollYRef, restoreScroll } = useCachedPage({ pageKey: "inventory", maxAgeMs: 5 * 60 * 1000 });
   const persistRef = useRef({ inventoryFilter, viewMode: "table" as string, items });
   useEffect(() => { persistRef.current = { inventoryFilter, viewMode, items }; });
   useEffect(() => {

@@ -175,3 +175,93 @@ When building a full-screen mobile sheet that acts as a page:
   - `apps/web/src/app/api/production/[id]/route.ts`
 - **Root Cause**: The `triggerNotification()` call for `eventType: "production_complete"` did not pass `recipientContact` (top-level on the event object) or `clientName` (inside `payload` for the dispatcher's `recipientName` fallback chain). This caused `notification_logs` entries to have an empty `recipientContact` field and a generic `recipientName` of `"Business Owner"`.
 - **What Changed**: Added a two-hop client lookup before the `triggerNotification()` call: `updated.orderId` → `orders` collection → `order.client_id` → `clients` collection. Passes `recipientContact: client.phone` at the event top level and `clientName: client.name` inside `payload`. Both lookups are wrapped in a single `try/catch` so that malformed `ObjectId` strings, missing orders, or missing clients all gracefully fall back to `recipientContact: ""` and `recipientName: "Unknown Client"` — never throws. Pattern reused from `orders/[id]/route.ts` lines 80–86.
+
+### Fix 11: Desktop Dialog Off-Center Alignment (dialogScale Keyframes Transform Override)
+
+- **Files Changed**:
+  - `apps/web/src/app/globals.css`
+- **Root Cause**: `DialogContent` positions dialogs on desktop using `top: 50%; left: 50%; transform: translate(-50%, -50%)`. However, the `@keyframes dialogScaleIn` and `@keyframes dialogScaleOut` animations defined `transform: scale(...)` without `translate(-50%, -50%)`. The keyframe transform declarations wiped out the negative translate offsets during and after animation, causing the dialog's top-left corner to be placed at the screen center (50vw, 50vh) and pushing all desktop modals down and to the right.
+- **What Changed**: Added `translate(-50%, -50%)` to all keyframe steps in `@keyframes dialogScaleIn` and `@keyframes dialogScaleOut` in `globals.css`. Mobile sheets are unaffected since they use `sheetSlideUp`/`sheetSlideDown`.
+
+### Fix 12: Purchasing Dialogs Viewport Height Overflow & Flex Scroll Containment
+
+- **Files Changed**:
+  - `apps/web/src/app/dashboard/purchasing/page.tsx`
+- **Root Cause**: The Add Vendor, New Purchase Order, and Order Detail modals had internal scroll areas without `min-h-0` flex bounds, and some inner `ScrollArea` elements had standalone `max-h-[90vh]` instead of parent-bounded flex layout. In flex containers, children expand to their natural height unless constrained with `min-h-0`, causing the rendered dialog height to exceed the viewport (`md:max-h-[85dvh]`) and spill equally off top and bottom edges.
+- **What Changed**: Added `md:max-h-[85dvh] flex flex-col` to `DialogContent` wrappers and `flex-1 min-h-0` to all inner scroll regions (`ScrollArea` and `overflow-y-auto` divs). Removed unconstrained `max-h-[90vh]` on child scroll containers.
+
+### Feature 1: Mobile PO Card Action Sheet
+
+- **Files Changed**:
+  - `apps/web/src/components/ui/MobileTableCards.tsx`
+  - `apps/web/src/app/dashboard/purchasing/page.tsx`
+- **What Changed**:
+  - Added optional `actionsTrigger?: (row: T) => React.ReactNode` render-prop to `MobileTableCards` — fully backward-compatible; callers that don't pass it see byte-identical output (no `relative` class, no extra DOM nodes). When provided, renders the trigger absolute-positioned top-right of each card.
+  - Purchasing page mobile PO cards now show a three-dot (`MoreVertical`) trigger button opening a `DropdownMenu` (same component as desktop) with **View Details** and **Delete** (admin-only, non-Received). Conditionally shown based on PO status and `isAdmin`, matching the desktop logic.
+  - **"Mark as Received"** rendered inline in the STATUS field of each mobile card (and kept in the desktop `DropdownMenu`) — a tinted `motion.button` beside the status badge for Pending/Ordered POs.
+  - **"Mark as Ordered"** action removed entirely from purchasing UI (desktop + mobile). `handleStatusChange` signature narrowed from `"Ordered" | "Received"` to `"Received"` only. The `"Ordered"` status value is still supported for display/legacy data in `STATUS_CONFIG` and type definitions — existing Ordered POs render correctly and can still transition to Received.
+  - No new API routes created — reuses `PATCH /api/purchasing/[id]` and `DELETE /api/purchasing/[id]`.
+  - Vendor cards' `MobileTableCards` usage and `reports/previous-years/page.tsx` untouched.
+  - `MobileSheet.tsx` and `ConfirmDeleteSheet.tsx` not modified.
+
+### Fix 13: Activity Log Tab Bar Mobile Congestion
+
+- **Files Changed**:
+  - `apps/web/src/app/dashboard/activity/page.tsx`
+- **Root Cause**: Tab bar outer `motion.div` used `flex overflow-x-auto hide-scrollbar pb-2` — `hide-scrollbar` is a non-existent class (project uses `.scrollbar-hide` or inline `[scrollbar-width:none]`). Inner flex container lacked `w-max`, tab buttons lacked `shrink-0`, and there were zero responsive breakpoints (`sm:`, `md:`) for padding or font size, causing tabs to render congested/clipped on mobile viewports.
+- **What Changed**: Brought in line with `previous-years/page.tsx` tab bar pattern: outer wrapper `w-full min-w-0`, scrollable inner with native scrollbar hiding (`[scrollbar-width:none] [&::-webkit-scrollbar]:hidden`), `w-max` flex track, `shrink-0 whitespace-nowrap` buttons with responsive padding (`px-2.5 sm:px-4`) and font (`text-[13px] sm:text-[14px]`).
+
+### Fix 14: Activity Log Page Root Missing overflow-x-clip/min-w-0 Containment
+
+- **Files Changed**:
+  - `apps/web/src/app/dashboard/activity/page.tsx`
+- **Root Cause**: Page root `motion.div` and loading skeleton wrapper used `className="space-y-6 hero-glow max-w-4xl mx-auto"` without `w-full min-w-0 overflow-x-clip`, violating the AGENTS.md rule that all `/dashboard` page roots must have these containment classes to prevent children from forcing horizontal scroll.
+- **What Changed**: Added `w-full min-w-0 overflow-x-clip` to both the loading skeleton `<div>` (L106) and the main return `<motion.div>` (L119).
+
+### Fix 15: Activity Log List Row Meta Block Mobile Overflow
+
+- **Files Changed**:
+  - `apps/web/src/app/dashboard/activity/page.tsx`
+- **Root Cause**: The right-side meta block (amount + timestamp + chevron) in each activity list row used unconditional `flex-shrink-0`, `gap-6`, and displayed both relative time ("1d ago") and absolute date/time ("21 Aug, 02:45 pm") on all screen sizes. Combined with `ml-14` indent, the intrinsic content width (~303–325px) exceeded available mobile card width (~296–311px), forcing the row and page to overflow horizontally.
+- **What Changed**: Changed `flex-shrink-0` → `flex-shrink sm:flex-shrink-0` (allows shrink on mobile only), `gap-6` → `gap-3 sm:gap-6`, `gap-3` → `gap-2 sm:gap-3` on inner timestamp container, added `min-w-0` at each nesting level, hid secondary date/time line on mobile via `hidden sm:block`, added `shrink-0` to amount text and chevron icon, added `whitespace-nowrap` to both timestamp spans.
+
+### Fix 16: FY Archive Page Selector Row Mobile Overflow
+
+- **Files Changed**:
+  - `apps/web/src/app/dashboard/reports/previous-years/page.tsx`
+- **Root Cause**: FY selector actions container (FY button + Export button) used `shrink-0` unconditionally, and the FY button had `min-w-[140px]` on all screen sizes. Combined intrinsic width (~314px) exceeded available content width on 360px-and-under mobile viewports, pushing the KPI grid past the right viewport edge.
+- **What Changed**: Removed `shrink-0` from actions container (replaced with `min-w-0`), removed mobile `min-w-[140px]` floor from FY button (kept `sm:min-w-[160px]` only), added `shrink-0` to FY button itself so it stays inline but allows the container to compress. `flex-wrap` (already present) handles fallback wrapping.
+
+### Fix 17: FY Archive Inventory Sub-Tab Bar Missing Scroll Containment
+
+- **Files Changed**:
+  - `apps/web/src/app/dashboard/reports/previous-years/page.tsx`
+- **Root Cause**: The secondary sub-tab bar inside `InventoryUsageTable` ("Material Deductions" / "Batch Traceability") used a bare `flex gap-2 p-4` container with no `overflow-x-auto`, `shrink-0`, or `whitespace-nowrap` on buttons, causing horizontal overflow on screens ≤375px.
+- **What Changed**: Added `overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden` to the container div, and `shrink-0 whitespace-nowrap` to both toggle buttons.
+
+### Fix 18: FY Archive Page ~45px Horizontal Overflow from Framer Motion Ghost Node
+
+- **Files Changed**:
+  - `apps/web/src/app/dashboard/reports/previous-years/page.tsx`
+- **Root Cause**: The ternary at L385-410 (`dataLoading` spinner / `!data` empty-state / data tables) rendered three mutually-exclusive branches inside the same `motion.div` parent without unique `key` props. Framer Motion retained the outgoing branch's DOM node during its 400ms stagger transition, and the empty-state `IOSCard` (unconstrained width, no `min-w-0`/`overflow-hidden`) caused ~45px page-level horizontal overflow when this ghost node briefly coexisted with real data.
+- **What Changed**: Added unique `key` props to each ternary branch (`key="loading-state"`, `key="empty-state"`, `key="data-loaded"`) so React/Framer Motion treats them as genuinely different nodes and unmounts the outgoing one immediately. Added `min-w-0 w-full overflow-hidden` containment to the empty-state `IOSCard` as defense-in-depth. Parent `motion.div` already had `w-full min-w-0 overflow-x-clip` — no change needed there.
+
+### Feature 2: Floating Bottom Navigation Dock with Raised Brand Badge
+
+- **Files Changed**:
+  - `apps/web/src/app/dashboard/layout.tsx`
+- **What Changed**:
+  - Restyled mobile bottom navigation from an edge-to-edge transparent gradient into a floating dock with `bottom-4 left-4 right-4` (`16px` inset), `rounded-[28px]`, `bg-card/90 dark:bg-card/95 backdrop-blur-xl`, `border border-border`, and `shadow-xl shadow-black/10 dark:shadow-black/40`.
+  - Added a `56px` (`h-14 w-14`) raised circular badge (`bg-zinc-950 dark:bg-zinc-900 border border-white/15 dark:border-white/10 shadow-lg shadow-black/30`) over the Dashboard tab, overlapping the top edge by 50% (`-top-7`).
+  - Centered brand icon `<Factory className="h-6 w-6 text-white" />` inside the circular badge with active indicator `ring-2 ring-primary/50` when on the Dashboard route.
+  - Preserved existing active dot indicator and transitions for the remaining 4 tabs (Orders, Production, Inventory, More).
+  - Kept safe-area-inset-bottom handling intact.
+
+### Fix 19: Notification Bell Numeric Badge Clipping & Dot Indicator Replacement
+
+- **Files Changed**:
+  - `apps/web/src/components/NotificationDropdown.tsx`
+- **Root Cause**: The notification bell trigger had an 18px numeric badge with an aggressive `-top-[6px] -right-[6px]` offset. In the 44px mobile header (`(44 - 36) / 2 = 4px` top clearance), the badge extended above the viewport bounds and was clipped at the top screen edge, particularly during pulse animations.
+- **What Changed**: Replaced the numeric badge with a compact `h-2.5 w-2.5 rounded-full` solid dot at `top-1.5 right-1.5`, retaining `bg-[var(--accent-red,#EF4444)]` and theme-aware separation borders (`border-2 border-[var(--bg-card,#fff)] dark:border-[var(--bg-page,#000)]`). Preserved conditional `unreadCount > 0` display, pulse animation, and screen-reader accessibility description (`<span className="sr-only">{unreadCount} unread notifications</span>`).
+
+

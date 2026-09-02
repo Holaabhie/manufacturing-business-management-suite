@@ -2,6 +2,7 @@
 
 import { PackageOpen, SearchX } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 // ─── Types ───────────────────────────────────────────────
 
@@ -49,7 +50,10 @@ export function TableEmptyState({
   const Icon = config.Icon;
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
       className={cn(
         "flex flex-col items-center justify-center py-16 gap-3 text-center",
         className
@@ -84,14 +88,14 @@ export function TableEmptyState({
             "mt-2 px-4 py-2 rounded-xl text-[13px] font-semibold",
             "bg-[#2563EB] text-white",
             "hover:bg-[#1D4ED8]",
-            "transition-all duration-150",
-            "cursor-pointer",
+            "transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)]",
+            "active:scale-95 cursor-pointer",
             "shadow-[0_2px_8px_rgba(37,99,235,0.25)]"
           )}
         >
           {action.label}
         </button>
       )}
-    </div>
+    </motion.div>
   );
 }

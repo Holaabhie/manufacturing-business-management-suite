@@ -375,9 +375,9 @@ export function StepFinancials({ form, setForm }: { form: any; setForm: (f: any)
       <div className="flex items-center justify-between p-3 rounded-[10px] bg-[var(--muted)]">
         <span className="text-[14px] font-medium text-[var(--foreground)]">GST Applicable</span>
         <button type="button" onClick={() => setForm({ ...form, gst_applicable: !form.gst_applicable })}
-          className={cn("w-[51px] h-[31px] rounded-full transition-colors relative cursor-pointer", form.gst_applicable ? "bg-[var(--erp-success)]" : "bg-[var(--accent)]")}
+          className={cn("w-[51px] h-[31px] rounded-full transition-colors duration-150 relative cursor-pointer active:scale-95", form.gst_applicable ? "bg-[var(--erp-success)]" : "bg-[var(--accent)]")}
         >
-          <motion.div className="w-[27px] h-[27px] rounded-full bg-white shadow-md absolute top-[2px]" animate={{ x: form.gst_applicable ? 22 : 2 }} transition={{ type: "spring", stiffness: 700, damping: 30 }} />
+          <motion.div className="w-[27px] h-[27px] rounded-full bg-white shadow-md absolute top-[2px]" animate={{ x: form.gst_applicable ? 22 : 2 }} transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }} />
         </button>
       </div>
 
@@ -427,13 +427,20 @@ export function StepFinancials({ form, setForm }: { form: any; setForm: (f: any)
 // ═════════════════════════════════════════════════════════════
 // STEP 3: Production Setup (Optional) — Multi Machine+Operator
 // ═════════════════════════════════════════════════════════════
+function getNextId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "pa-" + Math.random().toString(36).substring(2, 9) + "-" + Date.now().toString(36);
+}
+
 export function StepProduction({
   form, setForm, machines, employees,
 }: { form: any; setForm: (f: any) => void; machines: any[]; employees: any[] }) {
   const productionStaff = employees.filter((e) => e.department === "Production" || e.department === "General");
 
   const assignments: Array<{ id: string; machineId: string; machineName: string; operatorId: string; operatorName: string }> =
-    form.productionAssignments || [{ id: crypto.randomUUID(), machineId: "", machineName: "", operatorId: "", operatorName: "" }];
+    form.productionAssignments || [{ id: getNextId(), machineId: "", machineName: "", operatorId: "", operatorName: "" }];
 
   const updateAssignment = (id: string, field: string, value: string) => {
     const updated = assignments.map((a) => {
@@ -454,7 +461,7 @@ export function StepProduction({
   const addRow = () => {
     setForm({
       ...form,
-      productionAssignments: [...assignments, { id: crypto.randomUUID(), machineId: "", machineName: "", operatorId: "", operatorName: "" }],
+      productionAssignments: [...assignments, { id: getNextId(), machineId: "", machineName: "", operatorId: "", operatorName: "" }],
     });
   };
 
@@ -482,14 +489,14 @@ export function StepProduction({
           type="button"
           onClick={() => setForm({ ...form, setup_production: !form.setup_production })}
           className={cn(
-            "relative shrink-0 w-[51px] h-[31px] rounded-full transition-colors cursor-pointer p-0 overflow-hidden",
+            "relative shrink-0 w-[51px] h-[31px] rounded-full transition-colors duration-150 cursor-pointer p-0 overflow-hidden active:scale-95",
             form.setup_production ? "bg-[var(--erp-success)]" : "bg-[var(--accent)]"
           )}
         >
           <motion.div
             className="absolute top-[2px] left-[2px] w-[27px] h-[27px] rounded-full bg-white shadow-md"
             animate={{ x: form.setup_production ? 20 : 0 }}
-            transition={{ type: "spring", stiffness: 700, damping: 30 }}
+            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
           />
         </button>
       </div>

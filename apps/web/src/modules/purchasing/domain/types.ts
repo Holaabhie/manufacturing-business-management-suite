@@ -45,12 +45,27 @@ export interface PurchaseOrder {
     subtotal: number;
     taxAmount: number;
     totalAmount: number;
+    paidAmount: number;
     notes?: string;
     orderedAt?: Date;
     receivedAt?: Date;
     inventorySyncedOnCreate?: boolean;
+    lastPaymentMode?: string;
+    lastPaymentDate?: string;
+    lastPaymentReference?: string;
+    lastPaymentNotes?: string;
     createdAt: Date;
     updatedAt: Date;
+}
+
+// ─── Payment Status Helper ─────────────────────────────────────
+
+export type PaymentStatus = "pending" | "partial" | "paid";
+
+export function getPaymentStatus(totalAmount: number, paidAmount: number): PaymentStatus {
+    if (paidAmount <= 0) return "pending";
+    if (paidAmount >= totalAmount) return "paid";
+    return "partial";
 }
 
 // ─── DTOs ───────────────────────────────────────────────────────

@@ -45,10 +45,15 @@ interface PurchaseOrderDocument {
     subtotal: number;
     taxAmount: number;
     totalAmount: number;
+    paidAmount?: number;
     notes?: string;
     orderedAt?: Date;
     receivedAt?: Date;
     inventorySyncedOnCreate?: boolean;
+    lastPaymentMode?: string;
+    lastPaymentDate?: string;
+    lastPaymentReference?: string;
+    lastPaymentNotes?: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -83,10 +88,15 @@ function toPurchaseOrderEntity(doc: PurchaseOrderDocument): PurchaseOrder {
         subtotal: doc.subtotal,
         taxAmount: doc.taxAmount,
         totalAmount: doc.totalAmount,
+        paidAmount: doc.paidAmount ?? 0,
         notes: doc.notes,
         orderedAt: doc.orderedAt,
         receivedAt: doc.receivedAt,
         inventorySyncedOnCreate: doc.inventorySyncedOnCreate,
+        lastPaymentMode: doc.lastPaymentMode,
+        lastPaymentDate: doc.lastPaymentDate,
+        lastPaymentReference: doc.lastPaymentReference,
+        lastPaymentNotes: doc.lastPaymentNotes,
         createdAt: doc.createdAt,
         updatedAt: doc.updatedAt,
     };

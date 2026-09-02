@@ -36,6 +36,8 @@ interface AddMaterialModalProps {
   setFormData: React.Dispatch<React.SetStateAction<FormData>>;
   onSubmit: (e: React.FormEvent) => void;
   isEditing: boolean;
+  /** Override z-index for stacking above other modals (default: 100) */
+  zIndex?: number;
 }
 
 // ─── Unit Quick-Select Pills ────────────────────────────────────
@@ -183,6 +185,7 @@ export function AddMaterialModal({
   setFormData,
   onSubmit,
   isEditing,
+  zIndex = 100,
 }: AddMaterialModalProps) {
   // ── Local UI state (does NOT affect API) ──
   const [isGstInclusive, setIsGstInclusive] = useState(false);
@@ -239,7 +242,8 @@ export function AddMaterialModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100]"
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+            style={{ zIndex }}
             onClick={onClose}
           />
 
@@ -250,8 +254,9 @@ export function AddMaterialModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98, y: 8 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
+            style={{ zIndex }}
             className={cn(
-              "fixed z-[100] flex flex-col overflow-hidden",
+              "fixed flex flex-col overflow-hidden",
               "bg-[#F3F5F9] dark:bg-[#0F1117]",
               "rounded-[18px] shadow-2xl",
               // Desktop

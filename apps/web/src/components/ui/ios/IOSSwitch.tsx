@@ -82,9 +82,8 @@ export const IOSSwitch = React.forwardRef<HTMLButtonElement, IOSSwitchProps>(
                             x: checked ? 22 : 2,
                         }}
                         transition={{
-                            type: 'spring',
-                            stiffness: 700,
-                            damping: 30,
+                            duration: 0.18,
+                            ease: [0.16, 1, 0.3, 1],
                         }}
                     />
                 </button>

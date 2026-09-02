@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { playCompletionSound } from "@/hooks/useCompletionSound";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, Loader2, Check, ShoppingCart, IndianRupee, Cpu, ClipboardCheck, Layers, Info, X } from "lucide-react";
 import { IOSButton } from "@/components/ui/ios/IOSButton";
@@ -46,7 +47,7 @@ const initialForm = {
   client_id: "", product_name: "", quantity: "", unit: "kg", delivery_date: "",
   order_value: "", unit_rate: "", payment_terms: "Full Advance", credit_days: "", gst_applicable: false, gst_percent: "18",
   setup_production: false, start_date: "",
-  productionAssignments: [{ id: crypto.randomUUID(), machineId: "", machineName: "", operatorId: "", operatorName: "" }] as ProductionAssignment[],
+  productionAssignments: [{ id: "", machineId: "", machineName: "", operatorId: "", operatorName: "" }] as ProductionAssignment[],
   new_client_name: "", new_client_phone: "", new_client_email: "",
   materials: [] as MaterialEntry[],
 };
@@ -63,6 +64,7 @@ export default function CreateOrderWizard() {
   const router = useRouter();
   const { restoreState, persist, clearPageState } = useCachedPage({
     pageKey: "create_order",
+    maxAgeMs: 5 * 60 * 1000,
   });
 
   const [step, setStep] = useState(0);
@@ -376,6 +378,7 @@ export default function CreateOrderWizard() {
       }
 
       toast.success("Order created successfully!");
+      playCompletionSound("general");
       clearPageState();
       router.push("/dashboard/orders");
     } catch (err: any) {

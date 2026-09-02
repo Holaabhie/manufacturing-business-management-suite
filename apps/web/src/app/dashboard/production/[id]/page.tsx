@@ -40,6 +40,7 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { playCompletionSound } from "@/hooks/useCompletionSound";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRole } from "@/lib/hooks/use-role";
 import { useFormatters } from "@/hooks/useFormatters";
@@ -251,6 +252,9 @@ export default function ProductionDetailPage() {
                                 ? "Production completed!"
                                 : "Progress updated"
             );
+            if (action === "complete") {
+                playCompletionSound("general");
+            }
             // Invalidate dependent React Query caches
             qc.invalidateQueries({ queryKey: queryKeys.orders });
             qc.invalidateQueries({ queryKey: queryKeys.inventory });
@@ -300,7 +304,11 @@ export default function ProductionDetailPage() {
                 toast.error(data.error);
                 return;
             }
+            const wasCompleted = prevProduction?.status === "completed";
             if (data.autoCompleted || data.status === "completed") {
+                if (!wasCompleted) {
+                    playCompletionSound("general");
+                }
                 toast.success("Production batch completed successfully! 🎉");
             } else {
                 toast.success("Progress updated!");

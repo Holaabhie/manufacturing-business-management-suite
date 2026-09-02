@@ -123,7 +123,7 @@ export default function MachinesPage() {
     const [restoredFromCache, setRestoredFromCache] = useState(false);
 
     // ── Page State Persistence ───────────────────────────
-    const { restoreState, persist, scrollYRef } = useCachedPage({ pageKey: "machines" });
+    const { restoreState, persist, scrollYRef } = useCachedPage({ pageKey: "machines", maxAgeMs: 5 * 60 * 1000 });
     const persistRef = useRef({ searchTerm, machines });
     useEffect(() => { persistRef.current = { searchTerm, machines }; });
     useEffect(() => {
@@ -173,8 +173,9 @@ export default function MachinesPage() {
     }, []);
 
     useEffect(() => {
-        if (!restoredFromCache) fetchMachines();
-    }, [fetchMachines, restoredFromCache]);
+        // Always fetch fresh data on mount — cache only suppresses the loading spinner
+        fetchMachines();
+    }, [fetchMachines]);
 
     // Filtered machines
     const filteredMachines = machines.filter(

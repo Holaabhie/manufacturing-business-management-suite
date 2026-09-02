@@ -13,7 +13,7 @@ export function UserMessageCard({ content, timestamp }: UserMessageCardProps) {
       initial={{ opacity: 0, y: 10, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -6 }}
-      transition={{ type: "spring", stiffness: 500, damping: 35 }}
+      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
       className="flex justify-end"
     >
       <div className="ai-user-msg">

@@ -191,6 +191,7 @@ export async function PATCH(request: Request) {
 
         const body = await request.json();
         const db = await getDb();
+        const adminId = getDataOwnerId(user);
 
         if (!body.reportId || !body.action) {
             return NextResponse.json(
@@ -208,6 +209,18 @@ export async function PATCH(request: Request) {
         const now = new Date();
         const updates: any = {};
 
+        // Verify report exists AND belongs to this tenant before any mutation
+        const report = await db
+            .collection("machineDowntime")
+            .findOne({ _id: new ObjectId(body.reportId), adminId });
+
+        if (!report) {
+            return NextResponse.json(
+                { error: "Downtime report not found" },
+                { status: 404 }
+            );
+        }
+
         if (body.action === "acknowledge") {
             updates.status = "acknowledged";
             updates.acknowledgedAt = now;
@@ -220,34 +233,25 @@ export async function PATCH(request: Request) {
             updates.resolvedByName = userName;
             updates.resolution = body.resolution || "Resolved";
 
-            // Get report to update machine status
-            const report = await db
-                .collection("machineDowntime")
-                .findOne({ _id: new ObjectId(body.reportId) });
+            // Set machine back to idle
+            await db.collection("machines").updateOne(
+                { _id: new ObjectId(report.machineId) },
+                { $set: { status: "idle", updatedAt: now } }
+            );
 
-            if (report) {
-                // Set machine back to idle
-                await db.collection("machines").updateOne(
-                    { _id: new ObjectId(report.machineId) },
-                    { $set: { status: "idle", updatedAt: now } }
-                );
-
-                // Log machine event
-                const adminId = getDataOwnerId(user);
-
-                await db.collection("machineEvents").insertOne({
-                    machineId: report.machineId,
-                    machineName: report.machineName,
-                    event: "issue_resolved",
-                    previousStatus: "maintenance",
-                    newStatus: "idle",
-                    adminId,
-                    reportedBy: user._id.toString(),
-                    reportedByName: userName,
-                    reportedByRole: user.role || "Staff",
-                    timestamp: now,
-                });
-            }
+            // Log machine event
+            await db.collection("machineEvents").insertOne({
+                machineId: report.machineId,
+                machineName: report.machineName,
+                event: "issue_resolved",
+                previousStatus: "maintenance",
+                newStatus: "idle",
+                adminId,
+                reportedBy: user._id.toString(),
+                reportedByName: userName,
+                reportedByRole: user.role || "Staff",
+                timestamp: now,
+            });
         } else {
             return NextResponse.json(
                 { error: 'action must be "acknowledge" or "resolve"' },
@@ -256,7 +260,7 @@ export async function PATCH(request: Request) {
         }
 
         await db.collection("machineDowntime").updateOne(
-            { _id: new ObjectId(body.reportId) },
+            { _id: new ObjectId(body.reportId), adminId },
             { $set: updates }
         );
 

@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 // Framer motion animation variants matching the dashboard's staggerItem
 const staggerItem = {
     initial: { opacity: 0, y: 20 },
-    animate: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] } }
+    animate: { opacity: 1, y: 0, transition: { duration: 0.18, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] } }
 };
 
 // ─── Animated Counter ────────────────────────────────────
@@ -92,7 +92,10 @@ export function StatWidget({
     return (
         <motion.div variants={staggerItem} custom={delay} className="min-w-0 w-full overflow-hidden rounded-[20px]">
             <div
-                className="kpi-card relative min-w-0"
+                className={cn(
+                    "kpi-card relative min-w-0",
+                    href && "cursor-pointer transition-transform duration-100 ease-[cubic-bezier(0.7,0,0.84,0)] active:scale-[0.98]"
+                )}
                 tabIndex={0}
                 role={href ? "link" : "article"}
                 aria-label={`${label}: ${prefix}${value.toLocaleString("en-IN")}${suffix}${hasValidChange && change !== 0 ? `, ${isPositive ? t("up") : t("down")} ${Math.abs(change)}%` : ""}`}

@@ -10,9 +10,11 @@ export function useLongPress(
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const startPos = useRef<{ x: number; y: number } | null>(null)
   const triggered = useRef(false)
+  const hasMoved = useRef(false)
 
   const start = useCallback((e: React.TouchEvent | React.MouseEvent) => {
     triggered.current = false
+    hasMoved.current = false
     const point = "touches" in e ? e.touches[0] : e
     startPos.current = { x: point.clientX, y: point.clientY }
 
@@ -26,15 +28,18 @@ export function useLongPress(
   }, [onLongPress])
 
   const move = useCallback((e: React.TouchEvent | React.MouseEvent) => {
-    if (!startPos.current || !timerRef.current) return
+    if (!startPos.current) return
     const point = "touches" in e ? e.touches[0] : e
     const dx = Math.abs(point.clientX - startPos.current.x)
     const dy = Math.abs(point.clientY - startPos.current.y)
 
-    // Cancel if scrolling — do not trigger long press
+    // Cancel if scrolling — do not trigger long press or tap
     if (dx > MOVE_THRESHOLD || dy > MOVE_THRESHOLD) {
-      clearTimeout(timerRef.current)
-      timerRef.current = null
+      hasMoved.current = true
+      if (timerRef.current) {
+        clearTimeout(timerRef.current)
+        timerRef.current = null
+      }
     }
   }, [])
 
@@ -43,10 +48,23 @@ export function useLongPress(
       clearTimeout(timerRef.current)
       timerRef.current = null
     }
-    if (!triggered.current && onClick) {
+    if (!triggered.current && !hasMoved.current && onClick) {
       onClick()
     }
+    startPos.current = null
+    hasMoved.current = false
+    triggered.current = false
   }, [onClick])
+
+  const cancel = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+    hasMoved.current = true
+    startPos.current = null
+    triggered.current = false
+  }, [])
 
   return {
     onMouseDown: start,
@@ -55,7 +73,7 @@ export function useLongPress(
     onTouchStart: start,
     onTouchMove: move,
     onTouchEnd: end,
-    onTouchCancel: end,
+    onTouchCancel: cancel,
     onContextMenu: (e: React.MouseEvent) => e.preventDefault()
   }
 }

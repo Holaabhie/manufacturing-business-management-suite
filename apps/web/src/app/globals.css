@@ -205,22 +205,22 @@ html, body {
 @keyframes dialogScaleIn {
   from {
     opacity: 0;
-    transform: scale(0.95);
+    transform: translate(-50%, -50%) scale(0.95);
   }
   to {
     opacity: 1;
-    transform: scale(1);
+    transform: translate(-50%, -50%) scale(1);
   }
 }
 
 @keyframes dialogScaleOut {
   from {
     opacity: 1;
-    transform: scale(1);
+    transform: translate(-50%, -50%) scale(1);
   }
   to {
     opacity: 0;
-    transform: scale(0.95);
+    transform: translate(-50%, -50%) scale(0.95);
   }
 }
 
@@ -316,6 +316,12 @@ html, body {
   --chart-3: #F59E0B;
   --chart-4: #8B5CF6;
   --chart-5: #EF4444;
+
+  /* ── AI Scoped Accent Tokens (Light) ────────── */
+  --ai-accent: #7C3AED;
+  --ai-accent-glow: rgba(124, 58, 237, 0.15);
+  --ai-accent-purple: #7C3AED;
+  --ai-accent-purple-glow: rgba(124, 58, 237, 0.15);
 
   /* ── Sidebar ────────────────────────────────── */
   --sidebar: #FFFFFF;
@@ -516,6 +522,12 @@ html, body {
   --chart-3: #F59E0B;
   --chart-4: #A78BFA;
   --chart-5: #F87171;
+
+  /* ── AI Scoped Accent Tokens (Dark) ─────────── */
+  --ai-accent: #8B5CF6;
+  --ai-accent-glow: rgba(139, 92, 246, 0.25);
+  --ai-accent-purple: #8B5CF6;
+  --ai-accent-purple-glow: rgba(139, 92, 246, 0.25);
 
   /* ── Sidebar ────────────────────────────────── */
   --sidebar: #0F1117;
@@ -3674,6 +3686,9 @@ html, body {
   --ai-card-shadow-hover: 0 4px 12px rgba(0,0,0,0.08), 0 8px 32px rgba(0,0,0,0.06);
   --ai-glow-purple: 0 0 20px rgba(124, 58, 237, 0.08);
   --ai-glow-blue: 0 0 20px rgba(59, 130, 246, 0.08);
+  /* Aliases — single accent token for the redesigned chat UI */
+  --ai-accent: var(--ai-accent-purple);
+  --ai-accent-glow: var(--ai-accent-purple-glow);
 }
 
 /* ── AI Color Tokens (Dark) ────────────────────────────────── */
@@ -3707,6 +3722,9 @@ html, body {
   --ai-card-shadow-hover: 0 4px 12px rgba(0,0,0,0.4), 0 8px 32px rgba(0,0,0,0.3);
   --ai-glow-purple: 0 0 20px rgba(139, 92, 246, 0.15);
   --ai-glow-blue: 0 0 20px rgba(59, 130, 246, 0.15);
+  /* Aliases — single accent token for the redesigned chat UI */
+  --ai-accent: var(--ai-accent-purple);
+  --ai-accent-glow: var(--ai-accent-purple-glow);
 }
 
 /* ── AI Keyframes ────────────────────────────────────────────── */
@@ -3739,6 +3757,14 @@ html, body {
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
 }
+@keyframes ai-status-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+@keyframes ai-pulse {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
 
 /* ── AI Workspace Container ──────────────────────────────────── */
 .ai-workspace {
@@ -3747,6 +3773,67 @@ html, body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   flex: 1;
   min-height: 0;
+}
+
+/* ── AI Component Overrides (protect against global light-theme rules) ── */
+.ai-tab-active {
+  background: #7C3AED !important;
+  color: #FFFFFF !important;
+  border: none !important;
+  border-radius: 9999px !important;
+}
+
+.dark .ai-tab-active {
+  background: #8B5CF6 !important;
+  color: #FFFFFF !important;
+}
+
+.ai-tab-active svg {
+  color: #FFFFFF !important;
+  stroke: #FFFFFF !important;
+}
+
+.ai-avatar-square {
+  background: #7C3AED !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25) !important;
+}
+
+.dark .ai-avatar-square {
+  background: #8B5CF6 !important;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.35) !important;
+}
+
+.ai-avatar-square svg {
+  color: #FFFFFF !important;
+  stroke: #FFFFFF !important;
+}
+
+.ai-send-button {
+  background: #7C3AED !important;
+  color: #FFFFFF !important;
+  border: none !important;
+  border-radius: 9999px !important;
+}
+
+.dark .ai-send-button {
+  background: #8B5CF6 !important;
+  color: #FFFFFF !important;
+}
+
+.ai-send-button svg {
+  color: #FFFFFF !important;
+  stroke: #FFFFFF !important;
+}
+
+.ai-user-bubble {
+  background: #7C3AED !important;
+  color: #FFFFFF !important;
+}
+
+.dark .ai-user-bubble {
+  background: #8B5CF6 !important;
+  color: #FFFFFF !important;
 }
 
 /* ── AI Glass Surface ────────────────────────────────────────── */

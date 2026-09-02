@@ -17,6 +17,7 @@ import {
   Info,
 } from "lucide-react";
 import { toast } from "sonner";
+import { playCompletionSound } from "@/hooks/useCompletionSound";
 import { cn } from "@/lib/utils";
 
 // ─── Types ─────────────────────────────────────────────────
@@ -475,6 +476,7 @@ export default function CreateInvoiceModal({
       } else {
         const serverBillNumber = json.data?.billNumber || billData.billNumber;
         toast.success(`Bill ${serverBillNumber} created successfully`);
+        playCompletionSound("general");
         onClose();
         onSuccess();
       }

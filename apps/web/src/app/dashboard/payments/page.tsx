@@ -28,7 +28,8 @@ import {
   CreditCard,
   ChevronDown,
   Receipt,
-  Send
+  Send,
+  Sparkles
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -259,7 +260,7 @@ export default function PaymentsPage() {
   }, []);
 
   // ── Page State Persistence ───────────────────────────
-  const { restoreState, persist, scrollYRef } = useCachedPage({ pageKey: "payments" });
+  const { restoreState, persist, scrollYRef } = useCachedPage({ pageKey: "payments", maxAgeMs: 5 * 60 * 1000 });
   const persistRef = useRef({ searchTerm, viewType });
   useEffect(() => { persistRef.current = { searchTerm, viewType }; });
   useEffect(() => {
@@ -829,10 +830,10 @@ export default function PaymentsPage() {
 
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center p-1 bg-[var(--muted)] rounded-[12px] w-full sm:w-auto h-[44px]">
+          <div className="grid grid-cols-3 sm:flex sm:items-center p-1 bg-[var(--muted)] rounded-[12px] w-full sm:w-auto">
             <button
               className={cn(
-                "flex-1 sm:flex-none h-full px-5 text-[15px] font-semibold transition-all rounded-[10px]",
+                "flex items-center justify-center text-center px-3 sm:px-5 py-2.5 text-[15px] font-semibold transition-all rounded-[10px]",
                 viewType === "receivables" ? "bg-white dark:bg-[rgba(255,255,255,0.1)] text-[var(--foreground)] shadow-[var(--shadow-sm)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
               )}
               onClick={() => setViewType("receivables")}
@@ -841,7 +842,7 @@ export default function PaymentsPage() {
             </button>
             <button
               className={cn(
-                "flex-1 sm:flex-none h-full px-5 text-[15px] font-semibold transition-all rounded-[10px]",
+                "flex items-center justify-center text-center px-3 sm:px-5 py-2.5 text-[15px] font-semibold transition-all rounded-[10px]",
                 viewType === "clients" ? "bg-white dark:bg-[rgba(255,255,255,0.1)] text-[var(--foreground)] shadow-[var(--shadow-sm)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
               )}
               onClick={() => setViewType("clients")}
@@ -850,7 +851,7 @@ export default function PaymentsPage() {
             </button>
             <button
               className={cn(
-                "flex-1 sm:flex-none h-full px-5 text-[15px] font-semibold transition-all rounded-[10px]",
+                "flex items-center justify-center text-center px-3 sm:px-5 py-2.5 text-[15px] font-semibold transition-all rounded-[10px]",
                 viewType === "history" ? "bg-white dark:bg-[rgba(255,255,255,0.1)] text-[var(--foreground)] shadow-[var(--shadow-sm)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
               )}
               onClick={() => setViewType("history")}
@@ -875,7 +876,8 @@ export default function PaymentsPage() {
             {orders.filter((o: any) => o.paymentStatus !== 'paid').length === 0 ? (
               <div style={{ textAlign: 'center', padding: '48px 20px', borderRadius: 16, background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)' }}>
                 <CheckCircle2 className="h-10 w-10 mx-auto mb-3" style={{ color: '#34d399' }} />
-                <p style={{ fontSize: 15, fontWeight: 600, color: '#34d399' }}>All orders fully settled! 🥳</p>
+                <p style={{ fontSize: 15, fontWeight: 600, color: '#34d399', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>All orders fully settled <Sparkles size={16} style={{ color: '#34d399' }} /></p>
+                <p style={{ fontSize: 13, color: '#64748B', marginTop: 4, fontWeight: 400 }}>No pending dues</p>
               </div>
             ) : orders.filter((o: any) => o.paymentStatus !== 'paid' && (o.client?.name.toLowerCase().includes(searchTerm.toLowerCase()) || o.productName.toLowerCase().includes(searchTerm.toLowerCase()))).map((order: any) => {
               const paid = payments.filter((p: any) => p.orderId === order.id).reduce((acc: number, p: any) => acc + Number(p.amount), 0);
@@ -945,7 +947,11 @@ export default function PaymentsPage() {
                   animate="animate"
                 >
                   {orders.filter((o: any) => o.paymentStatus !== 'paid').length === 0 ? (
-                    <tr><td colSpan={6} className="text-center py-24 text-[var(--erp-success)] font-semibold bg-[var(--erp-success)]/10">All orders fully settled! 🥳</td></tr>
+                    <tr><td colSpan={6} className="text-center py-24 text-[var(--erp-success)] font-semibold bg-[var(--erp-success)]/10">
+                      <CheckCircle2 className="h-10 w-10 mx-auto mb-3" style={{ color: '#34d399' }} />
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>All orders fully settled <Sparkles size={16} style={{ color: '#34d399' }} /></span>
+                      <p style={{ fontSize: 13, color: '#64748B', marginTop: 4, fontWeight: 400 }}>No pending dues</p>
+                    </td></tr>
                   ) : orders.filter((o: any) =>
                     o.paymentStatus !== 'paid' && (o.client?.name.toLowerCase().includes(searchTerm.toLowerCase()) || o.productName.toLowerCase().includes(searchTerm.toLowerCase()))
                   ).map((order: any) => {
