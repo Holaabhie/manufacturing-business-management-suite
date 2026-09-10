@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { loadStripe } from "@stripe/stripe-js";
-import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import {
   Crown,
   Check,
@@ -13,13 +11,19 @@ import {
   Users,
   BarChart3,
   Download,
-  HeadphonesIcon,
   Package,
   ShoppingCart,
   ArrowLeft,
   Calendar,
   AlertCircle,
-  CheckCircle
+  CheckCircle2,
+  Bot,
+  ShieldCheck,
+  Building2,
+  Clock,
+  ExternalLink,
+  ChevronRight,
+  Info
 } from "lucide-react";
 import {
   IOSCard,
@@ -30,6 +34,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import {
   Dialog,
   DialogContent,
@@ -39,645 +44,740 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
-
-const TIERS: Record<string, {
-  name: string;
-  price: number;
-  priceLabel: string;
-  description: string;
-  icon: any;
-  features: { text: string; included: boolean }[];
-  color: string;
-  accentColor: string;
-  buttonVariant: "outline" | "default";
-  popular?: boolean;
-}> = {
-  starter: {
-    name: "Starter",
-    price: 0,
-    priceLabel: "Free",
-    description: "Perfect for small operations getting started",
-    icon: Package,
-    features: [
-      { text: "Up to 50 inventory items", included: true },
-      { text: "Up to 100 orders/month", included: true },
-      { text: "Basic reports", included: true },
-      { text: "1 user", included: true },
-      { text: "Advanced analytics", included: false },
-      { text: "Data export (Excel/PDF)", included: false },
-      { text: "Priority support", included: false },
-      { text: "Multi-user access", included: false },
-    ],
-    color: "bg-zinc-100 dark:bg-zinc-900",
-    accentColor: "text-zinc-600",
-    buttonVariant: "outline" as const,
-  },
-  pro: {
-    name: "Pro",
-    price: 999,
-    priceLabel: "\u20B9999",
-    description: "For growing businesses that need more power",
-    icon: Crown,
-    features: [
-      { text: "Unlimited inventory items", included: true },
-      { text: "Unlimited orders", included: true },
-      { text: "Basic reports", included: true },
-      { text: "Up to 10 users", included: true },
-      { text: "Advanced analytics", included: true },
-      { text: "Data export (Excel/PDF)", included: true },
-      { text: "Priority support", included: true },
-      { text: "Multi-user access", included: true },
-    ],
-    color: "bg-gradient-to-br from-amber-400 to-amber-600",
-    accentColor: "text-amber-500",
-    buttonVariant: "default" as const,
-    popular: true,
-  },
+// Enforced limits on Starter tier across production code
+const STARTER_LIMITS = {
+  inventory: 5,
+  orders: 5,
+  clients: 5,
 };
 
-function CheckoutForm({
-  onSuccess,
-  onCancel,
-  confirmationType
-}: {
-  onSuccess: () => void;
-  onCancel: () => void;
-  confirmationType: 'payment' | 'setup';
-}) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [processing, setProcessing] = useState(false);
-  const [elementReady, setElementReady] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!stripe || !elements) return;
-
-    setProcessing(true);
-
-    try {
-      const confirmFn = confirmationType === 'setup'
-        ? stripe.confirmSetup
-        : stripe.confirmPayment;
-
-      const { error } = await confirmFn({
-        elements,
-        confirmParams: {
-          return_url: window.location.origin + "/dashboard/upgrade?success=true",
-        },
-        redirect: "if_required",
-      });
-
-      if (error) {
-        toast.error(error.message || "Payment failed");
-        setProcessing(false);
-      } else {
-        onSuccess();
-      }
-    } catch (err: any) {
-      toast.error(err.message || "Something went wrong");
-      setProcessing(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="bg-[var(--muted)] rounded-[20px] p-5 border border-[var(--border)]">
-        <div className="max-h-[300px] overflow-y-auto">
-          <PaymentElement
-            onReady={() => setElementReady(true)}
-            options={{
-              layout: "tabs",
-            }}
-          />
-        </div>
-      </div>
-
-      <div className="flex gap-3">
-        <IOSButton
-          type="button"
-          variant="gray"
-          className="flex-1 h-[50px] text-[17px] font-semibold"
-          onClick={onCancel}
-          disabled={processing}
-        >
-          Cancel
-        </IOSButton>
-        <IOSButton
-          type="button"
-          color="blue"
-          className="flex-1 h-[50px] text-[17px] font-semibold bg-gradient-to-r from-amber-400 to-amber-600 hover:from-amber-500 hover:to-amber-700 shadow-lg shadow-amber-500/20 border-0 text-white"
-          disabled={!stripe || !elements || processing || !elementReady}
-          onClick={(e) => handleSubmit(e as any)}
-        >
-          {processing ? (
-            <>
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              Processing...
-            </>
-          ) : !elementReady ? (
-            <>
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              Loading...
-            </>
-          ) : (
-            <>
-              <Sparkles className="mr-2 h-5 w-5" />
-              Subscribe {"\u20B9"}999/month
-            </>
-          )}
-        </IOSButton>
-      </div>
-
-      <p className="text-[13px] text-center text-[var(--muted-foreground)]">
-        By subscribing, you agree to our terms. Cancel anytime from your profile settings.
-      </p>
-    </form>
-  );
-}
-
 export default function UpgradePage() {
+  const t = useTranslations("upgrade");
+  const tStarter = useTranslations("upgrade.starter");
+  const tPro = useTranslations("upgrade.pro");
+  const tHighlights = useTranslations("upgrade.highlights");
+  const tTrust = useTranslations("upgrade.trust");
+  const tCheckout = useTranslations("upgrade.checkoutModal");
+  const tCancel = useTranslations("upgrade.cancelModal");
+  const tToasts = useTranslations("upgrade.toasts");
+
   const [user, setUser] = useState<any>(null);
   const [subscription, setSubscription] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [showCheckout, setShowCheckout] = useState(false);
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [confirmationType, setConfirmationType] = useState<'payment' | 'setup'>('payment');
-  const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
-  const [canceling, setCanceling] = useState(false);
+
+  // Usage counts
+  const [inventoryCount, setInventoryCount] = useState<number>(0);
+  const [ordersCount, setOrdersCount] = useState<number>(0);
+  const [clientsCount, setClientsCount] = useState<number>(0);
+
+  // Billing toggle: 'yearly' (default, with savings) or 'monthly'
+  const [billingInterval, setBillingInterval] = useState<"monthly" | "yearly">("yearly");
+
+  // Upgrade placeholder dialog
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  // Cancel subscription dialog (for active Pro users)
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
-  const [successState, setSuccessState] = useState(false);
+  const [canceling, setCanceling] = useState(false);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('success') === 'true') {
-      setSuccessState(true);
-      window.history.replaceState({}, '', '/dashboard/upgrade');
-    }
     fetchData();
   }, []);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/me");
-      const userData = await res.json();
-      setUser(userData);
+      // 1. Fetch user session
+      const resUser = await fetch("/api/auth/me");
+      const userData = await resUser.json();
+      const currentUser = userData?.user || userData;
+      setUser(currentUser);
 
-      if (user) {
-        const res = await fetch(`/api/stripe/subscription?userId=${user.id}`);
-        if (res.ok) {
-          const data = await res.json();
-          setSubscription(data);
-        }
-      }
+      const userId = currentUser?._id || currentUser?.id;
+
+      // 2. Fetch subscription status & real usage data in parallel
+      const [subRes, invRes, ordRes, cliRes] = await Promise.all([
+        userId ? fetch(`/api/stripe/subscription?userId=${userId}`).then(r => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null),
+        fetch("/api/inventory").then(r => r.ok ? r.json() : []).catch(() => []),
+        fetch("/api/orders").then(r => r.ok ? r.json() : []).catch(() => []),
+        fetch("/api/clients").then(r => r.ok ? r.json() : []).catch(() => []),
+      ]);
+
+      if (subRes) setSubscription(subRes);
+      if (Array.isArray(invRes)) setInventoryCount(invRes.length);
+      if (Array.isArray(ordRes)) setOrdersCount(ordRes.length);
+      if (Array.isArray(cliRes)) setClientsCount(cliRes.length);
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error("Error fetching upgrade page data:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleUpgrade = async () => {
-    if (!user) {
-      toast.error("Please log in to upgrade");
-      return;
-    }
-
-    setShowCheckout(true);
-
-    try {
-      const res = await fetch("/api/stripe/create-subscription", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: user.id,
-          email: user.email,
-          priceId: process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID || "price_1SiUfTEMNP0KHwIRvw9wlBzh",
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        toast.error(data.error || "Failed to start subscription");
-        setShowCheckout(false);
-        return;
-      }
-
-      setClientSecret(data.clientSecret);
-      setConfirmationType(data.confirmationType);
-      setSubscriptionId(data.subscriptionId);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to start checkout");
-      setShowCheckout(false);
-    }
-  };
-
   const handleCancel = async (immediately = false) => {
+    if (!user) return;
     setCanceling(true);
     try {
+      const userId = user._id || user.id;
       const res = await fetch("/api/stripe/cancel-subscription", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: user.id,
+          userId,
           cancelImmediately: immediately,
         }),
       });
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error);
+        throw new Error(data.error || tToasts("cancelFailed"));
       }
 
-      toast.success(immediately
-        ? "Subscription canceled immediately"
-        : "Subscription will cancel at period end"
+      toast.success(
+        immediately
+          ? tToasts("cancelImmediateSuccess")
+          : tToasts("cancelPeriodEndSuccess")
       );
       setCancelDialogOpen(false);
       fetchData();
     } catch (error: any) {
-      toast.error(error.message || "Failed to cancel subscription");
+      toast.error(error.message || tToasts("cancelFailed"));
     } finally {
       setCanceling(false);
     }
   };
 
-  const handleCheckoutSuccess = () => {
-    setSuccessState(true);
-    setShowCheckout(false);
-    setClientSecret(null);
-    fetchData();
-  };
-
-  const handleCheckoutCancel = async () => {
-    if (subscriptionId) {
-      try {
-        await fetch("/api/stripe/cancel-subscription", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: user.id,
-            cancelImmediately: true,
-          }),
-        });
-      } catch (e) {
-        console.error("Failed to cleanup subscription:", e);
-      }
-    }
-    setShowCheckout(false);
-    setClientSecret(null);
-    setSubscriptionId(null);
-  };
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex flex-col items-center justify-center min-h-[460px] gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-[var(--primary)]" />
+        <p className="text-[14px] text-[var(--muted-foreground)]">{t("loading")}</p>
       </div>
     );
   }
 
-  const currentTier = subscription?.tier || "starter";
-  const isPro = currentTier === "pro";
+  // Tier resolution
+  const userTier = user?.subscription_tier || subscription?.tier || "starter";
+  const isPro = userTier === "pro";
+
+  // Pricing calculations
+  const monthlyPrice = 999;
+  const yearlyPrice = 9999;
+  const yearlyMonthlyEquivalent = 833; // Math.round(9999 / 12)
+  const yearlySavings = 1989; // (12 * 999) - 9999
+
+  const activeProPrice = billingInterval === "yearly" ? yearlyMonthlyEquivalent : monthlyPrice;
+  const activeProBilledText = billingInterval === "yearly"
+    ? t("billedAnnually", { price: yearlyPrice.toLocaleString("en-IN"), savings: yearlySavings.toLocaleString("en-IN") })
+    : t("billedMonthly");
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-5xl mx-auto space-y-8 pb-12"
+      className="max-w-5xl mx-auto space-y-8 w-full min-w-0 overflow-x-hidden"
+      style={{ paddingBottom: "calc(7rem + env(safe-area-inset-bottom, 0px))" }}
     >
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/profile">
-          <IOSButton variant="plain" className="w-[44px] h-[44px] rounded-full p-0 flex items-center justify-center">
-            <ArrowLeft className="h-6 w-6 text-[#007AFF]" />
-          </IOSButton>
-        </Link>
-        <div>
-          <h1 className="text-[34px] font-bold tracking-tight text-[var(--foreground)]">Subscription Plans</h1>
-          <p className="text-[17px] text-[var(--muted-foreground)]">Choose the plan that fits your business needs</p>
+      {/* Header section with profile return */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <Link href="/dashboard/profile" aria-label={t("backToProfile")}>
+            <IOSButton
+              variant="plain"
+              className="w-[42px] h-[42px] rounded-full p-0 flex items-center justify-center border border-[var(--border)] bg-[var(--card)] hover:bg-[var(--muted)]"
+            >
+              <ArrowLeft className="h-5 w-5 text-[var(--primary)]" />
+            </IOSButton>
+          </Link>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-[12px] font-semibold tracking-wider uppercase text-[var(--primary)] bg-[var(--primary)]/10 px-2.5 py-0.5 rounded-full">
+                {t("badgePlans")}
+              </span>
+              {isPro && (
+                <span className="text-[12px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" /> {t("badgeProActive")}
+                </span>
+              )}
+            </div>
+            <h1 className="text-[26px] sm:text-[32px] font-bold tracking-tight text-[var(--foreground)] mt-1">
+              {t("title")}
+            </h1>
+          </div>
+        </div>
+
+        {/* Monthly / Yearly Billing Toggle */}
+        <div className="flex items-center bg-[var(--muted)] p-1 rounded-full border border-[var(--border)] self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => setBillingInterval("monthly")}
+            className={cn(
+              "px-4 py-1.5 rounded-full text-[13px] sm:text-[14px] font-medium transition-all duration-200",
+              billingInterval === "monthly"
+                ? "bg-[var(--card)] text-[var(--foreground)] shadow-sm font-semibold"
+                : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            )}
+          >
+            {t("toggleMonthly")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setBillingInterval("yearly")}
+            className={cn(
+              "px-4 py-1.5 rounded-full text-[13px] sm:text-[14px] font-medium transition-all duration-200 flex items-center gap-1.5",
+              billingInterval === "yearly"
+                ? "bg-[var(--card)] text-[var(--foreground)] shadow-sm font-semibold"
+                : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            )}
+          >
+            <span>{t("toggleAnnually")}</span>
+            <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+              {t("savePercent")}
+            </span>
+          </button>
         </div>
       </div>
 
-      <AnimatePresence mode="wait">
-        {successState && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-          >
-            <IOSCard className="border-[#34C759]/30 bg-[#34C759]/10">
-              <div className="flex items-center gap-4 p-6">
-                <div className="w-12 h-12 rounded-full bg-[#34C759] flex items-center justify-center flex-shrink-0">
-                  <CheckCircle className="h-6 w-6 text-white" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-[17px] font-bold text-[#15803D] dark:text-[#4ADE80]">
-                    Welcome to Pro!
-                  </h3>
-                  <p className="text-[15px] text-[#166534] dark:text-[#22C55E]">
-                    Your subscription is now active. Enjoy unlimited features!
-                  </p>
-                </div>
-                <IOSButton
-                  variant="plain"
-                  className="px-4 h-[36px] bg-white border border-[#34C759]/50 text-[#15803D]"
-                  onClick={() => setSuccessState(false)}
-                >
-                  Dismiss
-                </IOSButton>
-              </div>
-            </IOSCard>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
+      {/* Subscription ending notification banner for scheduled cancellations */}
       {isPro && subscription?.cancelAtPeriodEnd && (
         <IOSCard className="border-amber-500/30 bg-amber-500/10">
-          <div className="flex items-center gap-4 p-6">
-            <div className="w-12 h-12 rounded-full bg-amber-500 flex items-center justify-center flex-shrink-0">
-              <AlertCircle className="h-6 w-6 text-white" />
+          <div className="flex items-center gap-4 p-5">
+            <div className="w-10 h-10 rounded-full bg-amber-500 flex items-center justify-center flex-shrink-0">
+              <AlertCircle className="h-5 w-5 text-white" />
             </div>
             <div className="flex-1">
-              <h3 className="text-[17px] font-bold text-[#B45309] dark:text-[#FBBF24]">
-                Subscription Ending
+              <h3 className="text-[16px] font-bold text-amber-700 dark:text-amber-400">
+                {t("subscriptionEnding.title")}
               </h3>
-              <p className="text-[15px] text-[#D97706] dark:text-[#FCD34D]">
-                Your Pro subscription will end on {new Date(subscription.currentPeriodEnd).toLocaleDateString()}.
-                You'll be downgraded to Starter after this date.
+              <p className="text-[14px] text-amber-800/80 dark:text-amber-300/80">
+                {t("subscriptionEnding.description", {
+                  date: subscription.currentPeriodEnd
+                    ? new Date(subscription.currentPeriodEnd).toLocaleDateString()
+                    : t("subscriptionEnding.periodEndFallback")
+                })}
               </p>
             </div>
           </div>
         </IOSCard>
       )}
 
-      <div className="grid md:grid-cols-2 gap-8">
-        {Object.entries(TIERS).map(([key, tier]) => {
-          const isCurrentTier = currentTier === key;
-          const Icon = tier.icon;
+      {/* Plan Cards Grid: side-by-side on desktop, stacked on mobile */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full min-w-0">
+        
+        {/* ── 1. STARTER PLAN CARD ── */}
+        <div className="min-w-0 w-full overflow-hidden flex flex-col">
+          <IOSCard
+            className={cn(
+              "h-full flex flex-col relative border transition-all duration-200 p-6 sm:p-7",
+              !isPro
+                ? "border-[var(--primary)]/40 shadow-[0_4px_24px_rgba(37,99,235,0.08)] bg-[var(--card)]"
+                : "border-[var(--border)] bg-[var(--card)]/80"
+            )}
+          >
+            {!isPro && (
+              <div className="absolute top-0 right-0 bg-[var(--primary)] text-white text-[11px] font-bold px-3 py-1 rounded-bl-[14px]">
+                {tStarter("currentBadge")}
+              </div>
+            )}
 
-          return (
-            <motion.div
-              key={key}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: key === "pro" ? 0.1 : 0 }}
-            >
-              <IOSCard className={cn(
-                "relative transition-all duration-300 h-full flex flex-col",
-                tier.popular && "ring-2 ring-amber-500 shadow-[0_8px_30px_rgba(245,158,11,0.15)]",
-                isCurrentTier && "border-[#007AFF] bg-[#007AFF]/5 dark:bg-[#0A84FF]/5"
-              )}>
-                {tier.popular && (
-                  <div className="absolute top-0 right-0 bg-gradient-to-r from-amber-400 to-amber-600 text-white text-[11px] font-bold px-4 py-1.5 rounded-bl-[16px] rounded-tr-[24px]">
-                    <Sparkles className="inline h-3 w-3 mr-1" />
-                    MOST POPULAR
-                  </div>
-                )}
+            {/* Plan Title & Subtitle */}
+            <div className="mb-5">
+              <div className="w-12 h-12 rounded-[16px] bg-[var(--muted)] flex items-center justify-center mb-4 text-[var(--foreground)]">
+                <Package className="h-6 w-6 text-[var(--muted-foreground)]" />
+              </div>
+              <h2 className="text-[24px] font-bold text-[var(--foreground)]">{tStarter("title")}</h2>
+              <p className="text-[14px] text-[var(--muted-foreground)] mt-1">
+                {tStarter("subtitle")}
+              </p>
+            </div>
 
-                {isCurrentTier && (
-                  <div className="absolute top-0 left-0 bg-[#007AFF] text-white text-[11px] font-bold px-4 py-1.5 rounded-br-[16px] rounded-tl-[24px]">
-                    CURRENT PLAN
-                  </div>
-                )}
+            {/* Price block */}
+            <div className="mb-6 pb-6 border-b border-[var(--border)]">
+              <div className="flex items-baseline gap-1">
+                <span className="text-[38px] font-bold text-[var(--foreground)]">₹0</span>
+                <span className="text-[15px] text-[var(--muted-foreground)]">{t("perMonth")}</span>
+              </div>
+              <p className="text-[13px] text-[var(--muted-foreground)] mt-1">{t("freeForever")}</p>
+            </div>
 
-                <div className="px-6 pt-10 pb-4">
-                  <div className={cn(
-                    "w-16 h-16 rounded-[18px] flex items-center justify-center mb-5",
-                    key === "pro" ? "bg-gradient-to-br from-amber-400 to-amber-600" : "bg-[var(--accent)]"
+            {/* ── Active Usage Indicators (Shown for Starter users) ── */}
+            <div className="mb-6 p-4 rounded-[16px] bg-[var(--muted)]/60 border border-[var(--border)] space-y-3.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[12px] font-semibold tracking-wide uppercase text-[var(--muted-foreground)]">
+                  {tStarter("usageTitle")}
+                </span>
+                <span className="text-[11px] font-medium text-[var(--muted-foreground)]">
+                  {tStarter("usageEnforced")}
+                </span>
+              </div>
+
+              {/* Usage item: Inventory */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-[13px]">
+                  <span className="text-[var(--foreground)] font-medium flex items-center gap-1.5">
+                    <Package className="h-3.5 w-3.5 text-[var(--muted-foreground)]" /> {tStarter("inventoryItems")}
+                  </span>
+                  <span className={cn(
+                    "font-semibold",
+                    inventoryCount >= STARTER_LIMITS.inventory ? "text-red-500" : "text-[var(--foreground)]"
                   )}>
-                    <Icon className={cn("h-8 w-8", key === "pro" ? "text-white" : "text-[var(--muted-foreground)]")} />
-                  </div>
-                  <h3 className="text-[28px] font-bold text-[var(--foreground)] mb-2">{tier.name}</h3>
-                  <p className="text-[15px] text-[var(--muted-foreground)] leading-relaxed">{tier.description}</p>
+                    {inventoryCount} / {STARTER_LIMITS.inventory}
+                  </span>
                 </div>
-
-                <div className="px-6 space-y-6 flex-1">
-                  <div className="flex items-baseline gap-1 mt-2">
-                    <span className="text-[42px] font-bold text-[var(--foreground)]">{tier.priceLabel}</span>
-                    {tier.price > 0 && (
-                      <span className="text-[15px] font-medium text-[var(--muted-foreground)]">/mo</span>
+                <div className="w-full h-2 rounded-full bg-[var(--card)] border border-[var(--border)] overflow-hidden">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-all duration-300",
+                      inventoryCount >= STARTER_LIMITS.inventory ? "bg-red-500" : inventoryCount >= 4 ? "bg-amber-500" : "bg-[var(--primary)]"
                     )}
-                  </div>
+                    style={{ width: `${Math.min(100, Math.round((inventoryCount / STARTER_LIMITS.inventory) * 100))}%` }}
+                  />
+                </div>
+              </div>
 
-                  <div className="space-y-4 pb-6 pt-2">
-                    {tier.features.map((feature, idx) => (
-                      <div key={idx} className="flex items-start gap-4">
-                        {feature.included ? (
-                          <div className={cn(
-                            "w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5",
-                            key === "pro" ? "bg-amber-500/10 text-amber-500" : "bg-[#007AFF]/10 text-[#007AFF]"
-                          )}>
-                            <Check className="h-3.5 w-3.5" />
-                          </div>
-                        ) : (
-                          <div className="w-6 h-6 rounded-full bg-[var(--muted)] flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <X className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />
-                          </div>
-                        )}
-                        <span className={cn(
-                          "text-[15px] leading-snug",
-                          !feature.included ? "text-[var(--muted-foreground)]" : "text-[var(--foreground)]"
-                        )}>
-                          {feature.text}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+              {/* Usage item: Orders */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-[13px]">
+                  <span className="text-[var(--foreground)] font-medium flex items-center gap-1.5">
+                    <ShoppingCart className="h-3.5 w-3.5 text-[var(--muted-foreground)]" /> {tStarter("productionOrders")}
+                  </span>
+                  <span className={cn(
+                    "font-semibold",
+                    ordersCount >= STARTER_LIMITS.orders ? "text-red-500" : "text-[var(--foreground)]"
+                  )}>
+                    {ordersCount} / {STARTER_LIMITS.orders}
+                  </span>
+                </div>
+                <div className="w-full h-2 rounded-full bg-[var(--card)] border border-[var(--border)] overflow-hidden">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-all duration-300",
+                      ordersCount >= STARTER_LIMITS.orders ? "bg-red-500" : ordersCount >= 4 ? "bg-amber-500" : "bg-[var(--primary)]"
+                    )}
+                    style={{ width: `${Math.min(100, Math.round((ordersCount / STARTER_LIMITS.orders) * 100))}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Usage item: Clients */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-[13px]">
+                  <span className="text-[var(--foreground)] font-medium flex items-center gap-1.5">
+                    <Building2 className="h-3.5 w-3.5 text-[var(--muted-foreground)]" /> {tStarter("crmClients")}
+                  </span>
+                  <span className={cn(
+                    "font-semibold",
+                    clientsCount >= STARTER_LIMITS.clients ? "text-red-500" : "text-[var(--foreground)]"
+                  )}>
+                    {clientsCount} / {STARTER_LIMITS.clients}
+                  </span>
+                </div>
+                <div className="w-full h-2 rounded-full bg-[var(--card)] border border-[var(--border)] overflow-hidden">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-all duration-300",
+                      clientsCount >= STARTER_LIMITS.clients ? "bg-red-500" : clientsCount >= 4 ? "bg-amber-500" : "bg-[var(--primary)]"
+                    )}
+                    style={{ width: `${Math.min(100, Math.round((clientsCount / STARTER_LIMITS.clients) * 100))}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Feature Checklist */}
+            <div className="space-y-3.5 flex-1 mb-8">
+              <span className="text-[12px] font-semibold tracking-wide uppercase text-[var(--muted-foreground)] block">
+                {tStarter("includedTitle")}
+              </span>
+              
+              <div className="space-y-2.5">
+                <div className="flex items-start gap-2.5 text-[14px] text-[var(--foreground)]">
+                  <Check className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <span>{tStarter("featInventory")}</span>
+                </div>
+                <div className="flex items-start gap-2.5 text-[14px] text-[var(--foreground)]">
+                  <Check className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <span>{tStarter("featOrders")}</span>
+                </div>
+                <div className="flex items-start gap-2.5 text-[14px] text-[var(--foreground)]">
+                  <Check className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <span>{tStarter("featClients")}</span>
+                </div>
+                <div className="flex items-start gap-2.5 text-[14px] text-[var(--foreground)]">
+                  <Check className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <span>{tStarter("featTeam")}</span>
+                </div>
+                <div className="flex items-start gap-2.5 text-[14px] text-[var(--foreground)]">
+                  <Check className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <span>{tStarter("featReports")}</span>
                 </div>
 
-                <div className="p-6 mt-auto">
-                  {key === "starter" ? (
-                    <IOSButton
-                      variant={isCurrentTier ? "gray" : "plain"}
-                      className={cn(
-                        "w-full h-[50px] text-[17px] font-bold",
-                        !isCurrentTier && "bg-[var(--accent)] text-[var(--foreground)]"
-                      )}
-                      disabled={isCurrentTier || isPro}
-                    >
-                      {isCurrentTier ? "Current Plan" : "Free Forever"}
-                    </IOSButton>
-                  ) : (
-                    <>
-                      {isCurrentTier ? (
-                        <IOSButton
-                          variant="gray"
-                          className="w-full h-[50px] text-[17px] font-bold text-amber-500 bg-amber-500/10 hover:bg-amber-500/20"
-                          onClick={() => setCancelDialogOpen(true)}
-                          disabled={subscription?.cancelAtPeriodEnd}
-                        >
-                          {subscription?.cancelAtPeriodEnd ? (
-                            "Cancellation Scheduled"
-                          ) : (
-                            "Manage Subscription"
-                          )}
-                        </IOSButton>
-                      ) : (
-                        <IOSButton
-                          variant="filled"
-                          color="blue"
-                          className="w-full h-[50px] text-[17px] font-bold bg-gradient-to-r from-amber-400 to-amber-600 hover:from-amber-500 hover:to-amber-700 shadow-lg shadow-amber-500/20 border-0 text-white"
-                          onClick={handleUpgrade}
-                          disabled={showCheckout}
-                        >
-                          <Zap className="mr-2 h-5 w-5" />
-                          Upgrade to Pro
-                        </IOSButton>
-                      )}
-                    </>
-                  )}
+                <div className="pt-2 border-t border-[var(--border)] space-y-2.5">
+                  <div className="flex items-start gap-2.5 text-[14px] text-[var(--muted-foreground)]">
+                    <X className="h-4 w-4 text-[var(--muted-foreground)] mt-0.5 flex-shrink-0" />
+                    <span className="line-through opacity-80">{tStarter("exclUnlimited")}</span>
+                  </div>
+                  <div className="flex items-start gap-2.5 text-[14px] text-[var(--muted-foreground)]">
+                    <X className="h-4 w-4 text-[var(--muted-foreground)] mt-0.5 flex-shrink-0" />
+                    <span className="line-through opacity-80">{tStarter("exclAI")}</span>
+                  </div>
+                  <div className="flex items-start gap-2.5 text-[14px] text-[var(--muted-foreground)]">
+                    <X className="h-4 w-4 text-[var(--muted-foreground)] mt-0.5 flex-shrink-0" />
+                    <span className="line-through opacity-80">{tStarter("exclExport")}</span>
+                  </div>
                 </div>
-              </IOSCard>
-            </motion.div>
-          );
-        })}
+              </div>
+            </div>
+
+            {/* CTA Button */}
+            <div className="mt-auto">
+              <IOSButton
+                variant="gray"
+                className="w-full h-[48px] text-[15px] font-semibold text-[var(--muted-foreground)] bg-[var(--muted)] border border-[var(--border)] cursor-default opacity-85"
+                disabled
+              >
+                {!isPro ? tStarter("btnCurrent") : tStarter("btnIncluded")}
+              </IOSButton>
+            </div>
+          </IOSCard>
+        </div>
+
+        {/* ── 2. PRO PLAN CARD ── */}
+        <div className="min-w-0 w-full overflow-hidden flex flex-col">
+          <IOSCard
+            className={cn(
+              "h-full flex flex-col relative border-2 transition-all duration-200 p-6 sm:p-7",
+              "border-indigo-500/40 dark:border-indigo-500/50 shadow-[0_8px_32px_rgba(99,102,241,0.12)] bg-[var(--card)]"
+            )}
+          >
+            {/* "Most Popular" Accent Badge */}
+            <div className="absolute top-0 right-0 bg-gradient-to-r from-indigo-500 to-blue-600 text-white text-[11px] font-bold px-3 py-1 rounded-bl-[14px] flex items-center gap-1 shadow-sm">
+              <Sparkles className="h-3 w-3" />
+              {tPro("popularBadge")}
+            </div>
+
+            {/* Plan Title & Subtitle */}
+            <div className="mb-5">
+              <div className="w-12 h-12 rounded-[16px] bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center mb-4 text-white shadow-md shadow-indigo-500/20">
+                <Crown className="h-6 w-6" />
+              </div>
+              <h2 className="text-[24px] font-bold text-[var(--foreground)] flex items-center gap-2">
+                {tPro("title")}
+                <span className="text-[12px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                  {tPro("badgeFullPower")}
+                </span>
+              </h2>
+              <p className="text-[14px] text-[var(--muted-foreground)] mt-1">
+                {tPro("subtitle")}
+              </p>
+            </div>
+
+            {/* Price block */}
+            <div className="mb-6 pb-6 border-b border-[var(--border)]">
+              <div className="flex items-baseline gap-1">
+                <span className="text-[38px] font-bold text-[var(--foreground)]">
+                  ₹{activeProPrice.toLocaleString("en-IN")}
+                </span>
+                <span className="text-[15px] text-[var(--muted-foreground)]">{t("perMonth")}</span>
+              </div>
+              <p className="text-[13px] text-indigo-600 dark:text-indigo-400 font-medium mt-1">
+                {activeProBilledText}
+              </p>
+            </div>
+
+            {/* Feature Checklist */}
+            <div className="space-y-4 flex-1 mb-8">
+              <span className="text-[12px] font-semibold tracking-wide uppercase text-[var(--muted-foreground)] block">
+                {tPro("includedTitle")}
+              </span>
+
+              {/* Actively enforced Pro features */}
+              <div className="space-y-2.5">
+                <div className="flex items-start gap-2.5 text-[14px] text-[var(--foreground)]">
+                  <div className="w-4 h-4 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mt-0.5 flex-shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </div>
+                  <span className="font-medium">{tPro("featInventory")}</span>
+                </div>
+                <div className="flex items-start gap-2.5 text-[14px] text-[var(--foreground)]">
+                  <div className="w-4 h-4 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mt-0.5 flex-shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </div>
+                  <span className="font-medium">{tPro("featOrders")}</span>
+                </div>
+                <div className="flex items-start gap-2.5 text-[14px] text-[var(--foreground)]">
+                  <div className="w-4 h-4 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mt-0.5 flex-shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </div>
+                  <span className="font-medium">{tPro("featClients")}</span>
+                </div>
+                <div className="flex items-start gap-2.5 text-[14px] text-[var(--foreground)]">
+                  <div className="w-4 h-4 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mt-0.5 flex-shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </div>
+                  <span className="font-medium">{tPro("featAI")}</span>
+                </div>
+                <div className="flex items-start gap-2.5 text-[14px] text-[var(--foreground)]">
+                  <div className="w-4 h-4 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mt-0.5 flex-shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </div>
+                  <span className="font-medium">{tPro("featAnalytics")}</span>
+                </div>
+                <div className="flex items-start gap-2.5 text-[14px] text-[var(--foreground)]">
+                  <div className="w-4 h-4 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mt-0.5 flex-shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </div>
+                  <span className="font-medium">{tPro("featExport")}</span>
+                </div>
+                <div className="flex items-start gap-2.5 text-[14px] text-[var(--foreground)]">
+                  <div className="w-4 h-4 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mt-0.5 flex-shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </div>
+                  <span className="font-medium">{tPro("featTeam")}</span>
+                </div>
+              </div>
+
+              {/* ── Coming Soon Subsection (Visually Separated) ── */}
+              <div className="pt-3.5 border-t border-[var(--border)] mt-4">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <Clock className="h-3.5 w-3.5 text-amber-500" />
+                  <span className="text-[11px] font-bold tracking-wide uppercase text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                    {tPro("comingSoonTitle")}
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2 text-[13px] text-[var(--muted-foreground)]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500/60 mt-1.5 flex-shrink-0" />
+                    <span>{tPro("comingSoonBrand")}</span>
+                  </div>
+                  <div className="flex items-start gap-2 text-[13px] text-[var(--muted-foreground)]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500/60 mt-1.5 flex-shrink-0" />
+                    <span>{tPro("comingSoonSla")}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* CTA Button */}
+            <div className="mt-auto">
+              {isPro ? (
+                <IOSButton
+                  variant="gray"
+                  className="w-full h-[48px] text-[15px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/20"
+                  onClick={() => setCancelDialogOpen(true)}
+                  disabled={subscription?.cancelAtPeriodEnd}
+                >
+                  {subscription?.cancelAtPeriodEnd
+                    ? tPro("btnCancelScheduled")
+                    : tPro("btnManage")}
+                </IOSButton>
+              ) : (
+                <IOSButton
+                  variant="filled"
+                  className="w-full h-[48px] text-[15px] font-bold bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white shadow-lg shadow-indigo-500/25 border-0 flex items-center justify-center gap-2"
+                  onClick={() => setShowUpgradeModal(true)}
+                >
+                  <Zap className="h-4 w-4" />
+                  {tPro("btnUpgrade")}
+                </IOSButton>
+              )}
+            </div>
+          </IOSCard>
+        </div>
       </div>
 
-      <IOSCard className="border-[var(--border)] border-dashed mb-16">
-        <div className="py-10 px-6">
-          <div className="grid md:grid-cols-4 gap-8 text-center">
-            <div className="space-y-3">
-              <div className="w-14 h-14 rounded-[18px] bg-[var(--accent)] flex items-center justify-center mx-auto shadow-sm">
-                <Package className="h-7 w-7 text-[#007AFF]" />
-              </div>
-              <h3 className="text-[17px] font-bold text-[var(--foreground)]">Unlimited Inventory</h3>
-              <p className="text-[14px] text-[var(--muted-foreground)]">Track all your raw materials and products</p>
+      {/* Feature Highlights Grid */}
+      <IOSCard className="border-[var(--border)] p-6 sm:p-8 bg-[var(--card)]">
+        <div className="text-center max-w-xl mx-auto mb-8">
+          <h3 className="text-[20px] sm:text-[22px] font-bold text-[var(--foreground)]">
+            {tHighlights("title")}
+          </h3>
+          <p className="text-[14px] text-[var(--muted-foreground)] mt-1">
+            {tHighlights("subtitle")}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="space-y-2.5 p-4 rounded-[16px] bg-[var(--muted)]/50 border border-[var(--border)]">
+            <div className="w-10 h-10 rounded-[12px] bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400">
+              <Package className="h-5 w-5" />
             </div>
-            <div className="space-y-3">
-              <div className="w-14 h-14 rounded-[18px] bg-[var(--accent)] flex items-center justify-center mx-auto shadow-sm">
-                <ShoppingCart className="h-7 w-7 text-[#5856D6]" />
-              </div>
-              <h3 className="text-[17px] font-bold text-[var(--foreground)]">Unlimited Orders</h3>
-              <p className="text-[14px] text-[var(--muted-foreground)]">Process orders without limits</p>
+            <h4 className="text-[16px] font-bold text-[var(--foreground)]">{tHighlights("card1Title")}</h4>
+            <p className="text-[13px] text-[var(--muted-foreground)] leading-relaxed">
+              {tHighlights("card1Desc")}
+            </p>
+          </div>
+
+          <div className="space-y-2.5 p-4 rounded-[16px] bg-[var(--muted)]/50 border border-[var(--border)]">
+            <div className="w-10 h-10 rounded-[12px] bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+              <ShoppingCart className="h-5 w-5" />
             </div>
-            <div className="space-y-3">
-              <div className="w-14 h-14 rounded-[18px] bg-[var(--accent)] flex items-center justify-center mx-auto shadow-sm">
-                <BarChart3 className="h-7 w-7 text-[#FF2D55]" />
-              </div>
-              <h3 className="text-[17px] font-bold text-[var(--foreground)]">Advanced Analytics</h3>
-              <p className="text-[14px] text-[var(--muted-foreground)]">Deep insights into your operations</p>
+            <h4 className="text-[16px] font-bold text-[var(--foreground)]">{tHighlights("card2Title")}</h4>
+            <p className="text-[13px] text-[var(--muted-foreground)] leading-relaxed">
+              {tHighlights("card2Desc")}
+            </p>
+          </div>
+
+          <div className="space-y-2.5 p-4 rounded-[16px] bg-[var(--muted)]/50 border border-[var(--border)]">
+            <div className="w-10 h-10 rounded-[12px] bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+              <BarChart3 className="h-5 w-5" />
             </div>
-            <div className="space-y-3">
-              <div className="w-14 h-14 rounded-[18px] bg-[var(--accent)] flex items-center justify-center mx-auto shadow-sm">
-                <Download className="h-7 w-7 text-[#34C759]" />
-              </div>
-              <h3 className="text-[17px] font-bold text-[var(--foreground)]">Data Export</h3>
-              <p className="text-[14px] text-[var(--muted-foreground)]">Export to Excel, PDF, and more</p>
+            <h4 className="text-[16px] font-bold text-[var(--foreground)]">{tHighlights("card3Title")}</h4>
+            <p className="text-[13px] text-[var(--muted-foreground)] leading-relaxed">
+              {tHighlights("card3Desc")}
+            </p>
+          </div>
+
+          <div className="space-y-2.5 p-4 rounded-[16px] bg-[var(--muted)]/50 border border-[var(--border)]">
+            <div className="w-10 h-10 rounded-[12px] bg-purple-500/10 flex items-center justify-center text-purple-600 dark:text-purple-400">
+              <Bot className="h-5 w-5" />
             </div>
+            <h4 className="text-[16px] font-bold text-[var(--foreground)]">{tHighlights("card4Title")}</h4>
+            <p className="text-[13px] text-[var(--muted-foreground)] leading-relaxed">
+              {tHighlights("card4Desc")}
+            </p>
           </div>
         </div>
       </IOSCard>
 
-      <Dialog open={showCheckout && !!clientSecret} onOpenChange={(open) => {
-        if (!open) handleCheckoutCancel();
-      }}>
-        <DialogContent fullScreenMobile className="sm:max-w-[480px] bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px] overflow-hidden p-0">
-          <div className="p-6">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-[20px] font-semibold text-[var(--foreground)]">
-                <div className="p-1.5 rounded-lg bg-amber-500/10">
-                  <Crown className="h-5 w-5 text-amber-500" />
-                </div>
-                Upgrade to Pro
-              </DialogTitle>
-              <DialogDescription className="text-[14px] text-[var(--muted-foreground)] mt-1.5">
-                Complete your payment to unlock all Pro features.
-              </DialogDescription>
-            </DialogHeader>
+      {/* Trust & Reassurance Footer */}
+      <div className="flex flex-wrap items-center justify-center gap-y-2 gap-x-6 text-[13px] text-[var(--muted-foreground)] text-center px-4 py-2">
+        <span className="flex items-center gap-1.5">
+          <ShieldCheck className="h-4 w-4 text-emerald-500" /> {tTrust("cancelAnytime")}
+        </span>
+        <span className="inline-block w-1 h-1 rounded-full bg-[var(--border)]" />
+        <span>{tTrust("instantActivation")}</span>
+        <span className="inline-block w-1 h-1 rounded-full bg-[var(--border)]" />
+        <span>{tTrust("transparentPricing")}</span>
+        <span className="inline-block w-1 h-1 rounded-full bg-[var(--border)]" />
+        <span>{tTrust("noHiddenFees")}</span>
+      </div>
 
-            {clientSecret && (
-              <div className="mt-6">
-                <Elements
-                  stripe={stripePromise}
-                  options={{
-                    clientSecret,
-                    appearance: {
-                      theme: "stripe",
-                      variables: {
-                        colorPrimary: "#F59E0B",
-                        borderRadius: "12px",
-                      },
-                    },
-                  }}
-                >
-                  <CheckoutForm
-                    onSuccess={handleCheckoutSuccess}
-                    onCancel={handleCheckoutCancel}
-                    confirmationType={confirmationType}
-                  />
-                </Elements>
+      {/* ── Placeholder Upgrade Confirmation Dialog (Phase 2 Roadmap) ── */}
+      <Dialog open={showUpgradeModal} onOpenChange={setShowUpgradeModal}>
+        <DialogContent fullScreenMobile className="sm:max-w-[460px] p-6 bg-[var(--card)] border border-[var(--border)] rounded-[24px]">
+          <DialogHeader className="text-left">
+            <div className="w-12 h-12 rounded-[16px] bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center mb-3 text-white shadow-md shadow-indigo-500/20">
+              <Crown className="h-6 w-6" />
+            </div>
+            <DialogTitle className="text-[20px] font-bold text-[var(--foreground)]">
+              {tCheckout("title", { interval: billingInterval === "yearly" ? tCheckout("intervalYearly") : tCheckout("intervalMonthly") })}
+            </DialogTitle>
+            <DialogDescription className="text-[14px] text-[var(--muted-foreground)] mt-1.5">
+              {tCheckout("subtitle")}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="my-5 p-4 rounded-[16px] bg-[var(--muted)]/70 border border-[var(--border)] space-y-3">
+            <div className="flex justify-between items-center text-[14px]">
+              <span className="text-[var(--muted-foreground)]">{tCheckout("selectedPlan")}</span>
+              <span className="font-semibold text-[var(--foreground)]">
+                {billingInterval === "yearly" ? tCheckout("tierYearly") : tCheckout("tierMonthly")}
+              </span>
+            </div>
+            <div className="flex justify-between items-center text-[14px]">
+              <span className="text-[var(--muted-foreground)]">{tCheckout("planAmount")}</span>
+              <span className="font-bold text-[var(--foreground)]">
+                ₹{billingInterval === "yearly" ? yearlyPrice.toLocaleString("en-IN") : monthlyPrice.toLocaleString("en-IN")}
+                <span className="text-[12px] font-normal text-[var(--muted-foreground)] ml-1">
+                  {billingInterval === "yearly" ? t("perYear") : t("perMonth")}
+                </span>
+              </span>
+            </div>
+            {billingInterval === "yearly" && (
+              <div className="text-[12px] text-emerald-600 dark:text-emerald-400 font-medium">
+                {tCheckout("discountNotice", { savings: yearlySavings.toLocaleString("en-IN") })}
               </div>
             )}
           </div>
+
+          <div className="p-4 rounded-[16px] bg-blue-500/10 border border-blue-500/20 text-[13px] text-blue-700 dark:text-blue-300 leading-relaxed">
+            <p className="font-semibold mb-1 flex items-center gap-1.5">
+              <Info className="h-4 w-4 flex-shrink-0" />
+              {tCheckout("gatewayTitle")}
+            </p>
+            {tCheckout("gatewayDesc")}
+          </div>
+
+          <DialogFooter className="mt-6 flex flex-col sm:flex-row gap-2.5">
+            <IOSButton
+              variant="gray"
+              className="w-full h-[44px] text-[14px] font-semibold"
+              onClick={() => setShowUpgradeModal(false)}
+            >
+              {tCheckout("btnGotIt")}
+            </IOSButton>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* ── Cancel Subscription Dialog (Preserved for existing Pro users) ── */}
       <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
-        <DialogContent fullScreenMobile className="sm:max-w-[440px] bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px] overflow-hidden p-0">
-          <div className="p-6">
-            <DialogHeader>
-              <DialogTitle className="text-[20px] font-semibold text-[var(--foreground)]">Cancel Subscription</DialogTitle>
-              <DialogDescription className="text-[14px] text-[var(--muted-foreground)] mt-1.5">
-                Choose how you'd like to cancel your Pro subscription.
-              </DialogDescription>
-            </DialogHeader>
+        <DialogContent fullScreenMobile className="sm:max-w-[440px] p-6 bg-[var(--card)] border border-[var(--border)] rounded-[24px]">
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-[20px] font-bold text-[var(--foreground)]">
+              {tCancel("title")}
+            </DialogTitle>
+            <DialogDescription className="text-[14px] text-[var(--muted-foreground)] mt-1.5">
+              {tCancel("subtitle")}
+            </DialogDescription>
+          </DialogHeader>
 
-            <div className="space-y-4 py-6">
-              <div className="p-4 rounded-[16px] bg-[var(--accent)] space-y-2">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-[var(--muted-foreground)]" />
-                  <span className="font-semibold text-[var(--foreground)]">Cancel at Period End</span>
-                </div>
-                <p className="text-[13px] text-[var(--muted-foreground)]">
-                  Keep access until {subscription?.currentPeriodEnd
+          <div className="space-y-4 py-4">
+            <div className="p-4 rounded-[16px] bg-[var(--muted)]/60 border border-[var(--border)] space-y-2">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-[var(--muted-foreground)]" />
+                <span className="font-semibold text-[14px] text-[var(--foreground)]">{tCancel("optPeriodEndTitle")}</span>
+              </div>
+              <p className="text-[13px] text-[var(--muted-foreground)]">
+                {tCancel("optPeriodEndDesc", {
+                  date: subscription?.currentPeriodEnd
                     ? new Date(subscription.currentPeriodEnd).toLocaleDateString()
-                    : "the end of your billing period"}.
-                </p>
-                <IOSButton
-                  variant="gray"
-                  className="w-full mt-3 h-[44px] text-[15px] font-semibold"
-                  onClick={() => handleCancel(false)}
-                  disabled={canceling}
-                >
-                  {canceling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  Cancel at Period End
-                </IOSButton>
-              </div>
-
-              <div className="p-4 rounded-[16px] border border-[#FF3B30]/20 bg-[#FF3B30]/5 space-y-2">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-[#FF3B30]" />
-                  <span className="font-semibold text-[#FF3B30]">Cancel Immediately</span>
-                </div>
-                <p className="text-[13px] text-[var(--muted-foreground)]">
-                  Lose access to Pro features right now. No refund for remaining days.
-                </p>
-                <IOSButton
-                  variant="destructive"
-                  className="w-full mt-3 h-[44px] text-[15px] font-semibold"
-                  onClick={() => handleCancel(true)}
-                  disabled={canceling}
-                >
-                  {canceling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  Cancel Immediately
-                </IOSButton>
-              </div>
-            </div>
-
-            <DialogFooter className="flex pt-2 border-t border-[var(--border)] border-x-[-24px] mx-[-24px] px-6 pb-2">
+                    : t("subscriptionEnding.periodEndFallback")
+                })}
+              </p>
               <IOSButton
-                variant="plain"
-                className="w-full h-[44px] text-[15px] font-semibold text-[#007AFF]"
-                onClick={() => setCancelDialogOpen(false)}
+                variant="gray"
+                className="w-full mt-2 h-[42px] text-[14px] font-semibold"
+                onClick={() => handleCancel(false)}
                 disabled={canceling}
               >
-                Keep Subscription
+                {canceling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {tCancel("btnCancelPeriodEnd")}
               </IOSButton>
-            </DialogFooter>
+            </div>
+
+            <div className="p-4 rounded-[16px] border border-red-500/20 bg-red-500/5 space-y-2">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-red-500" />
+                <span className="font-semibold text-[14px] text-red-500">{tCancel("optImmediateTitle")}</span>
+              </div>
+              <p className="text-[13px] text-[var(--muted-foreground)]">
+                {tCancel("optImmediateDesc")}
+              </p>
+              <IOSButton
+                variant="destructive"
+                className="w-full mt-2 h-[42px] text-[14px] font-semibold"
+                onClick={() => handleCancel(true)}
+                disabled={canceling}
+              >
+                {canceling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {tCancel("btnCancelImmediate")}
+              </IOSButton>
+            </div>
           </div>
+
+          <DialogFooter className="mt-2">
+            <IOSButton
+              variant="plain"
+              className="w-full h-[44px] text-[14px] font-semibold text-[var(--primary)]"
+              onClick={() => setCancelDialogOpen(false)}
+              disabled={canceling}
+            >
+              {tCancel("btnKeep")}
+            </IOSButton>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </motion.div>

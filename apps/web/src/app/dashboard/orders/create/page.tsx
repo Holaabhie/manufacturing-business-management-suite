@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -17,11 +18,11 @@ import type { Order } from "@/modules/orders/domain/types";
 
 // ─── Step metadata ───────────────────────────────────────────
 const STEPS = [
-  { label: "Client & Product", icon: ShoppingCart },
-  { label: "Financials", icon: IndianRupee },
-  { label: "Production", icon: Cpu },
-  { label: "Materials", icon: Layers },
-  { label: "Review", icon: ClipboardCheck },
+  { key: "clientProduct", label: "Client & Product", icon: ShoppingCart },
+  { key: "financials", label: "Financials", icon: IndianRupee },
+  { key: "production", label: "Production", icon: Cpu },
+  { key: "materials", label: "Materials", icon: Layers },
+  { key: "review", label: "Review", icon: ClipboardCheck },
 ];
 
 // ─── Types ───────────────────────────────────────────────────
@@ -61,6 +62,7 @@ interface ClonedFromInfo {
 }
 
 export default function CreateOrderWizard() {
+  const t = useTranslations("orders");
   const router = useRouter();
   const { restoreState, persist, clearPageState } = useCachedPage({
     pageKey: "create_order",
@@ -153,7 +155,7 @@ export default function CreateOrderWizard() {
         materials: initialForm.materials,
         notes: "",
       }));
-      toast.info("Client changed — cloned template cleared");
+      toast.info(t("toasts.clientChangedTemplateCleared"));
     }
     prevClientIdRef.current = form.client_id;
   }, [form.client_id, clonedFrom]);
@@ -216,7 +218,7 @@ export default function CreateOrderWizard() {
 
       if (missingItems.length > 0) {
         toast.warning(
-          `Materials not found in current inventory: ${missingItems.join(", ")}. Review before creating.`,
+          t("create.validation.missingInventoryWarning", { items: missingItems.join(", ") }),
           { duration: 6000 }
         );
       }
@@ -246,9 +248,9 @@ export default function CreateOrderWizard() {
         gstDerived,
       });
 
-      toast.success("Order template loaded — review and edit before creating");
+      toast.success(t("toasts.templateLoaded"));
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to load order details";
+      const message = err instanceof Error ? err.message : t("toasts.failedOrderDetails");
       toast.error(message);
     } finally {
       setCloningOrderId(null);
@@ -258,15 +260,15 @@ export default function CreateOrderWizard() {
   // ─── Validation per step ───────────────────────────────────
   const validateStep = (s: number): string | null => {
     if (s === 0) {
-      if (!form.client_id && !addingClient) return "Please select a client";
-      if (addingClient && !newClient.name.trim()) return "Client name is required";
-      if (!form.product_name.trim()) return "Product name is required";
-      if (!form.quantity || Number(form.quantity) <= 0) return "Quantity must be > 0";
+      if (!form.client_id && !addingClient) return t("create.validation.selectClient");
+      if (addingClient && !newClient.name.trim()) return t("create.validation.clientNameReq");
+      if (!form.product_name.trim()) return t("create.validation.productNameReq");
+      if (!form.quantity || Number(form.quantity) <= 0) return t("create.validation.quantityGt0");
     }
     if (s === 1) {
-      if (!form.unit_rate || Number(form.unit_rate) <= 0) return `Enter valid rate per ${(form.unit || 'unit').toUpperCase()}`;
-      if (!form.order_value || Number(form.order_value) <= 0) return "Order value is required";
-      if (form.payment_terms === "Credit" && (!form.credit_days || Number(form.credit_days) <= 0)) return "Credit period is required";
+      if (!form.unit_rate || Number(form.unit_rate) <= 0) return t("create.validation.enterValidRate", { unit: (form.unit || "unit").toUpperCase() });
+      if (!form.order_value || Number(form.order_value) <= 0) return t("create.validation.orderValueReq");
+      if (form.payment_terms === "Credit" && (!form.credit_days || Number(form.credit_days) <= 0)) return t("create.validation.creditPeriodReq");
     }
     // Step 2 (production) is optional — no validation needed
     return null;
@@ -292,7 +294,7 @@ export default function CreateOrderWizard() {
           body: JSON.stringify({ name: newClient.name.trim(), phone: newClient.phone, email: newClient.email }),
         });
         const cData = await cRes.json();
-        if (!cRes.ok) throw new Error(cData.message || cData.error || "Failed to create client");
+        if (!cRes.ok) throw new Error(cData.message || cData.error || t("toasts.failedCreateClient"));
         clientId = cData.id;
       }
 
@@ -342,7 +344,7 @@ export default function CreateOrderWizard() {
         body: JSON.stringify(orderPayload),
       });
       const oData = await oRes.json();
-      if (!oRes.ok) throw new Error(oData.message || oData.error || "Failed to create order");
+      if (!oRes.ok) throw new Error(oData.message || oData.error || t("toasts.failedCreateOrder"));
       const orderId = oData.id;
 
       // 4) Create production run if opted in — send assignments array
@@ -377,12 +379,12 @@ export default function CreateOrderWizard() {
         });
       }
 
-      toast.success("Order created successfully!");
+      toast.success(t("toasts.orderCreated"));
       playCompletionSound("general");
       clearPageState();
       router.push("/dashboard/orders");
     } catch (err: any) {
-      toast.error(err.message || "Something went wrong");
+      toast.error(err.message || t("toasts.somethingWentWrong"));
     } finally {
       setSubmitting(false);
     }
@@ -393,8 +395,8 @@ export default function CreateOrderWizard() {
     <div className="max-w-2xl mx-auto pb-12">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-[34px] font-bold text-[var(--foreground)] leading-[41px] tracking-[0.37px]">New Order</h1>
-        <p className="text-[15px] text-[var(--muted-foreground)] mt-1 leading-[20px]">Create a new order with optional production setup.</p>
+        <h1 className="text-[34px] font-bold text-[var(--foreground)] leading-[41px] tracking-[0.37px]">{t("create.newOrder")}</h1>
+        <p className="text-[15px] text-[var(--muted-foreground)] mt-1 leading-[20px]">{t("create.pageSubtitle")}</p>
       </div>
 
       {/* ── Step indicator — Desktop ── */}
@@ -419,7 +421,7 @@ export default function CreateOrderWizard() {
                 </div>
                 <span className={cn("text-[13px] font-medium whitespace-nowrap",
                   isActive ? "text-[var(--primary)]" : isDone ? "text-[var(--erp-success)]" : "text-[var(--muted-foreground)]"
-                )}>{s.label}</span>
+                )}>{t(`create.steps.${s.key}`)}</span>
               </div>
               {i < STEPS.length - 1 && (
                 <div className={cn("flex-1 h-[2px] mx-2 rounded-full", isDone ? "bg-[var(--erp-success)]" : "bg-[var(--muted)]")} />
@@ -431,8 +433,8 @@ export default function CreateOrderWizard() {
 
       {/* ── Step indicator — Mobile ── */}
       <div className="md:hidden mb-6 flex items-center justify-between px-1">
-        <span className="text-[14px] font-semibold text-[var(--foreground)]">Step {step + 1} of {STEPS.length}</span>
-        <span className="text-[13px] text-[var(--primary)] font-medium">{STEPS[step].label}</span>
+        <span className="text-[14px] font-semibold text-[var(--foreground)]">{t("create.stepOf", { current: step + 1, total: STEPS.length })}</span>
+        <span className="text-[13px] text-[var(--primary)] font-medium">{t(`create.steps.${STEPS[step].key}`)}</span>
       </div>
 
       {/* Progress bar — Mobile */}
@@ -453,7 +455,7 @@ export default function CreateOrderWizard() {
               <Info className="h-4 w-4 text-[var(--primary)] flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-semibold text-[var(--primary)]">
-                  Order Template Loaded
+                  {t("create.templateBanner.title")}
                   {clonedFrom.orderNumber && <> — Source: Order #{clonedFrom.orderNumber}</>}
                 </p>
                 <p className="text-[11px] text-[var(--muted-foreground)] mt-0.5">
@@ -470,7 +472,7 @@ export default function CreateOrderWizard() {
                 type="button"
                 onClick={() => setClonedFrom(null)}
                 className="w-[28px] h-[28px] rounded-[8px] flex items-center justify-center hover:bg-[rgba(0,122,255,0.1)] transition-colors cursor-pointer flex-shrink-0"
-                aria-label="Dismiss template banner"
+                aria-label={t("create.templateBanner.dismiss")}
               >
                 <X className="h-3.5 w-3.5 text-[var(--primary)]" />
               </button>
@@ -514,17 +516,17 @@ export default function CreateOrderWizard() {
       {/* ── Navigation ── */}
       <div className="flex items-center justify-between mt-6 gap-3">
         {step > 0 ? (
-          <IOSButton variant="gray" size="large" onClick={goBack} icon={<ChevronLeft className="h-4 w-4" />}>Back</IOSButton>
+          <IOSButton variant="gray" size="large" onClick={goBack} icon={<ChevronLeft className="h-4 w-4" />}>{t("create.buttons.back")}</IOSButton>
         ) : (
-          <IOSButton variant="gray" size="large" onClick={() => router.push("/dashboard/orders")}>Cancel</IOSButton>
+          <IOSButton variant="gray" size="large" onClick={() => router.push("/dashboard/orders")}>{t("create.buttons.cancel")}</IOSButton>
         )}
 
         {step < 4 ? (
-          <IOSButton variant="filled" size="large" onClick={goNext} iconRight={<ChevronRight className="h-4 w-4" />}>Next</IOSButton>
+          <IOSButton variant="filled" size="large" onClick={goNext} iconRight={<ChevronRight className="h-4 w-4" />}>{t("create.buttons.next")}</IOSButton>
         ) : (
-          <IOSButton variant="filled" size="large" onClick={handleSubmit} loading={submitting} loadingText="Creating..."
+          <IOSButton variant="filled" size="large" onClick={handleSubmit} loading={submitting} loadingText={t("create.buttons.creating")}
             className="!bg-[#2563EB] text-white hover:!bg-[#1D51C8] dark:!bg-[#0A84FF] dark:hover:!bg-[#0070E0] dark:text-white glow-btn !bg-none shadow-none" icon={<Check className="h-4 w-4" />}
-          >Create Order</IOSButton>
+          >{t("create.buttons.createOrder")}</IOSButton>
         )}
       </div>
     </div>

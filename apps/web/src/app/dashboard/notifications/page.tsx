@@ -31,6 +31,7 @@ import { staggerContainer, staggerItem } from "@/styles/animations";
 import { StatWidget } from "@/components/ui/StatWidget";
 import { useRole } from "@/lib/hooks/use-role";
 import { useTranslations } from "next-intl";
+import { useAppLocale } from "@/components/LocaleProvider";
 import { AccessDenied } from "@/components/AccessDenied";
 import { useAppNotifications } from "@/lib/hooks/use-app-notifications";
 import {
@@ -63,7 +64,10 @@ interface LogEntry {
 }
 
 export default function NotificationsPage() {
+  const t = useTranslations("notifications");
   const tCommon = useTranslations("common");
+  const { locale } = useAppLocale();
+  const dateLocale = locale === "hi" ? "hi-IN" : locale === "gu" ? "gu-IN" : locale === "mr" ? "mr-IN" : "en-IN";
   const { isStaff, loading: roleLoading } = useRole();
   const [activeTab, setActiveTab] = useState<
     "activity" | "templates" | "logs"
@@ -97,7 +101,7 @@ export default function NotificationsPage() {
       const json = await res.json();
       if (json.success) setTemplates(json.data);
     } catch {
-      toast.error("Failed to fetch templates");
+      toast.error(t("toasts.fetchTemplatesFailed"));
     }
   }, []);
 
@@ -116,7 +120,7 @@ export default function NotificationsPage() {
           setLogStats(json.data.stats);
         }
       } catch {
-        toast.error("Failed to fetch logs");
+        toast.error(t("toasts.fetchLogsFailed"));
       }
     },
     [channelFilter]
@@ -143,10 +147,10 @@ export default function NotificationsPage() {
         setTemplates((prev) =>
           prev.map((t) => (t.id === id ? { ...t, active: !active } : t))
         );
-        toast.success(`Template ${!active ? "activated" : "deactivated"}`);
+        toast.success(!active ? t("toasts.templateActivated") : t("toasts.templateDeactivated"));
       }
     } catch {
-      toast.error("Failed to update template");
+      toast.error(t("toasts.updateTemplateFailed"));
     }
   };
 
@@ -155,7 +159,7 @@ export default function NotificationsPage() {
       const ch = log.channel?.toLowerCase();
       if (ch === "telegram") {
         await navigator.clipboard.writeText(log.message || "");
-        toast.success("Message copied — paste it in Telegram");
+        toast.success(t("toasts.telegramCopied"));
       } else {
         let url = "";
         if (ch === "whatsapp") {
@@ -183,10 +187,10 @@ export default function NotificationsPage() {
         setLogs((prev) =>
           prev.map((l) => (l.id === log.id ? { ...l, status: log.status } : l)),
         );
-        toast.error("Failed to update log status");
+        toast.error(t("toasts.updateLogFailed"));
       });
     } catch {
-      toast.error("Action failed");
+      toast.error(t("toasts.actionFailed"));
     }
   };
 
@@ -211,11 +215,11 @@ export default function NotificationsPage() {
   };
 
   const eventTypeLabels: Record<string, string> = {
-    order_status_update: "Order Status",
-    invoice_generated: "Invoice",
-    payment_reminder: "Payment",
-    low_stock_alert: "Low Stock",
-    production_complete: "Production",
+    order_status_update: t("eventOrderStatus"),
+    invoice_generated: t("eventInvoice"),
+    payment_reminder: t("eventPayment"),
+    low_stock_alert: t("eventLowStock"),
+    production_complete: t("eventProduction"),
   };
 
   const handleChannelFilter = (value: string) => {
@@ -246,7 +250,7 @@ export default function NotificationsPage() {
       variants={staggerContainer}
       initial="initial"
       animate="animate"
-      className="space-y-6 ind-page bg-[#F1F4F9] dark:bg-transparent -m-6 p-6"
+      className="w-full min-w-0 overflow-x-hidden space-y-6 ind-page bg-[#F1F4F9] dark:bg-transparent -m-6 p-6"
     >
       {/* ── Header ── */}
       <motion.div variants={staggerItem}>
@@ -256,12 +260,11 @@ export default function NotificationsPage() {
               className="ind-pulse-dot"
               style={{ background: "var(--ind-green)" }}
             />
-            Notification Engine
+            {t("headerBadge")}
           </div>
-          <h1>Notifications</h1>
+          <h1>{t("title")}</h1>
           <p className="ind-subtitle">
-            Manage templates, channels, and delivery status for automated
-            messaging.
+            {t("subtitle")}
           </p>
         </div>
       </motion.div>
@@ -292,12 +295,11 @@ export default function NotificationsPage() {
                     className="text-[11px]"
                     style={{ color: "var(--ind-text-muted)" }}
                   >
-                    {
-                      templates.filter(
+                    {t("activeRulesCount", {
+                      count: templates.filter(
                         (t) => t.active && t.channels.includes(key)
-                      ).length
-                    }{" "}
-                    active rules
+                      ).length,
+                    })}
                   </span>
                 </div>
               </div>
@@ -311,7 +313,7 @@ export default function NotificationsPage() {
         <div className="kpi-panel__glow"></div>
         <div className="kpi-grid !grid-cols-1 md:!grid-cols-3">
           <StatWidget
-            label="Active Rules"
+            label={t("kpiActiveRules")}
             value={activeTemplates}
             change={0}
             icon={Settings}
@@ -319,7 +321,7 @@ export default function NotificationsPage() {
             delay={0}
           />
           <StatWidget
-            label="Sent Today"
+            label={t("kpiSentToday")}
             value={(logStats.sentToday as number) || 0}
             change={0}
             icon={Send}
@@ -327,7 +329,7 @@ export default function NotificationsPage() {
             delay={1}
           />
           <StatWidget
-            label="Failed"
+            label={t("kpiFailed")}
             value={(logStats.failed as number) || 0}
             change={0}
             icon={XCircle}
@@ -347,7 +349,7 @@ export default function NotificationsPage() {
             )}
             onClick={() => setActiveTab("activity")}
           >
-            Activity Feed
+            {t("tabActivity")}
             {feedUnreadCount > 0 && (
               <span className="ml-1.5 text-[10px] font-bold rounded-full min-w-[18px] h-[18px] inline-flex items-center justify-center px-1 bg-[var(--accent-red,#EF4444)] text-white">
                 {feedUnreadCount}
@@ -361,7 +363,7 @@ export default function NotificationsPage() {
             )}
             onClick={() => setActiveTab("templates")}
           >
-            Templates
+            {t("tabTemplates")}
           </button>
           <button
             className={cn(
@@ -370,7 +372,7 @@ export default function NotificationsPage() {
             )}
             onClick={() => setActiveTab("logs")}
           >
-            Dispatch Logs
+            {t("tabLogs")}
           </button>
         </div>
       </motion.div>
@@ -392,20 +394,19 @@ export default function NotificationsPage() {
                 className="text-[13px] font-medium"
                 style={{ color: "var(--ind-text-muted)" }}
               >
-                {feedNotifications.length} notification
-                {feedNotifications.length !== 1 ? "s" : ""}
+                {t("notificationsCount", { count: feedNotifications.length })}
               </p>
             </div>
             {feedUnreadCount > 0 && (
               <button
                 onClick={() => {
                   feedMarkAllAsRead();
-                  toast.success("All notifications marked as read");
+                  toast.success(t("toasts.allMarkedRead"));
                 }}
                 className="text-[12px] font-medium flex items-center gap-1 cursor-pointer text-[var(--accent-blue,#007AFF)] hover:opacity-70 transition-opacity px-2 py-1.5 rounded-lg hover:bg-black/[0.03] dark:hover:bg-white/[0.03]"
               >
                 <CheckCheck className="h-3.5 w-3.5" />
-                Mark all read
+                {t("markAllRead")}
               </button>
             )}
           </div>
@@ -440,11 +441,10 @@ export default function NotificationsPage() {
                     />
                   </div>
                   <p className="text-[15px] font-medium text-[#111827] dark:text-[#F8FAFC]">
-                    No activity yet
+                    {t("feedEmptyTitle")}
                   </p>
                   <p className="text-[13px] text-[#6B7280] dark:text-[#94A3B8] text-center max-w-[240px]">
-                    Notifications from orders, payments, and inventory will
-                    appear here
+                    {t("feedEmptyDesc")}
                   </p>
                 </div>
               ) : (
@@ -469,9 +469,7 @@ export default function NotificationsPage() {
                       onClick={() => setVisibleCount((c) => c + 20)}
                       className="w-full py-3 text-[13px] text-[#6B7280] dark:text-white/40 hover:text-[#111827] dark:hover:text-white/70 transition-colors"
                     >
-                      Show{" "}
-                      {feedNotifications.length - visibleCount} older
-                      notifications
+                      {t("showOlderNotifications", { count: feedNotifications.length - visibleCount })}
                     </button>
                   )}
                 </div>
@@ -584,17 +582,14 @@ export default function NotificationsPage() {
                           className="text-[11px] font-semibold uppercase tracking-wider mb-2"
                           style={{ color: "var(--ind-text-muted)" }}
                         >
-                          Message Preview
+                          {t("tmplPreview")}
                         </p>
                         <div className="ind-code-box">{tmpl.template}</div>
                         <p
                           className="text-[11px] mt-3"
                           style={{ color: "var(--ind-text-muted)" }}
                         >
-                          Trigger:{" "}
-                          <strong>
-                            {tmpl.trigger.replace(/_/g, " ")}
-                          </strong>
+                          {t("tmplTrigger", { trigger: tmpl.trigger.replace(/_/g, " ") })}
                         </p>
                       </motion.div>
                     )}
@@ -604,7 +599,7 @@ export default function NotificationsPage() {
 
               {/* Add New Template */}
               <button className="ind-add-btn">
-                <Plus className="h-4 w-4" /> Add New Template
+                <Plus className="h-4 w-4" /> {t("btnAddTemplate")}
               </button>
             </>
           )}
@@ -627,7 +622,7 @@ export default function NotificationsPage() {
               className="text-[13px] font-medium"
               style={{ color: "var(--ind-text-muted)" }}
             >
-              {logs.length} notification{logs.length !== 1 ? "s" : ""}
+              {t("notificationsCount", { count: logs.length })}
             </p>
             <div className="relative">
               <select
@@ -642,7 +637,7 @@ export default function NotificationsPage() {
                   minWidth: 130,
                 }}
               >
-                <option value="all">All Channels</option>
+                <option value="all">{t("filterAllChannels")}</option>
                 <option value="whatsapp">WhatsApp</option>
                 <option value="telegram">Telegram</option>
                 <option value="email">Email</option>
@@ -679,15 +674,13 @@ export default function NotificationsPage() {
                     className="text-[15px] font-medium"
                     style={{ color: "var(--ind-text)" }}
                   >
-                    No dispatch history yet
+                    {t("logsEmptyTitle")}
                   </p>
                   <p
                     className="text-[13px]"
                     style={{ color: "var(--ind-text-muted)" }}
                   >
-                    {channelFilter !== "all"
-                      ? `No ${channelFilter} notifications found`
-                      : "Dispatched messages will appear here as notifications are sent"}
+                    {channelFilter !== "all" ? t("logsEmptyFiltered", { channel: channelFilter }) : t("logsEmptyAll")}
                   </p>
                 </div>
               ) : (
@@ -736,7 +729,7 @@ export default function NotificationsPage() {
                           className="text-[11px] block"
                           style={{ color: "var(--ind-text-muted)" }}
                         >
-                          to {log.recipientName}
+                          {t("logTo", { name: log.recipientName })}
                           {log.recipientContact
                             ? ` (${log.recipientContact})`
                             : ""}
@@ -761,7 +754,7 @@ export default function NotificationsPage() {
                           ) : (
                             <AlertCircle className="h-3 w-3" />
                           )}
-                          {log.status}
+                          {(log.status === "sent" ? t("statusSent") : log.status === "delivered" ? t("statusDelivered") : log.status === "failed" ? t("statusFailed") : log.status === "pending" ? t("statusPending") : log.status === "queued" ? t("statusQueued") : log.status)}
                         </span>
                         {/* ── Send action button ── */}
                         {(log.status === "queued" ||
@@ -771,10 +764,10 @@ export default function NotificationsPage() {
                             title={
                               !log.recipientContact &&
                               log.channel?.toLowerCase() !== "telegram"
-                                ? "No contact info available"
+                                ? t("tooltipNoContact")
                                 : log.channel?.toLowerCase() === "telegram"
-                                  ? "Copy message"
-                                  : "Send now"
+                                  ? t("tooltipCopy")
+                                  : t("tooltipSend")
                             }
                             disabled={
                               !log.recipientContact &&
@@ -796,7 +789,7 @@ export default function NotificationsPage() {
                           style={{ color: "var(--ind-text-muted)" }}
                         >
                           {new Date(log.sentAt).toLocaleDateString(
-                            "en-IN",
+                            dateLocale,
                             {
                               day: "numeric",
                               month: "short",

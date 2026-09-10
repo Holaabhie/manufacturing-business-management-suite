@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useTranslations } from "next-intl";
+import { useAppLocale } from "@/components/LocaleProvider";
 import {
   Plus,
   Search,
@@ -140,6 +142,25 @@ const PAYMENT_STATUS_CONFIG = {
 // ─── Component ──────────────────────────────────────────────────
 
 export default function PurchasingPage() {
+  const t = useTranslations("purchasing.page");
+  const tKpi = useTranslations("purchasing.kpi");
+  const tStatus = useTranslations("purchasing.statuses");
+  const tPayStatus = useTranslations("purchasing.paymentStatuses");
+  const tVendorModal = useTranslations("purchasing.vendorModal");
+  const tOrderModal = useTranslations("purchasing.orderModal");
+  const tOrderDetail = useTranslations("purchasing.orderDetail");
+  const tToast = useTranslations("purchasing.toasts");
+  const tDelete = useTranslations("purchasing.deleteModal");
+  const { currentLocale } = useAppLocale();
+  const dateLocale = currentLocale === "hi" ? "hi-IN" : currentLocale === "gu" ? "gu-IN" : currentLocale === "mr" ? "mr-IN" : "en-IN";
+
+  const getStatusLabel = (status: "Pending" | "Ordered" | "Received") => {
+    switch (status) {
+      case "Pending": return tStatus("pending");
+      case "Ordered": return tStatus("ordered");
+      case "Received": return tStatus("received");
+    }
+  };
   const { isAdmin } = useRole();
   const [activeTab, setActiveTab] = useState<TabKey>("orders");
   const [mounted, setMounted] = useState(false);
@@ -225,9 +246,9 @@ export default function PurchasingPage() {
       const res = await fetch("/api/purchasing");
       const data = await res.json();
       if (data.success) setOrders(data.data || []);
-      else toast.error("Failed to fetch purchase orders");
+      else toast.error(tToast("fetchOrdersFailed"));
     } catch {
-      toast.error("Failed to fetch purchase orders");
+      toast.error(tToast("fetchOrdersFailed"));
     } finally {
       setOrdersLoading(false);
     }
@@ -238,9 +259,9 @@ export default function PurchasingPage() {
       const res = await fetch("/api/purchasing/vendors");
       const data = await res.json();
       if (data.success) setVendors(data.data || []);
-      else toast.error("Failed to fetch vendors");
+      else toast.error(tToast("fetchVendorsFailed"));
     } catch {
-      toast.error("Failed to fetch vendors");
+      toast.error(tToast("fetchVendorsFailed"));
     } finally {
       setVendorsLoading(false);
     }
@@ -315,15 +336,15 @@ export default function PurchasingPage() {
       });
       const data = await res.json();
       if (data.success) {
-        toast.success("Vendor added successfully");
+        toast.success(tToast("vendorAdded"));
         setIsVendorDialogOpen(false);
         setVendorForm(emptyVendorForm);
         fetchVendors();
       } else {
-        toast.error(data.error || "Failed to add vendor");
+        toast.error(data.error || tToast("addVendorFailed"));
       }
     } catch {
-      toast.error("Failed to add vendor");
+      toast.error(tToast("addVendorFailed"));
     }
   };
 
@@ -372,7 +393,7 @@ export default function PurchasingPage() {
   const handleAddMaterialSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!materialFormData.supplier_whatsapp) {
-      toast.error("Supplier WhatsApp is mandatory");
+      toast.error(tToast("supplierPhoneMandatory"));
       return;
     }
     try {
@@ -390,10 +411,10 @@ export default function PurchasingPage() {
       });
       const data = await res.json();
       if (data.error || !data.success) {
-        toast.error(data.error?.message || "Failed to add material");
+        toast.error(data.error?.message || tToast("addMaterialFailed"));
         return;
       }
-      toast.success("Material added to inventory");
+      toast.success(tToast("materialAdded"));
       // Auto-select in the triggering PO item row
       const created = data.data;
       if (addMaterialTargetRow !== null) {
@@ -417,18 +438,18 @@ export default function PurchasingPage() {
       setIsAddMaterialOpen(false);
       setAddMaterialTargetRow(null);
     } catch {
-      toast.error("Failed to add material");
+      toast.error(tToast("addMaterialFailed"));
     }
   };
 
   const handlePOSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!poVendorId) {
-      toast.error("Please select a vendor");
+      toast.error(tToast("selectVendor"));
       return;
     }
     if (poItems.length === 0 || !poItems[0].inventoryItemId) {
-      toast.error("Please add at least one material");
+      toast.error(tToast("addMaterialMin"));
       return;
     }
 
@@ -468,10 +489,10 @@ export default function PurchasingPage() {
         fetchOrders();
         if (data.inventorySynced) fetchInventory();
       } else {
-        toast.error(data.error || "Failed to create PO");
+        toast.error(data.error || tToast("createPOFailed"));
       }
     } catch {
-      toast.error("Failed to create purchase order");
+      toast.error(tToast("createPOFailed"));
     }
   };
 
@@ -484,16 +505,16 @@ export default function PurchasingPage() {
       });
       const data = await res.json();
       if (data.success) {
-        toast.success("Order received — inventory updated!");
+        toast.success(tToast("orderReceived"));
         playCompletionSound("general");
         fetchOrders();
         fetchStats();
         if (newStatus === "Received") fetchInventory();
       } else {
-        toast.error(data.error || "Failed to update status");
+        toast.error(data.error || tToast("updateStatusFailed"));
       }
     } catch {
-      toast.error("Failed to update status");
+      toast.error(tToast("updateStatusFailed"));
     }
   };
 
@@ -507,14 +528,14 @@ export default function PurchasingPage() {
       const res = await fetch(url, { method: "DELETE" });
       const data = await res.json();
       if (data.success) {
-        toast.success(`${deleteTarget.type === "order" ? "Purchase order" : "Vendor"} deleted`);
+        toast.success(tToast("deleteSuccess"));
         if (deleteTarget.type === "order") fetchOrders();
         else fetchVendors();
       } else {
-        toast.error(data.error || "Delete failed");
+        toast.error(data.error || tToast("deleteFailed"));
       }
     } catch {
-      toast.error("Delete failed");
+      toast.error(tToast("deleteFailed"));
     } finally {
       setIsDeleteDialogOpen(false);
       setDeleteTarget(null);
@@ -550,7 +571,7 @@ export default function PurchasingPage() {
 
   if (!mounted) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 w-full min-w-0 overflow-x-hidden">
         <div>
           <div className="h-[34px] w-[160px] rounded-[10px] bg-[var(--muted)] shimmer" />
           <div className="h-[20px] w-[280px] rounded-[8px] bg-[var(--muted)] shimmer mt-2" />
@@ -575,15 +596,15 @@ export default function PurchasingPage() {
   }
 
   return (
-    <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-6">
+    <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-6 w-full min-w-0 overflow-x-hidden">
       {/* ── Header ── */}
       <motion.div variants={staggerItem} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 min-w-0">
         <div className="min-w-0 flex-1">
           <h1 className="text-[24px] sm:text-[28px] md:text-[34px] font-bold text-[var(--foreground)] leading-[1.2] md:leading-[41px] tracking-[0.37px] truncate">
-            Purchasing
+            {t("title")}
           </h1>
           <p className="text-[15px] text-[var(--muted-foreground)] mt-1 leading-[20px] break-words">
-            Manage vendors, create purchase orders, and track deliveries.
+            {t("subtitle")}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -594,7 +615,7 @@ export default function PurchasingPage() {
             onClick={() => { setVendorForm(emptyVendorForm); setIsVendorDialogOpen(true); }}
             icon={<UserPlus className="h-4 w-4" />}
           >
-            Add Vendor
+            {t("btnAddVendor")}
           </IOSButton>
           <IOSButton
             variant="filled"
@@ -604,7 +625,7 @@ export default function PurchasingPage() {
             className="glow-btn !bg-none shadow-none"
             icon={<Plus className="h-4 w-4" />}
           >
-            New Purchase
+            {t("btnNewPurchase")}
           </IOSButton>
         </div>
       </motion.div>
@@ -613,10 +634,10 @@ export default function PurchasingPage() {
       <div className="kpi-panel">
         <div className="kpi-panel__glow" />
         <div className="kpi-grid !grid-cols-1 md:!grid-cols-4">
-          <StatWidget label="Total Spent" value={totalSpend} icon={IndianRupee} color="blue" prefix={"\u20B9"} delay={0} />
-          <StatWidget label="Pending" value={pendingCount} icon={Clock} color="orange" delay={1} />
-          <StatWidget label="In Transit" value={orderedCount} icon={Truck} color="purple" delay={2} />
-          <StatWidget label="Received" value={receivedCount} icon={PackageCheck} color="green" delay={3} />
+          <StatWidget label={tKpi("totalSpent")} value={totalSpend} icon={IndianRupee} color="blue" prefix={"\u20B9"} delay={0} />
+          <StatWidget label={tKpi("pending")} value={pendingCount} icon={Clock} color="orange" delay={1} />
+          <StatWidget label={tKpi("inTransit")} value={orderedCount} icon={Truck} color="purple" delay={2} />
+          <StatWidget label={tKpi("received")} value={receivedCount} icon={PackageCheck} color="green" delay={3} />
         </div>
       </div>
 
@@ -635,7 +656,7 @@ export default function PurchasingPage() {
           >
             {tab === "orders" ? (
               <span className="flex items-center gap-2">
-                <ClipboardList className="h-4 w-4" /> Purchase Orders
+                <ClipboardList className="h-4 w-4" /> {t("tabOrders")}
                 {orders.length > 0 && (
                   <span className="text-[11px] bg-[var(--primary)] text-white px-1.5 py-0.5 rounded-full font-bold">
                     {orders.length}
@@ -644,7 +665,7 @@ export default function PurchasingPage() {
               </span>
             ) : (
               <span className="flex items-center gap-2">
-                <Building2 className="h-4 w-4" /> Vendors
+                <Building2 className="h-4 w-4" /> {t("tabVendors")}
                 {vendors.length > 0 && (
                   <span className="text-[11px] bg-[var(--accent)] text-[var(--muted-foreground)] px-1.5 py-0.5 rounded-full font-bold">
                     {vendors.length}
@@ -661,7 +682,7 @@ export default function PurchasingPage() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-[10px] top-1/2 -translate-y-1/2 h-[17px] w-[17px] text-[var(--muted-foreground)]" />
           <input
-            placeholder={activeTab === "orders" ? "Search PO# or vendor..." : "Search vendors..."}
+            placeholder={activeTab === "orders" ? t("searchOrdersPlaceholder") : t("searchVendorsPlaceholder")}
             className="w-full h-[36px] rounded-[10px] bg-[var(--muted)] pl-[34px] pr-4 text-[15px] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] outline-none border-none focus:ring-2 focus:ring-[var(--primary)] transition-shadow"
             value={activeTab === "orders" ? orderSearch : vendorSearch}
             onChange={(e) =>
@@ -670,7 +691,7 @@ export default function PurchasingPage() {
           />
         </div>
         <span className="text-[13px] text-[var(--muted-foreground)]">
-          {activeTab === "orders" ? `${filteredOrders.length} orders` : `${filteredVendors.length} vendors`}
+          {activeTab === "orders" ? t("ordersCount", { count: filteredOrders.length }) : t("vendorsCount", { count: filteredVendors.length })}
         </span>
       </motion.div>
 
@@ -695,7 +716,7 @@ export default function PurchasingPage() {
                       <span className="text-[var(--primary)] font-bold">{o.poNumber} <span className="text-[var(--muted-foreground)] font-normal">— {o.vendorName}</span></span>
                     )
                   },
-                  { key: "items", label: "Items", render: (_v, o) => `${o.items.length} item${o.items.length !== 1 ? "s" : ""}` },
+                  { key: "items", label: t("thItems"), render: (_v, o) => t("itemsCount", { count: o.items.length }) },
                   {
                     key: "totalAmount", label: "Amount", render: (_v, o) => (
                       <span className="font-semibold">{formatCurrency(o.totalAmount)}</span>
@@ -704,7 +725,7 @@ export default function PurchasingPage() {
                   {
                     key: "status", label: "Status", render: (_v, o) => (
                       <div className="flex items-center justify-between w-full">
-                        <IOSBadge color={STATUS_CONFIG[o.status].color} variant="tinted" dot size="medium">{STATUS_CONFIG[o.status].label}</IOSBadge>
+                        <IOSBadge color={STATUS_CONFIG[o.status].color} variant="tinted" dot size="medium">{getStatusLabel(o.status)}</IOSBadge>
                         {(o.status === "Pending" || o.status === "Ordered") && (
                           <motion.button
                             whileTap={{ scale: 0.95 }}
@@ -712,17 +733,16 @@ export default function PurchasingPage() {
                               e.stopPropagation();
                               handleStatusChange(o.id, "Received");
                             }}
-                            className="text-[12px] font-medium text-[var(--primary)] bg-[var(--primary)]/10 px-[10px] py-[6px] rounded-[8px] active:bg-[var(--primary)]/15 cursor-pointer"
-                          >
-                            Received
+                            className="text-[12px] font-medium text-[var(--primary)] bg-[var(--primary)]/10 px-[10px] py-[6px] rounded-[8px] active:bg-[var(--primary)]/15 cursor-pointer">
+                            {t("btnMarkReceived")}
                           </motion.button>
                         )}
                       </div>
                     )
                   },
-                  { key: "createdAt", label: "Date", render: (_v, o) => new Date(o.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "2-digit" }) },
+                  { key: "createdAt", label: t("thDate"), render: (_v, o) => new Date(o.createdAt).toLocaleDateString(dateLocale, { day: "2-digit", month: "short", year: "2-digit" }) },
                 ]}
-                emptyMessage="No purchase orders yet"
+                emptyMessage={t("emptyOrdersTitle")}
                 actionsTrigger={(order) => (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -739,13 +759,13 @@ export default function PurchasingPage() {
                         onClick={() => { setDetailOrder(order); setIsDetailDialogOpen(true); }}
                         className="rounded-[8px]"
                       >
-                        <Eye className="mr-2 h-4 w-4" /> View Details
+                        <Eye className="mr-2 h-4 w-4" /> {t("actionViewDetails")}
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => { setPaymentPO(order); setIsPaymentModalOpen(true); }}
                         className="rounded-[8px]"
                       >
-                        <Wallet className="mr-2 h-4 w-4" /> Record Payment
+                        <Wallet className="mr-2 h-4 w-4" /> {t("actionRecordPayment")}
                       </DropdownMenuItem>
                       {order.status !== "Received" && isAdmin && (
                         <DropdownMenuItem
@@ -755,7 +775,7 @@ export default function PurchasingPage() {
                             setIsDeleteDialogOpen(true);
                           }}
                         >
-                          <Trash2 className="mr-2 h-4 w-4" /> Delete
+                          <Trash2 className="mr-2 h-4 w-4" /> {t("actionDelete")}
                         </DropdownMenuItem>
                       )}
                     </DropdownMenuContent>
@@ -769,19 +789,19 @@ export default function PurchasingPage() {
                 <TableHeader>
                   <TableRow className="glass-table-header hover:bg-transparent border-b border-white/[0.07]">
                     <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide pl-5">
-                      PO # & Vendor
+                      {t("thPONumberVendor")}
                     </TableHead>
                     <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">
-                      Items
+                      {t("thItems")}
                     </TableHead>
                     <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">
-                      Amount
+                      {t("thAmount")}
                     </TableHead>
                     <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">
-                      Status
+                      {t("thStatus")}
                     </TableHead>
                     <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">
-                      Date
+                      {t("thDate")}
                     </TableHead>
                     <TableHead className="w-[100px] py-3" />
                   </TableRow>
@@ -805,12 +825,12 @@ export default function PurchasingPage() {
                           <div className="w-[56px] h-[56px] rounded-[14px] bg-[var(--muted)] flex items-center justify-center">
                             <ShoppingCart className="h-6 w-6 text-[var(--muted-foreground)]" />
                           </div>
-                          <p className="text-[17px] font-medium text-[var(--muted-foreground)]">No purchase orders yet</p>
+                          <p className="text-[17px] font-medium text-[var(--muted-foreground)]">{t("emptyOrdersTitle")}</p>
                           <p className="text-[13px] text-[var(--muted-foreground)]">
-                            Create your first purchase order to get started
+                            {t("emptyOrdersSubtitle")}
                           </p>
                           <IOSButton variant="filled" size="small" onClick={openNewPO} icon={<Plus className="h-3.5 w-3.5" />}>
-                            New Purchase Order
+                            {t("btnNewPO")}
                           </IOSButton>
                         </div>
                       </TableCell>
@@ -844,7 +864,7 @@ export default function PurchasingPage() {
                           </TableCell>
                           <TableCell className="py-3.5">
                             <span className="text-[15px] font-medium text-[var(--foreground)]">
-                              {order.items.length} item{order.items.length !== 1 ? "s" : ""}
+                              {t("itemsCount", { count: order.items.length })}
                             </span>
                           </TableCell>
                           <TableCell className="py-3.5">
@@ -852,17 +872,17 @@ export default function PurchasingPage() {
                               {formatCurrency(order.totalAmount)}
                             </span>
                             <span className="text-[11px] text-[var(--muted-foreground)] block">
-                              Tax: {formatCurrency(order.taxAmount)}
+                              {t("taxLabel")} {formatCurrency(order.taxAmount)}
                             </span>
                           </TableCell>
                           <TableCell className="py-3.5">
                             <IOSBadge color={statusConfig.color} variant="tinted" dot size="medium">
-                              {statusConfig.label}
+                              {getStatusLabel(order.status)}
                             </IOSBadge>
                           </TableCell>
                           <TableCell className="py-3.5">
                             <span className="text-[13px] text-[var(--muted-foreground)]">
-                              {new Date(order.createdAt).toLocaleDateString("en-IN", {
+                              {new Date(order.createdAt).toLocaleDateString(dateLocale, {
                                 day: "2-digit",
                                 month: "short",
                                 year: "2-digit",
@@ -884,14 +904,14 @@ export default function PurchasingPage() {
                                   onClick={() => { setDetailOrder(order); setIsDetailDialogOpen(true); }}
                                   className="rounded-[8px]"
                                 >
-                                  <Eye className="mr-2 h-4 w-4" /> View Details
+                                  <Eye className="mr-2 h-4 w-4" /> {t("actionViewDetails")}
                                 </DropdownMenuItem>
 
                                 <DropdownMenuItem
                                   onClick={() => { setPaymentPO(order); setIsPaymentModalOpen(true); }}
                                   className="rounded-[8px]"
                                 >
-                                  <Wallet className="mr-2 h-4 w-4" /> Record Payment
+                                  <Wallet className="mr-2 h-4 w-4" /> {t("actionRecordPayment")}
                                 </DropdownMenuItem>
 
                                 {(order.status === "Pending" || order.status === "Ordered") && (
@@ -899,7 +919,7 @@ export default function PurchasingPage() {
                                     onClick={() => handleStatusChange(order.id, "Received")}
                                     className="rounded-[8px] text-[var(--erp-success)]"
                                   >
-                                    <CheckCircle2 className="mr-2 h-4 w-4" /> Mark as Received
+                                    <CheckCircle2 className="mr-2 h-4 w-4" /> {t("actionMarkReceived")}
                                   </DropdownMenuItem>
                                 )}
                                 {order.status !== "Received" && isAdmin && (
@@ -910,8 +930,8 @@ export default function PurchasingPage() {
                                       setIsDeleteDialogOpen(true);
                                     }}
                                   >
-                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                  </DropdownMenuItem>
+                                    <Trash2 className="mr-2 h-4 w-4" /> {t("actionDelete")}
+                                </DropdownMenuItem>
                                 )}
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -951,10 +971,10 @@ export default function PurchasingPage() {
                       <span className="text-[var(--primary)] font-medium">{vendor.phone}</span>
                     )
                   },
-                  { key: "email", label: "Email" },
-                  { key: "gstin", label: "GSTIN", render: (v) => v || "—" },
+                  { key: "email", label: t("thEmail") },
+                  { key: "gstin", label: t("thGstin"), render: (v) => v || "—" },
                 ]}
-                emptyMessage="No vendors added"
+                emptyMessage={t("emptyVendorsTitle")}
                 onCardClick={(vendor) => setSelectedVendor(vendor)}
               />
             )}
@@ -964,10 +984,10 @@ export default function PurchasingPage() {
                 <TableHeader>
                   <TableRow className="glass-table-header hover:bg-transparent border-b border-white/[0.07]">
                     <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide pl-5">
-                      Vendor & Contact
+                      {t("thVendorContact")}
                     </TableHead>
                     <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">
-                      Phone
+                      {t("thPhone")}
                     </TableHead>
                     <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">
                       Email
@@ -996,15 +1016,14 @@ export default function PurchasingPage() {
                           <div className="w-[56px] h-[56px] rounded-[14px] bg-[var(--muted)] flex items-center justify-center">
                             <Building2 className="h-6 w-6 text-[var(--muted-foreground)]" />
                           </div>
-                          <p className="text-[17px] font-medium text-[var(--muted-foreground)]">No vendors added</p>
-                          <p className="text-[13px] text-[var(--muted-foreground)]">Add your first vendor to start purchasing</p>
+                          <p className="text-[17px] font-medium text-[var(--muted-foreground)]">{t("emptyVendorsTitle")}</p>
+                          <p className="text-[13px] text-[var(--muted-foreground)]">{t("emptyVendorsSubtitle")}</p>
                           <IOSButton
                             variant="filled"
                             size="small"
                             onClick={() => { setVendorForm(emptyVendorForm); setIsVendorDialogOpen(true); }}
-                            icon={<UserPlus className="h-3.5 w-3.5" />}
-                          >
-                            Add Vendor
+                            icon={<UserPlus className="h-3.5 w-3.5" />}>
+                            {t("btnAddVendor")}
                           </IOSButton>
                         </div>
                       </TableCell>
@@ -1062,7 +1081,7 @@ export default function PurchasingPage() {
                                     setIsDeleteDialogOpen(true);
                                   }}
                                 >
-                                  <Trash2 className="mr-2 h-4 w-4" /> Delete Vendor
+                                  <Trash2 className="mr-2 h-4 w-4" /> {t("actionDeleteVendor")}
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -1094,38 +1113,38 @@ export default function PurchasingPage() {
                   <Building2 className="h-[18px] w-[18px] text-[#60a5fa]" />
                 </div>
                 <div>
-                  <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "var(--g-text-primary)", lineHeight: "22px", margin: 0 }}>New Vendor</DialogTitle>
-                  <p style={{ fontSize: 13, color: "var(--g-text-secondary)", lineHeight: "18px", margin: "2px 0 0" }}>Add supplier details</p>
+                  <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "var(--g-text-primary)", lineHeight: "22px", margin: 0 }}>{tVendorModal("titleNew")}</DialogTitle>
+                  <p style={{ fontSize: 13, color: "var(--g-text-secondary)", lineHeight: "18px", margin: "2px 0 0" }}>{tVendorModal("subtitle")}</p>
                 </div>
               </div>
               <form onSubmit={handleVendorSubmit} className="space-y-4 pt-4">
                 <div className="space-y-1.5">
-                  <Label className="text-[13px] text-[var(--muted-foreground)]">Vendor Name *</Label>
+                  <Label className="text-[13px] text-[var(--muted-foreground)]">{tVendorModal("lblName")}</Label>
                   <Input
                     value={vendorForm.name}
                     onChange={(e) => setVendorForm({ ...vendorForm, name: e.target.value })}
-                    placeholder="e.g. Reliance Industries"
+                    placeholder={tVendorModal("placeholderName")}
                     required
                     className="glass-input h-[44px] px-3"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label className="text-[13px] text-[var(--muted-foreground)]">Contact Person *</Label>
+                    <Label className="text-[13px] text-[var(--muted-foreground)]">{tVendorModal("lblContact")}</Label>
                     <Input
                       value={vendorForm.contactPerson}
                       onChange={(e) => setVendorForm({ ...vendorForm, contactPerson: e.target.value })}
-                      placeholder="Full name"
+                      placeholder={tVendorModal("placeholderContact")}
                       required
                       className="glass-input h-[44px] px-3"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[13px] text-[var(--muted-foreground)]">Phone *</Label>
+                    <Label className="text-[13px] text-[var(--muted-foreground)]">{tVendorModal("lblPhone")}</Label>
                     <Input
                       value={vendorForm.phone}
                       onChange={(e) => setVendorForm({ ...vendorForm, phone: e.target.value })}
-                      placeholder="+91 98765 43210"
+                      placeholder={tVendorModal("placeholderPhone")}
                       required
                       className="glass-input h-[44px] px-3"
                     />
@@ -1137,7 +1156,7 @@ export default function PurchasingPage() {
                     <Input
                       value={vendorForm.email}
                       onChange={(e) => setVendorForm({ ...vendorForm, email: e.target.value })}
-                      placeholder="vendor@company.com"
+                      placeholder={tVendorModal("placeholderEmail")}
                       className="glass-input h-[44px] px-3"
                     />
                   </div>
@@ -1146,23 +1165,23 @@ export default function PurchasingPage() {
                     <Input
                       value={vendorForm.gstin}
                       onChange={(e) => setVendorForm({ ...vendorForm, gstin: e.target.value })}
-                      placeholder="22AAAAA0000A1Z5"
+                      placeholder={tVendorModal("placeholderGstin")}
                       className="glass-input h-[44px] px-3"
                     />
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-[13px] text-[var(--muted-foreground)]">Address</Label>
+                  <Label className="text-[13px] text-[var(--muted-foreground)]">{tVendorModal("lblAddress")}</Label>
                   <Input
                     value={vendorForm.address}
                     onChange={(e) => setVendorForm({ ...vendorForm, address: e.target.value })}
-                    placeholder="Full address"
+                    placeholder={tVendorModal("placeholderAddress")}
                     className="glass-input h-[44px] px-3"
                   />
                 </div>
                 <DialogFooter className="pt-4">
                   <button type="submit" className="glow-btn w-full h-[50px] text-[17px] flex items-center justify-center gap-2">
-                    Save Vendor
+                    {tVendorModal("btnSave")}
                   </button>
                 </DialogFooter>
               </form>
@@ -1181,21 +1200,21 @@ export default function PurchasingPage() {
                   <ShoppingCart className="h-[18px] w-[18px] text-[#4ade80]" />
                 </div>
                 <div>
-                  <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "var(--g-text-primary)", lineHeight: "22px", margin: 0 }}>New Purchase Order</DialogTitle>
-                  <p style={{ fontSize: 13, color: "var(--g-text-secondary)", lineHeight: "18px", margin: "2px 0 0" }}>Create a purchase order</p>
+                  <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "var(--g-text-primary)", lineHeight: "22px", margin: 0 }}>{tOrderModal("titleNew")}</DialogTitle>
+                  <p style={{ fontSize: 13, color: "var(--g-text-secondary)", lineHeight: "18px", margin: "2px 0 0" }}>{tOrderModal("subtitle")}</p>
                 </div>
               </div>
               <form onSubmit={handlePOSubmit} className="space-y-5 pt-4">
                 {/* Vendor Select */}
                 <div className="space-y-1.5">
-                  <Label className="text-[13px] text-[var(--muted-foreground)]">Select Vendor *</Label>
+                  <Label className="text-[13px] text-[var(--muted-foreground)]">{tOrderModal("lblVendor")}</Label>
                   <Select
                     value={poVendorId}
                     onValueChange={setPoVendorId}
                     required
                   >
                     <SelectTrigger className="w-full h-[44px] rounded-[10px] bg-[var(--muted)] px-3 text-[15px] text-[var(--foreground)] border-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] transition-shadow cursor-pointer">
-                      <SelectValue placeholder="Choose vendor..." />
+                      <SelectValue placeholder={tOrderModal("placeholderVendor")} />
                     </SelectTrigger>
                     <SelectContent className="max-h-[220px] overflow-y-auto scrollbar-thin">
                       {vendors.map((v) => (
@@ -1207,7 +1226,7 @@ export default function PurchasingPage() {
                   </Select>
                   {vendors.length === 0 && (
                     <p className="text-[12px] text-[var(--erp-warning)]">
-                      No vendors found. Add a vendor first.
+                      {tOrderModal("noVendorsHint")}
                     </p>
                   )}
                 </div>
@@ -1215,13 +1234,13 @@ export default function PurchasingPage() {
                 {/* Line Items */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <Label className="text-[13px] font-semibold text-[var(--foreground)]">Materials *</Label>
+                    <Label className="text-[13px] font-semibold text-[var(--foreground)]">{tOrderModal("lblMaterials")}</Label>
                     <button
                       type="button"
                       onClick={addPOItem}
                       className="text-[13px] text-[var(--primary)] font-medium hover:underline cursor-pointer"
                     >
-                      + Add Item
+                      {tOrderModal("btnAddItem")}
                     </button>
                   </div>
 
@@ -1229,7 +1248,7 @@ export default function PurchasingPage() {
                     <div key={idx} className="p-3 rounded-[12px] bg-[var(--muted)] space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-[12px] font-bold text-[var(--muted-foreground)] uppercase">
-                          Item {idx + 1}
+                          {tOrderModal("thItem")} {idx + 1}
                         </span>
                         {poItems.length > 1 && (
                           <button
@@ -1247,19 +1266,19 @@ export default function PurchasingPage() {
                           onValueChange={(val) => updatePOItem(idx, "inventoryItemId", val)}
                         >
                           <SelectTrigger className="w-full h-[40px] rounded-[8px] bg-[var(--muted)] px-3 text-[14px] text-[var(--foreground)] border-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] transition-shadow cursor-pointer">
-                            <SelectValue placeholder="Select material..." />
+                            <SelectValue placeholder={tOrderModal("selectMaterial")} />
                           </SelectTrigger>
                           <SelectContent className="max-h-[220px] overflow-y-auto scrollbar-thin">
                             {inventoryItems.map((inv) => (
                               <SelectItem key={inv.id} value={inv.id}>
-                                {inv.name} ({inv.quantity} {inv.unit} in stock)
+                                {inv.name} ({inv.quantity} {inv.unit} {tOrderModal("inStock")}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                         <button
                           type="button"
-                          title="Create new material"
+                          title={tOrderModal("titleCreateMaterial")}
                           onClick={() => {
                             setMaterialFormData({ ...emptyMaterialForm });
                             setAddMaterialTargetRow(idx);
@@ -1272,7 +1291,7 @@ export default function PurchasingPage() {
                       </div>
                       <div className="grid grid-cols-3 gap-2 md:gap-4">
                         <div>
-                          <Label className="text-[11px] text-[var(--muted-foreground)]">Qty</Label>
+                          <Label className="text-[11px] text-[var(--muted-foreground)]">{tOrderModal("thQty")}</Label>
                           <NumericInput
                             value={item.quantity}
                             onValueChange={(v) => updatePOItem(idx, "quantity", v)}
@@ -1282,7 +1301,7 @@ export default function PurchasingPage() {
                           />
                         </div>
                         <div>
-                          <Label className="text-[11px] text-[var(--muted-foreground)]">Unit</Label>
+                          <Label className="text-[11px] text-[var(--muted-foreground)]">{tOrderModal("thUnit")}</Label>
                           <Input
                             value={item.unit}
                             onChange={(e) => updatePOItem(idx, "unit", e.target.value)}
@@ -1290,7 +1309,7 @@ export default function PurchasingPage() {
                           />
                         </div>
                         <div>
-                          <Label className="text-[11px] text-[var(--muted-foreground)]">{"\u20B9"}/Unit</Label>
+                          <Label className="text-[11px] text-[var(--muted-foreground)]">₹{tOrderModal("thRateUnit")}</Label>
                           <NumericInput
                             value={item.unitPrice}
                             onValueChange={(v) => updatePOItem(idx, "unitPrice", v)}
@@ -1303,7 +1322,7 @@ export default function PurchasingPage() {
                       </div>
                       {item.quantity && item.unitPrice && (
                         <div className="text-right text-[13px] font-semibold text-[var(--primary)]">
-                          Line Total: {formatCurrency(parseNumericValue(item.quantity) * parseNumericValue(item.unitPrice))}
+                          {tOrderModal("lblLineTotal")} {formatCurrency(parseNumericValue(item.quantity) * parseNumericValue(item.unitPrice))}
                         </div>
                       )}
                     </div>
@@ -1313,7 +1332,7 @@ export default function PurchasingPage() {
                 {/* Tax & Notes */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label className="text-[13px] text-[var(--muted-foreground)]">Tax %</Label>
+                    <Label className="text-[13px] text-[var(--muted-foreground)]">{tOrderModal("lblTaxPercent")}</Label>
                     <NumericInput
                       value={poTaxPercent}
                       onValueChange={setPoTaxPercent}
@@ -1323,11 +1342,11 @@ export default function PurchasingPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[13px] text-[var(--muted-foreground)]">Notes</Label>
+                    <Label className="text-[13px] text-[var(--muted-foreground)]">{tOrderModal("lblNotes")}</Label>
                     <Input
                       value={poNotes}
                       onChange={(e) => setPoNotes(e.target.value)}
-                      placeholder="Optional notes"
+                      placeholder={tOrderModal("placeholderNotes")}
                       className="glass-input h-[44px] px-3"
                     />
                   </div>
@@ -1337,7 +1356,7 @@ export default function PurchasingPage() {
                 {poItems.some((i) => i.quantity && i.unitPrice) && (
                   <div className="p-3 rounded-[12px] bg-[rgba(0,122,255,0.06)] border border-[var(--primary)]/20">
                     <div className="flex justify-between text-[13px] text-[var(--muted-foreground)]">
-                      <span>Subtotal</span>
+                      <span>{tOrderModal("lblSubtotal")}</span>
                       <span>
                         {formatCurrency(
                           poItems.reduce((a, i) => a + parseNumericValue(i.quantity) * parseNumericValue(i.unitPrice), 0),
@@ -1345,7 +1364,7 @@ export default function PurchasingPage() {
                       </span>
                     </div>
                     <div className="flex justify-between text-[13px] text-[var(--muted-foreground)] mt-1">
-                      <span>Tax ({poTaxPercent}%)</span>
+                      <span>{tOrderModal("lblTaxWithPercent", { percent: poTaxPercent })}</span>
                       <span>
                         {formatCurrency(
                           poItems.reduce((a, i) => a + parseNumericValue(i.quantity) * parseNumericValue(i.unitPrice), 0) *
@@ -1354,7 +1373,7 @@ export default function PurchasingPage() {
                       </span>
                     </div>
                     <div className="flex justify-between text-[17px] font-bold text-[var(--foreground)] mt-2 pt-2 border-t border-[var(--border)]">
-                      <span>Total</span>
+                      <span>{tOrderModal("lblTotal")}</span>
                       <span className="text-[var(--primary)]">
                         {formatCurrency(
                           poItems.reduce((a, i) => a + parseNumericValue(i.quantity) * parseNumericValue(i.unitPrice), 0) *
@@ -1396,10 +1415,10 @@ export default function PurchasingPage() {
                           "text-[13px] font-semibold block leading-[18px]",
                           addToInventory ? "text-[#2563EB] dark:text-blue-400" : "text-[var(--foreground)]"
                         )}>
-                          Add to Inventory
+                          {tOrderModal("lblAddToInventory")}
                         </span>
                         <span className="text-[11px] text-[var(--muted-foreground)] leading-[14px] block">
-                          Update stock levels on creation
+                          {tOrderModal("lblAddToInventoryDesc")}
                         </span>
                       </div>
                     </div>
@@ -1420,14 +1439,14 @@ export default function PurchasingPage() {
                   </div>
                   {addToInventory && (
                     <p className="text-[11px] text-[#2563EB]/70 dark:text-blue-400/70 mt-2 leading-[15px] pl-[42px]">
-                      Stock will be added now. When this PO is later marked as &ldquo;Received&rdquo;, inventory will <strong>not</strong> be incremented again.
+                      {tOrderModal("inventorySyncHintPrefix")} <strong>{tOrderModal("inventorySyncHintNot")}</strong> {tOrderModal("inventorySyncHintSuffix")}
                     </p>
                   )}
                 </div>
 
                 <DialogFooter className="pt-2">
                   <button type="submit" className="glow-btn w-full h-[50px] text-[17px] flex items-center justify-center gap-2">
-                    <ShoppingCart className="h-5 w-5" /> Create Purchase Order
+                    <ShoppingCart className="h-5 w-5" /> {tOrderModal("btnCreatePO")}
                   </button>
                 </DialogFooter>
               </form>
@@ -1462,7 +1481,7 @@ export default function PurchasingPage() {
                   </div>
                   <div>
                     <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "var(--g-text-primary)", lineHeight: "22px", margin: 0 }}>{detailOrder.poNumber}</DialogTitle>
-                    <DialogDescription style={{ fontSize: 13, color: "var(--g-text-secondary)", lineHeight: "18px", margin: "2px 0 0" }}>Vendor: {detailOrder.vendorName}</DialogDescription>
+                    <DialogDescription style={{ fontSize: 13, color: "var(--g-text-secondary)", lineHeight: "18px", margin: "2px 0 0" }}>{tOrderDetail("lblVendor")} {detailOrder.vendorName}</DialogDescription>
                   </div>
                 </div>
 
@@ -1471,14 +1490,14 @@ export default function PurchasingPage() {
                     {detailOrder.status}
                   </IOSBadge>
                   <span className="text-[13px] text-[var(--muted-foreground)]">
-                    Created: {new Date(detailOrder.createdAt).toLocaleDateString("en-IN")}
+                    {tOrderDetail("lblCreated")} {new Date(detailOrder.createdAt).toLocaleDateString(dateLocale)}
                   </span>
                 </div>
 
                 {/* Items list */}
                 <div className="space-y-2">
                   <h4 className="text-[13px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">
-                    Materials
+                    {tOrderDetail("lblMaterials")}
                   </h4>
                   {detailOrder.items.map((item, idx) => (
                     <div
@@ -1506,33 +1525,33 @@ export default function PurchasingPage() {
                 {/* Totals */}
                 <div className="p-3 rounded-[12px] bg-[var(--muted)] space-y-1">
                   <div className="flex justify-between text-[13px] text-[var(--muted-foreground)]">
-                    <span>Subtotal</span>
+                    <span>{tOrderDetail("lblSubtotal")}</span>
                     <span>{formatCurrency(detailOrder.subtotal)}</span>
                   </div>
                   <div className="flex justify-between text-[13px] text-[var(--muted-foreground)]">
-                    <span>Tax</span>
+                    <span>{tOrderDetail("lblTax")}</span>
                     <span>{formatCurrency(detailOrder.taxAmount)}</span>
                   </div>
                   <div className="flex justify-between text-[17px] font-bold text-[var(--foreground)] pt-2 border-t border-[var(--border)]">
-                    <span>Total</span>
+                    <span>{tOrderDetail("lblTotal")}</span>
                     <span className="text-[var(--primary)]">{formatCurrency(detailOrder.totalAmount)}</span>
                   </div>
                 </div>
 
                 {detailOrder.notes && (
                   <div className="text-[13px] text-[var(--muted-foreground)]">
-                    <span className="font-medium">Notes:</span> {detailOrder.notes}
+                    <span className="font-medium">{tOrderDetail("lblNotes")}</span> {detailOrder.notes}
                   </div>
                 )}
 
                 {detailOrder.orderedAt && (
                   <div className="text-[13px] text-[var(--muted-foreground)]">
-                    Ordered: {new Date(detailOrder.orderedAt).toLocaleDateString("en-IN")}
+                    {tOrderDetail("lblOrdered")} {new Date(detailOrder.orderedAt).toLocaleDateString(dateLocale)}
                   </div>
                 )}
                 {detailOrder.receivedAt && (
                   <div className="text-[13px] text-[var(--erp-success)] font-medium">
-                    ✓ Received: {new Date(detailOrder.receivedAt).toLocaleDateString("en-IN")}
+                    {tOrderDetail("lblReceived")} {new Date(detailOrder.receivedAt).toLocaleDateString(dateLocale)}
                   </div>
                 )}
               </div>
@@ -1546,7 +1565,7 @@ export default function PurchasingPage() {
         open={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}
         onConfirm={handleDelete}
-        entityLabel={deleteTarget?.type === "order" ? "purchase order" : "vendor"}
+        entityLabel={deleteTarget?.type === "order" ? tDelete("entityOrder") : tDelete("entityVendor")}
         entityName={
           deleteTarget?.type === "order"
             ? orders.find((o) => o.id === deleteTarget.id)?.poNumber
@@ -1554,8 +1573,8 @@ export default function PurchasingPage() {
         }
         consequenceText={
           deleteTarget?.type === "order"
-            ? "will be permanently removed from purchasing records. This cannot be undone."
-            : "will be permanently removed along with its purchase history. This cannot be undone."
+            ? tDelete("consequenceOrder")
+            : tDelete("consequenceVendor")
         }
       />
 

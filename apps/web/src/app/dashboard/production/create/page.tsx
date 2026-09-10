@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useAppLocale } from "@/components/LocaleProvider";
+import { useDraftPersistence } from "@/hooks/useDraftPersistence";
 import {
     ChevronRight,
     ChevronLeft,
@@ -86,18 +89,178 @@ interface OperatorData {
     status: string;
 }
 
-// ─── Step definitions ───────────────────────────────────────────────
-const steps = [
-    { id: 1, title: "Order Selection", icon: ShoppingCart, description: "Select a confirmed order" },
-    { id: 2, title: "Production Setup", icon: Settings, description: "Machine & operator" },
-    { id: 3, title: "Materials", icon: Package, description: "Raw materials & stock" },
-    { id: 4, title: "Configuration", icon: Sliders, description: "Output targets & schedule" },
-];
+interface ProductionSetupDraft {
+    currentStep: number;
+    selectedOrderId: string;
+    orderSearchTerm: string;
+    statusFilter: string;
+    selectedMaterials: SelectedMaterial[];
+    assignedMachines: { id: number; machineId: string; machineName: string }[];
+    assignedOperators: { id: number; operatorId: string; operatorName: string }[];
+    expectedOutput: string;
+    startTime: string;
+    shift: ShiftType;
+    targetCompletion: string;
+    notes: string;
+    labourCost: number;
+    overhead: number;
+    saleValue: number;
+}
+
+const getDefaultDraft = (): ProductionSetupDraft => {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const defaultStartTime = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+    return {
+        currentStep: 1,
+        selectedOrderId: "",
+        orderSearchTerm: "",
+        statusFilter: "all",
+        selectedMaterials: [],
+        assignedMachines: [{ id: Date.now(), machineId: "", machineName: "" }],
+        assignedOperators: [{ id: Date.now(), operatorId: "", operatorName: "" }],
+        expectedOutput: "",
+        startTime: defaultStartTime,
+        shift: "morning" as ShiftType,
+        targetCompletion: "",
+        notes: "",
+        labourCost: 0,
+        overhead: 0,
+        saleValue: 0,
+    };
+};
 
 // ─── Page Component ─────────────────────────────────────────────────
 export default function CreateProductionPage() {
+    const t = useTranslations("production.create");
+    const tToast = useTranslations("production.toasts");
+    const tMat = useTranslations("production.materialsStep");
+    const { locale } = useAppLocale();
+    const dateLocale = locale === "hi" ? "hi-IN" : locale === "gu" ? "gu-IN" : locale === "mr" ? "mr-IN" : "en-IN";
     const router = useRouter();
-    const [currentStep, setCurrentStep] = useState(1);
+
+    const steps = [
+        { id: 1, title: t("stepOrder"), icon: ShoppingCart, description: t("stepOrderDesc") },
+        { id: 2, title: t("stepSetup"), icon: Settings, description: t("stepSetupDesc") },
+        { id: 3, title: t("stepMaterials"), icon: Package, description: t("stepMaterialsDesc") },
+        { id: 4, title: t("lblConfig"), icon: Sliders, description: t("lblConfigDesc") },
+    ];
+
+    // NOTE: Multi-tab same-draft collision (accepted limitation):
+    // If a user opens two simultaneous tabs both creating a new production run,
+    // both tabs share the same draft key ('draft:production-setup:new') and
+    // can overwrite each other. Cross-tab lock/synchronization is out of scope for this pass.
+    const { draft, updateDraft, clearDraft } = useDraftPersistence<ProductionSetupDraft>(
+        "draft:production-setup:new",
+        getDefaultDraft()
+    );
+
+    const {
+        currentStep,
+        selectedOrderId,
+        orderSearchTerm,
+        statusFilter,
+        selectedMaterials,
+        assignedMachines,
+        assignedOperators,
+        expectedOutput,
+        startTime,
+        shift,
+        targetCompletion,
+        notes,
+        labourCost,
+        overhead,
+        saleValue,
+    } = draft;
+
+    const setCurrentStep = useCallback(
+        (action: number | ((prev: number) => number)) =>
+            updateDraft((prev) => ({
+                currentStep: typeof action === "function" ? action(prev.currentStep) : action,
+            })),
+        [updateDraft]
+    );
+
+    const setSelectedOrderId = useCallback(
+        (id: string) => updateDraft({ selectedOrderId: id }),
+        [updateDraft]
+    );
+
+    const setOrderSearchTerm = useCallback(
+        (term: string) => updateDraft({ orderSearchTerm: term }),
+        [updateDraft]
+    );
+
+    const setStatusFilter = useCallback(
+        (filter: string) => updateDraft({ statusFilter: filter }),
+        [updateDraft]
+    );
+
+    const setSelectedMaterials = useCallback(
+        (action: SelectedMaterial[] | ((prev: SelectedMaterial[]) => SelectedMaterial[])) =>
+            updateDraft((prev) => ({
+                selectedMaterials: typeof action === "function" ? action(prev.selectedMaterials) : action,
+            })),
+        [updateDraft]
+    );
+
+    const setAssignedMachines = useCallback(
+        (action: { id: number; machineId: string; machineName: string }[] | ((prev: { id: number; machineId: string; machineName: string }[]) => { id: number; machineId: string; machineName: string }[])) =>
+            updateDraft((prev) => ({
+                assignedMachines: typeof action === "function" ? action(prev.assignedMachines) : action,
+            })),
+        [updateDraft]
+    );
+
+    const setAssignedOperators = useCallback(
+        (action: { id: number; operatorId: string; operatorName: string }[] | ((prev: { id: number; operatorId: string; operatorName: string }[]) => { id: number; operatorId: string; operatorName: string }[])) =>
+            updateDraft((prev) => ({
+                assignedOperators: typeof action === "function" ? action(prev.assignedOperators) : action,
+            })),
+        [updateDraft]
+    );
+
+    const setExpectedOutput = useCallback(
+        (val: string) => updateDraft({ expectedOutput: val }),
+        [updateDraft]
+    );
+
+    const setStartTime = useCallback(
+        (val: string) => updateDraft({ startTime: val }),
+        [updateDraft]
+    );
+
+    const setShift = useCallback(
+        (val: ShiftType) => updateDraft({ shift: val }),
+        [updateDraft]
+    );
+
+    const setTargetCompletion = useCallback(
+        (val: string) => updateDraft({ targetCompletion: val }),
+        [updateDraft]
+    );
+
+    const setNotes = useCallback(
+        (val: string) => updateDraft({ notes: val }),
+        [updateDraft]
+    );
+
+    const setLabourCost = useCallback(
+        (val: number) => updateDraft({ labourCost: val }),
+        [updateDraft]
+    );
+
+    const setOverhead = useCallback(
+        (val: number) => updateDraft({ overhead: val }),
+        [updateDraft]
+    );
+
+    const setSaleValue = useCallback(
+        (val: number) => updateDraft({ saleValue: val }),
+        [updateDraft]
+    );
+
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
 
@@ -107,36 +270,14 @@ export default function CreateProductionPage() {
     const [machines, setMachines] = useState<MachineData[]>([]);
     const [operators, setOperators] = useState<OperatorData[]>([]);
 
-    // Step 1 — Order selection
-    const [selectedOrderId, setSelectedOrderId] = useState<string>("");
-    const [orderSearchTerm, setOrderSearchTerm] = useState("");
-    const [statusFilter, setStatusFilter] = useState<string>("all");
+    const handleCancel = useCallback(() => {
+        clearDraft();
+        router.push("/dashboard/production");
+    }, [clearDraft, router]);
 
-    // Step 2 — Materials, machines, operators
-    const [selectedMaterials, setSelectedMaterials] = useState<SelectedMaterial[]>([]);
-    const [assignedMachines, setAssignedMachines] = useState<{ id: number; machineId: string; machineName: string }[]>([{ id: Date.now(), machineId: '', machineName: '' }]);
-    const [assignedOperators, setAssignedOperators] = useState<{ id: number; operatorId: string; operatorName: string }[]>([{ id: Date.now(), operatorId: '', operatorName: '' }]);
-
-    // Step 3 — Config
-    const [expectedOutput, setExpectedOutput] = useState("");
-    // Auto-fill Start Time with current datetime (user can clear/change it)
-    const [startTime, setStartTime] = useState(() => {
-        const now = new Date();
-        // Format as YYYY-MM-DDTHH:MM for datetime-local input
-        const pad = (n: number) => String(n).padStart(2, '0');
-        return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
-    });
-    const [shift, setShift] = useState<ShiftType>("morning");
-    const [targetCompletion, setTargetCompletion] = useState("");
-    const [notes, setNotes] = useState("");
-
-    // Cost & Profit fields
-    const [labourCost, setLabourCost] = useState(0);
-    const [overhead, setOverhead] = useState(0);
-    const [saleValue, setSaleValue] = useState(0);
-
-    // ─── Fetch data ───────────────────────────────────────────
+    // ─── Fetch data & Reconcile with Fresh Lists ─────────────
     useEffect(() => {
+        let isCancelled = false;
         const fetchData = async () => {
             try {
                 const [ordersRes, inventoryRes, machinesRes, employeesRes] = await Promise.all([
@@ -145,24 +286,118 @@ export default function CreateProductionPage() {
                     fetch("/api/machines").then((r) => r.ok ? r.json() : []).catch(() => []),
                     fetch("/api/employees").then((r) => r.ok ? r.json() : { employees: [] }).catch(() => ({ employees: [] })),
                 ]);
+                if (isCancelled) return;
+
                 // v1 API wraps data in { success, data } envelope
-                const orderData = ordersRes?.data ?? (Array.isArray(ordersRes) ? ordersRes : []);
-                setOrders(Array.isArray(orderData) ? orderData : []);
-                setInventory(Array.isArray(inventoryRes) ? inventoryRes : []);
-                setMachines(Array.isArray(machinesRes) ? machinesRes : []);
-                // Employees API returns { employees: [...] }
-                const empList = Array.isArray(employeesRes?.employees)
+                const orderData: Order[] = ordersRes?.data ?? (Array.isArray(ordersRes) ? ordersRes : []);
+                const invList: InventoryItem[] = Array.isArray(inventoryRes) ? inventoryRes : [];
+                const machineList: MachineData[] = Array.isArray(machinesRes) ? machinesRes : [];
+                const empList: any[] = Array.isArray(employeesRes?.employees)
                     ? employeesRes.employees
                     : Array.isArray(employeesRes) ? employeesRes : [];
-                setOperators(empList.filter((e: any) => e.status === "active"));
+                const activeOps: OperatorData[] = empList.filter((e: any) => e.status === "active");
+
+                setOrders(Array.isArray(orderData) ? orderData : []);
+                setInventory(invList);
+                setMachines(machineList);
+                setOperators(activeOps);
+
+                // Reconcile restored draft against fresh data
+                updateDraft((prev) => {
+                    let changed = false;
+
+                    // 1. Order reconciliation
+                    let nextOrderId = prev.selectedOrderId;
+                    if (nextOrderId && !orderData.some((o) => o.id === nextOrderId)) {
+                        console.warn(`[CreateProduction] Order ${nextOrderId} no longer exists; clearing selection.`);
+                        nextOrderId = "";
+                        changed = true;
+                    }
+
+                    // 2. Machine assignments reconciliation
+                    let nextMachines = prev.assignedMachines;
+                    if (nextMachines && nextMachines.length > 0) {
+                        const reconciled = nextMachines.map((row) => {
+                            if (!row.machineId) return row;
+                            const match = machineList.find((m) => m.id === row.machineId && m.status === "active");
+                            if (!match) {
+                                console.warn(`[CreateProduction] Machine ${row.machineId} inactive or removed; clearing.`);
+                                changed = true;
+                                return { ...row, machineId: "", machineName: "" };
+                            }
+                            if (match.machineName !== row.machineName) {
+                                changed = true;
+                                return { ...row, machineName: match.machineName };
+                            }
+                            return row;
+                        });
+                        nextMachines = reconciled;
+                    } else {
+                        nextMachines = [{ id: Date.now(), machineId: "", machineName: "" }];
+                        changed = true;
+                    }
+
+                    // 3. Operator assignments reconciliation
+                    let nextOperators = prev.assignedOperators;
+                    if (nextOperators && nextOperators.length > 0) {
+                        const reconciled = nextOperators.map((row) => {
+                            if (!row.operatorId) return row;
+                            const match = activeOps.find((op) => op.id === row.operatorId);
+                            if (!match) {
+                                console.warn(`[CreateProduction] Operator ${row.operatorId} inactive or removed; clearing.`);
+                                changed = true;
+                                return { ...row, operatorId: "", operatorName: "" };
+                            }
+                            if (match.fullName !== row.operatorName) {
+                                changed = true;
+                                return { ...row, operatorName: match.fullName };
+                            }
+                            return row;
+                        });
+                        nextOperators = reconciled;
+                    } else {
+                        nextOperators = [{ id: Date.now(), operatorId: "", operatorName: "" }];
+                        changed = true;
+                    }
+
+                    // 4. Materials reconciliation
+                    const nextMaterials = prev.selectedMaterials.map((mat) => {
+                        if (!mat.inventoryId) return mat;
+                        const match = invList.find((i) => i.id === mat.inventoryId);
+                        if (!match) {
+                            console.warn(`[CreateProduction] Material ${mat.inventoryId} removed from inventory.`);
+                            changed = true;
+                            return { ...mat, inventoryId: "", availableStock: 0 };
+                        }
+                        if (match.quantity !== mat.availableStock) {
+                            changed = true;
+                            return { ...mat, availableStock: match.quantity };
+                        }
+                        return mat;
+                    });
+
+                    if (!changed) return prev;
+                    return {
+                        ...prev,
+                        selectedOrderId: nextOrderId,
+                        assignedMachines: nextMachines,
+                        assignedOperators: nextOperators,
+                        selectedMaterials: nextMaterials,
+                    };
+                });
             } catch {
-                toast.error("Failed to load data");
+                toast.error(tToast("loadDataFailed"));
             } finally {
-                setLoading(false);
+                if (!isCancelled) {
+                    setLoading(false);
+                }
             }
         };
         fetchData();
-    }, []);
+        return () => {
+            isCancelled = true;
+        };
+    }, [updateDraft, tToast]);
 
     // Statuses eligible for production (case-insensitive)
     const PRODUCTION_ELIGIBLE = new Set(["pending", "confirmed", "processing", "in_progress", "in progress"]);
@@ -330,13 +565,12 @@ export default function CreateProductionPage() {
                 return;
             }
 
-            toast.success("Production created successfully!", {
-                description: `Batch ${data.batchNumber} is ready.`,
-            });
+            toast.success(tToast("createSuccess"));
+            clearDraft();
 
             router.push(`/dashboard/production/${data.id}`);
         } catch {
-            toast.error("Failed to create production");
+            toast.error(tToast("createFailed"));
         } finally {
             setSubmitting(false);
         }
@@ -386,7 +620,7 @@ export default function CreateProductionPage() {
     }
 
     return (
-        <div className="flex flex-col min-h-full pb-28">
+        <div className="w-full min-w-0 overflow-x-hidden flex flex-col min-h-full pb-28">
         {/* ─── Scrollable content area ─── */}
         <div className="flex-1 px-4 pt-4">
         <div className="space-y-6 max-w-4xl mx-auto pb-6">
@@ -396,13 +630,13 @@ export default function CreateProductionPage() {
                     onClick={() => router.push("/dashboard/production")}
                     className="hover:text-foreground transition-colors"
                 >
-                    Production
+                    {t("breadcrumbProduction")}
                 </button>
                 <ChevronRight className="h-3.5 w-3.5" />
-                <span className="text-foreground font-medium">Create Production</span>
+                <span className="text-foreground font-medium">{t("breadcrumbCreate")}</span>
             </div>
 
-            <h1 className="text-2xl font-bold tracking-tight">New Production Run</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{t("pageTitle")}</h1>
 
             {/* ─── Stepper ──────────────────────────────────────── */}
             <div className="pb-5">
@@ -458,7 +692,7 @@ export default function CreateProductionPage() {
                   ))}
                 </div>
                 <div className="text-right">
-                  <p className="text-[11px] text-muted-foreground">Step {currentStep} of {steps.length}</p>
+                  <p className="text-[11px] text-muted-foreground">{t("stepCounter", { current: currentStep, total: steps.length })}</p>
                   <p className="text-[13px] font-semibold text-foreground">{steps[currentStep - 1]?.title}</p>
                 </div>
               </div>
@@ -481,9 +715,9 @@ export default function CreateProductionPage() {
                         {currentStep === 1 && (
                             <div className="space-y-5">
                                 <div>
-                                    <h2 className="text-lg font-bold mb-1">Select Order</h2>
+                                    <h2 className="text-lg font-bold mb-1">{t("stepOrder")}</h2>
                                     <p className="text-sm text-muted-foreground">
-                                        Choose a confirmed order to start production for.
+                                        {t("stepOrderDesc")}
                                     </p>
                                 </div>
 
@@ -491,7 +725,7 @@ export default function CreateProductionPage() {
                                     <div className="relative flex-1 max-w-sm">
                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                         <Input
-                                            placeholder="Search orders by product or client..."
+                                            placeholder={t("searchOrdersPlaceholder")}
                                             className="pl-10 h-10"
                                             value={orderSearchTerm}
                                             onChange={(e) => setOrderSearchTerm(e.target.value)}
@@ -501,13 +735,13 @@ export default function CreateProductionPage() {
                                     <Select value={statusFilter} onValueChange={setStatusFilter}>
                                         <SelectTrigger className="h-10 w-[160px] bg-card" id="status-filter">
                                             <Filter className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
-                                            <SelectValue placeholder="All Statuses" />
+                                            <SelectValue placeholder={t("filterAllStatuses")} />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="all">All Statuses</SelectItem>
-                                            <SelectItem value="pending">Pending</SelectItem>
-                                            <SelectItem value="confirmed">Confirmed</SelectItem>
-                                            <SelectItem value="processing">In Production</SelectItem>
+                                            <SelectItem value="all">{t("filterAllStatuses")}</SelectItem>
+                                            <SelectItem value="pending">{t("orderStatusPending")}</SelectItem>
+                                            <SelectItem value="confirmed">{t("orderStatusConfirmed")}</SelectItem>
+                                            <SelectItem value="processing">{t("orderStatusInProduction")}</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -515,17 +749,17 @@ export default function CreateProductionPage() {
                                 {confirmedOrders.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center py-16 text-center">
                                         <AlertCircle className="h-8 w-8 text-muted-foreground mb-3" />
-                                        <h3 className="font-semibold mb-1">No confirmed orders</h3>
+                                        <h3 className="font-semibold mb-1">{t("noConfirmedOrdersTitle")}</h3>
                                         <p className="text-sm text-muted-foreground">
-                                            Create an order first, then come back to start production.
+                                            {t("noConfirmedOrdersDesc")}
                                         </p>
                                     </div>
                                 ) : filteredOrders.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center py-16 text-center">
                                         <Search className="h-8 w-8 text-muted-foreground mb-3" />
-                                        <h3 className="font-semibold mb-1">No matching orders</h3>
+                                        <h3 className="font-semibold mb-1">{t("noMatchingOrdersTitle")}</h3>
                                         <p className="text-sm text-muted-foreground">
-                                            Try adjusting your search or filter.
+                                            {t("noMatchingOrdersDesc")}
                                         </p>
                                     </div>
                                 ) : (
@@ -568,7 +802,7 @@ export default function CreateProductionPage() {
                                                                     </span>
                                                                     <span className="flex items-center gap-1">
                                                                         <Package className="h-3 w-3" />
-                                                                        {order.quantity} units
+                                                                        {t("orderQtyUnits", { qty: order.quantity })}
                                                                     </span>
                                                                     {deliveryDate && (
                                                                         <span className="flex items-center gap-1">
@@ -606,9 +840,9 @@ export default function CreateProductionPage() {
                         {currentStep === 2 && (
                             <div className="space-y-6">
                                 <div>
-                                    <h2 className="text-lg font-bold mb-1">Production Setup</h2>
+                                    <h2 className="text-lg font-bold mb-1">{t("stepSetup")}</h2>
                                     <p className="text-sm text-muted-foreground">
-                                        Assign machines and operators for this production run.
+                                        {t("stepSetupDesc")}
                                     </p>
                                 </div>
 
@@ -622,7 +856,7 @@ export default function CreateProductionPage() {
                                             </span>
                                             <span className="text-muted-foreground mx-2">•</span>
                                             <span className="text-muted-foreground">
-                                                {selectedOrder.quantity} units
+                                                {t("orderQtyUnits", { qty: selectedOrder.quantity })}
                                             </span>
                                             <span className="text-muted-foreground mx-2">•</span>
                                             <span className="text-muted-foreground">
@@ -637,7 +871,7 @@ export default function CreateProductionPage() {
                                     <div className="flex items-center justify-between">
                                         <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                                             <Cpu className="h-3.5 w-3.5" />
-                                            Assign Machines
+                                            {t("lblMachine")}
                                         </Label>
                                         <Button
                                             type="button"
@@ -647,14 +881,14 @@ export default function CreateProductionPage() {
                                             onClick={addMachineRow}
                                         >
                                             <Plus className="h-3 w-3" />
-                                            Add Machine
+                                            {t("btnAddMachine")}
                                         </Button>
                                     </div>
                                     {machines.length === 0 ? (
                                         <div className="rounded-xl border-2 border-dashed border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-4 text-center">
                                             <AlertCircle className="h-5 w-5 mx-auto mb-2 text-amber-500" />
-                                            <p className="text-xs text-amber-700 dark:text-amber-400 font-semibold">No machines found</p>
-                                            <p className="text-[10px] text-muted-foreground mt-1">Admin must add machines in Machine Management first.</p>
+                                            <p className="text-xs text-amber-700 dark:text-amber-400 font-semibold">{t("noMachinesTitle")}</p>
+                                            <p className="text-[10px] text-muted-foreground mt-1">{t("noMachinesDesc")}</p>
                                         </div>
                                     ) : (
                                         <div className="space-y-2">
@@ -663,7 +897,7 @@ export default function CreateProductionPage() {
                                                     <div className="flex-1 min-w-0">
                                                         <Select value={row.machineId} onValueChange={(v) => updateMachineRow(row.id, v)}>
                                                             <SelectTrigger className="h-9 bg-card" id={`machine-select-${row.id}`}>
-                                                                <SelectValue placeholder="Select machine..." />
+                                                                <SelectValue placeholder={t("placeholderSelectMachine")} />
                                                             </SelectTrigger>
                                                             <SelectContent className="max-h-[220px] overflow-y-auto scrollbar-thin">
                                                                 {machines.map((m) => (
@@ -699,7 +933,7 @@ export default function CreateProductionPage() {
                                     <div className="flex items-center justify-between">
                                         <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                                             <User className="h-3.5 w-3.5" />
-                                            Assign Operators
+                                            {t("lblOperator")}
                                         </Label>
                                         <Button
                                             type="button"
@@ -709,14 +943,14 @@ export default function CreateProductionPage() {
                                             onClick={addOperatorRow}
                                         >
                                             <Plus className="h-3 w-3" />
-                                            Add Operator
+                                            {t("btnAddOperator")}
                                         </Button>
                                     </div>
                                     {operators.length === 0 ? (
                                         <div className="rounded-xl border-2 border-dashed border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-4 text-center">
                                             <AlertCircle className="h-5 w-5 mx-auto mb-2 text-amber-500" />
-                                            <p className="text-xs text-amber-700 dark:text-amber-400 font-semibold">No staff found</p>
-                                            <p className="text-[10px] text-muted-foreground mt-1">Admin must add staff members first.</p>
+                                            <p className="text-xs text-amber-700 dark:text-amber-400 font-semibold">{t("noStaffTitle")}</p>
+                                            <p className="text-[10px] text-muted-foreground mt-1">{t("noStaffDesc")}</p>
                                         </div>
                                     ) : (
                                         <div className="space-y-2">
@@ -725,7 +959,7 @@ export default function CreateProductionPage() {
                                                     <div className="flex-1 min-w-0">
                                                         <Select value={row.operatorId} onValueChange={(v) => updateOperatorRow(row.id, v)}>
                                                             <SelectTrigger className="h-9 bg-card" id={`operator-select-${row.id}`}>
-                                                                <SelectValue placeholder="Select operator..." />
+                                                                <SelectValue placeholder={t("placeholderSelectOperator")} />
                                                             </SelectTrigger>
                                                             <SelectContent className="max-h-[220px] overflow-y-auto scrollbar-thin">
                                                                 {operators.map((op) => (
@@ -772,17 +1006,17 @@ export default function CreateProductionPage() {
                             <div className="space-y-6">
                                 <div>
                                     <h2 className="text-lg font-bold mb-1">
-                                        Production Configuration
+                                        {t("lblConfig")}
                                     </h2>
                                     <p className="text-sm text-muted-foreground">
-                                        Set targets, schedule, and shift details.
+                                        {t("lblConfigDesc")}
                                     </p>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                            Expected Output (Units)
+                                            {t("lblExpectedOutput")}
                                         </Label>
                                         <NumericInput
                                             value={expectedOutput}
@@ -795,7 +1029,7 @@ export default function CreateProductionPage() {
                                         />
                                         {selectedOrder && (
                                             <p className="text-[10px] text-muted-foreground">
-                                                Order requires {selectedOrder.quantity} units
+                                                {t("summaryOrderRequires", { qty: selectedOrder.quantity })}
                                             </p>
                                         )}
                                     </div>
@@ -803,7 +1037,7 @@ export default function CreateProductionPage() {
                                     <div className="space-y-2">
                                         <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                                             <Clock className="h-3.5 w-3.5" />
-                                            Start Time
+                                            {t("lblStartDate")}
                                         </Label>
                                         <Input
                                             type="datetime-local"
@@ -816,7 +1050,7 @@ export default function CreateProductionPage() {
 
                                     <div className="space-y-2">
                                         <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                            Shift
+                                            {t("lblShift")}
                                         </Label>
                                         <Select
                                             value={shift}
@@ -827,13 +1061,13 @@ export default function CreateProductionPage() {
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="morning">
-                                                    Morning (6 AM — 2 PM)
+                                                    {t("shiftMorning")}
                                                 </SelectItem>
                                                 <SelectItem value="afternoon">
-                                                    Afternoon (2 PM — 10 PM)
+                                                    {t("shiftAfternoon")}
                                                 </SelectItem>
                                                 <SelectItem value="night">
-                                                    Night (10 PM — 6 AM)
+                                                    {t("shiftNight")}
                                                 </SelectItem>
                                             </SelectContent>
                                         </Select>
@@ -842,7 +1076,7 @@ export default function CreateProductionPage() {
                                     <div className="space-y-2">
                                         <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                                             <Calendar className="h-3.5 w-3.5" />
-                                            Target Completion
+                                            {t("lblTargetCompletion")}
                                         </Label>
                                         <Input
                                             type="datetime-local"
@@ -858,7 +1092,7 @@ export default function CreateProductionPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div className="space-y-2">
                                         <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                            Labour Cost (INR)
+                                            {t("lblLabourCost")}
                                         </Label>
                                         <NumericInput
                                             value={labourCost || ""}
@@ -872,7 +1106,7 @@ export default function CreateProductionPage() {
                                     </div>
                                     <div className="space-y-2">
                                         <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                            Overhead (INR)
+                                            {t("lblOverheadCost")}
                                         </Label>
                                         <NumericInput
                                             value={overhead || ""}
@@ -886,7 +1120,7 @@ export default function CreateProductionPage() {
                                     </div>
                                     <div className="space-y-2">
                                         <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                            Sale Value (INR)
+                                            {t("lblSaleValue")}
                                         </Label>
                                         <NumericInput
                                             value={saleValue || ""}
@@ -903,12 +1137,12 @@ export default function CreateProductionPage() {
                                 {/* Notes */}
                                 <div className="space-y-2">
                                     <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                        Production Notes (Optional)
+                                        {t("lblNotes")}
                                     </Label>
                                     <textarea
                                         value={notes}
                                         onChange={(e) => setNotes(e.target.value)}
-                                        placeholder="Special instructions, quality requirements, etc..."
+                                        placeholder={t("placeholderNotes")}
                                         rows={3}
                                         className={cn(
                                             "flex w-full rounded-xl border px-4 py-3 text-sm shadow-xs transition-colors resize-none",
@@ -931,7 +1165,7 @@ export default function CreateProductionPage() {
                                     {/* Header */}
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                                         <span style={{ fontSize: '10px', fontWeight: 500, letterSpacing: '0.08em', color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase' }}>
-                                            Cost & Profit Summary
+                                            {t("costSummaryTitle")}
                                         </span>
                                         <span style={{ fontSize: '9px', background: '#0f3d2e', color: '#1D9E75', padding: '2px 7px', borderRadius: '10px', fontWeight: 600 }}>
                                             live
@@ -940,9 +1174,9 @@ export default function CreateProductionPage() {
 
                                     {/* Cost rows */}
                                     {[
-                                        { label: 'Material cost', value: materialCost },
-                                        { label: 'Labour cost', value: labourCost },
-                                        { label: 'Overhead', value: overhead },
+                                        { label: t("costMaterial"), value: materialCost },
+                                        { label: t("costLabour"), value: labourCost },
+                                        { label: t("costOverhead"), value: overhead },
                                     ].map(row => (
                                         <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                                             <span style={{ fontSize: '12px', color: 'hsl(var(--muted-foreground))' }}>{row.label}</span>
@@ -957,11 +1191,11 @@ export default function CreateProductionPage() {
 
                                     {/* Total + Sale */}
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                                        <span style={{ fontSize: '12px', color: 'hsl(var(--muted-foreground))' }}>Total cost</span>
+                                        <span style={{ fontSize: '12px', color: 'hsl(var(--muted-foreground))' }}>{t("costTotal")}</span>
                                         <span style={{ fontSize: '13px', fontWeight: 500, color: 'hsl(var(--foreground))' }}>{"\u20B9"}{totalCost.toLocaleString('en-IN')}</span>
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                                        <span style={{ fontSize: '12px', color: 'hsl(var(--muted-foreground))' }}>Sale value</span>
+                                        <span style={{ fontSize: '12px', color: 'hsl(var(--muted-foreground))' }}>{t("costSale")}</span>
                                         <span style={{ fontSize: '13px', fontWeight: 500, color: 'hsl(var(--foreground))' }}>{"\u20B9"}{saleValue.toLocaleString('en-IN')}</span>
                                     </div>
 
@@ -969,7 +1203,7 @@ export default function CreateProductionPage() {
 
                                     {/* Net margin */}
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <span style={{ fontSize: '11px', color: 'hsl(var(--muted-foreground))' }}>Net margin</span>
+                                        <span style={{ fontSize: '11px', color: 'hsl(var(--muted-foreground))' }}>{t("costMargin")}</span>
                                         <span style={{ fontSize: '16px', fontWeight: 500, color: marginPercent < 0 ? '#E24B4A' : '#1D9E75' }}>
                                             {marginPercent.toFixed(1)}%
                                         </span>
@@ -990,43 +1224,43 @@ export default function CreateProductionPage() {
                                 {/* ─── Production Summary ─── */}
                                 <div className="rounded-[14px] bg-[rgba(37,99,235,0.06)] dark:bg-[rgba(37,99,235,0.06)] border border-[rgba(37,99,235,0.15)] p-4 space-y-3">
                                     <h3 className="text-xs font-bold uppercase tracking-wider text-[#2563EB] dark:text-[#60A5FA]">
-                                        Production Summary
+                                        {t("secProductionSummary")}
                                     </h3>
                                     <div className="flex flex-col gap-2 text-sm">
                                         <div className="flex justify-between items-start gap-2">
-                                            <span className="text-muted-foreground whitespace-nowrap">Product: </span>
+                                            <span className="text-muted-foreground whitespace-nowrap">{t("lblProduct")}: </span>
                                             <span className="font-semibold text-right flex-1" style={{ overflowWrap: 'break-word' }}>
                                                 {selectedOrder?.product_name ?? selectedOrder?.productName ?? "—"}
                                             </span>
                                         </div>
                                         <div className="flex justify-between items-start gap-2">
-                                            <span className="text-muted-foreground whitespace-nowrap">Client: </span>
+                                            <span className="text-muted-foreground whitespace-nowrap">{t("lblClient")}: </span>
                                             <span className="font-semibold text-right flex-1" style={{ overflowWrap: 'break-word' }}>
                                                 {selectedOrder?.clients?.name ?? selectedOrder?.clientName ?? "—"}
                                             </span>
                                         </div>
                                         <div className="flex justify-between items-start gap-2">
-                                            <span className="text-muted-foreground whitespace-nowrap">Materials: </span>
+                                            <span className="text-muted-foreground whitespace-nowrap">{t("stepMaterials")}: </span>
                                             <span className="font-semibold text-right flex-1">
-                                                {selectedMaterials.length} items
+                                                {tMat("summaryItemsCount", { count: selectedMaterials.length })}
                                             </span>
                                         </div>
                                         <div className="flex justify-between items-start gap-2">
-                                            <span className="text-muted-foreground whitespace-nowrap">Machines: </span>
+                                            <span className="text-muted-foreground whitespace-nowrap">{t("lblMachineAssigned")}: </span>
                                             <span className="font-semibold text-right flex-1" style={{ overflowWrap: 'break-word' }}>
                                                 {assignedMachines.filter(m => m.machineName).map(m => m.machineName).join(', ') || "—"}
                                             </span>
                                         </div>
                                         <div className="flex justify-between items-start gap-2">
-                                            <span className="text-muted-foreground whitespace-nowrap">Operators: </span>
+                                            <span className="text-muted-foreground whitespace-nowrap">{t("lblOperatorAssigned")}: </span>
                                             <span className="font-semibold text-right flex-1" style={{ overflowWrap: 'break-word' }}>
                                                 {assignedOperators.filter(o => o.operatorName).map(o => o.operatorName).join(', ') || "—"}
                                             </span>
                                         </div>
                                         <div className="flex justify-between items-start gap-2">
-                                            <span className="text-muted-foreground whitespace-nowrap">Target: </span>
+                                            <span className="text-muted-foreground whitespace-nowrap">{t("lblTarget")}: </span>
                                             <span className="font-semibold text-right flex-1">
-                                                {expectedOutput || "—"} units
+                                                {t("orderQtyUnits", { qty: expectedOutput || "—" })}
                                             </span>
                                         </div>
                                     </div>
@@ -1045,10 +1279,10 @@ export default function CreateProductionPage() {
                 <Button
                     variant="outline"
                     className="gap-2 rounded-[12px] h-11"
-                    onClick={currentStep === 1 ? () => router.push("/dashboard/production") : goBack}
+                    onClick={currentStep === 1 ? handleCancel : goBack}
                 >
                     <ChevronLeft className="h-4 w-4" />
-                    {currentStep === 1 ? "Cancel" : "Back"}
+                    {currentStep === 1 ? t("btnCancel") : t("btnBack")}
                 </Button>
 
                 {currentStep < 4 ? (
@@ -1058,7 +1292,7 @@ export default function CreateProductionPage() {
                         disabled={!canProceed(currentStep)}
                         id="next-step-btn"
                     >
-                        Continue
+                        {t("btnContinue")}
                         <ChevronRight className="h-4 w-4" />
                     </Button>
                 ) : (
@@ -1078,11 +1312,11 @@ export default function CreateProductionPage() {
                         {submitting ? (
                             <>
                                 <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                Creating...
+                                {t("btnLaunching")}
                             </>
                         ) : (
                             <>
-                                Launch Production
+                                {t("btnLaunch")}
                                 <ArrowRight className="h-4 w-4" />
                             </>
                         )}

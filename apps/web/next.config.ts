@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "path";
 import withPWAInit from "@ducanh2912/next-pwa";
 
 const isDev = process.env.NODE_ENV === "development";
@@ -15,6 +16,11 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
+  // ── Turbopack Workspace Root ─────────────────────────────
+  turbopack: {
+    root: path.resolve(process.cwd(), "../.."),
+  },
+
   // ── Core ────────────────────────────────────────────────
   reactStrictMode: true,
   compress: true,
@@ -85,9 +91,6 @@ const nextConfig: NextConfig = {
       "embla-carousel-react",
     ],
   },
-
-  // ── Turbopack Config (Next.js 16 default) ───────────────
-  turbopack: {},
 
   // ── Webpack Config (dev file watching for Windows/OneDrive) ──
   webpack: (config, { dev }) => {
@@ -160,26 +163,29 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      // ── Immutable caching for static assets ────────────
-      {
-        source: "/:all*(svg|jpg|jpeg|png|webp|avif|gif|ico|woff|woff2|ttf|otf)",
-        headers: [
-          {
-            key: "Cache-Control",
-            value: "public, max-age=31536000, immutable",
-          },
-        ],
-      },
-      // ── Cache JS/CSS chunks ────────────────────────────
-      {
-        source: "/_next/static/:path*",
-        headers: [
-          {
-            key: "Cache-Control",
-            value: "public, max-age=31536000, immutable",
-          },
-        ],
-      },
+      // ── Immutable caching for static assets (production only) ──
+      ...(isDev
+        ? []
+        : [
+            {
+              source: "/:all*(svg|jpg|jpeg|png|webp|avif|gif|ico|woff|woff2|ttf|otf)",
+              headers: [
+                {
+                  key: "Cache-Control",
+                  value: "public, max-age=31536000, immutable",
+                },
+              ],
+            },
+            {
+              source: "/_next/static/:path*",
+              headers: [
+                {
+                  key: "Cache-Control",
+                  value: "public, max-age=31536000, immutable",
+                },
+              ],
+            },
+          ]),
     ];
   },
 

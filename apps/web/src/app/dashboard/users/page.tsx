@@ -35,6 +35,7 @@ import { ConfirmDeleteSheet } from "@/components/ui/ConfirmDeleteSheet";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { exportToExcel } from "@/lib/excel-export";
 import { useTranslations } from "next-intl";
+import { useAppLocale } from "@/components/LocaleProvider";
 import { AccessDenied } from "@/components/AccessDenied";
 
 // ─── Types ──────────────────────────────────────────────────────
@@ -74,24 +75,25 @@ const DEPARTMENTS = [
 
 // ─── Status Badge Component ─────────────────────────────────────
 function StatusBadge({ status }: { status: string }) {
+    const t = useTranslations("users");
     const config: Record<string, { label: string; classes: string; icon: any }> = {
         active: {
-            label: "Active",
+            label: t("statusActive"),
             classes: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-800 dark:text-emerald-400",
             icon: Check,
         },
         inactive: {
-            label: "Disabled",
+            label: t("statusInactive"),
             classes: "border-red-200 bg-red-50 text-red-700 dark:bg-red-950/20 dark:border-red-800 dark:text-red-400",
             icon: PowerOff,
         },
         suspended: {
-            label: "Suspended",
+            label: t("statusSuspended"),
             classes: "border-amber-200 bg-amber-50 text-amber-700 dark:bg-amber-950/20 dark:border-amber-800 dark:text-amber-400",
             icon: AlertTriangle,
         },
         pending_setup: {
-            label: "Pending Setup",
+            label: t("statusPendingSetup"),
             classes: "border-blue-200 bg-blue-50 text-blue-700 dark:bg-blue-950/20 dark:border-blue-800 dark:text-blue-400",
             icon: Clock,
         },
@@ -112,8 +114,13 @@ function StatusBadge({ status }: { status: string }) {
 // MAIN PAGE
 // ═════════════════════════════════════════════════════════════════
 export default function EmployeeManagementPage() {
+    const t = useTranslations("users");
     const tCommon = useTranslations("common");
     const router = useRouter();
+    const { locale } = useAppLocale();
+    const dateLocale = locale === "hi" ? "hi-IN" : locale === "gu" ? "gu-IN" : locale === "mr" ? "mr-IN" : "en-IN";
+    const getTemplateLabel = (key: string) => t(`templates.${key}` as any) || TEMPLATE_LABELS[key] || key;
+    const getDepartmentLabel = (key: string) => t(`departments.${key}` as any) || key;
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
@@ -181,7 +188,7 @@ export default function EmployeeManagementPage() {
                 }
             }
         } catch {
-            sonnerToast.error("Failed to load employee data");
+            sonnerToast.error(t("toasts.loadFailed"));
         } finally {
             setLoading(false);
             setRoleLoading(false);
@@ -192,14 +199,14 @@ export default function EmployeeManagementPage() {
 
     // ─── Add Employee ───────────────────────────────────
     const handleAddEmployee = async () => {
-        if (!newEmpName.trim()) { sonnerToast.error("Employee name is required"); return; }
-        if (!newEmpEmail.trim()) { sonnerToast.error("Email is required for staff accounts"); return; }
-        if (!newEmpPassword) { sonnerToast.error("Password is required"); return; }
-        if (newEmpPassword.length < 8) { sonnerToast.error("Password must be at least 8 characters"); return; }
-        if (!/[A-Z]/.test(newEmpPassword)) { sonnerToast.error("Password must contain an uppercase letter"); return; }
-        if (!/[a-z]/.test(newEmpPassword)) { sonnerToast.error("Password must contain a lowercase letter"); return; }
-        if (!/[0-9]/.test(newEmpPassword)) { sonnerToast.error("Password must contain a number"); return; }
-        if (newEmpPassword !== newEmpConfirmPassword) { sonnerToast.error("Passwords do not match"); return; }
+        if (!newEmpName.trim()) { sonnerToast.error(t("toasts.nameRequired")); return; }
+        if (!newEmpEmail.trim()) { sonnerToast.error(t("toasts.emailRequired")); return; }
+        if (!newEmpPassword) { sonnerToast.error(t("toasts.passwordRequired")); return; }
+        if (newEmpPassword.length < 8) { sonnerToast.error(t("toasts.passwordMin")); return; }
+        if (!/[A-Z]/.test(newEmpPassword)) { sonnerToast.error(t("toasts.passwordUpper")); return; }
+        if (!/[a-z]/.test(newEmpPassword)) { sonnerToast.error(t("toasts.passwordLower")); return; }
+        if (!/[0-9]/.test(newEmpPassword)) { sonnerToast.error(t("toasts.passwordNumber")); return; }
+        if (newEmpPassword !== newEmpConfirmPassword) { sonnerToast.error(t("toasts.passwordMismatch")); return; }
 
         setAdding(true);
         try {
@@ -277,7 +284,7 @@ export default function EmployeeManagementPage() {
                 const json = await res.json();
                 if (!res.ok) throw new Error(json.message || "Failed to reset password");
                 setResetPasswordResult(json.tempPassword);
-                sonnerToast.success("Password reset successfully");
+                sonnerToast.success(t("toasts.passwordReset"));
                 return; // Don't close dialog yet
             }
         } catch (error: any) {
@@ -294,11 +301,11 @@ export default function EmployeeManagementPage() {
     // ─── Change Password (admin-typed) ────────────────────
     const handleChangePassword = async () => {
         if (!changePwdTarget) return;
-        if (changePwdNewPassword.length < 8) { sonnerToast.error("Password must be at least 8 characters"); return; }
-        if (!/[A-Z]/.test(changePwdNewPassword)) { sonnerToast.error("Password must contain an uppercase letter"); return; }
-        if (!/[a-z]/.test(changePwdNewPassword)) { sonnerToast.error("Password must contain a lowercase letter"); return; }
-        if (!/[0-9]/.test(changePwdNewPassword)) { sonnerToast.error("Password must contain a number"); return; }
-        if (changePwdNewPassword !== changePwdConfirm) { sonnerToast.error("Passwords do not match"); return; }
+        if (changePwdNewPassword.length < 8) { sonnerToast.error(t("toasts.passwordMin")); return; }
+        if (!/[A-Z]/.test(changePwdNewPassword)) { sonnerToast.error(t("toasts.passwordUpper")); return; }
+        if (!/[a-z]/.test(changePwdNewPassword)) { sonnerToast.error(t("toasts.passwordLower")); return; }
+        if (!/[0-9]/.test(changePwdNewPassword)) { sonnerToast.error(t("toasts.passwordNumber")); return; }
+        if (changePwdNewPassword !== changePwdConfirm) { sonnerToast.error(t("toasts.passwordMismatch")); return; }
 
         setChangePwdLoading(true);
         try {
@@ -448,7 +455,7 @@ export default function EmployeeManagementPage() {
             dataToExport,
             columns
         );
-        sonnerToast.success("Staff Excel downloaded!");
+        sonnerToast.success(t("toasts.excelExported"));
     };
 
     // ─── Guards ─────────────────────────────────────────
@@ -457,7 +464,7 @@ export default function EmployeeManagementPage() {
             <div className="flex items-center justify-center min-h-[60vh]">
                 <div className="flex flex-col items-center gap-3">
                     <Loader2 className="h-8 w-8 animate-spin" style={{ color: "var(--primary)" }} />
-                    <p className="text-sm text-muted-foreground">Loading employee management...</p>
+                    <p className="text-sm text-muted-foreground">{t("loadingEmployees")}</p>
                 </div>
             </div>
         );
@@ -480,10 +487,9 @@ export default function EmployeeManagementPage() {
                     <div className="p-4 rounded-[14px] bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
                         <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
                         <div>
-                            <p className="text-[14px] font-semibold text-amber-500 dark:text-amber-400">Legacy Staff Accounts Detected</p>
+                            <p className="text-[14px] font-semibold text-amber-500 dark:text-amber-400">{t("legacyWarningTitle")}</p>
                             <p className="text-[13px] text-[var(--muted-foreground)] mt-1">
-                                {employees.filter(e => e.email?.endsWith("@staff.local") || !e.email).length} staff account(s) are missing email addresses and use legacy Employee ID login.
-                                Update their profiles with a real email for secure authentication.
+                                {t("legacyWarningDesc", { count: employees.filter(e => e.email?.endsWith("@staff.local") || !e.email).length })}
                             </p>
                         </div>
                     </div>
@@ -496,23 +502,23 @@ export default function EmployeeManagementPage() {
                             <div className="h-10 w-10 rounded-[12px] bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center shadow-lg shadow-[#007AFF]/30 shrink-0">
                                 <Users className="h-5 w-5 text-white" />
                             </div>
-                            <span className="truncate">Employee Management</span>
+                            <span className="truncate">{t("title")}</span>
                         </h1>
-                        <p className="text-[13px] text-[var(--muted-foreground)] mt-1.5 break-words">Create, manage, and monitor your workforce.</p>
+                        <p className="text-[13px] text-[var(--muted-foreground)] mt-1.5 break-words">{t("subtitle")}</p>
                     </div>
 
                     <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
                         <button
                             onClick={exportToXLSX}
                             className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/15 bg-[rgba(255,255,255,0.08)] hover:bg-white/15 text-white text-xs font-medium cursor-pointer transition-all duration-150"
-                            title="Excel Export"
+                            title={t("btnExportTitle")}
                         >
                             <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
                                 <rect width="24" height="24" rx="4" fill="#217346"/>
                                 <path d="M14 3v5h4" fill="none" stroke="#fff" strokeWidth="1" opacity="0.5"/>
                                 <text x="12" y="15" textAnchor="middle" fontFamily="Arial" fontWeight="bold" fontSize="8" fill="#fff">XLS</text>
                             </svg>
-                            <span>Export</span>
+                            <span>{t("btnExport")}</span>
                         </button>
                         <IOSButton
                             variant="filled"
@@ -521,7 +527,7 @@ export default function EmployeeManagementPage() {
                             className="shadow-md"
                         >
                             <Plus className="h-4 w-4 mr-1.5" />
-                            Add Employee
+                            {t("btnAddEmployee")}
                         </IOSButton>
                     </div>
                 </div>
@@ -531,7 +537,7 @@ export default function EmployeeManagementPage() {
                     <div className="kpi-panel__glow"></div>
                     <div className="kpi-grid min-w-0 w-full">
                         <StatWidget
-                            label="Total Staff"
+                            label={t("kpiTotalStaff")}
                             value={stats.total}
                             change={0}
                             icon={Users}
@@ -539,7 +545,7 @@ export default function EmployeeManagementPage() {
                             delay={0}
                         />
                         <StatWidget
-                            label="Active"
+                            label={t("kpiActive")}
                             value={stats.active}
                             change={0}
                             icon={BadgeCheck}
@@ -547,7 +553,7 @@ export default function EmployeeManagementPage() {
                             delay={1}
                         />
                         <StatWidget
-                            label="Disabled"
+                            label={t("kpiDisabled")}
                             value={stats.inactive}
                             change={0}
                             icon={PowerOff}
@@ -555,7 +561,7 @@ export default function EmployeeManagementPage() {
                             delay={2}
                         />
                         <StatWidget
-                            label="Pending Setup"
+                            label={t("kpiPendingSetup")}
                             value={stats.pendingSetup}
                             change={0}
                             icon={Clock}
@@ -570,7 +576,7 @@ export default function EmployeeManagementPage() {
                     <div className="relative flex-1 w-full md:max-w-md">
                         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--muted-foreground)] z-10" />
                         <IOSInput
-                            placeholder="Search by name, ID, email, dept..."
+                            placeholder={t("searchPlaceholder")}
                             className="pl-9 h-11 bg-[var(--muted)] dark:bg-[var(--muted)] text-[15px]"
                             value={searchTerm}
                             onChange={(e: any) => setSearchTerm(e.target.value)}
@@ -582,12 +588,12 @@ export default function EmployeeManagementPage() {
                             <IOSSelect
                                 value={statusFilter}
                                 onChange={(e: any) => setStatusFilter(e.target.value)}
-                                label={<div className="flex items-center gap-1.5"><Filter className="h-3.5 w-3.5" /> Status</div>}
+                                label={<div className="flex items-center gap-1.5"><Filter className="h-3.5 w-3.5" /> {t("statusFilter")}</div>}
                                 options={[
-                                    { value: "all", label: "All Status" },
-                                    { value: "active", label: "Active" },
-                                    { value: "inactive", label: "Disabled" },
-                                    { value: "pending_setup", label: "Pending Setup" },
+                                    { value: "all", label: t("allStatuses") },
+                                    { value: "active", label: t("statusActive") },
+                                    { value: "inactive", label: t("statusInactive") },
+                                    { value: "pending_setup", label: t("statusPendingSetup") },
                                 ]}
                             />
                         </div>
@@ -596,10 +602,10 @@ export default function EmployeeManagementPage() {
                             <IOSSelect
                                 value={departmentFilter}
                                 onChange={(e: any) => setDepartmentFilter(e.target.value)}
-                                label={<div className="flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" /> Dept</div>}
+                                label={<div className="flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" /> {t("deptFilter")}</div>}
                                 options={[
-                                    { value: "all", label: "All Depts" },
-                                    ...departments.map(d => ({ value: d, label: d }))
+                                    { value: "all", label: t("allDepartments") },
+                                    ...departments.map(d => ({ value: d, label: getDepartmentLabel(d) }))
                                 ]}
                             />
                         </div>
@@ -618,7 +624,7 @@ export default function EmployeeManagementPage() {
                                 </button>
                             </TooltipTrigger>
                             <TooltipContent side="bottom" className="text-[11px] font-semibold tracking-wide bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-md border-zinc-200 dark:border-zinc-700">
-                                Sort: {sortField === "createdAt" ? "Date Added" : sortField === "fullName" ? "Name (A→Z)" : "Last Active"} {sortDir === "asc" ? "↑" : "↓"}
+                                {t("sortBy")} {sortField === "createdAt" ? "Date Added" : sortField === "fullName" ? "Name (A→Z)" : "Last Active"} {sortDir === "asc" ? "↑" : "↓"}
                             </TooltipContent>
                         </Tooltip>
                     </div>
@@ -630,13 +636,13 @@ export default function EmployeeManagementPage() {
                         <table className="w-full text-left text-[13px] table-fixed">
                             <thead>
                                 <tr className="border-b border-[var(--border)]">
-                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 w-[90px]">ID</th>
-                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3">Employee</th>
-                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 hidden md:table-cell w-[130px]">Department</th>
-                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 hidden lg:table-cell w-[140px]">Permissions</th>
-                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 w-[110px]">Status</th>
-                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 hidden md:table-cell w-[120px]">Last Active</th>
-                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 text-right w-[60px]">Actions</th>
+                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 w-[90px]">{t("thId")}</th>
+                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3">{t("thEmployee")}</th>
+                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 hidden md:table-cell w-[130px]">{t("thDepartment")}</th>
+                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 hidden lg:table-cell w-[140px]">{t("thPermissions")}</th>
+                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 w-[110px]">{t("thStatus")}</th>
+                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 hidden md:table-cell w-[120px]">{t("thLastActive")}</th>
+                                    <th className="font-semibold text-[11px] text-[var(--muted-foreground)] uppercase tracking-wider px-6 py-3 text-right w-[60px]">{t("thActions")}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -644,7 +650,7 @@ export default function EmployeeManagementPage() {
                                     <tr>
                                         <td colSpan={7} className="h-48 text-center text-[var(--muted-foreground)]">
                                             <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-[var(--primary)]" />
-                                            <p className="text-[13px]">Loading employees...</p>
+                                            <p className="text-[13px]">{t("loadingEmployees")}</p>
                                         </td>
                                     </tr>
                                 ) : filteredEmployees.length === 0 ? (
@@ -652,12 +658,12 @@ export default function EmployeeManagementPage() {
                                         <td colSpan={7} className="h-48 text-center">
                                             <Users className="h-10 w-10 mx-auto mb-3 text-[var(--muted-foreground)]" />
                                             <p className="font-semibold text-[var(--muted-foreground)]">
-                                                {employees.length === 0 ? "No employees yet" : "No employees match filters"}
+                                                {employees.length === 0 ? t("emptyTitle") : t("emptyTitle")}
                                             </p>
                                             <p className="text-[13px] text-[var(--muted-foreground)] mt-1">
                                                 {employees.length === 0
-                                                    ? "Click \"Add Employee\" to create your first staff member."
-                                                    : "Try adjusting your search or filters."}
+                                                    ? t("emptyDesc")
+                                                    : t("emptyDesc")}
                                             </p>
                                             {employees.length === 0 && (
                                                 <IOSButton
@@ -667,7 +673,7 @@ export default function EmployeeManagementPage() {
                                                     onClick={() => setShowAddDialog(true)}
                                                 >
                                                     <Plus className="h-4 w-4 mr-1.5" />
-                                                    Add First Employee
+                                                    {t("emptyBtn")}
                                                 </IOSButton>
                                             )}
                                         </td>
@@ -696,7 +702,7 @@ export default function EmployeeManagementPage() {
                                                         <div className="flex items-center gap-1.5 min-w-0">
                                                             <span className="font-semibold text-[15px] text-[var(--foreground)] truncate min-w-0">{emp.fullName}</span>
                                                             {!emp.firstLoginCompleted && (
-                                                                <IOSBadge variant="outline" color="orange" className="text-[9px] px-1 py-0 border-amber-300 flex-shrink-0">NEW</IOSBadge>
+                                                                <IOSBadge variant="outline" color="orange" className="text-[9px] px-1 py-0 border-amber-300 flex-shrink-0">{t("badgeNew")}</IOSBadge>
                                                             )}
                                                         </div>
                                                         <div className="flex items-center gap-2 text-[12px] text-[var(--muted-foreground)] min-w-0">
@@ -717,7 +723,7 @@ export default function EmployeeManagementPage() {
                                             </td>
                                             <td className="px-6 py-3.5 hidden lg:table-cell">
                                                 <IOSBadge variant="outline" color="gray" className="text-[11px] font-medium uppercase tracking-wider">
-                                                    {TEMPLATE_LABELS[emp.permissionTemplate] || emp.permissionTemplate}
+                                                    {getTemplateLabel(emp.permissionTemplate)}
                                                 </IOSBadge>
                                             </td>
                                             <td className="px-6 py-3.5">
@@ -738,20 +744,20 @@ export default function EmployeeManagementPage() {
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-[14px] shadow-[var(--shadow-lg)] border-[var(--border)]">
                                                         <DropdownMenuItem className="text-[13px] rounded-[8px] cursor-pointer" onClick={() => router.push(`/dashboard/users/${emp.id}`)}>
-                                                            <Eye className="mr-2 h-4 w-4" />View Details
+                                                            <Eye className="mr-2 h-4 w-4" />{t("btnViewDetails")}
                                                         </DropdownMenuItem>
                                                         <DropdownMenuSeparator className="bg-[var(--border)]" />
                                                         <DropdownMenuItem className="text-[13px] rounded-[8px] cursor-pointer" onClick={() => setChangePwdTarget(emp)}>
-                                                            <KeyRound className="mr-2 h-4 w-4 text-[var(--erp-warning)]" />Change Password
+                                                            <KeyRound className="mr-2 h-4 w-4 text-[var(--erp-warning)]" />{t("btnChangePassword")}
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem className="text-[13px] rounded-[8px] cursor-pointer" onClick={() => { setActionTarget(emp); setActionType("reset_password"); }}>
-                                                            <KeyRound className="mr-2 h-4 w-4" />Auto-Reset Password
+                                                            <KeyRound className="mr-2 h-4 w-4" />{t("btnAutoResetPassword")}
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem className="text-[13px] rounded-[8px] cursor-pointer" onClick={() => { setActionTarget(emp); setActionType(emp.status === "active" ? "deactivate" : "activate"); }}>
                                                             {emp.status === "active" ? (
-                                                                <><PowerOff className="mr-2 h-4 w-4 text-[var(--destructive)]" /><span className="text-[var(--destructive)]">Deactivate</span></>
+                                                                <><PowerOff className="mr-2 h-4 w-4 text-[var(--destructive)]" /><span className="text-[var(--destructive)]">{t("btnDeactivate")}</span></>
                                                             ) : (
-                                                                <><Power className="mr-2 h-4 w-4 text-[var(--erp-success)]" /><span className="text-[var(--erp-success)]">Activate</span></>
+                                                                <><Power className="mr-2 h-4 w-4 text-[var(--erp-success)]" /><span className="text-[var(--erp-success)]">{t("btnActivate")}</span></>
                                                             )}
                                                         </DropdownMenuItem>
                                                         <DropdownMenuSeparator className="bg-[var(--border)]" />
@@ -759,7 +765,7 @@ export default function EmployeeManagementPage() {
                                                             className="text-[13px] rounded-[8px] cursor-pointer text-[var(--destructive)] focus:bg-[var(--destructive)]/10 focus:text-[var(--destructive)]"
                                                             onClick={() => { setActionTarget(emp); setActionType("delete"); }}
                                                         >
-                                                            <Trash2 className="mr-2 h-4 w-4" />Delete Employee
+                                                            <Trash2 className="mr-2 h-4 w-4" />{t("btnDelete")}
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
@@ -774,7 +780,7 @@ export default function EmployeeManagementPage() {
 
                 {filteredEmployees.length > 0 && (
                     <p className="text-xs text-muted-foreground text-center">
-                        Showing {filteredEmployees.length} of {employees.length} employees
+                        {t("paginationShowing", { current: filteredEmployees.length, total: employees.length })}
                     </p>
                 )}
 
@@ -789,16 +795,16 @@ export default function EmployeeManagementPage() {
                                     <Plus className="h-[18px] w-[18px] text-[#60a5fa]" />
                                 </div>
                                 <div>
-                                    <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "#f1f5f9", lineHeight: "22px", margin: 0 }}>Add New Employee</DialogTitle>
-                                    <DialogDescription style={{ fontSize: 13, color: "#64748b", lineHeight: "18px", margin: "2px 0 0" }}>Set up login credentials for new staff</DialogDescription>
+                                    <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "var(--foreground)", lineHeight: "22px", margin: 0 }}>{t("addModalTitle")}</DialogTitle>
+                                    <DialogDescription style={{ fontSize: 13, color: "var(--muted-foreground)", lineHeight: "18px", margin: "2px 0 0" }}>{t("addModalSubtitle")}</DialogDescription>
                                 </div>
                             </div>
 
                             <div className="grid gap-4 py-6">
                                 <div className="space-y-1.5">
-                                    <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">Full Name *</label>
+                                    <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">{t("lblName")}</label>
                                     <IOSInput
-                                        placeholder="e.g. Rajesh Kumar"
+                                        placeholder={t("placeholderName")}
                                         value={newEmpName}
                                         onChange={(e: any) => setNewEmpName(e.target.value)}
                                         className="h-11"
@@ -808,20 +814,20 @@ export default function EmployeeManagementPage() {
 
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-1.5">
-                                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">Email *</label>
+                                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">{t("lblEmail")}</label>
                                         <IOSInput
                                             type="email"
-                                            placeholder="employee@company.com"
+                                            placeholder={t("placeholderEmail")}
                                             value={newEmpEmail}
                                             onChange={(e: any) => setNewEmpEmail(e.target.value)}
                                             className="h-11"
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">Phone</label>
+                                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">{t("lblPhone")}</label>
                                         <IOSInput
                                             type="tel"
-                                            placeholder="+91..."
+                                            placeholder={t("placeholderPhone")}
                                             value={newEmpPhone}
                                             onChange={(e: any) => setNewEmpPhone(e.target.value)}
                                             className="h-11"
@@ -834,14 +840,14 @@ export default function EmployeeManagementPage() {
                                         <IOSSelect
                                             value={newEmpDept}
                                             onChange={(e: any) => setNewEmpDept(e.target.value)}
-                                            label="Department"
-                                            options={DEPARTMENTS.map(d => ({ value: d, label: d }))}
+                                            label={t("lblDepartment")}
+                                            options={DEPARTMENTS.map(d => ({ value: d, label: getDepartmentLabel(d) }))}
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">Designation</label>
+                                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">{t("lblDesignation")}</label>
                                         <IOSInput
-                                            placeholder="e.g. Machine Operator"
+                                            placeholder={t("placeholderDesignation")}
                                             value={newEmpDesignation}
                                             onChange={(e: any) => setNewEmpDesignation(e.target.value)}
                                             className="h-[44px]"
@@ -853,12 +859,12 @@ export default function EmployeeManagementPage() {
                                     <IOSSelect
                                         value={newEmpTemplate}
                                         onChange={(e: any) => setNewEmpTemplate(e.target.value)}
-                                        label="Permission Template"
+                                        label={t("lblTemplate")}
                                         options={[
-                                            { value: "full_access", label: "Full Access Staff - All operational modules" },
-                                            { value: "operations", label: "Operations Staff - Orders, Production, Inventory" },
-                                            { value: "sales", label: "Sales Executive - Orders & Clients focus" },
-                                            { value: "view_only", label: "View Only - Read-only access everywhere" },
+                                            { value: "full_access", label: t("templates.full_access") },
+                                            { value: "operations", label: t("templates.operations") },
+                                            { value: "sales", label: t("templates.sales") },
+                                            { value: "view_only", label: t("templates.view_only") },
                                         ]}
                                     />
                                 </div>
@@ -866,11 +872,11 @@ export default function EmployeeManagementPage() {
                                 {/* Password Fields */}
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-1.5">
-                                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">Password *</label>
+                                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">{t("lblPassword")}</label>
                                         <div className="relative">
                                             <IOSInput
                                                 type={showNewEmpPassword ? "text" : "password"}
-                                                placeholder="Min 8 chars"
+                                                placeholder={t("placeholderPassword")}
                                                 value={newEmpPassword}
                                                 onChange={(e: any) => setNewEmpPassword(e.target.value)}
                                                 className="h-11 pr-10"
@@ -881,10 +887,10 @@ export default function EmployeeManagementPage() {
                                         </div>
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">Confirm Password *</label>
+                                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">{t("lblConfirmPassword")}</label>
                                         <IOSInput
                                             type="password"
-                                            placeholder="Re-enter password"
+                                            placeholder={t("placeholderConfirmPassword")}
                                             value={newEmpConfirmPassword}
                                             onChange={(e: any) => setNewEmpConfirmPassword(e.target.value)}
                                             className="h-11"
@@ -905,10 +911,10 @@ export default function EmployeeManagementPage() {
                                             </div>
                                         </div>
                                         <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px]">
-                                            <span className={newEmpPassword.length >= 8 ? 'text-emerald-500' : 'text-[var(--muted-foreground)]'}>✓ 8+ chars</span>
-                                            <span className={/[A-Z]/.test(newEmpPassword) ? 'text-emerald-500' : 'text-[var(--muted-foreground)]'}>✓ Uppercase</span>
-                                            <span className={/[a-z]/.test(newEmpPassword) ? 'text-emerald-500' : 'text-[var(--muted-foreground)]'}>✓ Lowercase</span>
-                                            <span className={/[0-9]/.test(newEmpPassword) ? 'text-emerald-500' : 'text-[var(--muted-foreground)]'}>✓ Number</span>
+                                            <span className={newEmpPassword.length >= 8 ? 'text-emerald-500' : 'text-[var(--muted-foreground)]'}>{t("reqMinChars")}</span>
+                                            <span className={/[A-Z]/.test(newEmpPassword) ? 'text-emerald-500' : 'text-[var(--muted-foreground)]'}>{t("reqUppercase")}</span>
+                                            <span className={/[a-z]/.test(newEmpPassword) ? 'text-emerald-500' : 'text-[var(--muted-foreground)]'}>{t("reqLowercase")}</span>
+                                            <span className={/[0-9]/.test(newEmpPassword) ? 'text-emerald-500' : 'text-[var(--muted-foreground)]'}>{t("reqNumber")}</span>
                                         </div>
                                     </div>
                                 )}
@@ -919,11 +925,11 @@ export default function EmployeeManagementPage() {
                                             <Shield className="h-3 w-3 text-[#007AFF]" />
                                         </div>
                                         <div className="text-[13px] text-[var(--muted-foreground)] space-y-2">
-                                            <p className="font-semibold text-[var(--foreground)]">What happens next?</p>
+                                            <p className="font-semibold text-[var(--foreground)]">{t("nextStepsTitle")}</p>
                                             <ul className="space-y-1">
-                                                <li>• A unique Employee ID (EMP-XXXX) will be generated</li>
-                                                <li>• Staff will log in using their email and password</li>
-                                                <li>• Share the email and password securely</li>
+                                                <li>{t("step1")}</li>
+                                                <li>{t("step2")}</li>
+                                                <li>{t("step3")}</li>
                                             </ul>
                                         </div>
                                     </div>
@@ -931,7 +937,7 @@ export default function EmployeeManagementPage() {
                             </div>
 
                             <DialogFooter className="flex gap-2 pt-2 border-t border-[var(--border)] border-x-[-24px] mx-[-24px] px-6 pb-2">
-                                <IOSButton variant="gray" onClick={() => setShowAddDialog(false)} className="flex-1">Cancel</IOSButton>
+                                <IOSButton variant="gray" onClick={() => setShowAddDialog(false)} className="flex-1">{t("btnCancel")}</IOSButton>
                                 <IOSButton
                                     variant="filled"
                                     color="blue"
@@ -940,7 +946,7 @@ export default function EmployeeManagementPage() {
                                     className="flex-1"
                                 >
                                     {adding ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Plus className="h-4 w-4 mr-1.5" />}
-                                    {adding ? "Creating..." : "Create Employee"}
+                                    {adding ? t("creatingEmployee") : t("btnCreateEmployee")}
                                 </IOSButton>
                             </DialogFooter>
                         </div>
@@ -961,8 +967,8 @@ export default function EmployeeManagementPage() {
                                     <CheckCircle className="h-[18px] w-[18px] text-[#4ade80]" />
                                 </div>
                                 <div>
-                                    <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "#f1f5f9", lineHeight: "22px", margin: 0 }}>Employee Created</DialogTitle>
-                                    <DialogDescription style={{ fontSize: 13, color: "#64748b", lineHeight: "18px", margin: "2px 0 0" }}>Share login details with {createdEmployee?.fullName}</DialogDescription>
+                                    <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "var(--foreground)", lineHeight: "22px", margin: 0 }}>{t("createdModalTitle")}</DialogTitle>
+                                    <DialogDescription style={{ fontSize: 13, color: "var(--muted-foreground)", lineHeight: "18px", margin: "2px 0 0" }}>{t("createdModalSubtitle", { name: createdEmployee?.fullName || "" })}</DialogDescription>
                                 </div>
                             </div>
 
@@ -971,13 +977,13 @@ export default function EmployeeManagementPage() {
                                     <div className="p-4 rounded-[16px] bg-[#34C759]/10 border border-[#34C759]/20 text-left">
                                         <div className="flex items-center gap-2 mb-3 px-1">
                                             <CheckCircle className="h-4 w-4 text-[#34C759]" />
-                                            <p className="text-[13px] font-semibold text-[#34C759]">Account created successfully!</p>
+                                            <p className="text-[13px] font-semibold text-[#34C759]">{t("createdSuccess")}</p>
                                         </div>
 
                                         <div className="space-y-3">
                                             <div className="flex items-center justify-between bg-white dark:bg-black rounded-[12px] px-3.5 py-3 shadow-sm border border-[var(--border)]">
                                                 <div>
-                                                    <p className="text-[10px] uppercase font-bold text-[var(--muted-foreground)] tracking-wider">Login Email</p>
+                                                    <p className="text-[10px] uppercase font-bold text-[var(--muted-foreground)] tracking-wider">{t("lblLoginEmail")}</p>
                                                     <p className="font-medium text-[15px] text-[var(--foreground)]">{createdEmployee.email}</p>
                                                 </div>
                                                 <button
@@ -990,7 +996,7 @@ export default function EmployeeManagementPage() {
 
                                             <div className="flex items-center justify-between bg-white dark:bg-black rounded-[12px] px-3.5 py-3 shadow-sm border border-[var(--border)]">
                                                 <div>
-                                                    <p className="text-[10px] uppercase font-bold text-[var(--muted-foreground)] tracking-wider">Employee ID (Internal)</p>
+                                                    <p className="text-[10px] uppercase font-bold text-[var(--muted-foreground)] tracking-wider">{t("lblEmployeeId")}</p>
                                                     <p className="font-mono font-bold text-[17px] text-[var(--foreground)]">{createdEmployee.employeeId}</p>
                                                 </div>
                                                 <button
@@ -1004,7 +1010,7 @@ export default function EmployeeManagementPage() {
                                     </div>
 
                                     <div className="text-[13px] text-[var(--muted-foreground)]">
-                                        Staff will log in using their <strong>email and password</strong> on the Staff Portal.
+                                        {t("portalHint")}
                                     </div>
                                 </div>
                             )}
@@ -1016,7 +1022,7 @@ export default function EmployeeManagementPage() {
                                     className="w-full text-[15px] font-semibold"
                                     onClick={() => { setShowCredentials(false); setCreatedEmployee(null); }}
                                 >
-                                    Done
+                                    {t("btnDone")}
                                 </IOSButton>
                             </div>
                         </div>
@@ -1032,9 +1038,11 @@ export default function EmployeeManagementPage() {
                     onClose={() => { setActionTarget(null); setActionType(null); }}
                     onConfirm={handleAction}
                     isDeleting={actionLoading}
-                    entityLabel={tCommon("entityEmployee")}
+                    entityLabel={t("deleteEntityLabel")}
                     entityName={actionTarget ? `${actionTarget.fullName} (${actionTarget.employeeId})` : undefined}
-                    consequenceText={tCommon("consequenceEmployee")}
+                    consequenceText={t("deleteConsequence")}
+                    confirmText={t("deleteConfirm")}
+                    cancelText={t("deleteCancel")}
                 />
 
                 <Dialog
@@ -1056,20 +1064,20 @@ export default function EmployeeManagementPage() {
                               {actionType === "activate" ? <CheckCircle className="h-[18px] w-[18px] text-[#4ade80]" /> : <AlertTriangle className="h-[18px] w-[18px] text-[#fbbf24]" />}
                             </div>
                             <div>
-                            <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "#f1f5f9", lineHeight: "22px", margin: 0 }}>
-                                {actionType === "deactivate" && "Deactivate Employee"}
-                                {actionType === "activate" && "Activate Employee"}
-                                {actionType === "reset_password" && (resetPasswordResult ? "Password Reset Complete" : "Reset Password")}
+                            <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "var(--foreground)", lineHeight: "22px", margin: 0 }}>
+                                {actionType === "deactivate" && t("btnDeactivate")}
+                                {actionType === "activate" && t("btnActivate")}
+                                {actionType === "reset_password" && (resetPasswordResult ? t("passwordUpdatedTitle") : t("autoResetTitle"))}
                             </DialogTitle>
                             <DialogDescription className="text-[15px] pt-1 text-[var(--muted-foreground)]">
                                 {actionType === "deactivate" && (
-                                    <>This will disable <strong>{actionTarget?.fullName}</strong>&apos;s account and terminate active sessions. They will be unable to log in.</>
+                                    <>{t("deactivateConfirm", { name: actionTarget?.fullName || "" })}</>
                                 )}
                                 {actionType === "activate" && (
-                                    <>This will re-enable <strong>{actionTarget?.fullName}</strong>&apos;s account. They will be able to log in again.</>
+                                    <>{t("activateConfirm", { name: actionTarget?.fullName || "" })}</>
                                 )}
                                 {actionType === "reset_password" && !resetPasswordResult && (
-                                    <>This will generate a new password for <strong>{actionTarget?.fullName}</strong> ({actionTarget?.employeeId}) and terminate all their active sessions.</>
+                                    <>{t("autoResetConfirm", { name: actionTarget?.fullName || "", id: actionTarget?.employeeId || "" })}</>
                                 )}
                             </DialogDescription>
                         </div></div>
@@ -1079,7 +1087,7 @@ export default function EmployeeManagementPage() {
                             <div className="py-5">
                                 <div className="flex items-center justify-between bg-white dark:bg-black rounded-[12px] px-3.5 py-3 shadow-[var(--shadow-sm)] border border-[var(--border)] mx-2">
                                     <div className="text-left">
-                                        <p className="text-[10px] uppercase font-bold text-[var(--muted-foreground)] tracking-wider">New Password</p>
+                                        <p className="text-[10px] uppercase font-bold text-[var(--muted-foreground)] tracking-wider">{t("lblNewPassword")}</p>
                                         <p className="font-mono font-bold text-[18px] text-[var(--foreground)]">{resetPasswordResult}</p>
                                     </div>
                                     <button
@@ -1090,7 +1098,7 @@ export default function EmployeeManagementPage() {
                                     </button>
                                 </div>
                                 <p className="text-[13px] text-[var(--muted-foreground)] mt-3">
-                                    Share this password securely with the employee.
+                                    {t("sharePasswordHint")}
                                 </p>
                             </div>
                         )}
@@ -1103,12 +1111,12 @@ export default function EmployeeManagementPage() {
                                     className="w-full text-[15px] font-semibold"
                                     onClick={() => { setActionTarget(null); setActionType(null); setResetPasswordResult(null); }}
                                 >
-                                    Done
+                                    {t("btnDone")}
                                 </IOSButton>
                             ) : (
                                 <>
                                     <IOSButton variant="gray" className="flex-1 text-[15px] font-semibold" onClick={() => { setActionTarget(null); setActionType(null); }}>
-                                        Cancel
+                                        {t("btnCancel")}
                                     </IOSButton>
                                     <IOSButton
                                         variant="filled"
@@ -1118,9 +1126,9 @@ export default function EmployeeManagementPage() {
                                         disabled={actionLoading}
                                     >
                                         {actionLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
-                                        {actionType === "deactivate" && "Deactivate"}
-                                        {actionType === "activate" && "Activate"}
-                                        {actionType === "reset_password" && "Reset"}
+                                        {actionType === "deactivate" && t("btnDeactivate")}
+                                        {actionType === "activate" && t("btnActivate")}
+                                        {actionType === "reset_password" && t("autoResetTitle")}
                                     </IOSButton>
                                 </>
                             )}
@@ -1139,8 +1147,8 @@ export default function EmployeeManagementPage() {
                                     <KeyRound className="h-[18px] w-[18px] text-[#fbbf24]" />
                                 </div>
                                 <div>
-                                    <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "#f1f5f9", lineHeight: "22px", margin: 0 }}>{changePwdStep === "success" ? "Password Changed" : "Change Password"}</DialogTitle>
-                                    <DialogDescription style={{ fontSize: 13, color: "#64748b", lineHeight: "18px", margin: "2px 0 0" }}>{changePwdStep === "success" ? `Updated for ${changePwdTarget?.fullName}` : `Set new password for ${changePwdTarget?.fullName}`}</DialogDescription>
+                                    <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "var(--foreground)", lineHeight: "22px", margin: 0 }}>{changePwdStep === "success" ? t("passwordUpdatedTitle") : t("changePasswordTitle")}</DialogTitle>
+                                    <DialogDescription style={{ fontSize: 13, color: "var(--muted-foreground)", lineHeight: "18px", margin: "2px 0 0" }}>{changePwdStep === "success" ? `Updated for ${changePwdTarget?.fullName}` : `Set new password for ${changePwdTarget?.fullName}`}</DialogDescription>
                                 </div>
                             </div>
 
@@ -1148,13 +1156,13 @@ export default function EmployeeManagementPage() {
                                 <div className="space-y-5 py-4">
                                     {/* New Password */}
                                     <div className="space-y-1.5">
-                                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">New Password</label>
+                                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">{t("lblNewPassword")}</label>
                                         <div className="relative">
                                             <IOSInput
                                                 type={changePwdShowNew ? "text" : "password"}
                                                 value={changePwdNewPassword}
                                                 onChange={(e: any) => setChangePwdNewPassword(e.target.value)}
-                                                placeholder="Enter new password"
+                                                placeholder={t("placeholderNewPassword")}
                                                 className="h-[44px] pr-10"
                                                 autoFocus
                                             />
@@ -1174,16 +1182,16 @@ export default function EmployeeManagementPage() {
                                                 </div>
                                                 <div className="flex flex-wrap gap-x-3 gap-y-1 pt-0.5">
                                                     <span className={`text-[10px] flex items-center gap-0.5 font-medium ${changePwdNewPassword.length >= 8 ? "text-[#34C759]" : "text-[var(--muted-foreground)]"}`}>
-                                                        {changePwdNewPassword.length >= 8 ? <Check className="h-3 w-3" /> : <span className="h-2 w-2 rounded-full border border-current opacity-50 ml-0.5 mr-0.5" />} 8+ chars
+                                                        {changePwdNewPassword.length >= 8 ? <Check className="h-3 w-3" /> : <span className="h-2 w-2 rounded-full border border-current opacity-50 ml-0.5 mr-0.5" />} {t("reqMinChars")}
                                                     </span>
                                                     <span className={`text-[10px] flex items-center gap-0.5 font-medium ${/[A-Z]/.test(changePwdNewPassword) ? "text-[#34C759]" : "text-[var(--muted-foreground)]"}`}>
-                                                        {/[A-Z]/.test(changePwdNewPassword) ? <Check className="h-3 w-3" /> : <span className="h-2 w-2 rounded-full border border-current opacity-50 ml-0.5 mr-0.5" />} Uppercase
+                                                        {/[A-Z]/.test(changePwdNewPassword) ? <Check className="h-3 w-3" /> : <span className="h-2 w-2 rounded-full border border-current opacity-50 ml-0.5 mr-0.5" />} {t("reqUppercase")}
                                                     </span>
                                                     <span className={`text-[10px] flex items-center gap-0.5 font-medium ${/[a-z]/.test(changePwdNewPassword) ? "text-[#34C759]" : "text-[var(--muted-foreground)]"}`}>
-                                                        {/[a-z]/.test(changePwdNewPassword) ? <Check className="h-3 w-3" /> : <span className="h-2 w-2 rounded-full border border-current opacity-50 ml-0.5 mr-0.5" />} Lowercase
+                                                        {/[a-z]/.test(changePwdNewPassword) ? <Check className="h-3 w-3" /> : <span className="h-2 w-2 rounded-full border border-current opacity-50 ml-0.5 mr-0.5" />} {t("reqLowercase")}
                                                     </span>
                                                     <span className={`text-[10px] flex items-center gap-0.5 font-medium ${/[0-9]/.test(changePwdNewPassword) ? "text-[#34C759]" : "text-[var(--muted-foreground)]"}`}>
-                                                        {/[0-9]/.test(changePwdNewPassword) ? <Check className="h-3 w-3" /> : <span className="h-2 w-2 rounded-full border border-current opacity-50 ml-0.5 mr-0.5" />} Number
+                                                        {/[0-9]/.test(changePwdNewPassword) ? <Check className="h-3 w-3" /> : <span className="h-2 w-2 rounded-full border border-current opacity-50 ml-0.5 mr-0.5" />} {t("reqNumber")}
                                                     </span>
                                                 </div>
                                             </div>
@@ -1192,13 +1200,13 @@ export default function EmployeeManagementPage() {
 
                                     {/* Confirm Password */}
                                     <div className="space-y-1.5">
-                                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">Confirm New Password</label>
+                                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">{t("lblConfirmNewPassword")}</label>
                                         <div className="relative">
                                             <IOSInput
                                                 type={changePwdShowConfirm ? "text" : "password"}
                                                 value={changePwdConfirm}
                                                 onChange={(e: any) => setChangePwdConfirm(e.target.value)}
-                                                placeholder="Re-enter new password"
+                                                placeholder={t("placeholderConfirmNewPassword")}
                                                 className="h-[44px] pr-10"
                                             />
                                             <button type="button" onClick={() => setChangePwdShowConfirm(!changePwdShowConfirm)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors">
@@ -1206,10 +1214,10 @@ export default function EmployeeManagementPage() {
                                             </button>
                                         </div>
                                         {changePwdConfirm && changePwdNewPassword !== changePwdConfirm && (
-                                            <p className="text-[11px] font-medium text-[#FF3B30] flex items-center gap-1 px-1 pt-0.5"><X className="h-3 w-3" /> Passwords do not match</p>
+                                            <p className="text-[11px] font-medium text-[#FF3B30] flex items-center gap-1 px-1 pt-0.5"><X className="h-3 w-3" /> {t("passwordsMismatch")}</p>
                                         )}
                                         {changePwdConfirm && changePwdNewPassword === changePwdConfirm && (
-                                            <p className="text-[11px] font-medium text-[#34C759] flex items-center gap-1 px-1 pt-0.5"><Check className="h-3 w-3" /> Passwords match</p>
+                                            <p className="text-[11px] font-medium text-[#34C759] flex items-center gap-1 px-1 pt-0.5"><Check className="h-3 w-3" /> {t("passwordsMatch")}</p>
                                         )}
                                     </div>
 
@@ -1217,21 +1225,21 @@ export default function EmployeeManagementPage() {
                                     <div className="space-y-2 p-4 rounded-[16px] border border-[var(--border)] bg-white/40 dark:bg-black/20">
                                         <div className="flex items-center gap-2 mb-1">
                                             <Shield className="h-4 w-4 text-[#007AFF]" />
-                                            <label className="text-[13px] font-semibold text-[var(--foreground)]">Admin Verification</label>
+                                            <label className="text-[13px] font-semibold text-[var(--foreground)]">{t("lblAdminVerification")}</label>
                                         </div>
                                         <div className="relative">
                                             <IOSInput
                                                 type={changePwdShowAdmin ? "text" : "password"}
                                                 value={changePwdAdminPassword}
                                                 onChange={(e: any) => setChangePwdAdminPassword(e.target.value)}
-                                                placeholder="Enter YOUR admin password"
+                                                placeholder={t("placeholderAdminPassword")}
                                                 className="h-[44px] pr-10"
                                             />
                                             <button type="button" onClick={() => setChangePwdShowAdmin(!changePwdShowAdmin)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors">
                                                 {changePwdShowAdmin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                             </button>
                                         </div>
-                                        <p className="text-[12px] text-[var(--muted-foreground)] pl-1">Required to authorize this high-privilege action.</p>
+                                        <p className="text-[12px] text-[var(--muted-foreground)] pl-1">{t("adminVerificationDesc")}</p>
                                     </div>
                                 </div>
                             ) : (
@@ -1240,9 +1248,9 @@ export default function EmployeeManagementPage() {
                                         <BadgeCheck className="h-8 w-8 text-[#34C759]" />
                                     </div>
                                     <div className="space-y-1">
-                                        <p className="text-[18px] font-semibold text-[var(--foreground)]">Password Updated Successfully</p>
+                                        <p className="text-[18px] font-semibold text-[var(--foreground)]">{t("passwordUpdatedTitle")}</p>
                                         <p className="text-[14px] text-[var(--muted-foreground)] max-w-[280px] mx-auto">
-                                            The password has been changed and existing sessions terminated.
+                                            {t("passwordUpdatedDesc")}
                                         </p>
                                     </div>
                                 </div>
@@ -1250,10 +1258,10 @@ export default function EmployeeManagementPage() {
 
                             <DialogFooter className="flex gap-2 pt-2 border-t border-[var(--border)] border-x-[-24px] mx-[-24px] px-6 pb-2">
                                 {changePwdStep === "success" ? (
-                                    <IOSButton variant="filled" color="blue" onClick={resetChangePwdDialog} className="w-full text-[15px] font-semibold">Done</IOSButton>
+                                    <IOSButton variant="filled" color="blue" onClick={resetChangePwdDialog} className="w-full text-[15px] font-semibold">{t("btnDone")}</IOSButton>
                                 ) : (
                                     <>
-                                        <IOSButton variant="gray" onClick={resetChangePwdDialog} className="flex-1 text-[15px] font-semibold">Cancel</IOSButton>
+                                        <IOSButton variant="gray" onClick={resetChangePwdDialog} className="flex-1 text-[15px] font-semibold">{t("btnCancel")}</IOSButton>
                                         <IOSButton
                                             variant="filled"
                                             color="blue"
@@ -1262,7 +1270,7 @@ export default function EmployeeManagementPage() {
                                             className="flex-[1.5] text-[15px] font-semibold"
                                         >
                                             {changePwdLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
-                                            Change Password
+                                            {t("changePasswordTitle")}
                                         </IOSButton>
                                     </>
                                 )}

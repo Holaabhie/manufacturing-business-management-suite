@@ -7,6 +7,7 @@ import {
   Users, UserPlus, Shield, ChevronDown, ChevronRight, X, Loader2,
   Check, RotateCcw, Mail, Clock, AlertCircle,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { IOSCard, IOSButton, IOSInput } from "@/components/ui/ios";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
@@ -14,6 +15,7 @@ import {
   PERMISSION_SECTIONS, ROLE_PRESETS, resolvePermissions,
   countPermissions, type FlatPermissionMap, type RoleType,
 } from "@/lib/permissions";
+import { SettingsHeader } from "../SettingsHeader";
 
 // ─── Types ──────────────────────────────────────────────────────
 interface TeamMember {
@@ -39,30 +41,31 @@ const ROLE_COLORS: Record<string, { bg: string; text: string; border: string }> 
   Accountant: { bg: "rgba(191,90,242,0.12)", text: "#BF5AF2", border: "rgba(191,90,242,0.25)" },
 };
 
-function RoleBadge({ role }: { role: string }) {
+function RoleBadge({ role, label }: { role: string; label?: string }) {
   const c = ROLE_COLORS[role] || ROLE_COLORS.Staff;
   return (
     <span style={{ display: "inline-flex", alignItems: "center", padding: "3px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: c.bg, color: c.text, border: `1px solid ${c.border}` }}>
-      {role}
+      {label || role}
     </span>
   );
 }
 
-function timeAgo(dateStr: string | null): string {
-  if (!dateStr) return "Never";
+function timeAgo(dateStr: string | null, t: any): string {
+  if (!dateStr) return t("teamPage.timeNever");
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t("teamPage.timeJustNow");
+  if (mins < 60) return t("teamPage.timeMinsAgo", { count: mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
+  if (hrs < 24) return t("teamPage.timeHoursAgo", { count: hrs });
   const days = Math.floor(hrs / 24);
-  if (days < 30) return `${days}d ago`;
+  if (days < 30) return t("teamPage.timeDaysAgo", { count: days });
   return new Date(dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 }
 
 // ─── Main Page ──────────────────────────────────────────────────
 export default function TeamPage() {
+  const t = useTranslations("settings");
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [invites, setInvites] = useState<PendingInvite[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,9 +78,9 @@ export default function TeamPage() {
       const data = await res.json();
       if (data.members) setMembers(data.members);
       if (data.pendingInvitations) setInvites(data.pendingInvitations);
-    } catch { toast.error("Failed to load team"); }
+    } catch { toast.error(t("teamPage.toastTeamLoadFailed")); }
     finally { setLoading(false); }
-  }, []);
+  }, [t]);
 
   useEffect(() => { fetchTeam(); }, [fetchTeam]);
 
@@ -93,27 +96,29 @@ export default function TeamPage() {
   }
 
   return (
-    <motion.div variants={variantsFadeUp} initial="hidden" animate="visible"
-      style={{ maxWidth: 960, margin: "0 auto", padding: "16px 16px 80px" }}>
-
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
-        <div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--foreground)", margin: "0 0 4px", letterSpacing: "-0.3px" }}>Team Members</h1>
-          <p style={{ fontSize: 15, color: "var(--muted-foreground)", margin: 0 }}>Manage access and permissions for your team</p>
-        </div>
-        <IOSButton variant="filled" color="blue" onClick={() => setShowInvite(true)}
-          className="text-[14px] font-semibold h-[40px] px-5 rounded-[12px]">
-          <UserPlus size={16} style={{ marginRight: 6 }} /> Invite Member
+    <div className="w-full min-w-0 overflow-x-hidden space-y-6 max-w-4xl mx-auto pb-16 px-4 sm:px-0">
+      <SettingsHeader
+        title={t("teamPage.title")}
+        subtitle={t("teamPage.subtitle")}
+        icon={Users}
+        iconColor="#0A84FF"
+      >
+        <IOSButton
+          variant="filled"
+          color="blue"
+          onClick={() => setShowInvite(true)}
+          className="text-[14px] font-semibold h-[42px] px-5 rounded-[12px]"
+        >
+          <UserPlus size={16} className="mr-2" /> {t("teamPage.inviteMember")}
         </IOSButton>
-      </div>
+      </SettingsHeader>
 
       {/* Stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
         {[
-          { label: "Total", value: members.length, color: "#0A84FF" },
-          { label: "Active", value: activeCount, color: "#30D158" },
-          { label: "Pending Invites", value: invites.length, color: "#FF9F0A" },
+          { label: t("teamPage.statTotal"), value: members.length, color: "#0A84FF" },
+          { label: t("teamPage.statActive"), value: activeCount, color: "#30D158" },
+          { label: t("teamPage.statPending"), value: invites.length, color: "#FF9F0A" },
         ].map(s => (
           <IOSCard key={s.label} className="p-4">
             <p style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)", margin: "0 0 4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{s.label}</p>
@@ -128,8 +133,8 @@ export default function TeamPage() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                {["Member", "Role", "Last Active", "Permissions", ""].map(h => (
-                  <th key={h} style={{ padding: "12px 16px", fontSize: 12, fontWeight: 600, color: "var(--muted-foreground)", textAlign: "left", textTransform: "uppercase", letterSpacing: "0.5px" }}>{h}</th>
+                {[t("teamPage.thMember"), t("teamPage.thRole"), t("teamPage.thLastActive"), t("teamPage.thPermissions"), ""].map((h, idx) => (
+                  <th key={idx} style={{ padding: "12px 16px", fontSize: 12, fontWeight: 600, color: "var(--muted-foreground)", textAlign: "left", textTransform: "uppercase", letterSpacing: "0.5px" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -142,25 +147,25 @@ export default function TeamPage() {
                         {m.avatar_url ? <img src={m.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : m.fullName.charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <p style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>{m.fullName}{!m.isActive && <span style={{ fontSize: 11, color: "#FF453A", marginLeft: 6 }}>(Deactivated)</span>}</p>
+                        <p style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>{m.fullName}{!m.isActive && <span style={{ fontSize: 11, color: "#FF453A", marginLeft: 6 }}>{t("teamPage.deactivated")}</span>}</p>
                         <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: 0 }}>{m.email}</p>
                       </div>
                     </div>
                   </td>
-                  <td style={{ padding: "12px 16px" }}><RoleBadge role={m.role} /></td>
-                  <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--muted-foreground)" }}>{timeAgo(m.lastActiveAt)}</td>
+                  <td style={{ padding: "12px 16px" }}><RoleBadge role={m.role} label={t(`teamPage.roles.${m.role}`) || m.role} /></td>
+                  <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--muted-foreground)" }}>{timeAgo(m.lastActiveAt, t)}</td>
                   <td style={{ padding: "12px 16px" }}>
                     <span style={{ fontSize: 13, color: "var(--muted-foreground)", display: "flex", alignItems: "center", gap: 4 }}>
                       <Shield size={13} style={{ opacity: 0.5 }} /> {m.permissionCount}/{Object.keys(ROLE_PRESETS.Owner.permissions).length}
                     </span>
                   </td>
                   <td style={{ padding: "12px 16px", textAlign: "right" }}>
-                    <button onClick={() => setEditMember(m)} style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--muted)", color: "var(--foreground)", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>Edit</button>
+                    <button onClick={() => setEditMember(m)} style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--muted)", color: "var(--foreground)", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("teamPage.btnEdit")}</button>
                   </td>
                 </tr>
               ))}
               {members.length === 0 && (
-                <tr><td colSpan={5} style={{ padding: 40, textAlign: "center", color: "var(--muted-foreground)", fontSize: 14 }}>No team members yet. Invite someone to get started.</td></tr>
+                <tr><td colSpan={5} style={{ padding: 40, textAlign: "center", color: "var(--muted-foreground)", fontSize: 14 }}>{t("teamPage.emptyMembers")}</td></tr>
               )}
             </tbody>
           </table>
@@ -170,7 +175,7 @@ export default function TeamPage() {
       {/* Pending Invitations */}
       {invites.length > 0 && (
         <div style={{ marginTop: 24 }}>
-          <h3 style={{ fontSize: 17, fontWeight: 600, color: "var(--foreground)", margin: "0 0 12px" }}>Pending Invitations</h3>
+          <h3 style={{ fontSize: 17, fontWeight: 600, color: "var(--foreground)", margin: "0 0 12px" }}>{t("teamPage.pendingInvitations")}</h3>
           <IOSCard className="p-0 overflow-hidden">
             {invites.map((inv, i) => (
               <div key={inv.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderBottom: i < invites.length - 1 ? "1px solid var(--border)" : "none", gap: 12, flexWrap: "wrap" }}>
@@ -179,11 +184,11 @@ export default function TeamPage() {
                   <div>
                     <p style={{ fontSize: 14, fontWeight: 500, color: "var(--foreground)", margin: 0 }}>{inv.email}</p>
                     <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: 0, display: "flex", alignItems: "center", gap: 4 }}>
-                      <Clock size={11} /> Expires {timeAgo(inv.expiresAt)}
+                      <Clock size={11} /> {t("teamPage.expiresIn", { time: timeAgo(inv.expiresAt, t) })}
                     </p>
                   </div>
                 </div>
-                <RoleBadge role={inv.role} />
+                <RoleBadge role={inv.role} label={t(`teamPage.roles.${inv.role}`) || inv.role} />
               </div>
             ))}
           </IOSCard>
@@ -199,12 +204,13 @@ export default function TeamPage() {
       <AnimatePresence>
         {showInvite && <InviteModal onClose={() => setShowInvite(false)} onInvited={fetchTeam} />}
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 }
 
 // ─── Edit Drawer ────────────────────────────────────────────────
 function EditDrawer({ member, onClose, onSaved }: { member: TeamMember; onClose: () => void; onSaved: () => void }) {
+  const t = useTranslations("settings");
   const [role, setRole] = useState(member.role);
   const [perms, setPerms] = useState<FlatPermissionMap>(() => resolvePermissions(member.role, member.customPermissions));
   const [saving, setSaving] = useState(false);
@@ -235,21 +241,21 @@ function EditDrawer({ member, onClose, onSaved }: { member: TeamMember; onClose:
         body: JSON.stringify({ role, customPermissions: Object.keys(custom).length > 0 ? custom : null }),
       });
 
-      toast.success("Permissions updated");
+      toast.success(t("teamPage.toastPermissionsUpdated"));
       onSaved();
       onClose();
-    } catch { toast.error("Failed to save"); }
+    } catch { toast.error(t("teamPage.toastPermissionsSaveFailed")); }
     finally { setSaving(false); }
   };
 
   const handleDeactivate = async () => {
-    if (!confirm(`Deactivate ${member.fullName}? They will lose access immediately.`)) return;
+    if (!confirm(t("teamPage.confirmDeactivate", { name: member.fullName }))) return;
     setDeactivating(true);
     try {
       const res = await fetch(`/api/team/${member.id}`, { method: "DELETE" });
-      if (res.ok) { toast.success("User deactivated"); onSaved(); onClose(); }
-      else { const d = await res.json(); toast.error(d.error || "Failed"); }
-    } catch { toast.error("Failed to deactivate"); }
+      if (res.ok) { toast.success(t("teamPage.toastUserDeactivated")); onSaved(); onClose(); }
+      else { const d = await res.json(); toast.error(d.error || t("teamPage.toastDeactivateFailed")); }
+    } catch { toast.error(t("teamPage.toastDeactivateFailed")); }
     finally { setDeactivating(false); }
   };
 
@@ -264,7 +270,7 @@ function EditDrawer({ member, onClose, onSaved }: { member: TeamMember; onClose:
         {/* Header */}
         <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
           <div>
-            <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--foreground)", margin: 0 }}>Edit Member</h3>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--foreground)", margin: 0 }}>{t("teamPage.editDrawerTitle")}</h3>
             <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: "2px 0 0" }}>{member.email}</p>
           </div>
           <button onClick={onClose} style={{ padding: 6, borderRadius: 8, background: "var(--muted)", border: "none", cursor: "pointer", color: "var(--muted-foreground)" }}>
@@ -287,7 +293,7 @@ function EditDrawer({ member, onClose, onSaved }: { member: TeamMember; onClose:
 
           {/* Role Selector */}
           <div style={{ marginBottom: 24 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, color: "var(--muted-foreground)", display: "block", marginBottom: 8 }}>Role</label>
+            <label style={{ fontSize: 13, fontWeight: 600, color: "var(--muted-foreground)", display: "block", marginBottom: 8 }}>{t("teamPage.roleLabel")}</label>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               {(["Owner", "Manager", "Staff", "Accountant"] as const).map(r => {
                 const c = ROLE_COLORS[r];
@@ -297,8 +303,8 @@ function EditDrawer({ member, onClose, onSaved }: { member: TeamMember; onClose:
                     padding: "10px 14px", borderRadius: 12, border: `1.5px solid ${sel ? c.border : "var(--border)"}`,
                     background: sel ? c.bg : "transparent", cursor: "pointer", textAlign: "left",
                   }}>
-                    <p style={{ fontSize: 14, fontWeight: 600, color: sel ? c.text : "var(--foreground)", margin: 0 }}>{r}</p>
-                    <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: "2px 0 0" }}>{ROLE_PRESETS[r].description.slice(0, 40)}…</p>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: sel ? c.text : "var(--foreground)", margin: 0 }}>{t(`teamPage.roles.${r}`)}</p>
+                    <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: "2px 0 0" }}>{t(`teamPage.roles.${r}Desc`).slice(0, 40)}…</p>
                   </button>
                 );
               })}
@@ -308,9 +314,9 @@ function EditDrawer({ member, onClose, onSaved }: { member: TeamMember; onClose:
           {/* Permission Toggles */}
           <div style={{ marginBottom: 24 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <label style={{ fontSize: 13, fontWeight: 600, color: "var(--muted-foreground)" }}>Permissions ({countPermissions(perms)})</label>
+              <label style={{ fontSize: 13, fontWeight: 600, color: "var(--muted-foreground)" }}>{t("teamPage.permissionsLabel")} ({countPermissions(perms)})</label>
               <button onClick={resetToDefaults} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "#0A84FF", background: "none", border: "none", cursor: "pointer", fontWeight: 500 }}>
-                <RotateCcw size={12} /> Reset to defaults
+                <RotateCcw size={12} /> {t("teamPage.resetDefaults")}
               </button>
             </div>
 
@@ -349,14 +355,14 @@ function EditDrawer({ member, onClose, onSaved }: { member: TeamMember; onClose:
             padding: "10px 16px", borderRadius: 12, border: "1px solid rgba(255,69,58,0.3)", background: "rgba(255,69,58,0.08)",
             color: "#FF453A", fontSize: 13, fontWeight: 600, cursor: "pointer", opacity: deactivating ? 0.5 : 1,
           }}>
-            {deactivating ? "…" : "Deactivate"}
+            {deactivating ? "…" : t("teamPage.btnDeactivate")}
           </button>
           <div style={{ flex: 1 }} />
-          <IOSButton variant="gray" onClick={onClose} className="text-[13px] h-[40px] px-4 rounded-[12px]">Cancel</IOSButton>
+          <IOSButton variant="gray" onClick={onClose} className="text-[13px] h-[40px] px-4 rounded-[12px]">{t("teamPage.btnCancel")}</IOSButton>
           <IOSButton variant="filled" color="blue" onClick={handleSave} disabled={saving}
             className="text-[13px] font-semibold h-[40px] px-5 rounded-[12px]">
             {saving ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Check size={14} />}
-            <span style={{ marginLeft: 4 }}>{saving ? "Saving…" : "Save"}</span>
+            <span style={{ marginLeft: 4 }}>{saving ? t("teamPage.saving") : t("teamPage.btnSave")}</span>
           </IOSButton>
         </div>
         <style>{`@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}`}</style>
@@ -367,6 +373,7 @@ function EditDrawer({ member, onClose, onSaved }: { member: TeamMember; onClose:
 
 // ─── Invite Modal ───────────────────────────────────────────────
 function InviteModal({ onClose, onInvited }: { onClose: () => void; onInvited: () => void }) {
+  const t = useTranslations("settings");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<string>("Staff");
   const [sending, setSending] = useState(false);
@@ -375,7 +382,7 @@ function InviteModal({ onClose, onInvited }: { onClose: () => void; onInvited: (
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!email || !email.includes("@")) { setError("Enter a valid email address."); return; }
+    if (!email || !email.includes("@")) { setError(t("teamPage.errorEmailInvalid")); return; }
 
     setSending(true);
     try {
@@ -384,10 +391,10 @@ function InviteModal({ onClose, onInvited }: { onClose: () => void; onInvited: (
         body: JSON.stringify({ email, role }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error || "Failed to send invite."); return; }
-      toast.success(`Invitation sent to ${email}`);
+      if (!res.ok) { setError(data.error || t("teamPage.errorInviteFailed")); return; }
+      toast.success(t("teamPage.toastInviteSuccess", { email }));
       onInvited(); onClose();
-    } catch { setError("Network error. Please try again."); }
+    } catch { setError(t("teamPage.errorNetwork")); }
     finally { setSending(false); }
   };
 
@@ -396,21 +403,21 @@ function InviteModal({ onClose, onInvited }: { onClose: () => void; onInvited: (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 50, backdropFilter: "blur(4px)" }} />
       <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }}
-        style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(420px, calc(100vw - 32px))", background: "var(--card)", borderRadius: 24, border: "1px solid var(--border)", zIndex: 51, overflow: "hidden" }}>
+        style={{ position: "fixed", inset: 0, margin: "auto", height: "fit-content", width: "min(420px, calc(100vw - 32px))", background: "var(--card)", borderRadius: 24, border: "1px solid var(--border)", zIndex: 51, overflow: "hidden" }}>
 
         <div style={{ padding: "24px 24px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h3 style={{ fontSize: 20, fontWeight: 700, color: "var(--foreground)", margin: 0 }}>Invite Member</h3>
+          <h3 style={{ fontSize: 20, fontWeight: 700, color: "var(--foreground)", margin: 0 }}>{t("teamPage.inviteModalTitle")}</h3>
           <button onClick={onClose} style={{ padding: 6, borderRadius: 8, background: "var(--muted)", border: "none", cursor: "pointer", color: "var(--muted-foreground)" }}><X size={18} /></button>
         </div>
 
         <form onSubmit={handleInvite} style={{ padding: 24 }}>
           <div style={{ marginBottom: 20 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, color: "var(--muted-foreground)", display: "block", marginBottom: 6 }}>Email Address</label>
-            <IOSInput type="email" value={email} onChange={(e: any) => setEmail(e.target.value)} placeholder="colleague@company.com" className="h-[44px]" required />
+            <label style={{ fontSize: 13, fontWeight: 600, color: "var(--muted-foreground)", display: "block", marginBottom: 6 }}>{t("teamPage.emailLabel")}</label>
+            <IOSInput type="email" value={email} onChange={(e: any) => setEmail(e.target.value)} placeholder={t("teamPage.emailPlaceholder")} className="h-[44px]" required />
           </div>
 
           <div style={{ marginBottom: 20 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, color: "var(--muted-foreground)", display: "block", marginBottom: 8 }}>Role</label>
+            <label style={{ fontSize: 13, fontWeight: 600, color: "var(--muted-foreground)", display: "block", marginBottom: 8 }}>{t("teamPage.roleLabel")}</label>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               {(["Manager", "Staff", "Accountant"] as const).map(r => {
                 const c = ROLE_COLORS[r]; const sel = role === r;
@@ -419,7 +426,7 @@ function InviteModal({ onClose, onInvited }: { onClose: () => void; onInvited: (
                     padding: "10px 14px", borderRadius: 12, border: `1.5px solid ${sel ? c.border : "var(--border)"}`,
                     background: sel ? c.bg : "transparent", cursor: "pointer", textAlign: "left",
                   }}>
-                    <p style={{ fontSize: 14, fontWeight: 600, color: sel ? c.text : "var(--foreground)", margin: 0 }}>{r}</p>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: sel ? c.text : "var(--foreground)", margin: 0 }}>{t(`teamPage.roles.${r}`)}</p>
                   </button>
                 );
               })}
@@ -434,7 +441,7 @@ function InviteModal({ onClose, onInvited }: { onClose: () => void; onInvited: (
 
           <IOSButton type="submit" variant="filled" color="blue" disabled={sending}
             className="w-full text-[15px] font-semibold h-[44px] rounded-[14px]">
-            {sending ? <><Loader2 size={16} style={{ marginRight: 6, animation: "spin 1s linear infinite" }} /> Sending…</> : <><Mail size={16} style={{ marginRight: 6 }} /> Send Invitation</>}
+            {sending ? <><Loader2 size={16} style={{ marginRight: 6, animation: "spin 1s linear infinite" }} /> {t("teamPage.sending")}</> : <><Mail size={16} style={{ marginRight: 6 }} /> {t("teamPage.btnSendInvite")}</>}
           </IOSButton>
         </form>
         <style>{`@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}`}</style>

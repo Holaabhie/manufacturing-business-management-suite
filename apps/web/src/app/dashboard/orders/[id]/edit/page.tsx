@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -255,6 +256,8 @@ const shakeKeyframes = {
 // ═══════════════════════════════════════════════════════════════════
 
 export default function EditOrderPage() {
+  const t = useTranslations("orders.edit");
+  const tOrders = useTranslations("orders");
   const params = useParams();
   const router = useRouter();
   const orderId = params.id as string;
@@ -480,20 +483,20 @@ export default function EditOrderPage() {
   // ─── Validation ─────────────────────────────────────────
   const validate = useCallback((): FieldErrors => {
     const errs: FieldErrors = {};
-    if (!formData.product_name.trim()) errs.product_name = "Order name is required";
-    if (!formData.client_id) errs.client_id = "Customer is required";
-    if (!formData.delivery_date) errs.delivery_date = "Order date is required";
-    if (parseNumericValue(formData.quantity) <= 0) errs.quantity = "Quantity must be greater than 0";
-    if (parseNumericValue(formData.rate) < 0) errs.rate = "Unit price cannot be negative";
+    if (!formData.product_name.trim()) errs.product_name = t("validation.orderNameReq");
+    if (!formData.client_id) errs.client_id = t("validation.customerReq");
+    if (!formData.delivery_date) errs.delivery_date = t("validation.orderDateReq");
+    if (parseNumericValue(formData.quantity) <= 0) errs.quantity = t("validation.quantityGt0");
+    if (parseNumericValue(formData.rate) < 0) errs.rate = t("validation.unitPriceNonNeg");
 
     if (formData.materials.length === 0) {
-      errs.materials = "At least 1 material is required";
+      errs.materials = t("validation.atLeast1Material");
     } else {
       formData.materials.forEach((m, i) => {
         if (!m.itemName.trim() && !m.inventoryItemId)
-          errs[`materials.${i}.itemName`] = "Select a material";
+          errs[`materials.${i}.itemName`] = t("validation.selectMaterial");
         if (m.quantityRequired <= 0)
-          errs[`materials.${i}.quantityRequired`] = "Quantity must be > 0";
+          errs[`materials.${i}.quantityRequired`] = t("validation.quantityGt0Short");
       });
     }
 
@@ -530,7 +533,7 @@ export default function EditOrderPage() {
           router.push("/dashboard/orders");
         },
         onError: (err: Error) => {
-          toast.error(err.message || "Failed to update order");
+          toast.error(err.message || t("validation.failedUpdateOrder"));
         },
         onSettled: () => setSaving(false),
       },
@@ -590,16 +593,16 @@ export default function EditOrderPage() {
             <AlertCircle className="h-8 w-8 text-destructive" />
           </div>
           <h2 className="text-xl font-bold mb-2 text-foreground">
-            Order Not Found
+            {t("notFound")}
           </h2>
           <p className="text-sm mb-6 text-muted-foreground">
-            This order doesn&apos;t exist or you don&apos;t have access.
+            {t("notFoundDesc")}
           </p>
           <button
             onClick={() => router.push("/dashboard/orders")}
             className="h-10 px-6 rounded-[10px] text-sm font-semibold text-white cursor-pointer border-none bg-primary hover:bg-primary/90 transition-colors"
           >
-            Back to Orders
+            {t("backToOrders")}
           </button>
         </div>
       </div>
@@ -614,16 +617,16 @@ export default function EditOrderPage() {
             <AlertCircle className="h-8 w-8 text-destructive" />
           </div>
           <h2 className="text-xl font-bold mb-2 text-foreground">
-            Something Went Wrong
+            {t("somethingWentWrong")}
           </h2>
           <p className="text-sm mb-6 text-muted-foreground">
-            Failed to load order. Please try again.
+            {t("failedToLoad")}
           </p>
           <button
             onClick={() => window.location.reload()}
             className="h-10 px-6 rounded-[10px] text-sm font-semibold text-white cursor-pointer border-none bg-primary hover:bg-primary/90 transition-colors"
           >
-            Retry
+            {t("retry")}
           </button>
         </div>
       </div>
@@ -639,10 +642,10 @@ export default function EditOrderPage() {
           {/* ─── Page Title ─── */}
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-foreground">
-              Edit Order
+              {t("title")}
             </h1>
             <p className="text-sm mt-1 text-muted-foreground">
-              Update order details, materials, and pricing
+              {t("subtitle")}
             </p>
           </div>
 
@@ -658,15 +661,15 @@ export default function EditOrderPage() {
                 >
                   <div className="flex items-center gap-4 text-sm">
                     <span className="text-muted-foreground">
-                      Total{" "}
+                      {t("total")}{" "}
                       <strong className="text-foreground">{"₹"}{fmt(calculatedTotal)}</strong>
                     </span>
                     <span className="text-muted-foreground">
-                      Cost{" "}
+                      {t("cost")}{" "}
                       <strong className="text-foreground">{"₹"}{fmt(totalCost)}</strong>
                     </span>
                     <span className="text-muted-foreground">
-                      Profit{" "}
+                      {t("profit")}{" "}
                       <strong className={profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}>
                         {"₹"}{fmt(profit)}
                       </strong>
@@ -704,9 +707,9 @@ export default function EditOrderPage() {
               </div>
 
               {/* ─── Section 1: Order Information ─── */}
-              <SectionCard icon={ClipboardList} label="Order Information" index={0}>
+              <SectionCard icon={ClipboardList} label={t("orderInfo")} index={0}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Field label="Order No." className="md:col-span-1">
+                  <Field label={t("orderNo")} className="md:col-span-1">
                     <div className="relative">
                       <Hash
                         className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
@@ -720,7 +723,7 @@ export default function EditOrderPage() {
                   </Field>
 
                   <Field
-                    label="Order Name"
+                    label={t("orderName")}
                     required
                     error={errors.product_name}
                   >
@@ -735,7 +738,7 @@ export default function EditOrderPage() {
                         <Input
                           value={formData.product_name}
                           onChange={(e) => updateField("product_name", e.target.value)}
-                          placeholder="Product name..."
+                          placeholder={t("productNamePlaceholder")}
                           className={cn(inputStyles, "pl-9", errors.product_name && errorInputStyles)}
                         />
                       </div>
@@ -743,7 +746,7 @@ export default function EditOrderPage() {
                   </Field>
 
                   <Field
-                    label="Customer"
+                    label={t("customer")}
                     required
                     error={errors.client_id}
                   >
@@ -762,7 +765,7 @@ export default function EditOrderPage() {
                           <SelectTrigger
                             className={cn(inputStyles, "pl-9", errors.client_id && errorInputStyles)}
                           >
-                            <SelectValue placeholder="Select customer..." />
+                            <SelectValue placeholder={t("selectCustomer")} />
                           </SelectTrigger>
                           <SelectContent className="rounded-[10px] max-h-[220px] overflow-y-auto scrollbar-thin">
                             {clients.map((c: any) => (
@@ -777,7 +780,7 @@ export default function EditOrderPage() {
                   </Field>
 
                   <Field
-                    label="Order Date"
+                    label={t("orderDate")}
                     required
                     error={errors.delivery_date}
                   >
@@ -802,10 +805,10 @@ export default function EditOrderPage() {
               </SectionCard>
 
               {/* ─── Section 2: Production Details ─── */}
-              <SectionCard icon={Settings2} label="Production Details" index={1}>
+              <SectionCard icon={Settings2} label={t("productionDetails")} index={1}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Field
-                    label="Target Quantity"
+                    label={t("targetQuantity")}
                     required
                     error={errors.quantity}
                   >
@@ -836,7 +839,7 @@ export default function EditOrderPage() {
                   </Field>
 
                   <Field
-                    label="Unit Price"
+                    label={t("unitPrice")}
                     required
                     error={errors.rate}
                   >
@@ -862,7 +865,7 @@ export default function EditOrderPage() {
                     </motion.div>
                   </Field>
 
-                  <Field label="Tax (%)">
+                  <Field label={t("taxPercent")}>
                     <div className="flex">
                       <NumericInput
                         value={formData.tax}
@@ -880,7 +883,7 @@ export default function EditOrderPage() {
                     </div>
                   </Field>
 
-                  <Field label="Total Amount">
+                  <Field label={t("totalAmount")}>
                     <div
                       className="h-[42px] px-4 rounded-[10px] flex items-center text-sm font-semibold bg-primary/10 border border-primary/20 text-primary"
                     >
@@ -891,7 +894,7 @@ export default function EditOrderPage() {
               </SectionCard>
 
               {/* ─── Section 3: Materials ─── */}
-              <SectionCard icon={Layers} label="Materials" index={2}>
+              <SectionCard icon={Layers} label={t("materials")} index={2}>
                 {errors.materials && (
                   <p className="text-xs mb-3 flex items-center gap-1 text-destructive">
                     <AlertCircle className="h-3 w-3" />
@@ -907,11 +910,11 @@ export default function EditOrderPage() {
                       gridTemplateColumns: "2fr 1fr 0.7fr 1fr 1fr 40px",
                     }}
                   >
-                    <span>Material</span>
-                    <span>Required</span>
-                    <span>Unit</span>
-                    <span>Rate (INR)</span>
-                    <span>Amount (INR)</span>
+                    <span>{t("colMaterial")}</span>
+                    <span>{t("colRequired")}</span>
+                    <span>{t("colUnit")}</span>
+                    <span>{t("colRate")}</span>
+                    <span>{t("colAmount")}</span>
                     <span />
                   </div>
                 )}
@@ -951,7 +954,7 @@ export default function EditOrderPage() {
                                   nameError && errorInputStyles,
                                 )}
                               >
-                                <SelectValue placeholder="Select..." />
+                                <SelectValue placeholder={t("selectMaterial")} />
                               </SelectTrigger>
                               <SelectContent className="rounded-[10px] max-h-[220px] overflow-y-auto scrollbar-thin">
                                 {inventoryItems.map((item: any) => (
@@ -1023,7 +1026,7 @@ export default function EditOrderPage() {
                         >
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold uppercase text-muted-foreground">
-                              Material {idx + 1}
+                              {t("materialNum", { num: idx + 1 })}
                             </span>
                             <button
                               type="button"
@@ -1038,7 +1041,7 @@ export default function EditOrderPage() {
                             onValueChange={(v) => handleMaterialSelect(idx, v)}
                           >
                             <SelectTrigger className={cn("h-12", inputStyles)}>
-                              <SelectValue placeholder="Select material..." />
+                              <SelectValue placeholder={t("selectMaterial")} />
                             </SelectTrigger>
                             <SelectContent className="rounded-[10px] max-h-[220px] overflow-y-auto scrollbar-thin">
                               {inventoryItems.map((item: any) => (
@@ -1050,7 +1053,7 @@ export default function EditOrderPage() {
                           </Select>
                           <div className="grid grid-cols-3 gap-2">
                             <div className="space-y-1">
-                              <span className="text-[10px] font-bold uppercase text-muted-foreground">Qty</span>
+                              <span className="text-[10px] font-bold uppercase text-muted-foreground">{t("qty")}</span>
                               <NumericInput
                                 value={String(mat.quantityRequired || "")}
                                 onValueChange={(v) =>
@@ -1063,7 +1066,7 @@ export default function EditOrderPage() {
                               />
                             </div>
                             <div className="space-y-1">
-                              <span className="text-[10px] font-bold uppercase text-muted-foreground">Rate</span>
+                              <span className="text-[10px] font-bold uppercase text-muted-foreground">{t("rate")}</span>
                               <NumericInput
                                 value={String(mat.purchase_cost_per_unit || "")}
                                 onValueChange={(v) =>
@@ -1076,7 +1079,7 @@ export default function EditOrderPage() {
                               />
                             </div>
                             <div className="space-y-1">
-                              <span className="text-[10px] font-bold uppercase text-muted-foreground">Amount</span>
+                              <span className="text-[10px] font-bold uppercase text-muted-foreground">{t("amount")}</span>
                               <div
                                 className="h-12 rounded-[10px] flex items-center justify-center text-sm font-medium bg-muted text-muted-foreground"
                               >
@@ -1097,14 +1100,14 @@ export default function EditOrderPage() {
                   className="w-full mt-3 h-11 rounded-[12px] flex items-center justify-center gap-2 text-sm font-semibold transition-colors cursor-pointer border-2 border-dashed border-primary/30 bg-transparent text-primary hover:bg-primary/5"
                 >
                   <Plus className="h-4 w-4" />
-                  Add Material
+                  {t("addMaterial")}
                 </button>
 
                 {/* Total Material Cost */}
                 {formData.materials.length > 0 && (
                   <div className="flex justify-end mt-4 pt-3 border-t border-border">
                     <span className="text-sm text-muted-foreground">
-                      Total Material Cost:{" "}
+                      {t("totalMaterialCost")}:{" "}
                     </span>
                     <span className="text-lg font-semibold ml-2 text-primary">
                       {"₹"}{fmt(totalMaterialCost)}
@@ -1114,16 +1117,16 @@ export default function EditOrderPage() {
               </SectionCard>
 
               {/* ─── Section 4: Cost & Pricing ─── */}
-              <SectionCard icon={Calculator} label="Cost & Pricing" index={3}>
+              <SectionCard icon={Calculator} label={t("costPricing")} index={3}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <Field label="Material Cost">
+                  <Field label={t("materialCost")}>
                     <div className={cn(readonlyInputStyles, "px-3 flex items-center")}>
                       <span className="text-sm mr-1 text-muted-foreground">{"₹"}</span>
                       {fmt(totalMaterialCost)}
                     </div>
                   </Field>
 
-                  <Field label="Labour Cost">
+                  <Field label={t("labourCost")}>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none text-muted-foreground">{"₹"}</span>
                       <NumericInput
@@ -1137,7 +1140,7 @@ export default function EditOrderPage() {
                     </div>
                   </Field>
 
-                  <Field label="Overhead Cost">
+                  <Field label={t("overheadCost")}>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none text-muted-foreground">{"₹"}</span>
                       <NumericInput
@@ -1151,7 +1154,7 @@ export default function EditOrderPage() {
                     </div>
                   </Field>
 
-                  <Field label="Other Cost">
+                  <Field label={t("otherCost")}>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none text-muted-foreground">{"₹"}</span>
                       <NumericInput
@@ -1171,7 +1174,7 @@ export default function EditOrderPage() {
                   className="flex justify-end mt-4 pt-3 border-t border-border"
                 >
                   <span className="text-sm text-muted-foreground">
-                    Total Cost:
+                    {t("totalCostLabel")}
                   </span>
                   <span className="text-lg font-bold ml-2 text-foreground">
                     {"₹"}{fmt(totalCost)}
@@ -1192,7 +1195,7 @@ export default function EditOrderPage() {
                     onClick={handleCancel}
                     className="h-10 px-5 rounded-[10px] text-sm font-semibold transition-colors cursor-pointer border border-border bg-transparent text-muted-foreground hover:bg-muted"
                   >
-                    Cancel
+                    {tOrders("dialog.cancel")}
                   </button>
                   <button
                     type="button"
@@ -1203,12 +1206,12 @@ export default function EditOrderPage() {
                     {saving ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Saving...
+                        {t("saving")}
                       </>
                     ) : (
                       <>
                         <Save className="h-4 w-4" />
-                        Push Updates
+                        {t("pushUpdates")}
                       </>
                     )}
                   </button>
@@ -1257,16 +1260,16 @@ export default function EditOrderPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[min(380px,90vw)] rounded-2xl p-6 bg-card border border-border shadow-xl"
+              className="fixed inset-0 m-auto h-fit z-50 w-[min(380px,calc(100vw-32px))] rounded-2xl p-6 bg-card border border-border shadow-xl"
             >
               <div className="w-10 h-10 rounded-full flex items-center justify-center mb-4 bg-destructive/10">
                 <AlertCircle className="h-5 w-5 text-destructive" />
               </div>
               <h3 className="text-base font-bold mb-2 text-foreground">
-                Discard changes?
+                {tOrders("dialog.discardConfirmTitle")}
               </h3>
               <p className="text-sm mb-6 leading-relaxed text-muted-foreground">
-                You have unsaved changes. Are you sure you want to leave? Your edits will be lost.
+                {tOrders("dialog.discardConfirmDesc")}
               </p>
               <div className="flex justify-end gap-3">
                 <button
@@ -1274,7 +1277,7 @@ export default function EditOrderPage() {
                   onClick={() => setShowDiscardModal(false)}
                   className="h-10 px-4 rounded-[10px] text-sm font-semibold cursor-pointer bg-muted border border-border text-muted-foreground hover:bg-muted/80 transition-colors"
                 >
-                  Continue Editing
+                  {tOrders("dialog.continueEditing")}
                 </button>
                 <button
                   type="button"
@@ -1284,7 +1287,7 @@ export default function EditOrderPage() {
                   }}
                   className="h-10 px-4 rounded-[10px] text-sm font-semibold text-white cursor-pointer border-none bg-destructive hover:bg-destructive/90 transition-colors"
                 >
-                  Discard Changes
+                  {tOrders("dialog.discardChanges")}
                 </button>
               </div>
             </motion.div>
@@ -1300,15 +1303,7 @@ export default function EditOrderPage() {
 // ═══════════════════════════════════════════════════════════════════
 
 function SidebarContent({
-  calculatedTotal,
-  totalMaterialCost,
-  totalCost,
-  profit,
-  margin,
-  totalPulse,
-  fmt,
-  saving,
-  onSubmit,
+  calculatedTotal, totalMaterialCost, totalCost, profit, margin, totalPulse, fmt, saving, onSubmit
 }: {
   calculatedTotal: number;
   totalMaterialCost: number;
@@ -1320,6 +1315,7 @@ function SidebarContent({
   saving: boolean;
   onSubmit: () => void;
 }) {
+  const t = useTranslations("orders.edit");
   return (
     <div
       className="rounded-[20px] overflow-hidden bg-card/90 backdrop-blur-md border border-border shadow-[0_8px_30px_rgba(0,0,0,0.06)]"
@@ -1327,7 +1323,7 @@ function SidebarContent({
       {/* Calculated Total */}
       <div className="p-5">
         <p className="text-[10px] font-bold uppercase mb-1 text-muted-foreground tracking-widest">
-          Calculated Total
+          {t("calculatedTotal")}
         </p>
         <motion.p
           animate={totalPulse ? { scale: [1, 1.02, 1] } : {}}
@@ -1337,26 +1333,26 @@ function SidebarContent({
           {"₹"}{fmt(calculatedTotal)}
         </motion.p>
         <p className="text-xs text-muted-foreground">
-          (All inclusive)
+          {t("allInclusive")}
         </p>
       </div>
 
       {/* Cost & Profit Summary */}
       <div className="px-5 pb-5 space-y-2.5 border-t border-border pt-4">
         <div className="flex justify-between text-[13px]">
-          <span className="text-muted-foreground">Material Cost</span>
+          <span className="text-muted-foreground">{t("materialCost")}</span>
           <span className="font-medium tabular-nums text-foreground">
             {"₹"}{fmt(totalMaterialCost)}
           </span>
         </div>
         <div className="flex justify-between text-[13px]">
-          <span className="text-muted-foreground">Total Cost</span>
+          <span className="text-muted-foreground">{t("totalCost")}</span>
           <span className="font-medium tabular-nums text-foreground">
             {"₹"}{fmt(totalCost)}
           </span>
         </div>
         <div className="flex justify-between text-[13px] pt-2 border-t border-border">
-          <span className="text-muted-foreground">Profit</span>
+          <span className="text-muted-foreground">{t("profit")}</span>
           <span
             className={cn(
               "font-semibold tabular-nums",
@@ -1367,7 +1363,7 @@ function SidebarContent({
           </span>
         </div>
         <div className="flex justify-between text-[13px]">
-          <span className="text-muted-foreground">Margin</span>
+          <span className="text-muted-foreground">{t("margin")}</span>
           <span
             className={cn(
               "font-semibold tabular-nums",
@@ -1390,12 +1386,12 @@ function SidebarContent({
           {saving ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Saving...
+              {t("saving")}
             </>
           ) : (
             <>
               <Save className="h-4 w-4" />
-              Push Updates
+              {t("pushUpdates")}
             </>
           )}
         </button>

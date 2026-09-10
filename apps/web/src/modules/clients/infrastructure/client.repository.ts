@@ -129,9 +129,21 @@ export class MongoClientRepository implements IClientRepository {
     async deleteProduct(productId: string, userId: string): Promise<boolean> {
         try {
             const c = await this.productCol();
-            const result = await c.deleteOne({ _id: new ObjectId(productId), userId });
+            const filter: Record<string, any> = { userId };
+            if (ObjectId.isValid(productId)) {
+                filter.$or = [{ _id: new ObjectId(productId) }, { _id: productId }];
+            } else {
+                filter._id = productId;
+            }
+            const result = await c.deleteOne(filter);
             if (result.deletedCount === 1) {
-                await (await this.materialCol()).deleteMany({ productId, userId });
+                const matFilter: Record<string, any> = { userId };
+                if (ObjectId.isValid(productId)) {
+                    matFilter.$or = [{ productId }, { productId: new ObjectId(productId).toString() }];
+                } else {
+                    matFilter.productId = productId;
+                }
+                await (await this.materialCol()).deleteMany(matFilter);
             }
             return result.deletedCount === 1;
         } catch { return false; }
@@ -179,7 +191,13 @@ export class MongoClientRepository implements IClientRepository {
     async deleteMaterial(materialId: string, userId: string): Promise<boolean> {
         try {
             const c = await this.materialCol();
-            const result = await c.deleteOne({ _id: new ObjectId(materialId), userId });
+            const filter: Record<string, any> = { userId };
+            if (ObjectId.isValid(materialId)) {
+                filter.$or = [{ _id: new ObjectId(materialId) }, { _id: materialId }];
+            } else {
+                filter._id = materialId;
+            }
+            const result = await c.deleteOne(filter);
             return result.deletedCount === 1;
         } catch { return false; }
     }

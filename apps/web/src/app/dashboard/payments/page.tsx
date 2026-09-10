@@ -6,6 +6,7 @@ import { useCachedPage } from "@/hooks/useCachedPage";
 import { useLongPress } from "@/hooks/useLongPress";
 import { MobileSheet } from "@/components/ui/MobileSheet";
 import { useTranslations } from "next-intl";
+import { useAppLocale } from "@/components/LocaleProvider";
 import { AccessDenied } from "@/components/AccessDenied";
 import {
   Search,
@@ -120,6 +121,9 @@ function PaymentHistoryCard({
   payment: Payment;
   onLongPress: (p: Payment) => void;
 }) {
+  const t = useTranslations("payments");
+  const { locale } = useAppLocale();
+  const dateLocale = locale === 'hi' ? 'hi-IN' : locale === 'gu' ? 'gu-IN' : locale === 'mr' ? 'mr-IN' : 'en-IN';
   const color = METHOD_COLORS[payment.paymentMethod] || '#6366f1';
   const MethodIcon = METHOD_ICONS[payment.paymentMethod] || Banknote;
 
@@ -138,10 +142,10 @@ function PaymentHistoryCard({
         {/* Row 1: Client + amount */}
         <div className="flex items-start justify-between gap-2">
           <span className="text-[15px] font-semibold text-[var(--foreground)] truncate flex-1">
-            {payment.client?.name || 'Unknown'}
+            {payment.client?.name || t("statuses.unknownClient")}
           </span>
           <span className="text-[15px] font-bold text-emerald-500 dark:text-emerald-400 tabular-nums whitespace-nowrap">
-            +{"\u20B9"}{Number(payment.amount ?? 0).toLocaleString('en-IN')}
+            +{"\u20B9"}{Number(payment.amount ?? 0).toLocaleString(dateLocale)}
           </span>
         </div>
         {/* Row 2: Method badge + Completed badge */}
@@ -154,17 +158,17 @@ function PaymentHistoryCard({
             {payment.paymentMethod}
           </span>
           <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border border-emerald-500/20">
-            Completed
+            {t("statuses.completed")}
           </span>
         </div>
         {/* Row 3: Product/ref · date */}
         <div className="flex items-center justify-between gap-2 text-[12px] text-[var(--muted-foreground)]">
           <span className="truncate">
-            {payment.order?.productName || payment.referenceId || 'General'}
+            {payment.order?.productName || payment.referenceId || t("statuses.general")}
           </span>
           {payment.paymentDate && (
             <span className="whitespace-nowrap">
-              {new Date(payment.paymentDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+              {new Date(payment.paymentDate).toLocaleDateString(dateLocale, { day: '2-digit', month: 'short', year: 'numeric' })}
             </span>
           )}
         </div>
@@ -176,7 +180,7 @@ function PaymentHistoryCard({
 // ─── Loading Skeleton ───────────────────────────────────
 function PaymentsSkeleton() {
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
+    <div className="w-full min-w-0 overflow-x-hidden space-y-8 animate-in fade-in duration-300">
       {/* Header skeleton */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -225,7 +229,10 @@ function PaymentsSkeleton() {
 }
 
 export default function PaymentsPage() {
+  const t = useTranslations("payments");
   const tCommon = useTranslations("common");
+  const { locale } = useAppLocale();
+  const dateLocale = locale === 'hi' ? 'hi-IN' : locale === 'gu' ? 'gu-IN' : locale === 'mr' ? 'mr-IN' : 'en-IN';
   // ─── React Query: cached data ────────────────────────
   const { data: clients = [], isLoading: clientsLoading } = useClients();
   const { data: orders = [], isLoading: ordersLoading } = useOrders();
@@ -413,13 +420,13 @@ export default function PaymentsPage() {
     const amountNum = parseFloat(formData.amount);
 
     if (!formData.clientId || !amountNum || amountNum <= 0) {
-      return toast.error("Please select a client and enter a valid amount");
+      return toast.error(t("toasts.selectClientAmount"));
     }
 
     // Validation for order-specific payment
     if (formData.orderId && formData.orderId !== "none") {
       const selectedOrder = orders.find((o: any) => o.id === formData.orderId);
-      if (!selectedOrder) return toast.error("Selected order not found");
+      if (!selectedOrder) return toast.error(t("toasts.orderNotFound"));
 
       const paidForOrder = payments
         .filter((p: any) => p.orderId === formData.orderId)
@@ -427,7 +434,7 @@ export default function PaymentsPage() {
       const remaining = Number(selectedOrder.totalAmount) - paidForOrder;
 
       if (amountNum > remaining + 0.01) {
-        return toast.error(`Amount exceeds remaining balance for this order (\u20B9${remaining.toLocaleString()})`);
+        return toast.error(t("toasts.amountExceedsRemaining", { amount: remaining.toLocaleString(dateLocale) }));
       }
     }
 
@@ -487,14 +494,14 @@ export default function PaymentsPage() {
   const isMutating = createPayment.isPending || deletePayment.isPending;
 
   return (
-    <div className="space-y-8">
+    <div className="w-full min-w-0 overflow-x-hidden space-y-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Payments & Ledger</h1>
-          <p className="text-zinc-500">Manage client settlements, track outstanding balances, and view transaction history.</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+          <p className="text-zinc-500">{t("subtitle")}</p>
         </div>
         <IOSButton variant="filled" className="px-5" onClick={() => setIsDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" /> New Payment Entry
+          <Plus className="mr-2 h-4 w-4" /> {t("btnNewPayment")}
         </IOSButton>
       </div>
 
@@ -537,10 +544,10 @@ export default function PaymentsPage() {
                     </div>
                     <div>
                       <h2 id="record-payment-title" className="text-[17px] font-semibold text-[#0F172A] dark:text-white leading-tight">
-                        Record Payment
+                        {t("modal.title")}
                       </h2>
                       <p className="text-[13px] text-[#64748B] dark:text-slate-400 mt-0.5">
-                        Track client payments and outstanding balances
+                        {t("modal.subtitle")}
                       </p>
                     </div>
                   </div>
@@ -548,7 +555,7 @@ export default function PaymentsPage() {
                   {/* Outstanding badge — show only when order is selected */}
                   {selectedOrder && (
                     <div className="flex flex-col items-end gap-0.5 mr-8 hidden sm:flex">
-                      <span className="text-[11px] font-medium text-[#64748B] dark:text-slate-400 uppercase tracking-wide">Outstanding</span>
+                      <span className="text-[11px] font-medium text-[#64748B] dark:text-slate-400 uppercase tracking-wide">{t("modal.lblOutstanding")}</span>
                       <span className="text-[18px] font-bold text-[#0F172A] dark:text-white tabular-nums">
                         {"\u20B9"}{formatIndianNumber(outstandingAmount)}
                       </span>
@@ -570,7 +577,7 @@ export default function PaymentsPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* Client field */}
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-[12px] font-medium text-[#64748B] dark:text-slate-400 uppercase tracking-wide">Client</label>
+                      <label className="text-[12px] font-medium text-[#64748B] dark:text-slate-400 uppercase tracking-wide">{t("modal.lblClient")}</label>
                       <div className="relative">
                         <select
                           ref={firstInputRef}
@@ -579,7 +586,7 @@ export default function PaymentsPage() {
                           className="w-full h-[46px] rounded-[12px] appearance-none border border-[rgba(15,23,42,0.08)] dark:border-white/[0.08] bg-[rgba(255,255,255,0.72)] dark:bg-white/[0.04] text-[15px] text-[#0F172A] dark:text-white outline-none focus:border-[#2563EB] focus:ring-0 transition-colors pl-4 pr-10 cursor-pointer"
                           required
                         >
-                          <option value="" disabled>Select Client</option>
+                          <option value="" disabled>{t("modal.selectClientPlaceholder")}</option>
                           {clients.map((c: any) => (
                             <option key={c.id} value={c.id}>{c.name}</option>
                           ))}
@@ -590,7 +597,7 @@ export default function PaymentsPage() {
 
                     {/* Linked Order field */}
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-[12px] font-medium text-[#64748B] dark:text-slate-400 uppercase tracking-wide">Linked Order</label>
+                      <label className="text-[12px] font-medium text-[#64748B] dark:text-slate-400 uppercase tracking-wide">{t("modal.lblLinkedOrder")}</label>
                       <div className="relative">
                         <select
                           value={formData.orderId || "none"}
@@ -611,13 +618,13 @@ export default function PaymentsPage() {
                           disabled={!formData.clientId}
                           className="w-full h-[46px] rounded-[12px] appearance-none border border-[rgba(15,23,42,0.08)] dark:border-white/[0.08] bg-[rgba(255,255,255,0.72)] dark:bg-white/[0.04] text-[15px] text-[#0F172A] dark:text-white outline-none focus:border-[#2563EB] focus:ring-0 transition-colors pl-4 pr-10 cursor-pointer disabled:opacity-40"
                         >
-                          <option value="none">General Payment</option>
+                          <option value="none">{t("statuses.generalPayment")}</option>
                           {formData.clientId && getClientOrders(formData.clientId).map((o: any) => {
                             const orderPaid = payments.filter((p: any) => p.orderId === o.id).reduce((acc: number, p: any) => acc + Number(p.amount), 0);
                             const orderDue = Number(o.totalAmount) - orderPaid;
                             return (
                               <option key={o.id} value={o.id}>
-                                {o.productName} (Due: {"\u20B9"}{formatIndianNumber(orderDue)})
+                                {o.productName} ({t("modal.duePrefix")} {"\u20B9"}{formatIndianNumber(orderDue)})
                               </option>
                             );
                           })}
@@ -637,7 +644,7 @@ export default function PaymentsPage() {
 
                     {/* Amount field — visually strong */}
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-[12px] font-medium text-[#64748B] dark:text-slate-400 uppercase tracking-wide">Amount</label>
+                      <label className="text-[12px] font-medium text-[#64748B] dark:text-slate-400 uppercase tracking-wide">{t("modal.lblAmount")}</label>
                       <div className="relative">
                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[20px] font-bold text-[#0F172A] dark:text-white select-none pointer-events-none">{"\u20B9"}</span>
                         <NumericInput
@@ -654,7 +661,7 @@ export default function PaymentsPage() {
 
                     {/* Payment Mode — pill selector */}
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-[12px] font-medium text-[#64748B] dark:text-slate-400 uppercase tracking-wide">Payment Mode</label>
+                      <label className="text-[12px] font-medium text-[#64748B] dark:text-slate-400 uppercase tracking-wide">{t("modal.lblPaymentMode")}</label>
                       <div className="grid grid-cols-4 gap-2 h-[56px]">
                         {(['Cash', 'UPI', 'Bank', 'Cheque'] as const).map(mode => (
                           <button
@@ -676,7 +683,7 @@ export default function PaymentsPage() {
 
                     {/* Date field */}
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-[12px] font-medium text-[#64748B] dark:text-slate-400 uppercase tracking-wide">Payment Date</label>
+                      <label className="text-[12px] font-medium text-[#64748B] dark:text-slate-400 uppercase tracking-wide">{t("modal.lblPaymentDate")}</label>
                       <input
                         type="date"
                         value={formData.paymentDate}
@@ -688,10 +695,10 @@ export default function PaymentsPage() {
 
                     {/* Reference field */}
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-[12px] font-medium text-[#64748B] dark:text-slate-400 uppercase tracking-wide">Reference / UTR</label>
+                      <label className="text-[12px] font-medium text-[#64748B] dark:text-slate-400 uppercase tracking-wide">{t("modal.lblReference")}</label>
                       <input
                         type="text"
-                        placeholder="TXN..."
+                        placeholder={t("modal.placeholderReference")}
                         value={formData.referenceId}
                         onChange={(e) => setFormData({ ...formData, referenceId: e.target.value })}
                         className="w-full h-[46px] rounded-[12px] border border-[rgba(15,23,42,0.08)] dark:border-white/[0.08] bg-[rgba(255,255,255,0.72)] dark:bg-white/[0.04] px-4 text-[15px] text-[#0F172A] dark:text-white placeholder:text-[#94a3b8] dark:placeholder:text-slate-500 outline-none focus:border-[#2563EB] focus:ring-0 transition-colors"
@@ -706,9 +713,9 @@ export default function PaymentsPage() {
                 {/* ── SECTION 3: Notes ── */}
                 <div className="px-6 py-4">
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[12px] font-medium text-[#64748B] dark:text-slate-400 uppercase tracking-wide">Payment Notes</label>
+                    <label className="text-[12px] font-medium text-[#64748B] dark:text-slate-400 uppercase tracking-wide">{t("modal.lblPaymentNotes")}</label>
                     <textarea
-                      placeholder="Note about the payment..."
+                      placeholder={t("modal.placeholderPaymentNotes")}
                       value={formData.notes}
                       onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                       className="w-full rounded-[12px] border border-[rgba(15,23,42,0.08)] dark:border-white/[0.08] bg-[rgba(255,255,255,0.72)] dark:bg-white/[0.04] px-4 py-3 text-[14px] text-[#0F172A] dark:text-white placeholder:text-[#94a3b8] dark:placeholder:text-slate-500 resize-none min-h-[80px] focus:border-[#2563EB] outline-none transition-colors"
@@ -720,27 +727,27 @@ export default function PaymentsPage() {
                 {selectedClient && selectedOrder && (
                   <div className="mx-6 mb-6">
                     <div className="rounded-[16px] bg-[rgba(37,99,235,0.04)] dark:bg-blue-950/20 border border-[rgba(37,99,235,0.12)] dark:border-blue-800/30 p-4">
-                      <p className="text-[11px] font-semibold text-[#64748B] dark:text-slate-400 uppercase tracking-widest mb-3">Payment Summary</p>
+                      <p className="text-[11px] font-semibold text-[#64748B] dark:text-slate-400 uppercase tracking-widest mb-3">{t("modal.summaryTitle")}</p>
 
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
                         <div>
-                          <p className="text-[11px] text-[#64748B] dark:text-slate-500 mb-0.5">Client</p>
+                          <p className="text-[11px] text-[#64748B] dark:text-slate-500 mb-0.5">{t("modal.summaryClient")}</p>
                           <p className="text-[13px] font-medium text-[#0F172A] dark:text-white">{clientName}</p>
                         </div>
                         <div>
-                          <p className="text-[11px] text-[#64748B] dark:text-slate-500 mb-0.5">Order</p>
+                          <p className="text-[11px] text-[#64748B] dark:text-slate-500 mb-0.5">{t("modal.summaryOrder")}</p>
                           <p className="text-[13px] font-medium text-[#0F172A] dark:text-white">{orderName}</p>
                         </div>
                         <div>
-                          <p className="text-[11px] text-[#64748B] dark:text-slate-500 mb-0.5">Outstanding</p>
+                          <p className="text-[11px] text-[#64748B] dark:text-slate-500 mb-0.5">{t("modal.summaryOutstanding")}</p>
                           <p className="text-[13px] font-medium text-[#0F172A] dark:text-white tabular-nums">{"\u20B9"}{formatIndianNumber(outstandingAmount)}</p>
                         </div>
                         <div>
-                          <p className="text-[11px] text-[#64748B] dark:text-slate-500 mb-0.5">Recording</p>
+                          <p className="text-[11px] text-[#64748B] dark:text-slate-500 mb-0.5">{t("modal.summaryRecording")}</p>
                           <p className="text-[13px] font-bold text-[#2563EB] dark:text-blue-400 tabular-nums">{"\u20B9"}{formatIndianNumber(Number(enteredAmount) || 0)}</p>
                         </div>
                         <div>
-                          <p className="text-[11px] text-[#64748B] dark:text-slate-500 mb-0.5">Remaining</p>
+                          <p className="text-[11px] text-[#64748B] dark:text-slate-500 mb-0.5">{t("modal.summaryRemaining")}</p>
                           <p className={cn(
                             "text-[13px] font-bold tabular-nums",
                             remaining === 0
@@ -750,7 +757,7 @@ export default function PaymentsPage() {
                               : 'text-red-600 dark:text-red-400'
                           )}>
                             {"\u20B9"}{formatIndianNumber(Math.abs(remaining))}
-                            {remaining < 0 && ' over'}
+                            {remaining < 0 && ` ${t("modal.lblOver")}`}
                           </p>
                         </div>
                       </div>
@@ -768,7 +775,7 @@ export default function PaymentsPage() {
                     onClick={handleModalClose}
                     className="px-5 py-2.5 rounded-[10px] text-[14px] font-medium text-[#64748B] dark:text-slate-400 hover:bg-[rgba(15,23,42,0.04)] dark:hover:bg-white/[0.06] transition-colors"
                   >
-                    Cancel
+                    {t("modal.btnCancel")}
                   </button>
 
                   <button
@@ -785,7 +792,7 @@ export default function PaymentsPage() {
                         <polyline points="20 6 9 17 4 12"/>
                       </svg>
                     )}
-                    {createPayment.isPending ? 'Recording\u2026' : 'Record Payment'}
+                    {createPayment.isPending ? t("modal.btnRecording") : t("modal.btnRecord")}
                   </button>
                 </div>
               </div>
@@ -799,7 +806,7 @@ export default function PaymentsPage() {
         <div className="kpi-panel__glow"></div>
         <div className="kpi-grid !grid-cols-1 md:!grid-cols-3">
           <StatWidget
-            label="Total Collected"
+            label={t("kpi.totalCollected")}
             value={totalReceived}
             change={8}
             icon={CheckCircle2}
@@ -808,7 +815,7 @@ export default function PaymentsPage() {
             delay={0}
           />
           <StatWidget
-            label="Outstanding Arrears"
+            label={t("kpi.outstandingArrears")}
             value={totalOutstanding}
             change={0}
             icon={Clock}
@@ -817,7 +824,7 @@ export default function PaymentsPage() {
             delay={1}
           />
           <StatWidget
-            label="Recovery Efficiency"
+            label={t("kpi.recoveryEfficiency")}
             value={totalRevenue > 0 ? Math.round((totalReceived / totalRevenue) * 100) : 100}
             change={5}
             icon={TrendingUp}
@@ -838,7 +845,7 @@ export default function PaymentsPage() {
               )}
               onClick={() => setViewType("receivables")}
             >
-              Active Due
+              {t("tabs.activeDue")}
             </button>
             <button
               className={cn(
@@ -847,7 +854,7 @@ export default function PaymentsPage() {
               )}
               onClick={() => setViewType("clients")}
             >
-              Client Summary
+              {t("tabs.clientSummary")}
             </button>
             <button
               className={cn(
@@ -856,7 +863,7 @@ export default function PaymentsPage() {
               )}
               onClick={() => setViewType("history")}
             >
-              Full History
+              {t("tabs.fullHistory")}
             </button>
           </div>
 
@@ -864,7 +871,7 @@ export default function PaymentsPage() {
             <IOSSearchBar
               value={searchTerm}
               onValueChange={setSearchTerm}
-              placeholder="Search financials..."
+              placeholder={t("searchPlaceholder")}
             />
           </div>
         </div>
@@ -876,8 +883,8 @@ export default function PaymentsPage() {
             {orders.filter((o: any) => o.paymentStatus !== 'paid').length === 0 ? (
               <div style={{ textAlign: 'center', padding: '48px 20px', borderRadius: 16, background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)' }}>
                 <CheckCircle2 className="h-10 w-10 mx-auto mb-3" style={{ color: '#34d399' }} />
-                <p style={{ fontSize: 15, fontWeight: 600, color: '#34d399', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>All orders fully settled <Sparkles size={16} style={{ color: '#34d399' }} /></p>
-                <p style={{ fontSize: 13, color: '#64748B', marginTop: 4, fontWeight: 400 }}>No pending dues</p>
+                <p style={{ fontSize: 15, fontWeight: 600, color: '#34d399', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>{t("empty.allSettledTitle")} <Sparkles size={16} style={{ color: '#34d399' }} /></p>
+                <p style={{ fontSize: 13, color: '#64748B', marginTop: 4, fontWeight: 400 }}>{t("empty.allSettledDesc")}</p>
               </div>
             ) : orders.filter((o: any) => o.paymentStatus !== 'paid' && (o.client?.name.toLowerCase().includes(searchTerm.toLowerCase()) || o.productName.toLowerCase().includes(searchTerm.toLowerCase()))).map((order: any) => {
               const paid = payments.filter((p: any) => p.orderId === order.id).reduce((acc: number, p: any) => acc + Number(p.amount), 0);
@@ -893,7 +900,7 @@ export default function PaymentsPage() {
                     {/* Row 1: Client + due amount */}
                     <div className="flex items-start justify-between gap-2">
                       <span className="text-[15px] font-semibold text-[var(--foreground)] truncate flex-1">
-                        {order.client?.name || 'Unknown'}
+                        {order.client?.name || t("statuses.unknownClient")}
                       </span>
                       <span className="text-[15px] font-bold text-amber-500 dark:text-amber-400 tabular-nums whitespace-nowrap">
                         {"\u20B9"}{Number(due ?? 0).toLocaleString('en-IN')}
@@ -902,11 +909,11 @@ export default function PaymentsPage() {
                     {/* Row 2: Billed + Paid badge + Status */}
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-[12px] text-[var(--muted-foreground)]">
-                        Billed: {"\u20B9"}{Number(order.totalAmount ?? 0).toLocaleString('en-IN')}
+                        {t("table.lblBilled")} {"\u20B9"}{Number(order.totalAmount ?? 0).toLocaleString(dateLocale)}
                       </span>
                       {paid > 0 && (
                         <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border border-emerald-500/20">
-                          Paid: {"\u20B9"}{Number(paid ?? 0).toLocaleString('en-IN')}
+                          {t("table.lblPaid")} {"\u20B9"}{Number(paid ?? 0).toLocaleString(dateLocale)}
                         </span>
                       )}
                       <IOSBadge
@@ -914,7 +921,7 @@ export default function PaymentsPage() {
                         color={order.paymentStatus === 'partial' ? 'blue' : 'orange'}
                         className="uppercase text-[10px] tracking-wider"
                       >
-                        {order.paymentStatus === 'partial' ? 'Partial' : 'Pending'}
+                        {order.paymentStatus === 'partial' ? t("statuses.partial") : t("statuses.pending")}
                       </IOSBadge>
                     </div>
                     {/* Row 3: Product name */}
@@ -932,11 +939,11 @@ export default function PaymentsPage() {
               <table className="w-full text-sm text-left">
                 <thead className="text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] bg-[var(--muted)] border-b border-[var(--border)]">
                   <tr>
-                    <th scope="col" className="px-6 py-4 font-semibold rounded-tl-[16px]">Client / Order</th>
-                    <th scope="col" className="px-6 py-4 font-semibold">Total Billed</th>
-                    <th scope="col" className="px-6 py-4 font-semibold">Paid</th>
-                    <th scope="col" className="px-6 py-4 font-semibold text-right">Outstanding</th>
-                    <th scope="col" className="px-6 py-4 font-semibold text-center">Status</th>
+                    <th scope="col" className="px-6 py-4 font-semibold rounded-tl-[16px]">{t("table.thClientOrder")}</th>
+                    <th scope="col" className="px-6 py-4 font-semibold">{t("table.thTotalBilled")}</th>
+                    <th scope="col" className="px-6 py-4 font-semibold">{t("table.thPaid")}</th>
+                    <th scope="col" className="px-6 py-4 font-semibold text-right">{t("table.thOutstanding")}</th>
+                    <th scope="col" className="px-6 py-4 font-semibold text-center">{t("table.thStatus")}</th>
                     <th scope="col" className="px-6 py-4 rounded-tr-[16px]"></th>
                   </tr>
                 </thead>
@@ -949,8 +956,8 @@ export default function PaymentsPage() {
                   {orders.filter((o: any) => o.paymentStatus !== 'paid').length === 0 ? (
                     <tr><td colSpan={6} className="text-center py-24 text-[var(--erp-success)] font-semibold bg-[var(--erp-success)]/10">
                       <CheckCircle2 className="h-10 w-10 mx-auto mb-3" style={{ color: '#34d399' }} />
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>All orders fully settled <Sparkles size={16} style={{ color: '#34d399' }} /></span>
-                      <p style={{ fontSize: 13, color: '#64748B', marginTop: 4, fontWeight: 400 }}>No pending dues</p>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{t("empty.allSettledTitle")} <Sparkles size={16} style={{ color: '#34d399' }} /></span>
+                      <p style={{ fontSize: 13, color: '#64748B', marginTop: 4, fontWeight: 400 }}>{t("empty.allSettledDesc")}</p>
                     </td></tr>
                   ) : orders.filter((o: any) =>
                     o.paymentStatus !== 'paid' && (o.client?.name.toLowerCase().includes(searchTerm.toLowerCase()) || o.productName.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -981,7 +988,7 @@ export default function PaymentsPage() {
                             color={order.paymentStatus === 'partial' ? 'blue' : 'orange'}
                             className="uppercase text-[10px] tracking-wider"
                           >
-                            {order.paymentStatus === 'partial' ? 'Partially Paid' : 'Pending'}
+                            {order.paymentStatus === 'partial' ? t("statuses.partiallyPaid") : t("statuses.pending")}
                           </IOSBadge>
                         </td>
                         <td className="px-6 py-4 text-right">
@@ -1028,25 +1035,25 @@ export default function PaymentsPage() {
                   />
                   <IOSCardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-2 text-[13px]">
-                      <div className="text-[var(--muted-foreground)]">Orders Billed</div>
+                      <div className="text-[var(--muted-foreground)]">{t("table.lblOrdersBilled")}</div>
                       <div className="text-right font-semibold text-[var(--foreground)]">{"\u20B9"}{summary.billed.toLocaleString()}</div>
-                      <div className="text-[var(--muted-foreground)]">Payments Recv.</div>
+                      <div className="text-[var(--muted-foreground)]">{t("table.lblPaymentsRecv")}</div>
                       <div className="text-right font-semibold text-[var(--erp-success)]">{"\u20B9"}{summary.received.toLocaleString()}</div>
                     </div>
                     <div className="pt-3 border-t border-[var(--border)] flex items-center justify-between">
                       <div>
-                        <span className="text-[10px] font-semibold uppercase text-[var(--muted-foreground)] block tracking-wider mb-1">Status</span>
+                        <span className="text-[10px] font-semibold uppercase text-[var(--muted-foreground)] block tracking-wider mb-1">{t("table.thStatus")}</span>
                         <IOSBadge
                           variant="tinted"
                           color={summary.outstanding > 0 ? "orange" : (summary.outstanding < 0 ? "green" : "gray")}
                           className="uppercase text-[10px] tracking-wider"
                         >
-                          {summary.outstanding > 0 ? 'Due' : (summary.outstanding < 0 ? 'Advance' : 'Settled')}
+                          {summary.outstanding > 0 ? t("statuses.due") : (summary.outstanding < 0 ? t("statuses.advance") : t("statuses.settled"))}
                         </IOSBadge>
                       </div>
                       <div className="text-right">
                         <span className="text-[10px] font-semibold uppercase text-[var(--muted-foreground)] block tracking-wider mb-0.5">
-                          {summary.outstanding >= 0 ? 'Outstanding' : 'Credit Balance'}
+                          {summary.outstanding >= 0 ? t("table.thOutstanding") : t("table.lblCreditBalance")}
                         </span>
                         <span className={cn(
                           "font-bold text-[20px] tracking-tight",
@@ -1066,7 +1073,7 @@ export default function PaymentsPage() {
                           setIsDialogOpen(true);
                         }}
                       >
-                        Record Payment
+                        {t("actions.recordPayment")}
                       </IOSButton>
                     </div>
                   </IOSCardContent>
@@ -1082,7 +1089,7 @@ export default function PaymentsPage() {
           <div className="flex flex-col gap-3 md:hidden">
             {filteredHistory.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '48px 20px', borderRadius: 16, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                <p style={{ fontSize: 15, color: '#948e9c' }}>No payment records found.</p>
+                <p style={{ fontSize: 15, color: '#948e9c' }}>{t("empty.noRecords")}</p>
               </div>
             ) : filteredHistory.map((p: any) => (
               <PaymentHistoryCard
@@ -1098,11 +1105,11 @@ export default function PaymentsPage() {
               <table className="w-full text-sm text-left">
                 <thead className="text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] bg-[var(--muted)] border-b border-[var(--border)]">
                   <tr>
-                    <th scope="col" className="px-6 py-4 font-semibold rounded-tl-[16px]">Date</th>
-                    <th scope="col" className="px-6 py-4 font-semibold">Client</th>
-                    <th scope="col" className="px-6 py-4 font-semibold">Mode</th>
-                    <th scope="col" className="px-6 py-4 font-semibold">Reference / Remark</th>
-                    <th scope="col" className="px-6 py-4 font-semibold text-right">Amount</th>
+                    <th scope="col" className="px-6 py-4 font-semibold rounded-tl-[16px]">{t("table.thDate")}</th>
+                    <th scope="col" className="px-6 py-4 font-semibold">{t("table.thClient")}</th>
+                    <th scope="col" className="px-6 py-4 font-semibold">{t("table.thMode")}</th>
+                    <th scope="col" className="px-6 py-4 font-semibold">{t("table.thReferenceRemark")}</th>
+                    <th scope="col" className="px-6 py-4 font-semibold text-right">{t("table.thAmount")}</th>
                   </tr>
                 </thead>
                 <motion.tbody
@@ -1112,7 +1119,7 @@ export default function PaymentsPage() {
                   animate="animate"
                 >
                   {filteredHistory.length === 0 ? (
-                    <tr><td colSpan={5} className="text-center py-20 text-[var(--muted-foreground)]">No payment records found.</td></tr>
+                    <tr><td colSpan={5} className="text-center py-20 text-[var(--muted-foreground)]">{t("empty.noRecords")}</td></tr>
                   ) : filteredHistory.map((p: any) => (
                     <motion.tr
                       variants={staggerItem}
@@ -1122,13 +1129,13 @@ export default function PaymentsPage() {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-[var(--muted-foreground)]" />
-                          <span className="font-medium text-[15px] text-[var(--foreground)]">{new Date(p.paymentDate).toLocaleDateString()}</span>
+                          <span className="font-medium text-[15px] text-[var(--foreground)]">{new Date(p.paymentDate).toLocaleDateString(dateLocale)}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col">
                           <span className="font-semibold text-[15px] text-[var(--foreground)]">{p.client?.name}</span>
-                          <span className="text-[13px] text-[var(--muted-foreground)]">{p.order?.productName || 'General Payment'}</span>
+                          <span className="text-[13px] text-[var(--muted-foreground)]">{p.order?.productName || t("statuses.generalPayment")}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -1176,12 +1183,12 @@ export default function PaymentsPage() {
           }
         }}
         isDeleting={deletePayment.isPending}
-        entityLabel={tCommon("entityPayment")}
+        entityLabel={t("actions.entityPayment")}
         entityName={
           payments.find((p) => p.id === paymentToDeleteId)?.id ||
           payments.find((p) => p.id === paymentToDeleteId)?.transaction_id
         }
-        consequenceText={tCommon("consequencePayment")}
+        consequenceText={t("actions.deleteConsequence")}
       />
 
       {/* ── Long Press Action Sheet ── */}
@@ -1191,7 +1198,7 @@ export default function PaymentsPage() {
             {/* Header */}
             <div className="px-4 py-3 border-b border-[var(--border)]">
               <p className="font-semibold text-[var(--foreground)]">
-                {selectedPayment.client?.name || 'Unknown'}
+                {selectedPayment.client?.name || t("statuses.unknownClient")}
               </p>
               <p className="text-sm text-[var(--muted-foreground)]">
                 {"\u20B9"}{Number(selectedPayment.amount ?? 0).toLocaleString('en-IN')} · {selectedPayment.paymentMethod}
@@ -1203,11 +1210,11 @@ export default function PaymentsPage() {
               className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--muted)] active:bg-[var(--muted)] text-[var(--foreground)] text-left w-full"
               onClick={() => {
                 closePaymentSheet();
-                toast.info('Payment detail view coming soon');
+                toast.info(t("toasts.detailComingSoon"));
               }}
             >
               <Receipt className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
-              View Details
+              {t("actions.viewDetails")}
             </button>
 
             <button
@@ -1225,18 +1232,18 @@ export default function PaymentsPage() {
               }}
             >
               <IndianRupee className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
-              Record Payment
+              {t("actions.recordPayment")}
             </button>
 
             <button
               className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--muted)] active:bg-[var(--muted)] text-[var(--foreground)] text-left w-full"
               onClick={() => {
                 closePaymentSheet();
-                toast.info('Reminder feature coming soon');
+                toast.info(t("toasts.reminderComingSoon"));
               }}
             >
               <Send className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
-              Send Reminder
+              {t("actions.sendReminder")}
             </button>
 
             <button
@@ -1248,7 +1255,7 @@ export default function PaymentsPage() {
               }}
             >
               <Trash2 className="h-[18px] w-[18px]" />
-              Delete Payment
+              {t("actions.deletePayment")}
             </button>
           </div>
         )}

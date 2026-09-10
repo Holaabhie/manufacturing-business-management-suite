@@ -72,9 +72,14 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { MaterialUsageDrawer } from "@/components/ui/MaterialUsageDrawer";
 import { AddMaterialModal } from "@/components/inventory/AddMaterialModal";
 import { CollapsingTitle } from "@/components/ui/CollapsingTitle";
+import { useTranslations } from "next-intl";
+import { useAppLocale } from "@/components/LocaleProvider";
 import { useCollapseProgress } from "@/hooks/useCollapseProgress";
 
 export default function InventoryPage() {
+  const t = useTranslations("inventory");
+  const { locale } = useAppLocale();
+  const dateLocale = locale === "hi" ? "hi-IN" : locale === "gu" ? "gu-IN" : locale === "mr" ? "mr-IN" : "en-IN";
   const { progress: collapseProgress } = useCollapseProgress();
   const { isAdmin, isPro } = useRole();
   const [items, setItems] = useState<any[]>([]);
@@ -146,10 +151,10 @@ export default function InventoryPage() {
   const handleAddNewClick = () => {
     if (isAtLimit) {
       toast.error(
-        `Starter tier limit reached (${starterLimit} items). Please upgrade to Pro for unlimited inventory.`,
+        t("starterLimitReached", { count: starterLimit }),
         {
           action: {
-            label: "Upgrade",
+            label: t("upgrade"),
             onClick: () => (window.location.href = "/dashboard/upgrade"),
           },
         }
@@ -161,7 +166,16 @@ export default function InventoryPage() {
   };
 
   const exportToPDF = () => {
-    const headers = ["Name", "Quantity", "Unit", "Min Level", "Supplier", "Landed/Unit", "HSN", "Tax"];
+    const headers = [
+      t("pdfColName"),
+      t("pdfColQty"),
+      t("pdfColUnit"),
+      t("pdfColMin"),
+      t("pdfColSupplier"),
+      t("pdfColLanded"),
+      t("pdfColHsn"),
+      t("pdfColTax"),
+    ];
     const rows = items.map((item) => {
       const landedCost = Number(item.purchase_cost_per_unit || 0) * (1 + Number(item.tax_rate || 0) / 100);
       return [
@@ -177,23 +191,23 @@ export default function InventoryPage() {
     });
 
     generateDataExportPDF({
-      title: "Inventory Report",
-      subtitle: "Raw materials, stock levels, and supplier details",
+      title: t("pdfTitle"),
+      subtitle: t("pdfSubtitle"),
       headers,
       rows,
       filename: `inventory_${new Date().toISOString().split("T")[0]}.pdf`,
     });
-    toast.success("Inventory report PDF downloaded!");
+    toast.success(t("pdfDownloaded"));
   };
 
   const exportToXLSX = () => {
     const columns = [
-      { header: "Material name", key: "name" },
-      { header: "Stock level", key: "quantity" },
-      { header: "Base cost", key: "purchase_cost_per_unit" },
-      { header: "Landed cost", key: "landed_cost" },
-      { header: "Critical stock", key: "min_stock_level" },
-      { header: "Last updated", key: "updatedAt" },
+      { header: t("excelColName"), key: "name" },
+      { header: t("excelColStock"), key: "quantity" },
+      { header: t("excelColBaseCost"), key: "purchase_cost_per_unit" },
+      { header: t("excelColLandedCost"), key: "landed_cost" },
+      { header: t("excelColCriticalStock"), key: "min_stock_level" },
+      { header: t("excelColLastUpdated"), key: "updatedAt" },
     ];
 
     const dataToExport = items.map(item => ({
@@ -204,21 +218,21 @@ export default function InventoryPage() {
 
     exportToExcel(
       `inventory_${new Date().toISOString().split("T")[0]}.xlsx`,
-      "Inventory",
+      t("excelSheetName"),
       dataToExport,
       columns
     );
-    toast.success("Inventory Excel downloaded!");
+    toast.success(t("excelDownloaded"));
   };
 
   const fetchInventory = async () => {
     try {
       const res = await fetch("/api/v1/inventory");
       const data = await res.json();
-      if (!data.success) toast.error("Failed to fetch inventory");
+      if (!data.success) toast.error(t("fetchError"));
       else setItems(Array.isArray(data.data) ? data.data : []);
     } catch (error) {
-      toast.error("Failed to fetch inventory");
+      toast.error(t("fetchError"));
     } finally {
       setLoading(false);
     }
@@ -265,7 +279,7 @@ export default function InventoryPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.supplier_whatsapp) {
-      toast.error("Supplier WhatsApp is mandatory");
+      toast.error(t("supplierWhatsAppRequired"));
       return;
     }
 
@@ -285,9 +299,9 @@ export default function InventoryPage() {
           body: JSON.stringify(payload),
         });
         const data = await res.json();
-        if (data.error) toast.error("Failed to update item");
+        if (data.error) toast.error(t("updateError"));
         else {
-          toast.success("Item updated");
+          toast.success(t("itemUpdated"));
           fetchInventory();
           setIsDialogOpen(false);
         }
@@ -298,15 +312,15 @@ export default function InventoryPage() {
           body: JSON.stringify(payload),
         });
         const data = await res.json();
-        if (data.error) toast.error("Failed to add item");
+        if (data.error) toast.error(t("addError"));
         else {
-          toast.success("Item added");
+          toast.success(t("itemAdded"));
           fetchInventory();
           setIsDialogOpen(false);
         }
       }
     } catch (error) {
-      toast.error("Operation failed");
+      toast.error(t("operationFailed"));
     }
   };
 
@@ -314,14 +328,14 @@ export default function InventoryPage() {
     try {
       const res = await fetch(`/api/v1/inventory/${id}`, { method: "DELETE" });
       if (res.ok) {
-        toast.success("Item deleted");
+        toast.success(t("itemDeleted"));
         fetchInventory();
       } else {
         const data = await res.json().catch(() => ({ error: "Failed to delete item" }));
-        toast.error(data.error || "Failed to delete item");
+        toast.error(data.error || t("deleteError"));
       }
     } catch (error) {
-      toast.error("Failed to delete item");
+      toast.error(t("deleteError"));
     } finally {
       setIsDeleteDialogOpenConfirm(false);
       setItemToDeleteId(null);
@@ -347,7 +361,7 @@ export default function InventoryPage() {
   };
 
   const handleRestock = (item: any) => {
-    const message = `Halo Supplier, I need to restock ${item.name}. My current stock is ${item.quantity} ${item.unit}. Please provide availability and current price.`;
+    const message = t("restockMessage", { name: item.name, qty: item.quantity, unit: item.unit });
     const whatsappUrl = `https://wa.me/${item.supplier_whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, "_blank");
   };
@@ -484,18 +498,18 @@ export default function InventoryPage() {
     const minLevel = Number(item.min_stock_level || 0);
     if (minLevel <= 0) {
       return qty > 0
-        ? { label: "Healthy", color: "green", level: "healthy" }
-        : { label: "Out of Stock", color: "red", level: "critical" };
+        ? { label: t("statusHealthy"), color: "green", level: "healthy" }
+        : { label: t("statusOutOfStock"), color: "red", level: "critical" };
     }
-    if (qty <= minLevel) return { label: "Critical", color: "red", level: "critical" };
-    if (qty <= minLevel * 2) return { label: "Low", color: "orange", level: "low" };
-    return { label: "Healthy", color: "green", level: "healthy" };
+    if (qty <= minLevel) return { label: t("statusCritical"), color: "red", level: "critical" };
+    if (qty <= minLevel * 2) return { label: t("statusLow"), color: "orange", level: "low" };
+    return { label: t("statusHealthy"), color: "green", level: "healthy" };
   };
 
   const formatSourceDate = (dateStr: string | null | undefined): string => {
     if (!dateStr) return "";
     try {
-      return new Date(dateStr).toLocaleDateString("en-IN", {
+      return new Date(dateStr).toLocaleDateString(dateLocale, {
         day: "numeric",
         month: "short",
       });
@@ -537,8 +551,8 @@ export default function InventoryPage() {
       {/* ── Header ── */}
       <motion.div variants={staggerItem}>
         <CollapsingTitle
-          title="Inventory"
-          subtitle={`${items.length} materials registered · ${items.filter(i => Number(i.quantity || 0) <= Number(i.min_stock_level || 10)).length} low stock`}
+          title={t("title")}
+          subtitle={t("subtitleStats", { count: items.length, lowStock: items.filter(i => Number(i.quantity || 0) <= Number(i.min_stock_level || 10)).length })}
           subtitleLoading={loading}
           collapseProgress={collapseProgress}
           actions={
@@ -547,30 +561,30 @@ export default function InventoryPage() {
               <button
                 onClick={exportToPDF}
                 className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/15 bg-gray-100 dark:bg-[rgba(255,255,255,0.08)] hover:bg-gray-200 dark:hover:bg-white/15 text-gray-700 dark:text-white text-xs font-medium cursor-pointer transition-all duration-150"
-                title="Print PDF"
+                title={t("exportPdfTitle")}
               >
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
                   <rect width="24" height="24" rx="4" fill="#FF0000"/>
                   <text x="12" y="15" textAnchor="middle" fontFamily="Arial" fontWeight="bold" fontSize="8" fill="#fff">PDF</text>
                 </svg>
-                <span>PDF</span>
+                <span>{t("exportPdf")}</span>
               </button>
               {/* Excel Export */}
               <button
                 onClick={exportToXLSX}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/15 bg-gray-100 dark:bg-[rgba(255,255,255,0.08)] hover:bg-gray-200 dark:hover:bg-white/15 text-gray-700 dark:text-white text-xs font-medium cursor-pointer transition-all duration-150"
-                title="Excel Export"
+                title={t("exportExcelTitle")}
               >
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
                   <rect width="24" height="24" rx="4" fill="#217346"/>
                   <path d="M14 3v5h4" fill="none" stroke="#fff" strokeWidth="1" opacity="0.5"/>
                   <text x="12" y="15" textAnchor="middle" fontFamily="Arial" fontWeight="bold" fontSize="8" fill="#fff">XLS</text>
                 </svg>
-                <span>Export</span>
+                <span>{t("exportExcel")}</span>
               </button>
               {/* Add Material */}
               <IOSButton variant="filled" color="blue" size="medium" onClick={handleAddNewClick} className="!bg-[#2563EB] text-white hover:!bg-[#1D51C8] dark:!bg-[#2563EB] dark:text-white dark:hover:!bg-[#1D51C8]" icon={<Plus className="h-4 w-4" />}>
-                Add Material
+                {t("addMaterial")}
               </IOSButton>
             </>
           }
@@ -586,7 +600,7 @@ export default function InventoryPage() {
                 : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
             )}
           >
-            <Package className="h-3.5 w-3.5" /> Stock
+            <Package className="h-3.5 w-3.5" /> {t("viewStock")}
           </button>
           {isAdmin && (
             <button
@@ -598,7 +612,7 @@ export default function InventoryPage() {
                   : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
               )}
             >
-              <Activity className="h-3.5 w-3.5" /> Forecast
+              <Activity className="h-3.5 w-3.5" /> {t("viewForecast")}
             </button>
           )}
         </div>
@@ -609,7 +623,7 @@ export default function InventoryPage() {
         <div className="kpi-panel__glow hidden dark:block"></div>
         <div className="kpi-grid !grid-cols-1 md:!grid-cols-3">
           <StatWidget
-            label="Total Valuation"
+            label={t("totalValuation")}
             value={totalPurchasingCost}
             change={8}
             icon={IndianRupee}
@@ -618,7 +632,7 @@ export default function InventoryPage() {
             delay={0}
           />
           <StatWidget
-            label="Total Materials"
+            label={t("totalMaterials")}
             value={items.length}
             change={12}
             icon={Box}
@@ -626,7 +640,7 @@ export default function InventoryPage() {
             delay={1}
           />
           <StatWidget
-            label="Critical Stock"
+            label={t("criticalStock")}
             value={lowStockCount}
             change={-5}
             icon={AlertCircle}
@@ -645,19 +659,19 @@ export default function InventoryPage() {
             <SearchBar
               value={searchQuery}
               onChange={handleSearch}
-              placeholder="Search by material name..."
-              ariaLabel="Search inventory"
+              placeholder={t("searchPlaceholder")}
+              ariaLabel={t("searchPlaceholder")}
               id="inventory-search"
             />
 
             {/* Row 2: Filter pills (desktop) */}
             <div className="hidden sm:flex items-center gap-1.5">
               {([
-                { key: "all", label: "All" },
-                { key: "critical", label: "Critical" },
-                { key: "low_stock", label: "Low Stock" },
-                { key: "out_of_stock", label: "Out of Stock" },
-                { key: "recently_updated", label: "Recent" },
+                { key: "all", label: t("filterAll") },
+                { key: "critical", label: t("filterCritical") },
+                { key: "low_stock", label: t("filterLowStock") },
+                { key: "out_of_stock", label: t("filterOutOfStock") },
+                { key: "recently_updated", label: t("filterRecent") },
               ] as { key: InventoryFilter; label: string }[]).map((item) => (
                 <button
                   key={item.key}
@@ -683,7 +697,7 @@ export default function InventoryPage() {
                   onClick={handleAddNewClick}
                   className="h-9 px-3 rounded-lg bg-[var(--primary)] text-white text-xs font-semibold hover:opacity-90 cursor-pointer transition-opacity"
                 >
-                  Quick add
+                  {t("quickAdd")}
                 </button>
                 {(searchQuery || inventoryFilter !== "all") && (
                   <button
@@ -694,11 +708,11 @@ export default function InventoryPage() {
                     }}
                     className="h-9 px-3 rounded-lg text-xs font-medium text-[var(--muted-foreground)] bg-[var(--muted)] hover:bg-[var(--accent)] cursor-pointer"
                   >
-                    Clear
+                    {t("clear")}
                   </button>
                 )}
               </div>
-              <span className="text-sm text-[var(--muted-foreground)] tabular-nums">{totalFiltered} of {totalItems} items</span>
+              <span className="text-sm text-[var(--muted-foreground)] tabular-nums">{t("itemsCount", { filtered: totalFiltered, total: totalItems })}</span>
             </div>
           </motion.div>
 
@@ -709,10 +723,10 @@ export default function InventoryPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="glass-table-header hover:bg-transparent border-b border-white/[0.07] dark:border-white/[0.07] sticky top-0 z-10 bg-white/90 dark:bg-[#0F1117]/90 backdrop-blur-sm">
-                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide pl-5">Item & Supplier</TableHead>
-                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">Stock Level</TableHead>
-                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">Unit Cost (Landed)</TableHead>
-                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">Status</TableHead>
+                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide pl-5">{t("colItemSupplier")}</TableHead>
+                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">{t("colStockLevel")}</TableHead>
+                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">{t("colUnitCost")}</TableHead>
+                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">{t("colStatus")}</TableHead>
                     <TableHead className="w-[120px] py-3"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -732,9 +746,9 @@ export default function InventoryPage() {
                       <TableCell colSpan={5} className="text-center">
                         <TableEmptyState
                           variant={searchQuery ? "no-results" : "no-data"}
-                          title={searchQuery ? "No materials found" : "No materials added yet"}
-                          subtitle={searchQuery ? "Try a different search term" : "Add your raw materials to start tracking stock and get AI-powered forecasts"}
-                          action={!searchQuery ? { label: "+ Add First Material", onClick: handleAddNewClick } : undefined}
+                          title={searchQuery ? t("emptyNoResults") : t("emptyNoData")}
+                          subtitle={searchQuery ? t("emptyNoResultsSubtitle") : t("emptyNoDataSubtitle")}
+                          action={!searchQuery ? { label: t("addFirstMaterial"), onClick: handleAddNewClick } : undefined}
                         />
                       </TableCell>
                     </TableRow>
@@ -766,7 +780,10 @@ export default function InventoryPage() {
                                   </div>
                                   {item.last_source_po_number && (
                                     <span className="text-[11px] text-[var(--muted-foreground)]">
-                                      · From {item.last_source_po_number}{formatSourceDate(item.last_received_at) ? ` · ${formatSourceDate(item.last_received_at)}` : ""}
+                                      {t("fromPo", {
+                                        po: item.last_source_po_number,
+                                        date: formatSourceDate(item.last_received_at) ? ` · ${formatSourceDate(item.last_received_at)}` : ""
+                                      })}
                                     </span>
                                   )}
                                 </div>
@@ -775,7 +792,7 @@ export default function InventoryPage() {
                           </TableCell>
                           <TableCell className="py-3.5">
                             <span className="text-[17px] font-bold text-[var(--foreground)] block">{item.quantity} {item.unit}</span>
-                            <span className="text-[11px] text-[var(--muted-foreground)] uppercase tracking-wide">Min: {item.min_stock_level} {item.unit}</span>
+                            <span className="text-[11px] text-[var(--muted-foreground)] uppercase tracking-wide">{t("minStock", { min: item.min_stock_level, unit: item.unit })}</span>
                           </TableCell>
                           <TableCell className="py-3.5">
                             <div className="flex flex-col">
@@ -783,7 +800,7 @@ export default function InventoryPage() {
                                 {"\u20B9"}{(Number(item.purchase_cost_per_unit || 0) * (1 + Number(item.tax_rate || 0) / 100)).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
                               </span>
                               <span className="text-[11px] text-[var(--muted-foreground)] uppercase tracking-wide">
-                                {"\u20B9"}{Number(item.purchase_cost_per_unit || 0).toLocaleString("en-IN")} + {item.tax_rate}% Tax
+                                {"\u20B9"}{Number(item.purchase_cost_per_unit || 0).toLocaleString("en-IN")} {t("taxSuffix", { tax: item.tax_rate })}
                               </span>
                             </div>
                           </TableCell>
@@ -806,7 +823,7 @@ export default function InventoryPage() {
                                   onClick={() => handleRestock(item)}
                                   className="bg-[var(--erp-success)] hover:bg-[#2DB84E]"
                                 >
-                                  Restock
+                                  {t("restock")}
                                 </IOSButton>
                               )}
                               <DropdownMenu>
@@ -820,7 +837,7 @@ export default function InventoryPage() {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="rounded-[12px]">
                                   <DropdownMenuItem onClick={() => openEditDialog(item)} className="rounded-[8px]">
-                                    <Edit2 className="mr-2 h-4 w-4" /> Edit Item
+                                    <Edit2 className="mr-2 h-4 w-4" /> {t("editItem")}
                                   </DropdownMenuItem>
                                   {isAdmin && (
                                     <DropdownMenuItem
@@ -830,7 +847,7 @@ export default function InventoryPage() {
                                         setIsDeleteDialogOpenConfirm(true);
                                       }}
                                     >
-                                      <Trash2 className="mr-2 h-4 w-4" /> Mark as Removed
+                                      <Trash2 className="mr-2 h-4 w-4" /> {t("markAsRemoved")}
                                     </DropdownMenuItem>
                                   )}
                                 </DropdownMenuContent>
@@ -868,7 +885,7 @@ export default function InventoryPage() {
               ) : filteredItems.length === 0 ? (
                 <div className="py-16 text-center">
                   <Package className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-                  <p className="text-muted-foreground text-sm">{searchQuery ? "No materials found" : "No materials added yet"}</p>
+                  <p className="text-muted-foreground text-sm">{searchQuery ? t("emptyNoResults") : t("emptyNoData")}</p>
                 </div>
               ) : filteredItems.map((item) => {
                 return <MobileInventoryCard key={item.id} item={item} getStockStatus={getStockStatus} formatSourceDate={formatSourceDate} onTap={() => setSelectedMaterial(item)} onLongPress={() => { setLongPressedItem(item); setIsItemSheetOpen(true); }} />;
@@ -892,9 +909,9 @@ export default function InventoryPage() {
           <div className="ind-page-header" style={{ marginBottom: 16 }}>
             <div className="ind-label">
               <span className="ind-pulse-dot" style={{ background: "var(--ind-green)" }} />
-              AI-Powered Projection
+              {t("aiProjection")}
             </div>
-            <p className="ind-subtitle">6-week stock forecast based on recent order consumption patterns</p>
+            <p className="ind-subtitle">{t("forecastSubtitle")}</p>
           </div>
 
           {forecastLoading ? (
@@ -915,11 +932,11 @@ export default function InventoryPage() {
                   <div>
                     <p className="text-[14px] font-semibold" style={{ color: "var(--ind-text)" }}>
                       {forecastData.summary.critical > 0
-                        ? `${forecastData.summary.critical} material${forecastData.summary.critical > 1 ? "s" : ""} below reorder level`
-                        : `${forecastData.summary.warning} material${forecastData.summary.warning > 1 ? "s" : ""} approaching reorder level`}
+                        ? t("criticalAlert", { count: forecastData.summary.critical })
+                        : t("warningAlert", { count: forecastData.summary.warning })}
                     </p>
                     <p className="text-[13px]" style={{ color: "var(--ind-text-muted)" }}>
-                      Review and restock to avoid production delays
+                      {t("alertDesc")}
                     </p>
                   </div>
                 </div>
@@ -928,15 +945,15 @@ export default function InventoryPage() {
               {/* Summary Stats */}
               <div className="ind-stats-row">
                 <div className="ind-stat-card">
-                  <span className="ind-stat-card__label">Total Materials</span>
+                  <span className="ind-stat-card__label">{t("totalMaterials")}</span>
                   <span className="ind-stat-card__value" style={{ color: "var(--ind-blue)" }}>{forecastData.summary.totalMaterials}</span>
                 </div>
                 <div className="ind-stat-card" style={{ borderColor: forecastData.summary.critical > 0 ? "rgba(248,113,113,0.2)" : undefined }}>
-                  <span className="ind-stat-card__label">Need Attention</span>
+                  <span className="ind-stat-card__label">{t("needAttention")}</span>
                   <span className="ind-stat-card__value" style={{ color: "var(--ind-red)" }}>{forecastData.summary.critical + forecastData.summary.warning}</span>
                 </div>
                 <div className="ind-stat-card">
-                  <span className="ind-stat-card__label">Sufficient</span>
+                  <span className="ind-stat-card__label">{t("sufficient")}</span>
                   <span className="ind-stat-card__value" style={{ color: "var(--ind-green)" }}>{forecastData.summary.ok}</span>
                 </div>
               </div>
@@ -968,7 +985,7 @@ export default function InventoryPage() {
                           <span className="ind-pulse-dot" style={{ background: sc.dot }} />
                           <div>
                             <span className="text-[15px] font-semibold" style={{ color: "var(--ind-text)" }}>{material.name}</span>
-                            <span className="text-[12px] block" style={{ color: "var(--ind-text-muted)" }}>{material.supplierWhatsapp || "No supplier"}</span>
+                            <span className="text-[12px] block" style={{ color: "var(--ind-text-muted)" }}>{material.supplierWhatsapp || t("noSupplier")}</span>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -982,7 +999,7 @@ export default function InventoryPage() {
                             "ind-badge--orange": material.status === "warning",
                             "ind-badge--green": material.status === "ok",
                           })}>
-                            {material.status === "critical" ? "CRITICAL" : material.status === "warning" ? "WARNING" : "OK"}
+                            {material.status === "critical" ? t("statusBadgeCritical") : material.status === "warning" ? t("statusBadgeWarning") : t("statusBadgeOk")}
                           </span>
                           {isExpanded ? <ChevronUp className="h-4 w-4" style={{ color: "var(--ind-text-muted)" }} /> : <ChevronDown className="h-4 w-4" style={{ color: "var(--ind-text-muted)" }} />}
                         </div>
@@ -999,25 +1016,25 @@ export default function InventoryPage() {
                           {/* Stat Boxes */}
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
                             <div className="ind-stat-card" style={{ padding: 14 }}>
-                              <span className="ind-stat-card__label" style={{ fontSize: 10 }}>Weekly Usage</span>
+                              <span className="ind-stat-card__label" style={{ fontSize: 10 }}>{t("weeklyUsage")}</span>
                               <span className="ind-stat-card__value ind-mono" style={{ fontSize: 20, color: "var(--ind-purple)" }}>
                                 {material.weeklyConsumption} {material.unit}
                               </span>
                             </div>
                             <div className="ind-stat-card" style={{ padding: 14 }}>
-                              <span className="ind-stat-card__label" style={{ fontSize: 10 }}>Days to Reorder</span>
+                              <span className="ind-stat-card__label" style={{ fontSize: 10 }}>{t("daysToReorder")}</span>
                               <span className="ind-stat-card__value ind-mono" style={{ fontSize: 20, color: material.daysUntilReorder <= 7 ? "var(--ind-red)" : "var(--ind-green)" }}>
                                 {material.daysUntilReorder >= 999 ? "∞" : material.daysUntilReorder}
                               </span>
                             </div>
                             <div className="ind-stat-card" style={{ padding: 14 }}>
-                              <span className="ind-stat-card__label" style={{ fontSize: 10 }}>Reorder By</span>
+                              <span className="ind-stat-card__label" style={{ fontSize: 10 }}>{t("reorderBy")}</span>
                               <span className="ind-stat-card__value" style={{ fontSize: 14, color: "var(--ind-text)" }}>
-                                {material.daysUntilReorder >= 999 ? "N/A" : new Date(material.reorderDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                                {material.daysUntilReorder >= 999 ? "N/A" : new Date(material.reorderDate).toLocaleDateString(dateLocale, { day: "numeric", month: "short" })}
                               </span>
                             </div>
                             <div className="ind-stat-card" style={{ padding: 14 }}>
-                              <span className="ind-stat-card__label" style={{ fontSize: 10 }}>Cost/Unit</span>
+                              <span className="ind-stat-card__label" style={{ fontSize: 10 }}>{t("costPerUnit")}</span>
                               <span className="ind-stat-card__value ind-mono" style={{ fontSize: 20, color: "var(--ind-blue)" }}>
                                 {"\u20B9"}{material.purchaseCostPerUnit}
                               </span>
@@ -1026,7 +1043,7 @@ export default function InventoryPage() {
 
                           {/* 6-Week Forecast Bar Chart */}
                           <div style={{ marginBottom: 16 }}>
-                            <p className="text-[12px] font-semibold uppercase tracking-wider mb-3" style={{ color: "var(--ind-text-muted)" }}>6-Week Projection</p>
+                            <p className="text-[12px] font-semibold uppercase tracking-wider mb-3" style={{ color: "var(--ind-text-muted)" }}>{t("sixWeekProjection")}</p>
                             <div className="ind-forecast-bar">
                               {/* Current stock bar */}
                               <div className="ind-forecast-bar__col">
@@ -1034,7 +1051,7 @@ export default function InventoryPage() {
                                   className="ind-forecast-bar__bar ind-forecast-bar__bar--current"
                                   style={{ height: `${Math.max(4, (material.currentStock / (maxStock || 1)) * 100)}%` }}
                                 />
-                                <span className="ind-forecast-bar__label">Now</span>
+                                <span className="ind-forecast-bar__label">{t("now")}</span>
                               </div>
                               {/* Projected weeks */}
                               {material.projectedWeeks.map((week: any) => (
@@ -1053,7 +1070,7 @@ export default function InventoryPage() {
                             {/* Min stock line indicator */}
                             <div className="flex items-center gap-2 mt-2">
                               <div className="h-[1px] flex-1" style={{ background: "var(--ind-red)", opacity: 0.3 }} />
-                              <span className="text-[10px] font-medium" style={{ color: "var(--ind-red)" }}>Min: {material.minStockLevel} {material.unit}</span>
+                              <span className="text-[10px] font-medium" style={{ color: "var(--ind-red)" }}>{t("minStock", { min: material.minStockLevel, unit: material.unit })}</span>
                             </div>
                           </div>
 
@@ -1062,13 +1079,13 @@ export default function InventoryPage() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                const msg = `Hi, I need to restock ${material.name}. Current stock: ${material.currentStock} ${material.unit}. Please share availability and price.`;
+                                const msg = t("restockWhatsAppMessage", { name: material.name, qty: material.currentStock, unit: material.unit });
                                 window.open(`https://wa.me/${material.supplierWhatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`, "_blank");
                               }}
                               className="ind-btn ind-btn--primary w-full"
                               style={{ background: "var(--ind-green)", boxShadow: "0 4px 14px rgba(52,211,153,0.35)" }}
                             >
-                              <Phone className="h-4 w-4" /> Contact Supplier via WhatsApp
+                              <Phone className="h-4 w-4" /> {t("contactSupplierWhatsApp")}
                             </button>
                           )}
                         </motion.div>
@@ -1083,8 +1100,8 @@ export default function InventoryPage() {
               <div className="w-[56px] h-[56px] rounded-[14px] bg-[var(--muted)] flex items-center justify-center mb-3">
                 <Activity className="h-6 w-6 text-[var(--muted-foreground)]" />
               </div>
-              <p className="text-[17px] font-medium text-[var(--muted-foreground)]">No forecast data</p>
-              <p className="text-[13px] text-[var(--muted-foreground)]">Add inventory items and create orders to generate forecasts</p>
+              <p className="text-[17px] font-medium text-[var(--muted-foreground)]">{t("noForecastData")}</p>
+              <p className="text-[13px] text-[var(--muted-foreground)]">{t("noForecastDataDesc")}</p>
             </div>
           )}
         </motion.div>
@@ -1112,9 +1129,12 @@ export default function InventoryPage() {
             await handleDelete(itemToDeleteId);
           }
         }}
-        entityLabel="item"
+        entityLabel={t("deleteEntityLabel")}
         entityName={items.find((i) => i.id === itemToDeleteId)?.name}
-        consequenceText="will be removed from inventory stock records. This cannot be undone."
+        consequenceText={t("deleteConsequence")}
+        title={t("deleteTitle")}
+        confirmText={t("deleteConfirm")}
+        cancelText={t("cancel")}
       />
 
       {/* ── Material Usage Drawer ── */}
@@ -1138,7 +1158,7 @@ export default function InventoryPage() {
                 {longPressedItem.name}
               </p>
               <p className="text-sm text-[var(--muted-foreground)]">
-                Stock: {longPressedItem.quantity} {longPressedItem.unit}
+                {t("stockLevelLabel", { qty: longPressedItem.quantity, unit: longPressedItem.unit })}
               </p>
             </div>
 
@@ -1151,7 +1171,7 @@ export default function InventoryPage() {
               }}
             >
               <Edit2 className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
-              Edit Item
+              {t("editItem")}
             </button>
 
             <button
@@ -1160,11 +1180,11 @@ export default function InventoryPage() {
                 closeItemSheet();
                 // Open edit dialog pre-focused for stock addition
                 openEditDialog(longPressedItem);
-                toast.info("Update the stock quantity to add stock");
+                toast.info(t("addStockHint"));
               }}
             >
               <Plus className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
-              Add Stock
+              {t("addStock")}
             </button>
 
             <button
@@ -1173,11 +1193,11 @@ export default function InventoryPage() {
                 closeItemSheet();
                 // Open edit dialog pre-focused for stock reduction
                 openEditDialog(longPressedItem);
-                toast.info("Update the stock quantity to reduce stock");
+                toast.info(t("reduceStockHint"));
               }}
             >
               <Minus className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
-              Reduce Stock
+              {t("reduceStock")}
             </button>
 
             <button
@@ -1189,7 +1209,7 @@ export default function InventoryPage() {
               }}
             >
               <History className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
-              View Stock History
+              {t("viewStockHistory")}
             </button>
 
             <button
@@ -1201,7 +1221,7 @@ export default function InventoryPage() {
               }}
             >
               <Trash2 className="h-[18px] w-[18px]" />
-              Delete Item
+              {t("deleteItem")}
             </button>
           </div>
         )}
@@ -1224,6 +1244,7 @@ function MobileInventoryCard({
   onTap: () => void;
   onLongPress: () => void;
 }) {
+  const t = useTranslations("inventory");
   const isLowStock = item.quantity <= item.min_stock_level;
   const stockStatus = getStockStatus(item);
   const borderColorMap = {
@@ -1257,17 +1278,20 @@ function MobileInventoryCard({
       </div>
       {/* Row 2: Stock level + Min stock */}
       <div className="flex justify-between items-center mt-1">
-        <span className={cn("text-sm font-semibold", isLowStock ? "text-red-500 dark:text-red-400" : "text-blue-600 dark:text-blue-400")}>Stock: {item.quantity} {item.unit}</span>
-        <span className="text-gray-500 dark:text-gray-400 text-xs">Min: {item.min_stock_level}</span>
+        <span className={cn("text-sm font-semibold", isLowStock ? "text-red-500 dark:text-red-400" : "text-blue-600 dark:text-blue-400")}>{t("stockLevelLabel", { qty: item.quantity, unit: item.unit })}</span>
+        <span className="text-gray-500 dark:text-gray-400 text-xs">{t("minStockShort", { min: item.min_stock_level })}</span>
       </div>
       {/* Row 3: Source PO + Cost */}
       <div className="flex justify-between mt-1">
         <span className="text-gray-500 dark:text-gray-400 text-xs truncate mr-2">
           {item.last_source_po_number
-            ? `From ${item.last_source_po_number}${formatSourceDate(item.last_received_at) ? ` · ${formatSourceDate(item.last_received_at)}` : ""}`
-            : item.supplier_whatsapp || "No supplier"}
+            ? t("fromPoMobile", {
+                po: item.last_source_po_number,
+                date: formatSourceDate(item.last_received_at) ? ` · ${formatSourceDate(item.last_received_at)}` : ""
+              })
+            : item.supplier_whatsapp || t("noSupplier")}
         </span>
-        <span className="text-gray-600 dark:text-gray-300 text-xs whitespace-nowrap">{"\u20B9"}{Number(item.purchase_cost_per_unit || 0).toLocaleString('en-IN')} + {item.tax_rate || 0}% TAX</span>
+        <span className="text-gray-600 dark:text-gray-300 text-xs whitespace-nowrap">{"\u20B9"}{Number(item.purchase_cost_per_unit || 0).toLocaleString('en-IN')} {t("taxSuffixUpper", { tax: item.tax_rate || 0 })}</span>
       </div>
     </div>
   );

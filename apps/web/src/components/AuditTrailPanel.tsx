@@ -24,6 +24,7 @@ import {
     Lock,
     Settings,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 // ─── Types ──────────────────────────────────────────────
 interface AuditLog {
@@ -88,6 +89,7 @@ const SEVERITY_ICONS: Record<string, React.ReactNode> = {
 
 // ─── Component ──────────────────────────────────────────
 export default function AuditTrailPanel() {
+    const t = useTranslations("settings");
     const [logs, setLogs] = useState<AuditLog[]>([]);
     const [total, setTotal] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
@@ -156,7 +158,7 @@ export default function AuditTrailPanel() {
             <div className="flex items-center justify-between">
                 <div>
                     <p style={{ fontSize: '15px', color: 'var(--muted-foreground)' }}>
-                        {total.toLocaleString()} events recorded
+                        {t("auditTrailsPage.eventsRecorded", { count: total.toLocaleString() })}
                     </p>
                 </div>
 
@@ -175,7 +177,7 @@ export default function AuditTrailPanel() {
                     }}
                 >
                     <Filter size={16} />
-                    Filters
+                    {t("auditTrailsPage.filters")}
                 </motion.button>
             </div>
 
@@ -191,7 +193,7 @@ export default function AuditTrailPanel() {
                 <Search size={18} style={{ color: 'var(--muted-foreground)', flexShrink: 0 }} />
                 <input
                     type="text"
-                    placeholder="Search audit logs..."
+                    placeholder={t("auditTrailsPage.searchPlaceholder")}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     style={{
@@ -222,7 +224,7 @@ export default function AuditTrailPanel() {
                             {/* Module filter */}
                             <div>
                                 <label style={{ fontSize: '13px', color: 'var(--muted-foreground)', fontWeight: 600, marginBottom: '6px', display: 'block' }}>
-                                    Module
+                                    {t("auditTrailsPage.moduleLabel")}
                                 </label>
                                 <div className="relative">
                                     <select
@@ -242,7 +244,7 @@ export default function AuditTrailPanel() {
                                         }}
                                     >
                                         {MODULES.map((m) => (
-                                            <option key={m} value={m}>{m === 'All' ? 'All Modules' : formatModuleName(m)}</option>
+                                            <option key={m} value={m}>{m === 'All' ? t("auditTrailsPage.allModules") : formatModuleName(m)}</option>
                                         ))}
                                     </select>
                                     <ChevronDown size={14} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)', pointerEvents: 'none' }} />
@@ -252,7 +254,7 @@ export default function AuditTrailPanel() {
                             {/* Action Type filter */}
                             <div>
                                 <label style={{ fontSize: '13px', color: 'var(--muted-foreground)', fontWeight: 600, marginBottom: '6px', display: 'block' }}>
-                                    Action Type
+                                    {t("auditTrailsPage.actionTypeLabel")}
                                 </label>
                                 <div className="relative">
                                     <select
@@ -272,7 +274,7 @@ export default function AuditTrailPanel() {
                                         }}
                                     >
                                         {ACTION_TYPES.map((a) => (
-                                            <option key={a} value={a}>{a === 'All' ? 'All Actions' : a.replace('_', ' ')}</option>
+                                            <option key={a} value={a}>{a === 'All' ? t("auditTrailsPage.allActions") : a.replace('_', ' ')}</option>
                                         ))}
                                     </select>
                                     <ChevronDown size={14} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)', pointerEvents: 'none' }} />
@@ -282,7 +284,7 @@ export default function AuditTrailPanel() {
                             {/* Severity filter */}
                             <div>
                                 <label style={{ fontSize: '13px', color: 'var(--muted-foreground)', fontWeight: 600, marginBottom: '6px', display: 'block' }}>
-                                    Severity
+                                    {t("auditTrailsPage.severityLabel")}
                                 </label>
                                 <div className="relative">
                                     <select
@@ -302,7 +304,7 @@ export default function AuditTrailPanel() {
                                         }}
                                     >
                                         {SEVERITIES.map((s) => (
-                                            <option key={s} value={s}>{s === 'All' ? 'All Severities' : s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                                            <option key={s} value={s}>{s === 'All' ? t("auditTrailsPage.allSeverities") : s.charAt(0).toUpperCase() + s.slice(1)}</option>
                                         ))}
                                     </select>
                                     <ChevronDown size={14} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)', pointerEvents: 'none' }} />
@@ -328,7 +330,7 @@ export default function AuditTrailPanel() {
                             className="inline-block w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
                             style={{ borderColor: 'var(--primary)', borderTopColor: 'transparent' }}
                         />
-                        <p className="mt-3" style={{ fontSize: '15px' }}>Loading audit trail...</p>
+                        <p className="mt-3" style={{ fontSize: '15px' }}>{t("auditTrailsPage.loading")}</p>
                     </div>
                 ) : logs.length === 0 ? (
                     <div className="p-12 text-center">
@@ -339,10 +341,10 @@ export default function AuditTrailPanel() {
                             <Shield size={28} style={{ color: 'var(--muted-foreground)' }} />
                         </div>
                         <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--foreground)', marginBottom: '4px' }}>
-                            No audit logs found
+                            {t("auditTrailsPage.emptyTitle")}
                         </p>
                         <p style={{ fontSize: '15px', color: 'var(--muted-foreground)' }}>
-                            Try adjusting your filters or search query
+                            {t("auditTrailsPage.emptySubtitle")}
                         </p>
                     </div>
                 ) : (
@@ -357,8 +359,8 @@ export default function AuditTrailPanel() {
                                 background: 'var(--muted)',
                             }}
                         >
-                            {['Action', 'Module', 'Type', 'Severity', 'Time', ''].map((h) => (
-                                <span key={h} style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            {[t("auditTrailsPage.thAction"), t("auditTrailsPage.thModule"), t("auditTrailsPage.thType"), t("auditTrailsPage.thSeverity"), t("auditTrailsPage.thTime"), ''].map((h, idx) => (
+                                <span key={idx} style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                                     {h}
                                 </span>
                             ))}
@@ -521,36 +523,36 @@ export default function AuditTrailPanel() {
                                                 {/* Details Card */}
                                                 <div className="space-y-3">
                                                     <h4 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                                        Details
+                                                        {t("auditTrailsPage.detailsTitle")}
                                                     </h4>
                                                     <div className="space-y-2" style={{ fontSize: '14px' }}>
                                                         {log.resourceType && (
                                                             <div className="flex justify-between">
-                                                                <span style={{ color: 'var(--muted-foreground)' }}>Resource</span>
+                                                                <span style={{ color: 'var(--muted-foreground)' }}>{t("auditTrailsPage.resource")}</span>
                                                                 <span style={{ color: 'var(--foreground)', fontWeight: 500 }}>{log.resourceType}</span>
                                                             </div>
                                                         )}
                                                         {log.resourceId && (
                                                             <div className="flex justify-between">
-                                                                <span style={{ color: 'var(--muted-foreground)' }}>Resource ID</span>
+                                                                <span style={{ color: 'var(--muted-foreground)' }}>{t("auditTrailsPage.resourceId")}</span>
                                                                 <span style={{ color: 'var(--foreground)', fontFamily: 'monospace', fontSize: '13px' }}>{log.resourceId}</span>
                                                             </div>
                                                         )}
                                                         {log.ipAddress && (
                                                             <div className="flex justify-between">
-                                                                <span style={{ color: 'var(--muted-foreground)' }}>IP Address</span>
+                                                                <span style={{ color: 'var(--muted-foreground)' }}>{t("auditTrailsPage.ipAddress")}</span>
                                                                 <span style={{ color: 'var(--foreground)', fontFamily: 'monospace', fontSize: '13px' }}>{log.ipAddress}</span>
                                                             </div>
                                                         )}
                                                         {log.browser && (
                                                             <div className="flex justify-between">
-                                                                <span style={{ color: 'var(--muted-foreground)' }}>Browser</span>
+                                                                <span style={{ color: 'var(--muted-foreground)' }}>{t("auditTrailsPage.browser")}</span>
                                                                 <span style={{ color: 'var(--foreground)' }}>{log.browser} ({log.deviceType})</span>
                                                             </div>
                                                         )}
                                                         {log.details && (
                                                             <div>
-                                                                <span style={{ color: 'var(--muted-foreground)' }}>Notes</span>
+                                                                <span style={{ color: 'var(--muted-foreground)' }}>{t("auditTrailsPage.notes")}</span>
                                                                 <p style={{ color: 'var(--foreground)', marginTop: '4px' }}>{log.details}</p>
                                                             </div>
                                                         )}
@@ -561,7 +563,7 @@ export default function AuditTrailPanel() {
                                                 {(log.beforeState || log.afterState) && (
                                                     <div className="space-y-3">
                                                         <h4 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                                            State Changes
+                                                            {t("auditTrailsPage.stateChanges")}
                                                         </h4>
                                                         <div className="grid grid-cols-2 gap-3">
                                                             {log.beforeState && (
@@ -569,7 +571,7 @@ export default function AuditTrailPanel() {
                                                                     className="p-3 rounded-xl"
                                                                     style={{ background: 'rgba(255, 59, 48, 0.06)', border: '1px solid rgba(255, 59, 48, 0.1)' }}
                                                                 >
-                                                                    <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--destructive)', marginBottom: '6px' }}>Before</p>
+                                                                    <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--destructive)', marginBottom: '6px' }}>{t("auditTrailsPage.before")}</p>
                                                                     <pre style={{ fontSize: '11px', color: 'var(--muted-foreground)', whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontFamily: 'var(--font-mono)' }}>
                                                                         {JSON.stringify(log.beforeState, null, 2)}
                                                                     </pre>
@@ -580,7 +582,7 @@ export default function AuditTrailPanel() {
                                                                     className="p-3 rounded-xl"
                                                                     style={{ background: 'rgba(52, 199, 89, 0.06)', border: '1px solid rgba(52, 199, 89, 0.1)' }}
                                                                 >
-                                                                    <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--erp-success)', marginBottom: '6px' }}>After</p>
+                                                                    <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--erp-success)', marginBottom: '6px' }}>{t("auditTrailsPage.after")}</p>
                                                                     <pre style={{ fontSize: '11px', color: 'var(--muted-foreground)', whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontFamily: 'var(--font-mono)' }}>
                                                                         {JSON.stringify(log.afterState, null, 2)}
                                                                     </pre>
@@ -606,7 +608,7 @@ export default function AuditTrailPanel() {
                     style={{ padding: '0 4px' }}
                 >
                     <p style={{ fontSize: '13px', color: 'var(--muted-foreground)' }}>
-                        Page {page} of {totalPages} · {total.toLocaleString()} total entries
+                        {t("auditTrailsPage.pagination", { page, totalPages, total: total.toLocaleString() })}
                     </p>
                     <div className="flex items-center gap-2">
                         <motion.button

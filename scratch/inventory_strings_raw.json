@@ -1,0 +1,543 @@
+{
+  "apps/web/src/app/dashboard/inventory/page.tsx": [
+    {
+      "type": "jsx",
+      "text": "i.quantity",
+      "line": 479
+    },
+    {
+      "type": "jsx",
+      "text": "PDF",
+      "line": 554
+    },
+    {
+      "type": "jsx",
+      "text": "PDF",
+      "line": 556
+    },
+    {
+      "type": "jsx",
+      "text": "XLS",
+      "line": 567
+    },
+    {
+      "type": "jsx",
+      "text": "Export",
+      "line": 569
+    },
+    {
+      "type": "jsx",
+      "text": "Add Material",
+      "line": 572
+    },
+    {
+      "type": "jsx",
+      "text": "Stock",
+      "line": 589
+    },
+    {
+      "type": "jsx",
+      "text": "Forecast",
+      "line": 601
+    },
+    {
+      "type": "jsx",
+      "text": "Quick add",
+      "line": 685
+    },
+    {
+      "type": "jsx",
+      "text": "Clear",
+      "line": 696
+    },
+    {
+      "type": "jsx",
+      "text": "Item & Supplier",
+      "line": 712
+    },
+    {
+      "type": "jsx",
+      "text": "Stock Level",
+      "line": 713
+    },
+    {
+      "type": "jsx",
+      "text": "Status",
+      "line": 715
+    },
+    {
+      "type": "jsx",
+      "text": "Restock",
+      "line": 808
+    },
+    {
+      "type": "jsx",
+      "text": "Edit Item",
+      "line": 823
+    },
+    {
+      "type": "jsx",
+      "text": "Mark as Removed",
+      "line": 833
+    },
+    {
+      "type": "jsx",
+      "text": "AI-Powered Projection",
+      "line": 894
+    },
+    {
+      "type": "jsx",
+      "text": "6-week stock forecast based on recent order consumption patterns",
+      "line": 897
+    },
+    {
+      "type": "jsx",
+      "text": "Review and restock to avoid production delays",
+      "line": 921
+    },
+    {
+      "type": "jsx",
+      "text": "Total Materials",
+      "line": 931
+    },
+    {
+      "type": "jsx",
+      "text": "Need Attention",
+      "line": 935
+    },
+    {
+      "type": "jsx",
+      "text": "Sufficient",
+      "line": 939
+    },
+    {
+      "type": "jsx",
+      "text": "Weekly Usage",
+      "line": 1002
+    },
+    {
+      "type": "jsx",
+      "text": "Days to Reorder",
+      "line": 1008
+    },
+    {
+      "type": "jsx",
+      "text": "Reorder By",
+      "line": 1014
+    },
+    {
+      "type": "jsx",
+      "text": "Cost/Unit",
+      "line": 1020
+    },
+    {
+      "type": "jsx",
+      "text": "6-Week Projection",
+      "line": 1029
+    },
+    {
+      "type": "jsx",
+      "text": "Now",
+      "line": 1037
+    },
+    {
+      "type": "jsx",
+      "text": "Contact Supplier via WhatsApp",
+      "line": 1071
+    },
+    {
+      "type": "jsx",
+      "text": "No forecast data",
+      "line": 1086
+    },
+    {
+      "type": "jsx",
+      "text": "Add inventory items and create orders to generate forecasts",
+      "line": 1087
+    },
+    {
+      "type": "jsx",
+      "text": "Edit Item",
+      "line": 1153
+    },
+    {
+      "type": "jsx",
+      "text": "Add Stock",
+      "line": 1166
+    },
+    {
+      "type": "jsx",
+      "text": "Reduce Stock",
+      "line": 1179
+    },
+    {
+      "type": "jsx",
+      "text": "View Stock History",
+      "line": 1191
+    },
+    {
+      "type": "jsx",
+      "text": "Delete Item",
+      "line": 1203
+    },
+    {
+      "type": "placeholder",
+      "text": "Search by material name...",
+      "line": 648
+    },
+    {
+      "type": "toast",
+      "text": "Inventory report PDF downloaded!",
+      "line": 186
+    },
+    {
+      "type": "toast",
+      "text": "Inventory Excel downloaded!",
+      "line": 211
+    },
+    {
+      "type": "toast",
+      "text": "Failed to fetch inventory",
+      "line": 218
+    },
+    {
+      "type": "toast",
+      "text": "Failed to fetch inventory",
+      "line": 221
+    },
+    {
+      "type": "toast",
+      "text": "Supplier WhatsApp is mandatory",
+      "line": 268
+    },
+    {
+      "type": "toast",
+      "text": "Failed to update item",
+      "line": 288
+    },
+    {
+      "type": "toast",
+      "text": "Item updated",
+      "line": 290
+    },
+    {
+      "type": "toast",
+      "text": "Failed to add item",
+      "line": 301
+    },
+    {
+      "type": "toast",
+      "text": "Item added",
+      "line": 303
+    },
+    {
+      "type": "toast",
+      "text": "Operation failed",
+      "line": 309
+    },
+    {
+      "type": "toast",
+      "text": "Item deleted",
+      "line": 317
+    },
+    {
+      "type": "toast",
+      "text": "Failed to delete item",
+      "line": 324
+    },
+    {
+      "type": "toast",
+      "text": "Update the stock quantity to add stock",
+      "line": 1163
+    },
+    {
+      "type": "toast",
+      "text": "Update the stock quantity to reduce stock",
+      "line": 1176
+    },
+    {
+      "type": "attr",
+      "text": "Inventory",
+      "line": 540
+    },
+    {
+      "type": "attr",
+      "text": "Print PDF",
+      "line": 550
+    },
+    {
+      "type": "attr",
+      "text": "Excel Export",
+      "line": 562
+    },
+    {
+      "type": "attr",
+      "text": "Total Valuation",
+      "line": 612
+    },
+    {
+      "type": "attr",
+      "text": "Total Materials",
+      "line": 621
+    },
+    {
+      "type": "attr",
+      "text": "Critical Stock",
+      "line": 629
+    }
+  ],
+  "apps/web/src/components/inventory/AddMaterialModal.tsx": [
+    {
+      "type": "jsx",
+      "text": "Live Preview",
+      "line": 309
+    },
+    {
+      "type": "jsx",
+      "text": "Estimated Inventory Value",
+      "line": 314
+    },
+    {
+      "type": "jsx",
+      "text": "Estimated Inventory Value",
+      "line": 330
+    },
+    {
+      "type": "jsx",
+      "text": "Material Name",
+      "line": 343
+    },
+    {
+      "type": "jsx",
+      "text": "Category",
+      "line": 360
+    },
+    {
+      "type": "jsx",
+      "text": "Select category",
+      "line": 369
+    },
+    {
+      "type": "jsx",
+      "text": "HSN Code",
+      "line": 378
+    },
+    {
+      "type": "jsx",
+      "text": "Quantity",
+      "line": 402
+    },
+    {
+      "type": "jsx",
+      "text": "Unit",
+      "line": 419
+    },
+    {
+      "type": "jsx",
+      "text": "Total stock after adding will be reflected in inventory",
+      "line": 459
+    },
+    {
+      "type": "jsx",
+      "text": "Cost Per Unit",
+      "line": 471
+    },
+    {
+      "type": "jsx",
+      "text": "Inclusive of GST",
+      "line": 513
+    },
+    {
+      "type": "jsx",
+      "text": "Low Stock Alert",
+      "line": 550
+    },
+    {
+      "type": "jsx",
+      "text": "Reorder Level",
+      "line": 567
+    },
+    {
+      "type": "jsx",
+      "text": "You will be notified when stock reaches low stock level",
+      "line": 581
+    },
+    {
+      "type": "jsx",
+      "text": "Supplier WhatsApp",
+      "line": 593
+    },
+    {
+      "type": "jsx",
+      "text": "Notes",
+      "line": 612
+    },
+    {
+      "type": "jsx",
+      "text": "Inventory Summary",
+      "line": 643
+    },
+    {
+      "type": "jsx",
+      "text": "Quantity",
+      "line": 675
+    },
+    {
+      "type": "jsx",
+      "text": "Unit",
+      "line": 681
+    },
+    {
+      "type": "jsx",
+      "text": "Cost Per Unit",
+      "line": 687
+    },
+    {
+      "type": "jsx",
+      "text": "Subtotal",
+      "line": 698
+    },
+    {
+      "type": "jsx",
+      "text": "Total",
+      "line": 710
+    },
+    {
+      "type": "jsx",
+      "text": "Stock Health",
+      "line": 717
+    },
+    {
+      "type": "jsx",
+      "text": "Cancel",
+      "line": 752
+    },
+    {
+      "type": "jsx",
+      "text": "Inventory Summary",
+      "line": 762
+    },
+    {
+      "type": "jsx",
+      "text": "Quantity",
+      "line": 775
+    },
+    {
+      "type": "jsx",
+      "text": "Unit",
+      "line": 783
+    },
+    {
+      "type": "jsx",
+      "text": "Cost Per Unit",
+      "line": 791
+    },
+    {
+      "type": "jsx",
+      "text": "Subtotal",
+      "line": 804
+    },
+    {
+      "type": "jsx",
+      "text": "Total Inventory Value",
+      "line": 824
+    },
+    {
+      "type": "jsx",
+      "text": "Stock Health",
+      "line": 834
+    },
+    {
+      "type": "jsx",
+      "text": "Cancel",
+      "line": 865
+    },
+    {
+      "type": "placeholder",
+      "text": "e.g. Polyester Yarn",
+      "line": 352
+    },
+    {
+      "type": "placeholder",
+      "text": "e.g. 5402",
+      "line": 388
+    },
+    {
+      "type": "placeholder",
+      "text": "Enter quantity",
+      "line": 411
+    },
+    {
+      "type": "placeholder",
+      "text": "kg, pcs, meters",
+      "line": 431
+    },
+    {
+      "type": "placeholder",
+      "text": "0.00",
+      "line": 485
+    },
+    {
+      "type": "placeholder",
+      "text": "18",
+      "line": 503
+    },
+    {
+      "type": "placeholder",
+      "text": "e.g. 10",
+      "line": 559
+    },
+    {
+      "type": "placeholder",
+      "text": "e.g. 20",
+      "line": 574
+    },
+    {
+      "type": "placeholder",
+      "text": "e.g. +91 9876543210",
+      "line": 605
+    },
+    {
+      "type": "placeholder",
+      "text": "Optional notes...",
+      "line": 617
+    },
+    {
+      "type": "attr",
+      "text": "Material Details",
+      "line": 339
+    },
+    {
+      "type": "attr",
+      "text": "Inventory Setup",
+      "line": 397
+    },
+    {
+      "type": "attr",
+      "text": "Cost & Tax Configuration",
+      "line": 466
+    },
+    {
+      "type": "attr",
+      "text": "Stock Monitoring",
+      "line": 545
+    },
+    {
+      "type": "attr",
+      "text": "Additional Information (Optional)",
+      "line": 588
+    }
+  ],
+  "apps/web/src/components/ui/MaterialUsageDrawer.tsx": [
+    {
+      "type": "jsx",
+      "text": "No usage records found",
+      "line": 251
+    },
+    {
+      "type": "jsx",
+      "text": "Product",
+      "line": 355
+    }
+  ]
+}

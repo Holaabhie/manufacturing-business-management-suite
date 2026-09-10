@@ -4,21 +4,23 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { NotificationIcon } from "@/components/notifications/NotificationIcon";
 import type { StoredNotification } from "@/lib/hooks/use-app-notifications";
+import { useTranslations } from "next-intl";
+import { useAppLocale } from "@/components/LocaleProvider";
 
 // ─── Relative time formatter ────────────────────────────────────
-function formatRelativeTime(dateStr: string): string {
+function formatRelativeTime(dateStr: string, t?: (key: any, params?: any) => string, dateLocale: string = "en-IN"): string {
   try {
     const diff = Date.now() - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60000);
-    if (mins < 1) return "Just now";
-    if (mins < 60) return `${mins}m ago`;
+    if (mins < 1) return t ? t("timeJustNow") : "Just now";
+    if (mins < 60) return t ? t("timeMinsAgo", { mins }) : `${mins}m ago`;
     const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}h ago`;
+    if (hrs < 24) return t ? t("timeHoursAgo", { hrs }) : `${hrs}h ago`;
     const days = Math.floor(hrs / 24);
-    if (days === 1) return "Yesterday";
-    if (days < 7) return `${days}d ago`;
+    if (days === 1) return t ? t("timeYesterday") : "Yesterday";
+    if (days < 7) return t ? t("timeDaysAgo", { days }) : `${days}d ago`;
     // Show actual date for older
-    return new Date(dateStr).toLocaleDateString("en-IN", {
+    return new Date(dateStr).toLocaleDateString(dateLocale, {
       day: "numeric",
       month: "short",
     });
@@ -56,6 +58,9 @@ export function NotificationFeedItem({
   onMarkRead,
 }: NotificationFeedItemProps) {
   const router = useRouter();
+  const t = useTranslations("notifications");
+  const { locale } = useAppLocale();
+  const dateLocale = locale === "hi" ? "hi-IN" : locale === "gu" ? "gu-IN" : locale === "mr" ? "mr-IN" : "en-IN";
 
   const handleClick = () => {
     if (!notification.isRead) {
@@ -104,7 +109,7 @@ export function NotificationFeedItem({
           {notification.message}
         </p>
         <p className="text-[11px] mt-0.5 text-[#9CA3AF] dark:text-white/30 tracking-[0.02em]">
-          {formatRelativeTime(notification.createdAt)}
+          {formatRelativeTime(notification.createdAt, t, dateLocale)}
         </p>
       </div>
 
@@ -118,9 +123,17 @@ export function NotificationFeedItem({
 
 // ─── Date Group Header ──────────────────────────────────────────
 export function DateGroupHeader({ label }: { label: string }) {
+  const t = useTranslations("notifications");
+  const groupLabelMap: Record<string, string> = {
+    Today: t("groupToday"),
+    Yesterday: t("groupYesterday"),
+    "This week": t("groupThisWeek"),
+    Earlier: t("groupEarlier"),
+  };
+  const displayLabel = groupLabelMap[label] || label;
   return (
     <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#9CA3AF] dark:text-white/30 px-4 py-2 mt-2 first:mt-0">
-      {label}
+      {displayLabel}
     </p>
   );
 }

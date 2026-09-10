@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import usePageStateCache from "@/infrastructure/state/pageStateCache";
+import { clearAllDrafts } from "@/hooks/useDraftPersistence";
 import {
   LayoutDashboard,
   Users,
@@ -34,7 +35,6 @@ import {
   BarChart3,
   Truck,
   BookOpen,
-  Download,
   Plus,
   Archive,
 } from "lucide-react";
@@ -53,6 +53,7 @@ import {
 import { PageTransition } from "@/components/ui/PageTransition";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { NotificationDropdown } from "@/components/NotificationDropdown";
+import { AIAssistantIcon } from "@/components/ai/AIAssistantIcon";
 import { USER_UPDATED_EVENT } from "@/lib/events";
 import { useTheme } from "next-themes";
 import {
@@ -182,7 +183,6 @@ const moreSheetSections = [
     items: [
       { name: "Analytics", desc: "Revenue & performance", icon: BarChart3, emoji: "📊", href: "/dashboard/analytics" },
       { name: "Machines", desc: "Equipment & maintenance", icon: Gauge, emoji: "⚙️", href: "/dashboard/machines" },
-      { name: "Tally Export", desc: "Export for Tally ERP", icon: Download, emoji: "📤", href: "/dashboard/billing" },
       { name: "Previous Years", desc: "Archived FY data", icon: Archive, emoji: "📦", href: "/dashboard/reports/previous-years" },
     ],
   },
@@ -297,6 +297,7 @@ export default function DashboardLayout({
 
   const handleLogout = async () => {
     usePageStateCache.getState().clearAll();
+    clearAllDrafts();
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
   };
@@ -581,12 +582,29 @@ export default function DashboardLayout({
           >
             {/* Left zone */}
             <div className="flex items-center gap-3 min-w-0">
-              {/* Mobile: Decorative logo mark only (no link, no wordmark) */}
+              {/* Mobile: Decorative logo mark / AI Assistant avatar */}
               <div className="md:hidden flex items-center">
                 <div
-                  className="w-[28px] h-[28px] rounded-[7px] flex items-center justify-center bg-primary flex-shrink-0"
+                  className={cn(
+                    "w-[28px] h-[28px] flex items-center justify-center flex-shrink-0 transition-all",
+                    pathname === "/dashboard/assistant"
+                      ? "rounded-full"
+                      : "rounded-[7px] bg-primary"
+                  )}
+                  style={
+                    pathname === "/dashboard/assistant"
+                      ? {
+                          background: "linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%)",
+                          boxShadow: "0 2px 8px rgba(139, 92, 246, 0.35)",
+                        }
+                      : undefined
+                  }
                 >
-                  <Factory className="h-3.5 w-3.5 text-white" />
+                  {pathname === "/dashboard/assistant" ? (
+                    <AIAssistantIcon size={15} className="text-white" />
+                  ) : (
+                    <Factory className="h-3.5 w-3.5 text-white" />
+                  )}
                 </div>
               </div>
 
@@ -605,7 +623,18 @@ export default function DashboardLayout({
                       {tNav("dashboard")}
                     </Link>
                     <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
-                    <span className="font-medium text-foreground">
+                    <span className="font-medium text-foreground flex items-center gap-1.5">
+                      {pathname === "/dashboard/assistant" && (
+                        <div
+                          className="w-[20px] h-[20px] rounded-full flex items-center justify-center flex-shrink-0"
+                          style={{
+                            background: "linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%)",
+                            boxShadow: "0 2px 6px rgba(139, 92, 246, 0.25)",
+                          }}
+                        >
+                          <AIAssistantIcon size={12} className="text-white" />
+                        </div>
+                      )}
                       {getPageName()}
                     </span>
                   </>

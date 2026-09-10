@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import React, { useMemo, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -64,6 +65,8 @@ export function CreateOrderDialog({
   employees = [],
   submitLoading = false,
 }: CreateOrderDialogProps) {
+  const t = useTranslations("orders.dialog");
+  const tStatus = useTranslations("orders.statuses");
   const [showMaterials, setShowMaterials] = React.useState(true);
   const [showNotes, setShowNotes] = React.useState(false);
   const [showDiscardDialog, setShowDiscardDialog] = React.useState(false);
@@ -156,7 +159,7 @@ export function CreateOrderDialog({
         {/* Noise overlay — dark mode only */}
         <div className="absolute inset-0 pointer-events-none z-0 opacity-0 dark:opacity-[0.03]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }} />
 
-        <DialogDescription className="sr-only">Form to configure and issue a production order</DialogDescription>
+        <DialogDescription className="sr-only">{t("srDescription")}</DialogDescription>
 
         {/* Header */}
         {/* Header */}
@@ -167,10 +170,10 @@ export function CreateOrderDialog({
             </div>
             <div className="min-w-0">
               <DialogTitle className="text-[18px] font-bold text-gray-900 dark:text-[rgba(255,255,255,0.95)] leading-tight m-0">
-                {currentOrder ? "Edit Order" : "Configure Production Order"}
+                {currentOrder ? t("editOrder") : t("configureProductionOrder")}
               </DialogTitle>
               <p className="text-[12px] text-gray-400 dark:text-[rgba(255,255,255,0.35)] mt-0.5">
-                {currentOrder ? `Updating ${currentOrder.productName || "order"}` : "Setup details and allocate materials"}
+                {currentOrder ? t("updatingOrder", { name: currentOrder.productName || "order" }) : t("setupDetails")}
               </p>
             </div>
           </div>
@@ -191,18 +194,18 @@ export function CreateOrderDialog({
             {/* Section 1: Order Details */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-gray-400 dark:text-[rgba(255,255,255,0.3)]">Order Details</span>
+                <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-gray-400 dark:text-[rgba(255,255,255,0.3)]">{t("orderDetails")}</span>
                 <div className="flex-1 h-px bg-gray-100 dark:bg-[rgba(255,255,255,0.05)]" />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2 space-y-1.5">
-                  <Label className="text-[12px] font-semibold text-gray-500 dark:text-[rgba(255,255,255,0.7)] uppercase tracking-wide">Target Client</Label>
+                  <Label className="text-[12px] font-semibold text-gray-500 dark:text-[rgba(255,255,255,0.7)] uppercase tracking-wide">{t("targetClient")}</Label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-500 dark:text-[#60a5fa] z-10 pointer-events-none" />
                     <Select value={formData.client_id} onValueChange={handleClientChange} required>
                       <SelectTrigger className="h-[44px] pl-10 bg-white dark:bg-[rgba(255,255,255,0.03)] border border-gray-200 dark:border-[rgba(255,255,255,0.08)] rounded-[10px] text-[14px] text-gray-900 dark:text-[rgba(255,255,255,0.9)] focus:ring-2 focus:ring-blue-500/30 dark:focus:ring-1 dark:focus:ring-[#60a5fa] transition-all">
-                        <SelectValue placeholder="Select from directory..." />
+                        <SelectValue placeholder={t("selectClientPlaceholder")} />
                       </SelectTrigger>
                       <SelectContent className="rounded-[10px] bg-white dark:bg-[#1a2235] border border-gray-200 dark:border-[rgba(255,255,255,0.1)] max-h-[220px] overflow-y-auto scrollbar-thin">
                         {clients.map((c: any) => (
@@ -216,12 +219,12 @@ export function CreateOrderDialog({
                 </div>
 
                 <div className="col-span-2 space-y-1.5">
-                  <Label className="text-[12px] font-semibold text-gray-500 dark:text-[rgba(255,255,255,0.7)] uppercase tracking-wide">Product Name</Label>
+                  <Label className="text-[12px] font-semibold text-gray-500 dark:text-[rgba(255,255,255,0.7)] uppercase tracking-wide">{t("productName")}</Label>
                   <div className="relative">
                     <Package className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-purple-500 dark:text-[#c084fc] pointer-events-none" />
                     <Input
                       list="client-products"
-                      placeholder="Enter product name..."
+                      placeholder={t("productNamePlaceholder")}
                       value={formData.product_name}
                       onChange={handleProductChange}
                       className="h-[44px] pl-10 bg-white dark:bg-[rgba(255,255,255,0.03)] border border-gray-200 dark:border-[rgba(255,255,255,0.08)] rounded-[10px] text-[14px] text-gray-900 dark:text-[rgba(255,255,255,0.9)] focus-visible:ring-2 focus-visible:ring-purple-500/30 dark:focus-visible:ring-1 dark:focus-visible:ring-[#c084fc] placeholder:text-gray-400 dark:placeholder:text-[rgba(255,255,255,0.2)]"
@@ -234,7 +237,7 @@ export function CreateOrderDialog({
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-[12px] font-semibold text-gray-500 dark:text-[rgba(255,255,255,0.7)] uppercase tracking-wide">Ordered Quantity</Label>
+                  <Label className="text-[12px] font-semibold text-gray-500 dark:text-[rgba(255,255,255,0.7)] uppercase tracking-wide">{t("orderedQuantity")}</Label>
                   <div className="flex h-[44px] rounded-[10px] overflow-hidden border border-gray-200 dark:border-[rgba(255,255,255,0.08)] focus-within:ring-2 focus-within:ring-blue-500/30 dark:focus-within:ring-1 dark:focus-within:ring-[rgba(255,255,255,0.2)] transition-all">
                     <NumericInput
                       value={formData.quantity}
@@ -247,7 +250,7 @@ export function CreateOrderDialog({
                     />
                     <Select value={formData.unit} onValueChange={(v) => setFormData({ ...formData, unit: v })}>
                       <SelectTrigger className="h-full rounded-none border-none flex-1 bg-gray-50 dark:bg-[rgba(255,255,255,0.03)] focus:ring-0 focus:ring-offset-0 px-3 text-[14px] text-gray-900 dark:text-[rgba(255,255,255,0.9)]">
-                        <SelectValue placeholder="Unit" />
+                        <SelectValue placeholder={t("unit")} />
                       </SelectTrigger>
                       <SelectContent className="rounded-[10px] bg-white dark:bg-[#1a2235] border border-gray-200 dark:border-[rgba(255,255,255,0.1)] min-w-[80px]">
                         {["kg", "pcs", "ltr", "mtr", "box"].map(u => (
@@ -259,7 +262,7 @@ export function CreateOrderDialog({
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-[12px] font-semibold text-gray-500 dark:text-[rgba(255,255,255,0.7)] uppercase tracking-wide">Rate per Unit</Label>
+                  <Label className="text-[12px] font-semibold text-gray-500 dark:text-[rgba(255,255,255,0.7)] uppercase tracking-wide">{t("ratePerUnit")}</Label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[14px] text-gray-400 dark:text-[rgba(255,255,255,0.4)] pointer-events-none">{"\u20B9"}</span>
                     <NumericInput
@@ -276,7 +279,7 @@ export function CreateOrderDialog({
 
                 {/* Estimated Order Value Strip */}
                 <div className="col-span-2 mt-1 rounded-[12px] bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-[rgba(59,130,246,0.08)] dark:to-[rgba(99,102,241,0.06)] border border-blue-100 dark:border-[rgba(59,130,246,0.12)] flex items-center justify-between px-4 py-3">
-                  <span className="text-[12px] font-semibold text-blue-500/70 dark:text-[rgba(96,165,250,0.7)] uppercase tracking-wider">Estimated Order Value</span>
+                  <span className="text-[12px] font-semibold text-blue-500/70 dark:text-[rgba(96,165,250,0.7)] uppercase tracking-wider">{t("estimatedOrderValue")}</span>
                   <span className="text-[17px] font-bold text-blue-600 dark:text-[#60a5fa]">{"\u20B9"}{totalValue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
                 </div>
               </div>
@@ -285,19 +288,19 @@ export function CreateOrderDialog({
             {/* Section 2: Production Setup */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-gray-400 dark:text-[rgba(255,255,255,0.3)]">Production Setup</span>
+                <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-gray-400 dark:text-[rgba(255,255,255,0.3)]">{t("productionSetup")}</span>
                 <div className="flex-1 h-px bg-gray-100 dark:bg-[rgba(255,255,255,0.05)]" />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2 space-y-2">
-                  <Label className="text-[12px] font-semibold text-gray-500 dark:text-[rgba(255,255,255,0.7)] uppercase tracking-wide">Priority</Label>
+                  <Label className="text-[12px] font-semibold text-gray-500 dark:text-[rgba(255,255,255,0.7)] uppercase tracking-wide">{t("priority")}</Label>
                   <div className="flex gap-2">
                     {[
-                      { v: 'low', l: 'Low', i: ChevronDown, c: 'text-slate-500 dark:text-[#94a3b8]', bg: 'bg-slate-50 dark:bg-[rgba(148,163,184,0.1)]', bc: 'border-slate-200 dark:border-[rgba(148,163,184,0.2)]' },
-                      { v: 'normal', l: 'Normal', i: Zap, c: 'text-blue-500 dark:text-[#60a5fa]', bg: 'bg-blue-50 dark:bg-[rgba(96,165,250,0.1)]', bc: 'border-blue-200 dark:border-[rgba(96,165,250,0.2)]' },
-                      { v: 'high', l: 'High', i: ChevronUp, c: 'text-amber-500 dark:text-[#fbbf24]', bg: 'bg-amber-50 dark:bg-[rgba(251,191,36,0.1)]', bc: 'border-amber-200 dark:border-[rgba(251,191,36,0.2)]' },
-                      { v: 'urgent', l: 'Urgent', i: Flame, c: 'text-red-500 dark:text-[#ef4444]', bg: 'bg-red-50 dark:bg-[rgba(239,68,68,0.1)]', bc: 'border-red-200 dark:border-[rgba(239,68,68,0.2)]' }
+                      { v: 'low', l: t('priorities.low'), i: ChevronDown, c: 'text-slate-500 dark:text-[#94a3b8]', bg: 'bg-slate-50 dark:bg-[rgba(148,163,184,0.1)]', bc: 'border-slate-200 dark:border-[rgba(148,163,184,0.2)]' },
+                      { v: 'normal', l: t('priorities.normal'), i: Zap, c: 'text-blue-500 dark:text-[#60a5fa]', bg: 'bg-blue-50 dark:bg-[rgba(96,165,250,0.1)]', bc: 'border-blue-200 dark:border-[rgba(96,165,250,0.2)]' },
+                      { v: 'high', l: t('priorities.high'), i: ChevronUp, c: 'text-amber-500 dark:text-[#fbbf24]', bg: 'bg-amber-50 dark:bg-[rgba(251,191,36,0.1)]', bc: 'border-amber-200 dark:border-[rgba(251,191,36,0.2)]' },
+                      { v: 'urgent', l: t('priorities.urgent'), i: Flame, c: 'text-red-500 dark:text-[#ef4444]', bg: 'bg-red-50 dark:bg-[rgba(239,68,68,0.1)]', bc: 'border-red-200 dark:border-[rgba(239,68,68,0.2)]' }
                     ].map(p => {
                       const Icon = p.i;
                       const isSelected = formData.priority === p.v;
@@ -319,7 +322,7 @@ export function CreateOrderDialog({
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-[12px] font-semibold text-gray-500 dark:text-[rgba(255,255,255,0.7)] uppercase tracking-wide">Delivery Date</Label>
+                  <Label className="text-[12px] font-semibold text-gray-500 dark:text-[rgba(255,255,255,0.7)] uppercase tracking-wide">{t("deliveryDate")}</Label>
                   <div className="relative">
                     <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500 dark:text-[#34d399] pointer-events-none" />
                     <Input
@@ -332,7 +335,7 @@ export function CreateOrderDialog({
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-[12px] font-semibold text-gray-500 dark:text-[rgba(255,255,255,0.7)] uppercase tracking-wide">Status</Label>
+                  <Label className="text-[12px] font-semibold text-gray-500 dark:text-[rgba(255,255,255,0.7)] uppercase tracking-wide">{t("status")}</Label>
                   <div className="relative">
                     <Cpu className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-pink-500 dark:text-[#f472b6] pointer-events-none" />
                     <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
@@ -340,9 +343,9 @@ export function CreateOrderDialog({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="rounded-[10px] bg-white dark:bg-[#1a2235] border border-gray-200 dark:border-[rgba(255,255,255,0.1)]">
-                        <SelectItem value="pending" className="rounded-[8px] text-gray-700 dark:text-[rgba(255,255,255,0.8)]">Pending</SelectItem>
-                        <SelectItem value="processing" className="rounded-[8px] text-gray-700 dark:text-[rgba(255,255,255,0.8)]">In Production</SelectItem>
-                        <SelectItem value="completed" className="rounded-[8px] text-gray-700 dark:text-[rgba(255,255,255,0.8)]">Completed</SelectItem>
+                        <SelectItem value="pending" className="rounded-[8px] text-gray-700 dark:text-[rgba(255,255,255,0.8)]">{tStatus("pending")}</SelectItem>
+                        <SelectItem value="processing" className="rounded-[8px] text-gray-700 dark:text-[rgba(255,255,255,0.8)]">{tStatus("inProduction")}</SelectItem>
+                        <SelectItem value="completed" className="rounded-[8px] text-gray-700 dark:text-[rgba(255,255,255,0.8)]">{tStatus("completed")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -358,7 +361,7 @@ export function CreateOrderDialog({
                 className="w-full flex items-center justify-between group cursor-pointer"
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-gray-400 dark:text-[rgba(255,255,255,0.3)] group-hover:text-gray-500 dark:group-hover:text-[rgba(255,255,255,0.5)] transition-colors">Materials & Cost</span>
+                  <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-gray-400 dark:text-[rgba(255,255,255,0.3)] group-hover:text-gray-500 dark:group-hover:text-[rgba(255,255,255,0.5)] transition-colors">{t("materialsCost")}</span>
                   {formData.order_items.length > 0 && (
                     <span className="px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-[rgba(255,255,255,0.1)] text-[10px] font-bold text-blue-600 dark:text-white leading-none">
                       {formData.order_items.length}
@@ -379,12 +382,12 @@ export function CreateOrderDialog({
                   >
                     {/* Material Source toggle */}
                     <div className="flex items-center justify-between p-3 rounded-[12px] bg-gray-50 dark:bg-[rgba(255,255,255,0.02)] border border-gray-100 dark:border-[rgba(255,255,255,0.05)]">
-                      <Label className="text-[12px] font-semibold text-gray-500 dark:text-[rgba(255,255,255,0.7)] ml-1">Material Source</Label>
+                      <Label className="text-[12px] font-semibold text-gray-500 dark:text-[rgba(255,255,255,0.7)] ml-1">{t("materialSource")}</Label>
                       <div className="scale-90 origin-right">
                         <TogglePill
                           options={[
-                            { value: "own", label: "Own Material" },
-                            { value: "client", label: "Client Material" },
+                            { value: "own", label: t("ownMaterial") },
+                            { value: "client", label: t("clientMaterial") },
                           ]}
                           value={formData.material_source}
                           onChange={(v: any) => {
@@ -400,8 +403,8 @@ export function CreateOrderDialog({
                         {formData.order_items.length === 0 ? (
                           <div className="py-6 text-center bg-gray-50 dark:bg-[rgba(255,255,255,0.01)] rounded-[12px] border border-dashed border-gray-200 dark:border-[rgba(255,255,255,0.1)] flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-[rgba(255,255,255,0.02)] transition-colors" onClick={addDeductionRow}>
                             <Box className="h-6 w-6 mb-2 text-gray-300 dark:text-[rgba(255,255,255,0.2)]" />
-                            <p className="text-[13px] font-medium text-gray-500 dark:text-[rgba(255,255,255,0.5)]">No materials selected</p>
-                            <p className="text-[11px] text-gray-400 dark:text-[rgba(255,255,255,0.3)] mt-1">Click to add raw materials for this order</p>
+                            <p className="text-[13px] font-medium text-gray-500 dark:text-[rgba(255,255,255,0.5)]">{t("noMaterialsSelected")}</p>
+                            <p className="text-[11px] text-gray-400 dark:text-[rgba(255,255,255,0.3)] mt-1">{t("clickToAddMaterials")}</p>
                           </div>
                         ) : (
                           formData.order_items.map((item: any, idx: number) => {
@@ -410,10 +413,10 @@ export function CreateOrderDialog({
                             return (
                               <div key={idx} className="flex gap-2 items-start p-3 rounded-[12px] bg-white dark:bg-[rgba(255,255,255,0.03)] border border-gray-100 dark:border-[rgba(255,255,255,0.05)] shadow-sm dark:shadow-none">
                                 <div className="flex-1 space-y-1.5">
-                                  <Label className="text-[10px] font-bold text-gray-400 dark:text-[rgba(255,255,255,0.4)] uppercase">Material {isLoadingMaterials && <Loader2 className="inline h-3 w-3 animate-spin ml-1" />}</Label>
+                                  <Label className="text-[10px] font-bold text-gray-400 dark:text-[rgba(255,255,255,0.4)] uppercase">{t("material")} {isLoadingMaterials && <Loader2 className="inline h-3 w-3 animate-spin ml-1" />}</Label>
                                   <Select value={item.inventory_id} onValueChange={(v) => updateDeductionRow(idx, "inventory_id", v)} disabled={!hasClientSelected || isLoadingMaterials}>
                                     <SelectTrigger className="h-[36px] bg-gray-50 dark:bg-[rgba(0,0,0,0.2)] border-gray-200 dark:border-[rgba(255,255,255,0.05)] rounded-[8px] text-[13px]">
-                                      <SelectValue placeholder={!hasClientSelected ? "Select client..." : "Select stock..."} />
+                                      <SelectValue placeholder={!hasClientSelected ? t("selectClientFirst") : t("selectStock")} />
                                     </SelectTrigger>
                                     <SelectContent className="rounded-[10px] bg-white dark:bg-[#1a2235] border border-gray-200 dark:border-[rgba(255,255,255,0.1)] max-h-[220px] overflow-y-auto scrollbar-thin">
                                       {sourceMaterials.map((i: any) => (
@@ -425,7 +428,7 @@ export function CreateOrderDialog({
                                   </Select>
                                 </div>
                                 <div className="w-24 space-y-1.5">
-                                  <Label className="text-[10px] font-bold text-gray-400 dark:text-[rgba(255,255,255,0.4)] uppercase">Qty</Label>
+                                  <Label className="text-[10px] font-bold text-gray-400 dark:text-[rgba(255,255,255,0.4)] uppercase">{t("qty")}</Label>
                                   <NumericInput value={item.quantity_deducted} onValueChange={(v) => updateDeductionRow(idx, "quantity_deducted", v)} className="h-[36px] bg-gray-50 dark:bg-[rgba(0,0,0,0.2)] border-gray-200 dark:border-[rgba(255,255,255,0.05)] rounded-[8px] text-[13px] text-center" placeholder="0" allowDecimal={true} min={0} />
                                 </div>
                                 <div className="pt-5 pl-1">
@@ -438,7 +441,7 @@ export function CreateOrderDialog({
                           })
                         )}
                         <button type="button" onClick={addDeductionRow} className="flex items-center gap-1.5 text-[12px] font-medium text-blue-500 dark:text-[#60a5fa] hover:text-blue-600 dark:hover:text-[#93c5fd] transition-colors mt-2 ml-1 cursor-pointer">
-                          <Plus className="h-3.5 w-3.5" /> Add Material
+                          <Plus className="h-3.5 w-3.5" /> {t("addMaterial")}
                         </button>
                       </div>
                     )}
@@ -448,19 +451,19 @@ export function CreateOrderDialog({
                       <div className="flex divide-x divide-gray-100 dark:divide-[rgba(255,255,255,0.05)]">
                         <div className="flex-1 p-3 relative">
                           <div className="absolute top-0 left-0 right-0 h-[2px] bg-blue-400" />
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-[rgba(255,255,255,0.4)] mb-1">Material Cost</div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-[rgba(255,255,255,0.4)] mb-1">{t("materialCost")}</div>
                           <div className="text-[14px] font-semibold text-gray-900 dark:text-white">{"\u20B9"}{effectiveMaterialCost.toLocaleString('en-IN')}</div>
                         </div>
                         <div className="flex-1 p-3 relative">
                           <div className={cn("absolute top-0 left-0 right-0 h-[2px]", profit >= 0 ? "bg-emerald-400" : "bg-red-400")} />
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-[rgba(255,255,255,0.4)] mb-1">Gross Profit</div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-[rgba(255,255,255,0.4)] mb-1">{t("grossProfit")}</div>
                           <div className={cn("text-[14px] font-semibold", profit >= 0 ? "text-emerald-600 dark:text-[#34d399]" : "text-red-600 dark:text-[#f87171]")}>
                             {"\u20B9"}{profit.toLocaleString('en-IN')}
                           </div>
                         </div>
                         <div className="flex-1 p-3 relative">
                           <div className={cn("absolute top-0 left-0 right-0 h-[2px]", marginPct >= 0 ? "bg-violet-400" : "bg-red-400")} />
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-[rgba(255,255,255,0.4)] mb-1">Margin</div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-[rgba(255,255,255,0.4)] mb-1">{t("margin")}</div>
                           <div className={cn("text-[14px] font-semibold", marginPct >= 0 ? "text-violet-600 dark:text-[#a78bfa]" : "text-red-600 dark:text-[#f87171]")}>
                             {marginPct.toFixed(1)}%
                           </div>
@@ -481,7 +484,7 @@ export function CreateOrderDialog({
                 className="w-full flex items-center justify-between group cursor-pointer"
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-gray-400 dark:text-[rgba(255,255,255,0.3)] group-hover:text-gray-500 dark:group-hover:text-[rgba(255,255,255,0.5)] transition-colors">Additional Notes</span>
+                  <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-gray-400 dark:text-[rgba(255,255,255,0.3)] group-hover:text-gray-500 dark:group-hover:text-[rgba(255,255,255,0.5)] transition-colors">{t("additionalNotes")}</span>
                   <div className="w-16 h-px bg-gray-100 dark:bg-[rgba(255,255,255,0.05)] ml-2" />
                 </div>
                 <ChevronDown className={cn("h-4 w-4 text-gray-400 dark:text-[rgba(255,255,255,0.3)] transition-transform duration-300", showNotes ? "rotate-180" : "")} />
@@ -495,7 +498,7 @@ export function CreateOrderDialog({
                       <textarea
                         value={formData.notes}
                         onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                        placeholder="Add any internal notes, special requirements, or instructions..."
+                        placeholder={t("notesPlaceholder")}
                         className="w-full min-h-[80px] pl-10 pr-3 py-3 bg-gray-50 dark:bg-[rgba(255,255,255,0.02)] border border-gray-200 dark:border-[rgba(255,255,255,0.05)] rounded-[12px] text-[13px] text-gray-900 dark:text-[rgba(255,255,255,0.9)] focus:ring-2 focus:ring-blue-500/30 dark:focus:ring-1 dark:focus:ring-[rgba(255,255,255,0.2)] focus:outline-none placeholder:text-gray-400 dark:placeholder:text-[rgba(255,255,255,0.2)] resize-none"
                         maxLength={500}
                       />
@@ -513,7 +516,7 @@ export function CreateOrderDialog({
                 disabled={isSubmitDisabled}
                 className="h-[46px] px-5 rounded-[12px] bg-white dark:bg-[rgba(255,255,255,0.05)] border border-gray-200 dark:border-[rgba(255,255,255,0.05)] text-[13px] font-semibold text-gray-600 dark:text-[rgba(255,255,255,0.7)] hover:bg-gray-50 dark:hover:bg-[rgba(255,255,255,0.08)] hover:text-gray-900 dark:hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
-                Save as Draft
+                {t("saveAsDraft")}
               </button>
 
               <button
@@ -527,7 +530,7 @@ export function CreateOrderDialog({
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <>
-                    {currentOrder ? "Push Updates" : "Issue Order"}
+                    {currentOrder ? t("pushUpdates") : t("issueOrder")}
                     <ArrowRight className="h-4 w-4 opacity-70 group-hover:translate-x-0.5 transition-transform" />
                   </>
                 )}
@@ -557,17 +560,17 @@ export function CreateOrderDialog({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(360px,90vw)] rounded-[16px] border border-gray-200 dark:border-[rgba(255,255,255,0.1)] bg-white dark:bg-[#1a2235] shadow-[0_24px_64px_rgba(0,0,0,0.5)] p-6"
+            className="fixed inset-0 m-auto h-fit w-[min(360px,calc(100vw-32px))] rounded-[16px] border border-gray-200 dark:border-[rgba(255,255,255,0.1)] bg-white dark:bg-[#1a2235] shadow-[0_24px_64px_rgba(0,0,0,0.5)] p-6"
             style={{ zIndex: 10001 }}
             onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Escape') setShowDiscardDialog(false); }}
             tabIndex={-1}
             autoFocus
           >
             <h3 className="text-[16px] font-bold text-gray-900 dark:text-white mb-2">
-              Discard changes?
+              {t("discardTitle")}
             </h3>
             <p className="text-[13px] text-gray-500 dark:text-[rgba(255,255,255,0.5)] mb-6 leading-relaxed">
-              You have unsaved changes. Are you sure you want to discard them?
+              {t("discardDesc")}
             </p>
             <div className="flex justify-end gap-3">
               <button
@@ -575,7 +578,7 @@ export function CreateOrderDialog({
                 onClick={() => setShowDiscardDialog(false)}
                 className="h-[38px] px-4 rounded-[10px] bg-gray-100 dark:bg-[rgba(255,255,255,0.06)] border border-gray-200 dark:border-[rgba(255,255,255,0.08)] text-[13px] font-semibold text-gray-600 dark:text-[rgba(255,255,255,0.7)] hover:bg-gray-200 dark:hover:bg-[rgba(255,255,255,0.1)] transition-colors cursor-pointer"
               >
-                Continue Editing
+                {t("continueEditing")}
               </button>
               <button
                 type="button"
@@ -586,7 +589,7 @@ export function CreateOrderDialog({
                 }}
                 className="h-[38px] px-4 rounded-[10px] bg-red-500 dark:bg-[#ef4444] text-white text-[13px] font-semibold hover:bg-red-600 dark:hover:bg-[#dc2626] transition-colors cursor-pointer shadow-[0_2px_8px_rgba(239,68,68,0.3)]"
               >
-                Discard Changes
+                {t("discardChanges")}
               </button>
             </div>
           </motion.div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Users, Check, Loader2, Search, X } from "lucide-react";
@@ -40,6 +41,8 @@ export function AssignStaffDialog({
     currentStaffIds = [],
     onSuccess,
 }: AssignStaffDialogProps) {
+    const t = useTranslations("production.assignStaff");
+    const tToast = useTranslations("production.toasts");
     const router = useRouter();
     const [staffList, setStaffList] = useState<StaffUser[]>([]);
     const [loading, setLoading] = useState(false);
@@ -59,7 +62,7 @@ export function AssignStaffDialog({
             );
             setStaffList(staffMembers);
         } catch (err) {
-            toast.error("Failed to load staff members");
+            toast.error(tToast("loadStaffFailed"));
         } finally {
             setLoading(false);
         }
@@ -89,7 +92,7 @@ export function AssignStaffDialog({
     const handleAssign = async () => {
         if (isAssigning) return; // Race condition guard
         if (selectedIds.size === 0) {
-            toast.error("Select at least one staff member");
+            toast.error(tToast("selectStaffMin"));
             return;
         }
 
@@ -110,16 +113,16 @@ export function AssignStaffDialog({
             const data = await res.json();
 
             if (!res.ok || !data.success) {
-                toast.error(data.message || "Failed to assign staff");
+                toast.error(data.message || tToast("staffAssignFailed"));
                 return;
             }
 
-            toast.success("Staff assigned successfully");
+            toast.success(tToast("staffAssignSuccess"));
             onOpenChange(false);
             router.refresh(); // Invalidate Next.js cache
             onSuccess?.();
         } catch (err: any) {
-            toast.error(err.message || "Failed to assign staff");
+            toast.error(err.message || tToast("staffAssignFailed"));
         } finally {
             setIsAssigning(false);
         }
@@ -137,13 +140,10 @@ export function AssignStaffDialog({
                 <DialogHeader className="px-5 pt-5 pb-3">
                     <DialogTitle className="text-[16px] font-semibold flex items-center gap-2">
                         <Users className="h-4.5 w-4.5 text-primary" />
-                        Assign Staff
+                        {t("title")}
                     </DialogTitle>
                     <DialogDescription className="text-[13px] text-muted-foreground">
-                        Select staff members for{" "}
-                        <span className="font-medium text-foreground">
-                            {productionName}
-                        </span>
+                        {t("description", { name: productionName })}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -155,7 +155,7 @@ export function AssignStaffDialog({
                             type="text"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Search staff..."
+                            placeholder={t("searchPlaceholder")}
                             className={cn(
                                 "w-full h-9 pl-9 pr-8 rounded-xl text-[13px] transition-all",
                                 "bg-muted/50 border border-border",
@@ -184,8 +184,8 @@ export function AssignStaffDialog({
                     ) : filtered.length === 0 ? (
                         <div className="text-center py-10 text-[13px] text-muted-foreground">
                             {staffList.length === 0
-                                ? "No staff members found in your team."
-                                : "No results match your search."}
+                                ? t("emptyNoStaff")
+                                : t("emptyNoResults")}
                         </div>
                     ) : (
                         <div className="py-1.5">
@@ -237,7 +237,7 @@ export function AssignStaffDialog({
                 <DialogFooter className="px-5 py-4 border-t border-border bg-muted/30">
                     <div className="flex items-center justify-between w-full gap-3">
                         <p className="text-[12px] text-muted-foreground">
-                            {selectedIds.size} selected
+                            {t("selectedCount", { count: selectedIds.size })}
                         </p>
                         <div className="flex gap-2">
                             <Button
@@ -246,7 +246,7 @@ export function AssignStaffDialog({
                                 onClick={() => onOpenChange(false)}
                                 className="h-9 px-4 rounded-xl text-[13px]"
                             >
-                                Cancel
+                                {t("btnCancel")}
                             </Button>
                             <Button
                                 size="sm"
@@ -257,10 +257,10 @@ export function AssignStaffDialog({
                                 {isAssigning ? (
                                     <>
                                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                        Assigning...
+                                        {t("btnAssigning")}
                                     </>
                                 ) : (
-                                    "Assign Staff"
+                                    t("btnAssign")
                                 )}
                             </Button>
                         </div>

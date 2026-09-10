@@ -4,13 +4,13 @@ import { NextIntlClientProvider } from "next-intl";
 import { useState, useEffect, createContext, useContext, useCallback } from "react";
 import { type Locale, DEFAULT_LOCALE, LOCALE_STORAGE_KEY, LOCALES } from "@/lib/i18n";
 
-// Statically import all locale message files (updated with previousYears key)
-import en from "../../messages/en.json";
-import hi from "../../messages/hi.json";
-import gu from "../../messages/gu.json";
-import mr from "../../messages/mr.json";
+// Statically import all locale message files from src/messages
+import en from "@/messages/en";
+import hi from "@/messages/hi";
+import gu from "@/messages/gu";
+import mr from "@/messages/mr";
 
-const allMessages: Record<Locale, typeof en> = { en, hi, gu, mr };
+const allMessages: Record<Locale, Record<string, any>> = { en, hi, gu, mr };
 
 // ─── Locale Context ──────────────────────────────────────
 interface LocaleContextType {
@@ -52,9 +52,11 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
     return null;
   }
 
+
   return (
     <LocaleContext.Provider value={{ locale, switchLocale }}>
       <NextIntlClientProvider
+        key={locale}
         locale={locale}
         messages={allMessages[locale]}
         timeZone="Asia/Kolkata"

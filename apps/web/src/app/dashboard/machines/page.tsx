@@ -117,6 +117,17 @@ export default function MachinesPage() {
     const tCommon = useTranslations("common");
     const { formatDate } = useFormatters();
 
+    const getStatusLabel = (status: string) => {
+        switch (status) {
+            case "active": return t("statusActive");
+            case "running": return t("statusRunning");
+            case "idle": return t("statusIdle");
+            case "inactive": return t("statusDisabled");
+            case "maintenance": return t("statusMaintenance");
+            default: return status;
+        }
+    };
+
     const [machines, setMachines] = useState<Machine[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -286,7 +297,7 @@ export default function MachinesPage() {
     // Access check
     if (!isAdmin) {
         return (
-            <div className="flex flex-col items-center justify-center py-32">
+            <div className="flex flex-col items-center justify-center py-32 w-full min-w-0 overflow-x-hidden">
                 <AlertCircle className="h-12 w-12 text-[var(--muted-foreground)] mb-4" />
                 <h2 className="text-[20px] font-semibold text-[var(--foreground)] mb-2">{t("adminRequired")}</h2>
                 <p className="text-[15px] text-[var(--muted-foreground)] mb-6">
@@ -495,7 +506,7 @@ export default function MachinesPage() {
                                                 </span>
                                                 <div className={cn("flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border border-current/20", sc.color, sc.bg)}>
                                                     <StatusIcon className="h-3 w-3" />
-                                                    {({ active: t("statusActive"), running: t("statusRunning"), idle: t("statusIdle"), inactive: t("statusDisabled"), maintenance: t("statusMaintenance") } as Record<string, string>)[machine.status] || sc.label}
+                                                    {getStatusLabel(machine.status)}
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-3 text-[13px] text-[var(--muted-foreground)]">
@@ -551,15 +562,15 @@ export default function MachinesPage() {
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent fullScreenMobile className="sm:max-w-[480px] bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px] overflow-hidden p-0">
                     <div className="p-6">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 16, marginBottom: 0, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 16, marginBottom: 0, borderBottom: '1px solid var(--border)' }}>
                           <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg, rgba(59,130,246,0.4), rgba(255,255,255,0.06))', border: '1px solid rgba(255,255,255,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <Cpu className="h-[18px] w-[18px] text-[#60a5fa]" />
                           </div>
                           <div>
-                            <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', lineHeight: '22px', margin: 0 }}>
+                            <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: 'var(--foreground)', lineHeight: '22px', margin: 0 }}>
                               {dialogMode === "add" ? t("addMachine") : t("editMachine")}
                             </DialogTitle>
-                            <DialogDescription style={{ fontSize: 13, color: '#64748b', lineHeight: '18px', margin: '2px 0 0' }}>
+                            <DialogDescription style={{ fontSize: 13, color: 'var(--muted-foreground)', lineHeight: '18px', margin: '2px 0 0' }}>
                               {dialogMode === "add" ? t("addMachineDesc") : t("editMachineDesc")}
                             </DialogDescription>
                           </div>
@@ -628,10 +639,10 @@ export default function MachinesPage() {
                             )}
                         </div>
 
-                        <div style={{ display: 'flex', gap: 10, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.07)', marginLeft: -24, marginRight: -24, paddingLeft: 24, paddingRight: 24, paddingBottom: 8 }}>
+                        <div style={{ display: 'flex', gap: 10, paddingTop: 8, borderTop: '1px solid var(--border)', marginLeft: -24, marginRight: -24, paddingLeft: 24, paddingRight: 24, paddingBottom: 8 }}>
                             <button
                                 onClick={() => setDialogOpen(false)}
-                                style={{ flex: 1, height: 48, borderRadius: 14, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.10)', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}
+                                style={{ flex: 1, height: 48, borderRadius: 14, background: 'var(--muted)', color: 'var(--muted-foreground)', border: '1px solid var(--border)', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}
                             >
                                 {tCommon("cancel")}
                             </button>
@@ -654,9 +665,9 @@ export default function MachinesPage() {
                 onClose={() => setDeleteDialogOpen(false)}
                 onConfirm={handleDelete}
                 isDeleting={deleting}
-                entityLabel="machine"
+                entityLabel={t("entityMachine")}
                 entityName={deletingMachine?.machineName}
-                consequenceText="will be permanently removed from machine management. This cannot be undone."
+                consequenceText={t("deleteConsequence")}
             />
         </motion.div>
     );

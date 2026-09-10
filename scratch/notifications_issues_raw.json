@@ -1,0 +1,206 @@
+[
+  {
+    "file": "apps/web/src/app/dashboard/notifications/page.tsx",
+    "line": 100,
+    "type": "RawToast",
+    "text": "Failed to fetch templates"
+  },
+  {
+    "file": "apps/web/src/app/dashboard/notifications/page.tsx",
+    "line": 119,
+    "type": "RawToast",
+    "text": "Failed to fetch logs"
+  },
+  {
+    "file": "apps/web/src/app/dashboard/notifications/page.tsx",
+    "line": 149,
+    "type": "RawToast",
+    "text": "Failed to update template"
+  },
+  {
+    "file": "apps/web/src/app/dashboard/notifications/page.tsx",
+    "line": 158,
+    "type": "RawToast",
+    "text": "Message copied — paste it in Telegram"
+  },
+  {
+    "file": "apps/web/src/app/dashboard/notifications/page.tsx",
+    "line": 186,
+    "type": "RawToast",
+    "text": "Failed to update log status"
+  },
+  {
+    "file": "apps/web/src/app/dashboard/notifications/page.tsx",
+    "line": 189,
+    "type": "RawToast",
+    "text": "Action failed"
+  },
+  {
+    "file": "apps/web/src/app/dashboard/notifications/page.tsx",
+    "line": 259,
+    "type": "JsxText",
+    "text": "Notification Engine"
+  },
+  {
+    "file": "apps/web/src/app/dashboard/notifications/page.tsx",
+    "line": 261,
+    "type": "JsxText",
+    "text": "Notifications"
+  },
+  {
+    "file": "apps/web/src/app/dashboard/notifications/page.tsx",
+    "line": 263,
+    "type": "JsxText",
+    "text": "Manage templates, channels, and delivery status for automated\r\n            messaging."
+  },
+  {
+    "file": "apps/web/src/app/dashboard/notifications/page.tsx",
+    "line": 300,
+    "type": "JsxText",
+    "text": "active rules"
+  },
+  {
+    "file": "apps/web/src/app/dashboard/notifications/page.tsx",
+    "line": 350,
+    "type": "JsxText",
+    "text": "Activity Feed"
+  },
+  {
+    "file": "apps/web/src/app/dashboard/notifications/page.tsx",
+    "line": 364,
+    "type": "JsxText",
+    "text": "Templates"
+  },
+  {
+    "file": "apps/web/src/app/dashboard/notifications/page.tsx",
+    "line": 373,
+    "type": "JsxText",
+    "text": "Dispatch Logs"
+  },
+  {
+    "file": "apps/web/src/app/dashboard/notifications/page.tsx",
+    "line": 395,
+    "type": "JsxText",
+    "text": "notification"
+  },
+  {
+    "file": "apps/web/src/app/dashboard/notifications/page.tsx",
+    "line": 403,
+    "type": "RawToast",
+    "text": "All notifications marked as read"
+  },
+  {
+    "file": "apps/web/src/app/dashboard/notifications/page.tsx",
+    "line": 408,
+    "type": "JsxText",
+    "text": "Mark all read"
+  },
+  {
+    "file": "apps/web/src/app/dashboard/notifications/page.tsx",
+    "line": 443,
+    "type": "JsxText",
+    "text": "No activity yet"
+  },
+  {
+    "file": "apps/web/src/app/dashboard/notifications/page.tsx",
+    "line": 446,
+    "type": "JsxText",
+    "text": "Notifications from orders, payments, and inventory will\r\n                    appear here"
+  },
+  {
+    "file": "apps/web/src/app/dashboard/notifications/page.tsx",
+    "line": 472,
+    "type": "JsxText",
+    "text": "Show"
+  },
+  {
+    "file": "apps/web/src/app/dashboard/notifications/page.tsx",
+    "line": 473,
+    "type": "JsxText",
+    "text": "older\r\n                      notifications"
+  },
+  {
+    "file": "apps/web/src/app/dashboard/notifications/page.tsx",
+    "line": 587,
+    "type": "JsxText",
+    "text": "Message Preview"
+  },
+  {
+    "file": "apps/web/src/app/dashboard/notifications/page.tsx",
+    "line": 594,
+    "type": "JsxText",
+    "text": "Trigger:"
+  },
+  {
+    "file": "apps/web/src/app/dashboard/notifications/page.tsx",
+    "line": 607,
+    "type": "JsxText",
+    "text": "Add New Template"
+  },
+  {
+    "file": "apps/web/src/app/dashboard/notifications/page.tsx",
+    "line": 630,
+    "type": "JsxText",
+    "text": "notification"
+  },
+  {
+    "file": "apps/web/src/app/dashboard/notifications/page.tsx",
+    "line": 645,
+    "type": "JsxText",
+    "text": "All Channels"
+  },
+  {
+    "file": "apps/web/src/app/dashboard/notifications/page.tsx",
+    "line": 682,
+    "type": "JsxText",
+    "text": "No dispatch history yet"
+  },
+  {
+    "file": "apps/web/src/app/dashboard/notifications/page.tsx",
+    "line": 739,
+    "type": "JsxText",
+    "text": "to"
+  },
+  {
+    "file": "apps/web/src/components/NotificationDropdown.tsx",
+    "line": 66,
+    "type": "JsxText",
+    "text": "Notifications"
+  },
+  {
+    "file": "apps/web/src/components/NotificationDropdown.tsx",
+    "line": 82,
+    "type": "JsxText",
+    "text": "Mark all read"
+  },
+  {
+    "file": "apps/web/src/components/NotificationDropdown.tsx",
+    "line": 182,
+    "type": "JsxText",
+    "text": "All caught up!"
+  },
+  {
+    "file": "apps/web/src/components/NotificationDropdown.tsx",
+    "line": 185,
+    "type": "JsxText",
+    "text": "No new notifications"
+  },
+  {
+    "file": "apps/web/src/components/NotificationDropdown.tsx",
+    "line": 199,
+    "type": "JsxText",
+    "text": "See all notifications"
+  },
+  {
+    "file": "apps/web/src/components/NotificationDropdown.tsx",
+    "line": 250,
+    "type": "RawToast",
+    "text": "All notifications marked as read"
+  },
+  {
+    "file": "apps/web/src/components/NotificationDropdown.tsx",
+    "line": 287,
+    "type": "JsxText",
+    "text": "unread notifications"
+  }
+]

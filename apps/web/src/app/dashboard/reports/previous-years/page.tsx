@@ -14,7 +14,8 @@ import {
     TrendingUp,
     Wallet,
 } from "lucide-react";
-import { IOSCard, IOSCardHeader, IOSCardContent } from "@/components/ui/ios/IOSCard";
+import { useTranslations } from "next-intl";
+import { IOSCard } from "@/components/ui/ios/IOSCard";
 import { IOSButton } from "@/components/ui/ios/IOSButton";
 import { IOSBadge } from "@/components/ui/ios/IOSBadge";
 import { staggerContainer, staggerItem } from "@/styles/animations";
@@ -46,15 +47,15 @@ interface FYData {
     };
 }
 
-const TABS = [
-    { id: "orders", label: "Orders", icon: ShoppingCart },
-    { id: "productions", label: "Production", icon: Factory },
-    { id: "bills", label: "Bills / Invoices", icon: FileText },
-    { id: "payments", label: "Payments", icon: IndianRupee },
-    { id: "inventory", label: "Inventory Usage", icon: Package },
+const TAB_CONFIG = [
+    { id: "orders", key: "orders", icon: ShoppingCart },
+    { id: "productions", key: "productions", icon: Factory },
+    { id: "bills", key: "bills", icon: FileText },
+    { id: "payments", key: "payments", icon: IndianRupee },
+    { id: "inventory", key: "inventory", icon: Package },
 ] as const;
 
-type TabId = typeof TABS[number]["id"];
+type TabId = typeof TAB_CONFIG[number]["id"];
 
 // ─── Format Currency ─────────────────────────────────────
 function formatCurrency(value: number): string {
@@ -66,14 +67,48 @@ function formatCurrency(value: number): string {
 
 // ─── Status Badge ────────────────────────────────────────
 function StatusBadge({ status }: { status: string }) {
+    const t = useTranslations("previousYears.statuses");
     const s = status?.toLowerCase() || "";
     let variant: "default" | "success" | "warning" | "error" = "default";
     if (["completed", "paid", "delivered"].includes(s)) variant = "success";
     else if (["processing", "in_progress", "partial", "draft", "awaiting_payment", "awaiting payment"].includes(s)) variant = "warning";
     else if (["cancelled", "on_hold", "overdue", "rejected"].includes(s)) variant = "error";
 
-    const label = s === "awaiting_payment" ? "AWAITING PAYMENT" : s === "on_hold" ? "ON HOLD" : status;
-    return <IOSBadge variant={variant}>{label}</IOSBadge>;
+    const getStatusLabel = (key: string) => {
+        switch (key) {
+            case "awaiting_payment":
+            case "awaiting payment":
+                return t("awaitingPayment");
+            case "on_hold":
+                return t("onHold");
+            case "in_progress":
+                return t("in_progress");
+            case "completed":
+                return t("completed");
+            case "paid":
+                return t("paid");
+            case "delivered":
+                return t("delivered");
+            case "processing":
+                return t("processing");
+            case "partial":
+                return t("partial");
+            case "draft":
+                return t("draft");
+            case "cancelled":
+                return t("cancelled");
+            case "overdue":
+                return t("overdue");
+            case "rejected":
+                return t("rejected");
+            case "pending":
+                return t("pending");
+            default:
+                return status;
+        }
+    };
+
+    return <IOSBadge variant={variant}>{getStatusLabel(s)}</IOSBadge>;
 }
 
 // ─── KPI Card ────────────────────────────────────────────
@@ -111,6 +146,12 @@ function KPICard({ label, value, icon: Icon, color }: {
 
 // ─── Page Component ──────────────────────────────────────
 export default function PreviousYearsPage() {
+    const t = useTranslations("previousYears");
+    const tToasts = useTranslations("previousYears.toasts");
+    const tKpi = useTranslations("previousYears.kpi");
+    const tTabs = useTranslations("previousYears.tabs");
+    const tExport = useTranslations("previousYears.exportSections");
+
     const { isOwner, loading: roleLoading } = usePermissions();
     const [financialYears, setFinancialYears] = useState<string[]>([]);
     const [selectedFY, setSelectedFY] = useState<string>("");
@@ -142,13 +183,13 @@ export default function PreviousYearsPage() {
                     }
                 }
             } catch {
-                toast.error("Failed to load financial years");
+                toast.error(tToasts("loadYearsError"));
             } finally {
                 setLoading(false);
             }
         }
         loadYears();
-    }, []);
+    }, [tToasts]);
 
     // Load data for selected FY
     const loadData = useCallback(async (fy: string) => {
@@ -160,14 +201,14 @@ export default function PreviousYearsPage() {
                 const json = await res.json();
                 setData(json);
             } else {
-                toast.error("Failed to load data for this financial year");
+                toast.error(tToasts("loadDataError"));
             }
         } catch {
-            toast.error("Network error loading report");
+            toast.error(tToasts("networkError"));
         } finally {
             setDataLoading(false);
         }
-    }, []);
+    }, [tToasts]);
 
     useEffect(() => {
         if (selectedFY) loadData(selectedFY);
@@ -177,28 +218,28 @@ export default function PreviousYearsPage() {
     const handleExport = useCallback(() => {
         if (!data) return;
         const sections: Record<string, any[]> = {};
-        if (data.orders?.length) sections["Orders"] = data.orders;
-        if (data.productions?.length) sections["Productions"] = data.productions;
-        if (data.bills?.length) sections["Bills"] = data.bills;
-        if (data.payments?.length) sections["Payments"] = data.payments;
-        if (data.inventoryUsage?.length) sections["Inventory Usage"] = data.inventoryUsage;
+        if (data.orders?.length) sections[tExport("orders")] = data.orders;
+        if (data.productions?.length) sections[tExport("productions")] = data.productions;
+        if (data.bills?.length) sections[tExport("bills")] = data.bills;
+        if (data.payments?.length) sections[tExport("payments")] = data.payments;
+        if (data.inventoryUsage?.length) sections[tExport("inventoryUsage")] = data.inventoryUsage;
 
         const activeData = sections[Object.keys(sections)[0]] || [];
         if (activeData.length === 0) {
-            toast.error("No data to export");
+            toast.error(tToasts("noDataToExport"));
             return;
         }
 
         exportToExcel(activeData, `FY-${selectedFY}-report`);
-        toast.success("Exported successfully");
-    }, [data, selectedFY]);
+        toast.success(tToasts("exportSuccess"));
+    }, [data, selectedFY, tExport, tToasts]);
 
     if (roleLoading || loading) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
                 <div className="flex flex-col items-center gap-4">
                     <div className="w-10 h-10 border-[3px] border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
-                    <span className="text-[15px] text-[var(--muted-foreground)]">Loading...</span>
+                    <span className="text-[15px] text-[var(--muted-foreground)]">{t("loading")}</span>
                 </div>
             </div>
         );
@@ -233,10 +274,10 @@ export default function PreviousYearsPage() {
             <motion.div variants={staggerItem} className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 min-w-0">
                 <div className="min-w-0 flex-1">
                     <h1 className="text-[22px] sm:text-[24px] md:text-[28px] font-bold tracking-[0.36px] text-[var(--foreground)] truncate">
-                        Previous Years
+                        {t("title")}
                     </h1>
                     <p className="text-[15px] text-[var(--muted-foreground)] mt-1 break-words">
-                        Browse archived financial year data — read-only view
+                        {t("subtitle")}
                     </p>
                 </div>
 
@@ -248,10 +289,10 @@ export default function PreviousYearsPage() {
                             className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-[12px] bg-white dark:bg-[var(--card)] border border-black/[0.09] dark:border-[var(--border)] shadow-[0_1px_3px_rgba(0,0,0,0.06)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.98] text-[14px] sm:text-[15px] font-medium text-[var(--foreground)] sm:min-w-[160px] shrink-0 cursor-pointer"
                         >
                             <Calendar className="h-4 w-4 text-[var(--primary)]" />
-                            <span>FY {selectedFY || "Select"}</span>
+                            <span>{selectedFY ? t("selectFY", { year: selectedFY }) : t("selectPlaceholder")}</span>
                             {selectedFY === currentFY && (
                                 <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-[rgba(0,122,255,0.1)] text-[var(--primary)] font-medium">
-                                    Current
+                                    {t("currentBadge")}
                                 </span>
                             )}
                             <ChevronDown className="h-4 w-4 ml-auto text-[var(--muted-foreground)]" />
@@ -273,7 +314,7 @@ export default function PreviousYearsPage() {
                                                 : "text-[var(--foreground)] hover:bg-[var(--accent)]"
                                         )}
                                     >
-                                        <span>FY {fy}</span>
+                                        <span>{t("selectFY", { year: fy })}</span>
                                         {fy === currentFY && (
                                             <span className={cn(
                                                 "text-[11px] px-1.5 py-0.5 rounded-full font-medium",
@@ -281,14 +322,14 @@ export default function PreviousYearsPage() {
                                                     ? "bg-white/20 text-white"
                                                     : "bg-[rgba(0,122,255,0.1)] text-[var(--primary)]"
                                             )}>
-                                                Current
+                                                {t("currentBadge")}
                                             </span>
                                         )}
                                     </button>
                                 ))}
                                 {financialYears.length === 0 && (
                                     <p className="px-4 py-3 text-[13px] text-[var(--muted-foreground)]">
-                                        No financial years found. Run the migration script first.
+                                        {t("noYearsFound")}
                                     </p>
                                 )}
                             </div>
@@ -302,7 +343,7 @@ export default function PreviousYearsPage() {
                         disabled={!data}
                     >
                         <Download className="h-4 w-4 mr-1.5" />
-                        Export
+                        {t("exportBtn")}
                     </IOSButton>
                 </div>
             </motion.div>
@@ -311,25 +352,25 @@ export default function PreviousYearsPage() {
             {data?.summary && (
                 <motion.div variants={staggerItem} className="grid grid-cols-2 lg:grid-cols-4 gap-3 w-full min-w-0">
                     <KPICard
-                        label="Total Revenue"
+                        label={tKpi("totalRevenue")}
                         value={formatCurrency(data.summary.totalRevenue)}
                         icon={TrendingUp}
                         color="blue"
                     />
                     <KPICard
-                        label="Total Billed"
+                        label={tKpi("totalBilled")}
                         value={formatCurrency(data.summary.totalBilled)}
                         icon={FileText}
                         color="green"
                     />
                     <KPICard
-                        label="Total Collected"
+                        label={tKpi("totalCollected")}
                         value={formatCurrency(data.summary.totalPaid)}
                         icon={IndianRupee}
                         color="orange"
                     />
                     <KPICard
-                        label="Payments to Collect"
+                        label={tKpi("paymentsToCollect")}
                         value={formatCurrency(Math.max(0, data.summary.totalRevenue - data.summary.totalPaid))}
                         icon={Wallet}
                         color="purple"
@@ -341,7 +382,7 @@ export default function PreviousYearsPage() {
             <motion.div variants={staggerItem} className="w-full min-w-0">
                 <div className="w-full min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden p-1 sm:p-1.5 bg-[var(--accent)]/50 dark:bg-[var(--accent)]/30 rounded-[14px]">
                   <div className="flex gap-1 sm:gap-1.5 w-max">
-                    {TABS.map((tab) => {
+                    {TAB_CONFIG.map((tab) => {
                         const Icon = tab.icon;
                         const isActive = activeTab === tab.id;
                         const count = tab.id === "inventory"
@@ -362,7 +403,7 @@ export default function PreviousYearsPage() {
                                 )}
                             >
                                 <Icon className="h-4 w-4 flex-shrink-0" />
-                                <span className="truncate">{tab.label}</span>
+                                <span className="truncate">{tTabs(tab.key)}</span>
                                 {(count ?? 0) > 0 && (
                                     <span className={cn(
                                         "text-[11px] px-1.5 py-0.5 rounded-full font-medium",
@@ -389,8 +430,8 @@ export default function PreviousYearsPage() {
                 ) : !data ? (
                     <IOSCard key="empty-state" variant="elevated" padding="lg" className="text-center py-16 min-w-0 w-full overflow-hidden">
                         <Calendar className="h-12 w-12 mx-auto text-[var(--muted-foreground)] mb-4 opacity-50" />
-                        <p className="text-[17px] font-semibold text-[var(--foreground)]">Select a Financial Year</p>
-                        <p className="text-[15px] text-[var(--muted-foreground)] mt-1">Choose a year from the dropdown to view archived data.</p>
+                        <p className="text-[17px] font-semibold text-[var(--foreground)]">{t("emptySelectTitle")}</p>
+                        <p className="text-[15px] text-[var(--muted-foreground)] mt-1">{t("emptySelectDesc")}</p>
                     </IOSCard>
                 ) : (
                     <IOSCard key="data-loaded" variant="elevated" padding="none" className="overflow-x-clip bg-white dark:bg-[var(--card)] !border !border-black/[0.09] dark:!border-[var(--border)]">
@@ -416,10 +457,10 @@ export default function PreviousYearsPage() {
 
 // ─── Table Components ────────────────────────────────────
 
-function EmptyState({ label }: { label: string }) {
+function EmptyState({ message }: { message: string }) {
     return (
         <div className="text-center py-16">
-            <p className="text-[15px] text-[var(--muted-foreground)]">No {label} found for this financial year.</p>
+            <p className="text-[15px] text-[var(--muted-foreground)]">{message}</p>
         </div>
     );
 }
@@ -428,26 +469,30 @@ const thClass = "px-3 sm:px-4 py-2.5 sm:py-3 text-left text-[11px] sm:text-[12px
 const tdClass = "px-3 sm:px-4 py-3 sm:py-3.5 text-[13px] sm:text-[14px] text-[var(--foreground)] border-t border-[var(--border)]/50";
 
 function OrdersTable({ data }: { data: any[] }) {
-    if (data.length === 0) return <EmptyState label="orders" />;
+    const tEmpty = useTranslations("previousYears.empty");
+    const tOrders = useTranslations("previousYears.orders");
+
+    if (data.length === 0) return <EmptyState message={tEmpty("orders")} />;
     return (
         <>
             {/* Mobile cards */}
             <MobileTableCards
                 data={data}
                 className="md:hidden"
+                emptyMessage={tEmpty("orders")}
                 fields={[
-                    { key: "product_name", label: "Product", primary: true },
-                    { key: "quantity", label: "Quantity", render: (_v, o) => `${o.quantity} ${o.unit || ""}` },
-                    { key: "total_amount", label: "Amount", render: (_v, o) => formatCurrency(o.total_amount || 0) },
+                    { key: "product_name", label: tOrders("product"), primary: true },
+                    { key: "quantity", label: tOrders("quantity"), render: (_v, o) => `${o.quantity} ${o.unit || ""}` },
+                    { key: "total_amount", label: tOrders("amount"), render: (_v, o) => formatCurrency(o.total_amount || 0) },
                     {
-                        key: "status", label: "Status", render: (_v, o) => {
+                        key: "status", label: tOrders("status"), render: (_v, o) => {
                             const ps = o.production_status || o.status;
                             const s = ps === "completed" && o.payment_status === "paid" ? "completed" : ps === "completed" ? "awaiting_payment" : ps || "pending";
                             return <StatusBadge status={s} />;
                         }
                     },
-                    { key: "payment_status", label: "Payment", render: (_v, o) => <StatusBadge status={o.payment_status} /> },
-                    { key: "createdAt", label: "Date", render: (_v, o) => o.createdAt ? new Date(o.createdAt).toLocaleDateString("en-IN") : "—" },
+                    { key: "payment_status", label: tOrders("payment"), render: (_v, o) => <StatusBadge status={o.payment_status} /> },
+                    { key: "createdAt", label: tOrders("date"), render: (_v, o) => o.createdAt ? new Date(o.createdAt).toLocaleDateString("en-IN") : "—" },
                 ]}
             />
             {/* Desktop table */}
@@ -455,12 +500,12 @@ function OrdersTable({ data }: { data: any[] }) {
                 <table className="hidden md:table min-w-[600px] w-full">
                     <thead>
                         <tr>
-                            <th className={cn(thClass, "sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>Product</th>
-                            <th className={thClass}>Quantity</th>
-                            <th className={cn(thClass, "text-right")}>Amount</th>
-                            <th className={thClass}>Status</th>
-                            <th className={thClass}>Payment</th>
-                            <th className={thClass}>Date</th>
+                            <th className={cn(thClass, "sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>{tOrders("product")}</th>
+                            <th className={thClass}>{tOrders("quantity")}</th>
+                            <th className={cn(thClass, "text-right")}>{tOrders("amount")}</th>
+                            <th className={thClass}>{tOrders("status")}</th>
+                            <th className={thClass}>{tOrders("payment")}</th>
+                            <th className={thClass}>{tOrders("date")}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -487,21 +532,25 @@ function OrdersTable({ data }: { data: any[] }) {
 }
 
 function ProductionsTable({ data }: { data: any[] }) {
-    if (data.length === 0) return <EmptyState label="production records" />;
+    const tEmpty = useTranslations("previousYears.empty");
+    const tProd = useTranslations("previousYears.productions");
+
+    if (data.length === 0) return <EmptyState message={tEmpty("productions")} />;
     return (
         <>
             {/* Mobile cards */}
             <MobileTableCards
                 data={data}
                 className="md:hidden"
+                emptyMessage={tEmpty("productions")}
                 fields={[
-                    { key: "batchNumber", label: "Batch", primary: true, render: (v) => <span className="font-mono text-[13px]">{v}</span> },
-                    { key: "orderProductName", label: "Product" },
-                    { key: "orderQuantity", label: "Target" },
-                    { key: "producedQuantity", label: "Produced", render: (v) => <span className="font-semibold text-[var(--erp-success)]">{v}</span> },
-                    { key: "rejectQuantity", label: "Rejected", render: (v) => <span className={v > 0 ? "text-[var(--erp-danger)]" : ""}>{v}</span> },
-                    { key: "status", label: "Status", render: (_v, p) => <StatusBadge status={p.status} /> },
-                    { key: "createdAt", label: "Date", render: (_v, p) => p.createdAt ? new Date(p.createdAt).toLocaleDateString("en-IN") : "—" },
+                    { key: "batchNumber", label: tProd("batch"), primary: true, render: (v) => <span className="font-mono text-[13px]">{v}</span> },
+                    { key: "orderProductName", label: tProd("product") },
+                    { key: "orderQuantity", label: tProd("target") },
+                    { key: "producedQuantity", label: tProd("produced"), render: (v) => <span className="font-semibold text-[var(--erp-success)]">{v}</span> },
+                    { key: "rejectQuantity", label: tProd("rejected"), render: (v) => <span className={v > 0 ? "text-[var(--erp-danger)]" : ""}>{v}</span> },
+                    { key: "status", label: tProd("status"), render: (_v, p) => <StatusBadge status={p.status} /> },
+                    { key: "createdAt", label: tProd("date"), render: (_v, p) => p.createdAt ? new Date(p.createdAt).toLocaleDateString("en-IN") : "—" },
                 ]}
             />
             {/* Desktop table */}
@@ -509,13 +558,13 @@ function ProductionsTable({ data }: { data: any[] }) {
                 <table className="hidden md:table min-w-[650px] w-full">
                     <thead>
                         <tr>
-                            <th className={thClass}>Batch</th>
-                            <th className={cn(thClass, "sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>Product</th>
-                            <th className={thClass}>Target</th>
-                            <th className={thClass}>Produced</th>
-                            <th className={thClass}>Rejected</th>
-                            <th className={thClass}>Status</th>
-                            <th className={thClass}>Date</th>
+                            <th className={thClass}>{tProd("batch")}</th>
+                            <th className={cn(thClass, "sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>{tProd("product")}</th>
+                            <th className={thClass}>{tProd("target")}</th>
+                            <th className={thClass}>{tProd("produced")}</th>
+                            <th className={thClass}>{tProd("rejected")}</th>
+                            <th className={thClass}>{tProd("status")}</th>
+                            <th className={thClass}>{tProd("date")}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -538,19 +587,23 @@ function ProductionsTable({ data }: { data: any[] }) {
 }
 
 function BillsTable({ data }: { data: any[] }) {
-    if (data.length === 0) return <EmptyState label="bills/invoices" />;
+    const tEmpty = useTranslations("previousYears.empty");
+    const tBills = useTranslations("previousYears.bills");
+
+    if (data.length === 0) return <EmptyState message={tEmpty("bills")} />;
     return (
         <>
             {/* Mobile cards */}
             <MobileTableCards
                 data={data}
                 className="md:hidden"
+                emptyMessage={tEmpty("bills")}
                 fields={[
-                    { key: "billNumber", label: "Invoice #", primary: true, render: (v) => <span className="font-mono text-[13px] font-medium">{v}</span> },
-                    { key: "clientName", label: "Client" },
-                    { key: "totalAmount", label: "Amount", render: (_v, b) => formatCurrency(b.totalAmount || 0) },
-                    { key: "status", label: "Status", render: (_v, b) => <StatusBadge status={b.status} /> },
-                    { key: "billDate", label: "Date", render: (v) => v || "—" },
+                    { key: "billNumber", label: tBills("invoiceNum"), primary: true, render: (v) => <span className="font-mono text-[13px] font-medium">{v}</span> },
+                    { key: "clientName", label: tBills("client") },
+                    { key: "totalAmount", label: tBills("amount"), render: (_v, b) => formatCurrency(b.totalAmount || 0) },
+                    { key: "status", label: tBills("status"), render: (_v, b) => <StatusBadge status={b.status} /> },
+                    { key: "billDate", label: tBills("date"), render: (v) => v || "—" },
                 ]}
             />
             {/* Desktop table */}
@@ -558,11 +611,11 @@ function BillsTable({ data }: { data: any[] }) {
                 <table className="hidden md:table min-w-[550px] w-full">
                     <thead>
                         <tr>
-                            <th className={thClass}>Invoice #</th>
-                            <th className={cn(thClass, "sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>Client</th>
-                            <th className={cn(thClass, "text-right")}>Amount</th>
-                            <th className={thClass}>Status</th>
-                            <th className={thClass}>Date</th>
+                            <th className={thClass}>{tBills("invoiceNum")}</th>
+                            <th className={cn(thClass, "sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>{tBills("client")}</th>
+                            <th className={cn(thClass, "text-right")}>{tBills("amount")}</th>
+                            <th className={thClass}>{tBills("status")}</th>
+                            <th className={thClass}>{tBills("date")}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -583,25 +636,39 @@ function BillsTable({ data }: { data: any[] }) {
 }
 
 function PaymentsTable({ data }: { data: any[] }) {
-    if (data.length === 0) return <EmptyState label="payments" />;
+    const tEmpty = useTranslations("previousYears.empty");
+    const tPayments = useTranslations("previousYears.payments");
+
+    const renderMethod = (method: string) => {
+        const m = (method || "").toLowerCase().replace(/ /g, "_");
+        if (m === "cash") return tPayments("methods.cash");
+        if (m === "bank_transfer" || m === "bank") return tPayments("methods.bank_transfer");
+        if (m === "upi") return tPayments("methods.upi");
+        if (m === "cheque" || m === "check") return tPayments("methods.cheque");
+        if (m === "card") return tPayments("methods.card");
+        return (method || "").replace(/_/g, " ");
+    };
+
+    if (data.length === 0) return <EmptyState message={tEmpty("payments")} />;
     return (
         <>
             {/* Mobile cards */}
             <MobileTableCards
                 data={data}
                 className="md:hidden"
+                emptyMessage={tEmpty("payments")}
                 fields={[
                     {
-                        key: "amount", label: "Amount", primary: true, render: (_v, p) => (
+                        key: "amount", label: tPayments("amount"), primary: true, render: (_v, p) => (
                             <span className="font-semibold text-[var(--erp-success)]">{formatCurrency(p.amount || 0)}</span>
                         )
                     },
-                    { key: "payment_method", label: "Method", render: (v) => <span className="capitalize">{(v || "").replace(/_/g, " ")}</span> },
-                    { key: "notes", label: "Notes", render: (v) => v || "\u2014" },
+                    { key: "payment_method", label: tPayments("method"), render: (v) => <span className="capitalize">{renderMethod(v)}</span> },
+                    { key: "notes", label: tPayments("notes"), render: (v) => v || "—" },
                     {
-                        key: "payment_date", label: "Date", render: (_v, p) => {
+                        key: "payment_date", label: tPayments("date"), render: (_v, p) => {
                             const d = p.payment_date || p.createdAt;
-                            return d ? new Date(d).toLocaleDateString("en-IN") : "\u2014";
+                            return d ? new Date(d).toLocaleDateString("en-IN") : "—";
                         }
                     },
                 ]}
@@ -611,20 +678,20 @@ function PaymentsTable({ data }: { data: any[] }) {
                 <table className="hidden md:table min-w-[500px] w-full">
                     <thead>
                         <tr>
-                            <th className={cn(thClass, "text-right")}>Amount</th>
-                            <th className={thClass}>Method</th>
-                            <th className={thClass}>Notes</th>
-                            <th className={thClass}>Date</th>
+                            <th className={cn(thClass, "text-right")}>{tPayments("amount")}</th>
+                            <th className={thClass}>{tPayments("method")}</th>
+                            <th className={thClass}>{tPayments("notes")}</th>
+                            <th className={thClass}>{tPayments("date")}</th>
                         </tr>
                     </thead>
                     <tbody>
                         {data.map((p) => (
                             <tr key={p.id} className="hover:bg-[var(--accent)]/20 transition-colors duration-150 ease-[cubic-bezier(0.16,1,0.3,1)]">
                                 <td className={cn(tdClass, "font-semibold tabular-nums text-[var(--erp-success)] text-right whitespace-nowrap")}>{formatCurrency(p.amount || 0)}</td>
-                                <td className={cn(tdClass, "capitalize whitespace-nowrap")}>{(p.payment_method || "").replace(/_/g, " ")}</td>
-                                <td className={cn(tdClass, "text-[var(--muted-foreground)] max-w-[200px] truncate")}>{p.notes || "\u2014"}</td>
+                                <td className={cn(tdClass, "capitalize whitespace-nowrap")}>{renderMethod(p.payment_method)}</td>
+                                <td className={cn(tdClass, "text-[var(--muted-foreground)] max-w-[200px] truncate")}>{p.notes || "—"}</td>
                                 <td className={cn(tdClass, "text-[var(--muted-foreground)] tabular-nums whitespace-nowrap")}>
-                                    {p.payment_date ? new Date(p.payment_date).toLocaleDateString("en-IN") : (p.createdAt ? new Date(p.createdAt).toLocaleDateString("en-IN") : "\u2014")}
+                                    {p.payment_date ? new Date(p.payment_date).toLocaleDateString("en-IN") : (p.createdAt ? new Date(p.createdAt).toLocaleDateString("en-IN") : "—")}
                                 </td>
                             </tr>
                         ))}
@@ -637,6 +704,8 @@ function PaymentsTable({ data }: { data: any[] }) {
 
 function InventoryUsageTable({ usage, traceability }: { usage: any[]; traceability: any[] }) {
     const [showTraceability, setShowTraceability] = useState(false);
+    const tEmpty = useTranslations("previousYears.empty");
+    const tInv = useTranslations("previousYears.inventory");
 
     return (
         <div>
@@ -651,7 +720,7 @@ function InventoryUsageTable({ usage, traceability }: { usage: any[]; traceabili
                             : "text-[var(--muted-foreground)] hover:bg-[var(--accent)]"
                     )}
                 >
-                    Material Deductions ({usage.length})
+                    {tInv("materialDeductionsTab", { count: usage.length })}
                 </button>
                 <button
                     onClick={() => setShowTraceability(true)}
@@ -662,24 +731,25 @@ function InventoryUsageTable({ usage, traceability }: { usage: any[]; traceabili
                             : "text-[var(--muted-foreground)] hover:bg-[var(--accent)]"
                     )}
                 >
-                    Batch Traceability ({traceability.length})
+                    {tInv("batchTraceabilityTab", { count: traceability.length })}
                 </button>
             </div>
 
             {!showTraceability ? (
                 usage.length === 0 ? (
-                    <EmptyState label="material deduction records" />
+                    <EmptyState message={tEmpty("materialDeductions")} />
                 ) : (
                     <>
                         {/* Mobile cards */}
                         <MobileTableCards
                             data={usage}
                             className="md:hidden"
+                            emptyMessage={tEmpty("materialDeductions")}
                             fields={[
-                                { key: "item_name", label: "Material", primary: true, render: (v) => v || "\u2014" },
-                                { key: "quantity_deducted", label: "Qty Deducted", render: (v) => <span className="font-semibold tabular-nums">{v}</span> },
-                                { key: "order_id", label: "Order ID", render: (v) => <span className="font-mono text-[12px]">{v?.slice(0, 8)}...</span> },
-                                { key: "createdAt", label: "Date", render: (v) => v ? new Date(v).toLocaleDateString("en-IN") : "\u2014" },
+                                { key: "item_name", label: tInv("material"), primary: true, render: (v) => v || "—" },
+                                { key: "quantity_deducted", label: tInv("qtyDeducted"), render: (v) => <span className="font-semibold tabular-nums">{v}</span> },
+                                { key: "order_id", label: tInv("orderId"), render: (v) => <span className="font-mono text-[12px]">{v?.slice(0, 8)}...</span> },
+                                { key: "createdAt", label: tInv("date"), render: (v) => v ? new Date(v).toLocaleDateString("en-IN") : "—" },
                             ]}
                         />
                         {/* Desktop table */}
@@ -687,19 +757,19 @@ function InventoryUsageTable({ usage, traceability }: { usage: any[]; traceabili
                             <table className="hidden md:table min-w-[500px] w-full">
                                 <thead>
                                     <tr>
-                                        <th className={cn(thClass, "sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>Material</th>
-                                        <th className={thClass}>Qty Deducted</th>
-                                        <th className={thClass}>Order ID</th>
-                                        <th className={thClass}>Date</th>
+                                        <th className={cn(thClass, "sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>{tInv("material")}</th>
+                                        <th className={thClass}>{tInv("qtyDeducted")}</th>
+                                        <th className={thClass}>{tInv("orderId")}</th>
+                                        <th className={thClass}>{tInv("date")}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {usage.map((u) => (
                                         <tr key={u.id} className="hover:bg-[var(--accent)]/20 transition-colors duration-150 ease-[cubic-bezier(0.16,1,0.3,1)]">
-                                            <td className={cn(tdClass, "font-medium max-w-[180px] truncate sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>{u.item_name || "\u2014"}</td>
+                                            <td className={cn(tdClass, "font-medium max-w-[180px] truncate sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>{u.item_name || "—"}</td>
                                             <td className={cn(tdClass, "tabular-nums font-semibold whitespace-nowrap")}>{u.quantity_deducted}</td>
                                             <td className={cn(tdClass, "font-mono text-[12px] text-[var(--muted-foreground)] whitespace-nowrap")}>{u.order_id?.slice(0, 8)}...</td>
-                                            <td className={cn(tdClass, "text-[var(--muted-foreground)] tabular-nums whitespace-nowrap")}>{u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-IN") : "\u2014"}</td>
+                                            <td className={cn(tdClass, "text-[var(--muted-foreground)] tabular-nums whitespace-nowrap")}>{u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-IN") : "—"}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -709,19 +779,20 @@ function InventoryUsageTable({ usage, traceability }: { usage: any[]; traceabili
                 )
             ) : (
                 traceability.length === 0 ? (
-                    <EmptyState label="batch traceability records" />
+                    <EmptyState message={tEmpty("batchTraceability")} />
                 ) : (
                     <>
                         {/* Mobile cards */}
                         <MobileTableCards
                             data={traceability}
                             className="md:hidden"
+                            emptyMessage={tEmpty("batchTraceability")}
                             fields={[
-                                { key: "itemName", label: "Material", primary: true, render: (v) => v || "\u2014" },
-                                { key: "quantityUsed", label: "Qty Used", render: (v) => <span className="font-semibold tabular-nums">{v}</span> },
-                                { key: "unit", label: "Unit", render: (v) => v || "\u2014" },
-                                { key: "productionJobId", label: "Production Job", render: (v) => <span className="font-mono text-[12px]">{v?.slice(0, 8)}...</span> },
-                                { key: "createdAt", label: "Date", render: (v) => v ? new Date(v).toLocaleDateString("en-IN") : "\u2014" },
+                                { key: "itemName", label: tInv("material"), primary: true, render: (v) => v || "—" },
+                                { key: "quantityUsed", label: tInv("qtyUsed"), render: (v) => <span className="font-semibold tabular-nums">{v}</span> },
+                                { key: "unit", label: tInv("unit"), render: (v) => v || "—" },
+                                { key: "productionJobId", label: tInv("productionJob"), render: (v) => <span className="font-mono text-[12px]">{v?.slice(0, 8)}...</span> },
+                                { key: "createdAt", label: tInv("date"), render: (v) => v ? new Date(v).toLocaleDateString("en-IN") : "—" },
                             ]}
                         />
                         {/* Desktop table */}
@@ -729,21 +800,21 @@ function InventoryUsageTable({ usage, traceability }: { usage: any[]; traceabili
                             <table className="hidden md:table min-w-[550px] w-full">
                                 <thead>
                                     <tr>
-                                        <th className={cn(thClass, "sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>Material</th>
-                                        <th className={thClass}>Qty Used</th>
-                                        <th className={thClass}>Unit</th>
-                                        <th className={thClass}>Production Job</th>
-                                        <th className={thClass}>Date</th>
+                                        <th className={cn(thClass, "sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>{tInv("material")}</th>
+                                        <th className={thClass}>{tInv("qtyUsed")}</th>
+                                        <th className={thClass}>{tInv("unit")}</th>
+                                        <th className={thClass}>{tInv("productionJob")}</th>
+                                        <th className={thClass}>{tInv("date")}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {traceability.map((m) => (
                                         <tr key={m.id} className="hover:bg-[var(--accent)]/20 transition-colors duration-150 ease-[cubic-bezier(0.16,1,0.3,1)]">
-                                            <td className={cn(tdClass, "font-medium max-w-[180px] truncate sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>{m.itemName || "\u2014"}</td>
+                                            <td className={cn(tdClass, "font-medium max-w-[180px] truncate sticky left-0 z-10 bg-white dark:bg-[var(--card)]")}>{m.itemName || "—"}</td>
                                             <td className={cn(tdClass, "tabular-nums font-semibold whitespace-nowrap")}>{m.quantityUsed}</td>
-                                            <td className={cn(tdClass, "whitespace-nowrap")}>{m.unit || "\u2014"}</td>
+                                            <td className={cn(tdClass, "whitespace-nowrap")}>{m.unit || "—"}</td>
                                             <td className={cn(tdClass, "font-mono text-[12px] text-[var(--muted-foreground)] whitespace-nowrap")}>{m.productionJobId?.slice(0, 8)}...</td>
-                                            <td className={cn(tdClass, "text-[var(--muted-foreground)] tabular-nums whitespace-nowrap")}>{m.createdAt ? new Date(m.createdAt).toLocaleDateString("en-IN") : "\u2014"}</td>
+                                            <td className={cn(tdClass, "text-[var(--muted-foreground)] tabular-nums whitespace-nowrap")}>{m.createdAt ? new Date(m.createdAt).toLocaleDateString("en-IN") : "—"}</td>
                                         </tr>
                                     ))}
                                 </tbody>

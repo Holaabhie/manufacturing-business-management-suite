@@ -16,6 +16,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
+import { useAppLocale } from "@/components/LocaleProvider";
 import { AccessDenied } from "@/components/AccessDenied";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -130,6 +132,12 @@ export default function EmployeeDetailPage() {
     const router = useRouter();
     const params = useParams();
     const employeeId = params.id as string;
+    const t = useTranslations("users");
+    const tCommon = useTranslations("common");
+    const { locale } = useAppLocale();
+    const dateLocale = locale === "hi" ? "hi-IN" : locale === "gu" ? "gu-IN" : locale === "mr" ? "mr-IN" : "en-IN";
+    const getTemplateLabel = (key: string) => t(`templates.${key}` as any) || TEMPLATE_LABELS[key] || key;
+    const getDepartmentLabel = (key: string) => t(`departments.${key}` as any) || key;
 
     const [employee, setEmployee] = useState<EmployeeDetail | null>(null);
     const [activity, setActivity] = useState<ActivityEntry[]>([]);
@@ -216,7 +224,7 @@ export default function EmployeeDetailPage() {
             const json = await res.json();
             if (!res.ok) throw new Error(json.error);
             setEmployee(prev => prev ? { ...prev, status: json.status } : null);
-            toast.success(`Employee ${json.status === "active" ? "activated" : "deactivated"}`);
+            toast.success(json.status === "active" ? t("btnActivate") : t("btnDeactivate"));
             fetchData();
         } catch (error: any) {
             toast.error(error.message);
@@ -236,7 +244,7 @@ export default function EmployeeDetailPage() {
             const json = await res.json();
             if (!res.ok) throw new Error(json.error);
             setResetPwdResult(json.tempPassword);
-            toast.success("Password reset successfully");
+            toast.success(t("toasts.passwordReset"));
         } catch (error: any) {
             toast.error(error.message);
         } finally {
@@ -246,11 +254,11 @@ export default function EmployeeDetailPage() {
 
     // ─── Change Password (admin-typed) ───────────────
     const handleChangePassword = async () => {
-        if (changePwdNewPassword.length < 8) { toast.error("Password must be at least 8 characters"); return; }
-        if (!/[A-Z]/.test(changePwdNewPassword)) { toast.error("Password must contain an uppercase letter"); return; }
-        if (!/[a-z]/.test(changePwdNewPassword)) { toast.error("Password must contain a lowercase letter"); return; }
-        if (!/[0-9]/.test(changePwdNewPassword)) { toast.error("Password must contain a number"); return; }
-        if (changePwdNewPassword !== changePwdConfirm) { toast.error("Passwords do not match"); return; }
+        if (changePwdNewPassword.length < 8) { toast.error(t("toasts.passwordMin")); return; }
+        if (!/[A-Z]/.test(changePwdNewPassword)) { toast.error(t("toasts.passwordUpper")); return; }
+        if (!/[a-z]/.test(changePwdNewPassword)) { toast.error(t("toasts.passwordLower")); return; }
+        if (!/[0-9]/.test(changePwdNewPassword)) { toast.error(t("toasts.passwordNumber")); return; }
+        if (changePwdNewPassword !== changePwdConfirm) { toast.error(t("toasts.passwordMismatch")); return; }
 
         setChangePwdLoading(true);
         try {
@@ -313,7 +321,7 @@ export default function EmployeeDetailPage() {
             const json = await res.json();
             if (!res.ok) throw new Error(json.error);
             setEmployee(prev => prev ? { ...prev, failedLoginAttempts: 0, lockedUntil: null } : null);
-            toast.success("Account unlocked");
+            toast.success(t("toasts.accountUnlocked"));
         } catch (error: any) {
             toast.error(error.message);
         }
@@ -329,7 +337,7 @@ export default function EmployeeDetailPage() {
             const json = await res.json();
             if (!res.ok) throw new Error(json.error);
             setSessions([]);
-            toast.success("All sessions terminated");
+            toast.success(t("toasts.sessionsTerminated"));
         } catch (error: any) {
             toast.error(error.message);
         }
@@ -352,7 +360,7 @@ export default function EmployeeDetailPage() {
             });
             const json = await res.json();
             if (!res.ok) throw new Error(json.error);
-            toast.success("Profile updated");
+            toast.success(t("toasts.profileUpdated"));
             setEditing(false);
             fetchData();
         } catch (error: any) {
@@ -373,7 +381,7 @@ export default function EmployeeDetailPage() {
             const json = await res.json();
             if (!res.ok) throw new Error(json.error);
             setEmployee(prev => prev ? { ...prev, permissions: json.permissions, permissionTemplate: json.templateId } : null);
-            toast.success("Permissions updated");
+            toast.success(t("toasts.permissionsUpdated"));
             setEditingPerms(false);
         } catch (error: any) {
             toast.error(error.message);
@@ -388,7 +396,7 @@ export default function EmployeeDetailPage() {
             const res = await fetch(`/api/employees/${employeeId}`, { method: "DELETE" });
             const json = await res.json();
             if (!res.ok) throw new Error(json.error);
-            toast.success("Employee deleted");
+            toast.success(t("toasts.employeeDeleted"));
             router.push("/dashboard/users");
         } catch (error: any) {
             toast.error(error.message);
@@ -426,16 +434,16 @@ export default function EmployeeDetailPage() {
     }
 
     if (currentUserRole !== "Admin") {
-        return <AccessDenied title="Restricted Access" description="Employee details are restricted to administrators." />;
+        return <AccessDenied title={t("restrictedAccess")} description="Employee details are restricted to administrators." />;
     }
 
     if (!employee) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
                 <AlertTriangle className="h-12 w-12 text-amber-500" />
-                <h2 className="text-xl font-bold">Employee Not Found</h2>
+                <h2 className="text-xl font-bold">{t("employeeNotFound")}</h2>
                 <Button variant="outline" onClick={() => router.push("/dashboard/users")}>
-                    <ArrowLeft className="mr-2 h-4 w-4" />Back to Employees
+                    <ArrowLeft className="mr-2 h-4 w-4" />{t("btnBackToEmployees")}
                 </Button>
             </div>
         );
@@ -449,7 +457,7 @@ export default function EmployeeDetailPage() {
                 {/* ─── Breadcrumb ──────────────────────────────────── */}
                 <nav className="flex items-center gap-1.5 text-sm text-muted-foreground">
                     <button onClick={() => router.push("/dashboard/users")} className="hover:text-foreground transition-colors">
-                        Employees
+                        {t("breadcrumbEmployees")}
                     </button>
                     <ChevronRight className="h-3.5 w-3.5" />
                     <span className="font-medium text-foreground">{employee.fullName}</span>
@@ -472,13 +480,13 @@ export default function EmployeeDetailPage() {
                             </div>
                             <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground flex-wrap">
                                 <span className="flex items-center gap-1">
-                                    <Building2 className="h-3.5 w-3.5" /> {employee.department}
+                                    <Building2 className="h-3.5 w-3.5" /> {getDepartmentLabel(employee.department)}
                                 </span>
                                 {employee.designation && (
                                     <span className="flex items-center gap-1">• {employee.designation}</span>
                                 )}
                                 <span className="flex items-center gap-1">
-                                    <Calendar className="h-3.5 w-3.5" /> Added {new Date(employee.createdAt).toLocaleDateString()}
+                                    <Calendar className="h-3.5 w-3.5" /> {t("addedOn")} {new Date(employee.createdAt).toLocaleDateString(dateLocale)}
                                 </span>
                             </div>
                         </div>
@@ -488,7 +496,7 @@ export default function EmployeeDetailPage() {
                         <Button variant="outline" size="sm" onClick={() => setShowChangePwd(true)}
                             className="border-amber-200 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950/20"
                         >
-                            <KeyRound className="mr-1.5 h-3.5 w-3.5" />Change Password
+                            <KeyRound className="mr-1.5 h-3.5 w-3.5" />{t("btnChangePassword")}
                         </Button>
                         <Button
                             variant="outline"
@@ -498,9 +506,9 @@ export default function EmployeeDetailPage() {
                             className={employee.status === "active" ? "border-red-200 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20" : "border-emerald-200 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"}
                         >
                             {employee.status === "active" ? (
-                                <><PowerOff className="mr-1.5 h-3.5 w-3.5" />Deactivate</>
+                                <><PowerOff className="mr-1.5 h-3.5 w-3.5" />{t("btnDeactivate")}</>
                             ) : (
-                                <><Power className="mr-1.5 h-3.5 w-3.5" />Activate</>
+                                <><Power className="mr-1.5 h-3.5 w-3.5" />{t("btnActivate")}</>
                             )}
                         </Button>
                     </div>
@@ -513,7 +521,7 @@ export default function EmployeeDetailPage() {
                             className="p-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 flex items-center gap-2 text-sm text-amber-800 dark:text-amber-300"
                         >
                             <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-                            <span>This employee has not completed first-time login setup. Temporary password is still active.</span>
+                            <span>{t("firstLoginNotice")}</span>
                         </motion.div>
                     )}
                     {isLocked && (
@@ -522,10 +530,10 @@ export default function EmployeeDetailPage() {
                         >
                             <div className="flex items-center gap-2">
                                 <Lock className="h-4 w-4 flex-shrink-0" />
-                                <span>Account locked due to failed login attempts ({employee.failedLoginAttempts} attempts).</span>
+                                <span>{t("accountLockedNotice", { count: employee.failedLoginAttempts })}</span>
                             </div>
                             <Button size="sm" variant="outline" className="border-red-300 text-red-600" onClick={handleUnlockAccount}>
-                                <Unlock className="mr-1.5 h-3.5 w-3.5" />Unlock
+                                <Unlock className="mr-1.5 h-3.5 w-3.5" />{t("btnUnlock")}
                             </Button>
                         </motion.div>
                     )}
@@ -535,16 +543,16 @@ export default function EmployeeDetailPage() {
                 <Tabs defaultValue="profile" className="space-y-4">
                     <TabsList className="bg-muted/30 p-1">
                         <TabsTrigger value="profile" className="gap-1.5 data-[state=active]:shadow-sm">
-                            <UserCog className="h-3.5 w-3.5" />Profile
+                            <UserCog className="h-3.5 w-3.5" />{t("tabProfile")}
                         </TabsTrigger>
                         <TabsTrigger value="permissions" className="gap-1.5 data-[state=active]:shadow-sm">
-                            <Shield className="h-3.5 w-3.5" />Permissions
+                            <Shield className="h-3.5 w-3.5" />{t("tabPermissions")}
                         </TabsTrigger>
                         <TabsTrigger value="activity" className="gap-1.5 data-[state=active]:shadow-sm">
-                            <Activity className="h-3.5 w-3.5" />Activity
+                            <Activity className="h-3.5 w-3.5" />{t("tabActivity")}
                         </TabsTrigger>
                         <TabsTrigger value="sessions" className="gap-1.5 data-[state=active]:shadow-sm">
-                            <MonitorSmartphone className="h-3.5 w-3.5" />Sessions
+                            <MonitorSmartphone className="h-3.5 w-3.5" />{t("tabSessions")}
                         </TabsTrigger>
                     </TabsList>
 
@@ -553,23 +561,23 @@ export default function EmployeeDetailPage() {
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between">
                                 <div>
-                                    <CardTitle className="text-lg">Employee Profile</CardTitle>
-                                    <CardDescription>Personal and organizational information.</CardDescription>
+                                    <CardTitle className="text-lg">{t("secProfileTitle")}</CardTitle>
+                                    <CardDescription>{t("secProfileSubtitle")}</CardDescription>
                                 </div>
                                 {!editing ? (
                                     <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-                                        <Edit3 className="mr-1.5 h-3.5 w-3.5" />Edit
+                                        <Edit3 className="mr-1.5 h-3.5 w-3.5" />{t("btnEdit")}
                                     </Button>
                                 ) : (
                                     <div className="flex gap-2">
                                         <Button variant="ghost" size="sm" onClick={() => { setEditing(false); setEditName(employee.fullName); }}>
-                                            <X className="mr-1 h-3.5 w-3.5" />Cancel
+                                            <X className="mr-1 h-3.5 w-3.5" />{t("btnCancel")}
                                         </Button>
                                         <Button size="sm" onClick={handleSaveProfile} disabled={saving}
                                             className="text-white" style={{ background: "var(--primary)" }}
                                         >
                                             {saving ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1 h-3.5 w-3.5" />}
-                                            Save
+                                            {t("btnSave")}
                                         </Button>
                                     </div>
                                 )}
@@ -578,7 +586,7 @@ export default function EmployeeDetailPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-4">
                                         <div>
-                                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Employee ID</Label>
+                                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("lblEmployeeId")}</Label>
                                             <div className="mt-1 flex items-center gap-2">
                                                 <span className="font-mono text-lg font-bold" style={{ color: "var(--primary)" }}>
                                                     {employee.employeeId}
@@ -589,13 +597,13 @@ export default function EmployeeDetailPage() {
                                                             <Copy className="h-3 w-3" />
                                                         </Button>
                                                     </TooltipTrigger>
-                                                    <TooltipContent>Copy ID</TooltipContent>
+                                                    <TooltipContent>{t("btnCopyId")}</TooltipContent>
                                                 </Tooltip>
                                             </div>
                                         </div>
 
                                         <div>
-                                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Full Name</Label>
+                                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("lblName")}</Label>
                                             {editing ? (
                                                 <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="mt-1 h-10" />
                                             ) : (
@@ -604,13 +612,13 @@ export default function EmployeeDetailPage() {
                                         </div>
 
                                         <div>
-                                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Email</Label>
+                                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("lblEmail")}</Label>
                                             {editing ? (
-                                                <Input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} className="mt-1 h-10" placeholder="employee@company.com" />
+                                                <Input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} className="mt-1 h-10" placeholder={t("placeholderEmail")} />
                                             ) : (
                                                 <p className="mt-1 text-sm">
                                                     {employee.email.endsWith("@staff.local") ? (
-                                                        <span className="text-muted-foreground italic">Not provided</span>
+                                                        <span className="text-muted-foreground italic">{t("lblNotProvided")}</span>
                                                     ) : (
                                                         <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5" />{employee.email}</span>
                                                     )}
@@ -619,7 +627,7 @@ export default function EmployeeDetailPage() {
                                         </div>
 
                                         <div>
-                                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Phone</Label>
+                                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("lblPhone")}</Label>
                                             {editing ? (
                                                 <Input type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="mt-1 h-10" placeholder="+91..." />
                                             ) : (
@@ -627,7 +635,7 @@ export default function EmployeeDetailPage() {
                                                     {employee.phone ? (
                                                         <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{employee.phone}</span>
                                                     ) : (
-                                                        <span className="text-muted-foreground italic">Not provided</span>
+                                                        <span className="text-muted-foreground italic">{t("lblNotProvided")}</span>
                                                     )}
                                                 </p>
                                             )}
@@ -636,38 +644,38 @@ export default function EmployeeDetailPage() {
 
                                     <div className="space-y-4">
                                         <div>
-                                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Department</Label>
+                                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("lblDepartment")}</Label>
                                             {editing ? (
                                                 <Select value={editDept} onValueChange={setEditDept}>
                                                     <SelectTrigger className="mt-1 h-10"><SelectValue /></SelectTrigger>
                                                     <SelectContent>
-                                                        {DEPARTMENTS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                                                        {DEPARTMENTS.map(d => <SelectItem key={d} value={d}>{getDepartmentLabel(d)}</SelectItem>)}
                                                     </SelectContent>
                                                 </Select>
                                             ) : (
-                                                <p className="mt-1"><span className="flex items-center gap-1"><Building2 className="h-3.5 w-3.5" />{employee.department}</span></p>
+                                                <p className="mt-1"><span className="flex items-center gap-1"><Building2 className="h-3.5 w-3.5" />{getDepartmentLabel(employee.department)}</span></p>
                                             )}
                                         </div>
 
                                         <div>
-                                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Designation</Label>
+                                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("lblDesignation")}</Label>
                                             {editing ? (
-                                                <Input value={editDesignation} onChange={(e) => setEditDesignation(e.target.value)} className="mt-1 h-10" placeholder="e.g. Machine Operator" />
+                                                <Input value={editDesignation} onChange={(e) => setEditDesignation(e.target.value)} className="mt-1 h-10" placeholder={t("placeholderDesignation")} />
                                             ) : (
-                                                <p className="mt-1 text-sm">{employee.designation || <span className="text-muted-foreground italic">Not set</span>}</p>
+                                                <p className="mt-1 text-sm">{employee.designation || <span className="text-muted-foreground italic">{t("lblNotSet")}</span>}</p>
                                             )}
                                         </div>
 
                                         <div>
-                                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Last Login</Label>
+                                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("lblLastLogin")}</Label>
                                             <p className="mt-1 text-sm flex items-center gap-1">
                                                 <Clock className="h-3.5 w-3.5" />
-                                                {employee.lastLogin ? new Date(employee.lastLogin).toLocaleString() : "Never"}
+                                                {employee.lastLogin ? new Date(employee.lastLogin).toLocaleString(dateLocale) : t("lblNotSet")}
                                             </p>
                                         </div>
 
                                         <div>
-                                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Last Active</Label>
+                                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("lblLastActive")}</Label>
                                             <p className="mt-1 text-sm flex items-center gap-1">
                                                 <Activity className="h-3.5 w-3.5" />
                                                 {timeAgo(employee.lastActiveAt)}
@@ -680,13 +688,13 @@ export default function EmployeeDetailPage() {
                                 <div className="mt-8 pt-6 border-t border-border">
                                     <h3 className="text-sm font-bold text-red-500 mb-3 flex items-center gap-1.5">
                                         <AlertTriangle className="h-4 w-4" />
-                                        Danger Zone
+                                        {t("secDangerZone")}
                                     </h3>
                                     <div className="flex flex-wrap gap-2">
                                         <Button variant="outline" size="sm" className="border-red-200 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
                                             onClick={() => setShowDeleteConfirm(true)}
                                         >
-                                            <Trash2 className="mr-1.5 h-3.5 w-3.5" />Delete Employee
+                                            <Trash2 className="mr-1.5 h-3.5 w-3.5" />{t("btnDelete")}
                                         </Button>
                                     </div>
                                 </div>
@@ -699,23 +707,23 @@ export default function EmployeeDetailPage() {
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between">
                                 <div>
-                                    <CardTitle className="text-lg">Access Permissions</CardTitle>
+                                    <CardTitle className="text-lg">{t("secPermissionsTitle")}</CardTitle>
                                     <CardDescription>
-                                        Template: <span className="font-semibold text-foreground">{TEMPLATE_LABELS[employee.permissionTemplate] || employee.permissionTemplate}</span>
+                                        {t("lblTemplatePrefix")} <span className="font-semibold text-foreground">{getTemplateLabel(employee.permissionTemplate)}</span>
                                     </CardDescription>
                                 </div>
                                 {!editingPerms ? (
                                     <Button variant="outline" size="sm" onClick={() => setEditingPerms(true)}>
-                                        <Edit3 className="mr-1.5 h-3.5 w-3.5" />Change
+                                        <Edit3 className="mr-1.5 h-3.5 w-3.5" />{t("btnChangeTemplate")}
                                     </Button>
                                 ) : (
                                     <div className="flex gap-2">
-                                        <Button variant="ghost" size="sm" onClick={() => setEditingPerms(false)}>Cancel</Button>
+                                        <Button variant="ghost" size="sm" onClick={() => setEditingPerms(false)}>{t("btnCancel")}</Button>
                                         <Button size="sm" onClick={handleUpdatePermissions} disabled={permSaving}
                                             className="text-white" style={{ background: "var(--primary)" }}
                                         >
                                             {permSaving ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1 h-3.5 w-3.5" />}
-                                            Apply
+                                            {t("btnApplyTemplate")}
                                         </Button>
                                     </div>
                                 )}
@@ -723,12 +731,12 @@ export default function EmployeeDetailPage() {
                             <CardContent>
                                 {editingPerms && (
                                     <div className="mb-6 p-4 rounded-lg border bg-muted/20">
-                                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 block">Select Permission Template</Label>
+                                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 block">{t("selectTemplateTitle")}</Label>
                                         <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
                                             <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
                                             <SelectContent>
-                                                {Object.entries(TEMPLATE_LABELS).filter(([k]) => k !== "custom").map(([key, label]) => (
-                                                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                                                {Object.entries(TEMPLATE_LABELS).filter(([k]) => k !== "custom").map(([key]) => (
+                                                    <SelectItem key={key} value={key}>{getTemplateLabel(key)}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
@@ -769,7 +777,7 @@ export default function EmployeeDetailPage() {
                                 ) : (
                                     <div className="text-center py-8 text-muted-foreground">
                                         <Shield className="h-10 w-10 mx-auto mb-2 opacity-30" />
-                                        <p>No permissions set. Using default role-based access.</p>
+                                        <p>{t("noPermissionsNotice")}</p>
                                     </div>
                                 )}
                             </CardContent>
@@ -780,14 +788,14 @@ export default function EmployeeDetailPage() {
                     <TabsContent value="activity">
                         <Card>
                             <CardHeader>
-                                <CardTitle className="text-lg">Activity Log</CardTitle>
-                                <CardDescription>Recent actions by this employee across all modules.</CardDescription>
+                                <CardTitle className="text-lg">{t("secActivityTitle")}</CardTitle>
+                                <CardDescription>{t("secActivitySubtitle")}</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 {activity.length === 0 ? (
                                     <div className="text-center py-12 text-muted-foreground">
                                         <Activity className="h-10 w-10 mx-auto mb-2 opacity-30" />
-                                        <p>No activity recorded yet.</p>
+                                        <p>{t("noActivity")}</p>
                                     </div>
                                 ) : (
                                     <div className="space-y-1">
@@ -807,7 +815,7 @@ export default function EmployeeDetailPage() {
                                                     <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
                                                         <span className="capitalize">{entry.module}</span>
                                                         <span>•</span>
-                                                        <span>{new Date(entry.timestamp).toLocaleString()}</span>
+                                                        <span>{new Date(entry.timestamp).toLocaleString(dateLocale)}</span>
                                                         {entry.ipAddress && entry.ipAddress !== "unknown" && (
                                                             <><span>•</span><span>{entry.ipAddress}</span></>
                                                         )}
@@ -828,14 +836,14 @@ export default function EmployeeDetailPage() {
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between">
                                 <div>
-                                    <CardTitle className="text-lg">Active Sessions</CardTitle>
-                                    <CardDescription>{sessions.length} active session(s).</CardDescription>
+                                    <CardTitle className="text-lg">{t("secSessionsTitle")}</CardTitle>
+                                    <CardDescription>{t("sessionsCount", { count: sessions.length })}</CardDescription>
                                 </div>
                                 {sessions.length > 0 && (
                                     <Button variant="outline" size="sm" onClick={handleTerminateSessions}
                                         className="border-red-200 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
                                     >
-                                        <LogOut className="mr-1.5 h-3.5 w-3.5" />Terminate All
+                                        <LogOut className="mr-1.5 h-3.5 w-3.5" />{t("btnTerminateAll")}
                                     </Button>
                                 )}
                             </CardHeader>
@@ -843,7 +851,7 @@ export default function EmployeeDetailPage() {
                                 {sessions.length === 0 ? (
                                     <div className="text-center py-12 text-muted-foreground">
                                         <MonitorSmartphone className="h-10 w-10 mx-auto mb-2 opacity-30" />
-                                        <p>No active sessions.</p>
+                                        <p>{t("noSessions")}</p>
                                     </div>
                                 ) : (
                                     <div className="space-y-3">
@@ -854,7 +862,7 @@ export default function EmployeeDetailPage() {
                                                     <div>
                                                         <p className="text-sm font-medium">{session.deviceType || "Unknown Device"}</p>
                                                         <p className="text-xs text-muted-foreground">
-                                                            IP: {session.ipAddress} • Last active: {timeAgo(session.lastActiveAt)}
+                                                            {t("sessionIp")} {session.ipAddress} • {t("sessionLastActive")} {timeAgo(session.lastActiveAt)}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -876,7 +884,7 @@ export default function EmployeeDetailPage() {
                                 <div className="p-1.5 rounded-lg" style={{ background: "#F59E0B" }}>
                                     <KeyRound className="h-4 w-4 text-white" />
                                 </div>
-                                {changePwdStep === "success" ? "Password Changed" : "Change Password"}
+                                {changePwdStep === "success" ? t("passwordUpdatedTitle") : t("changePasswordTitle")}
                             </DialogTitle>
                             <DialogDescription>
                                 {changePwdStep === "success"
@@ -889,13 +897,13 @@ export default function EmployeeDetailPage() {
                             <div className="space-y-5 py-2">
                                 {/* New Password */}
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">New Password</Label>
+                                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("lblNewPassword")}</Label>
                                     <div className="relative">
                                         <Input
                                             type={changePwdShowNew ? "text" : "password"}
                                             value={changePwdNewPassword}
                                             onChange={(e) => setChangePwdNewPassword(e.target.value)}
-                                            placeholder="Enter new password"
+                                            placeholder={t("placeholderNewPassword")}
                                             className="h-11 pr-10"
                                             autoFocus
                                         />
@@ -916,16 +924,16 @@ export default function EmployeeDetailPage() {
                                             </div>
                                             <div className="flex flex-wrap gap-x-3 gap-y-1">
                                                 <span className={`text-[10px] flex items-center gap-0.5 ${changePwdNewPassword.length >= 8 ? "text-emerald-500" : "text-muted-foreground"}`}>
-                                                    {changePwdNewPassword.length >= 8 ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />} 8+ chars
+                                                    {changePwdNewPassword.length >= 8 ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />} {t("reqMinChars")}
                                                 </span>
                                                 <span className={`text-[10px] flex items-center gap-0.5 ${/[A-Z]/.test(changePwdNewPassword) ? "text-emerald-500" : "text-muted-foreground"}`}>
-                                                    {/[A-Z]/.test(changePwdNewPassword) ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />} Uppercase
+                                                    {/[A-Z]/.test(changePwdNewPassword) ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />} {t("reqUppercase")}
                                                 </span>
                                                 <span className={`text-[10px] flex items-center gap-0.5 ${/[a-z]/.test(changePwdNewPassword) ? "text-emerald-500" : "text-muted-foreground"}`}>
-                                                    {/[a-z]/.test(changePwdNewPassword) ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />} Lowercase
+                                                    {/[a-z]/.test(changePwdNewPassword) ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />} {t("reqLowercase")}
                                                 </span>
                                                 <span className={`text-[10px] flex items-center gap-0.5 ${/[0-9]/.test(changePwdNewPassword) ? "text-emerald-500" : "text-muted-foreground"}`}>
-                                                    {/[0-9]/.test(changePwdNewPassword) ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />} Number
+                                                    {/[0-9]/.test(changePwdNewPassword) ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />} {t("reqNumber")}
                                                 </span>
                                             </div>
                                         </div>
@@ -934,13 +942,13 @@ export default function EmployeeDetailPage() {
 
                                 {/* Confirm Password */}
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Confirm New Password</Label>
+                                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("lblConfirmNewPassword")}</Label>
                                     <div className="relative">
                                         <Input
                                             type={changePwdShowConfirm ? "text" : "password"}
                                             value={changePwdConfirm}
                                             onChange={(e) => setChangePwdConfirm(e.target.value)}
-                                            placeholder="Re-enter new password"
+                                            placeholder={t("placeholderConfirmNewPassword")}
                                             className="h-11 pr-10"
                                         />
                                         <button type="button" onClick={() => setChangePwdShowConfirm(!changePwdShowConfirm)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
@@ -948,10 +956,10 @@ export default function EmployeeDetailPage() {
                                         </button>
                                     </div>
                                     {changePwdConfirm && changePwdNewPassword !== changePwdConfirm && (
-                                        <p className="text-[10px] text-red-400 flex items-center gap-1"><X className="h-3 w-3" /> Passwords do not match</p>
+                                        <p className="text-[10px] text-red-400 flex items-center gap-1"><X className="h-3 w-3" /> {t("passwordsMismatch")}</p>
                                     )}
                                     {changePwdConfirm && changePwdNewPassword === changePwdConfirm && (
-                                        <p className="text-[10px] text-emerald-500 flex items-center gap-1"><Check className="h-3 w-3" /> Passwords match</p>
+                                        <p className="text-[10px] text-emerald-500 flex items-center gap-1"><Check className="h-3 w-3" /> {t("passwordsMatch")}</p>
                                     )}
                                 </div>
 
@@ -959,21 +967,21 @@ export default function EmployeeDetailPage() {
                                 <div className="space-y-2 p-3 rounded-lg border border-border bg-muted/20">
                                     <div className="flex items-center gap-2 mb-1">
                                         <Shield className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
-                                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Admin Password (Recommended)</Label>
+                                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("adminPasswordRecommend")}</Label>
                                     </div>
                                     <div className="relative">
                                         <Input
                                             type={changePwdShowAdmin ? "text" : "password"}
                                             value={changePwdAdminPassword}
                                             onChange={(e) => setChangePwdAdminPassword(e.target.value)}
-                                            placeholder="Enter YOUR password to confirm"
+                                            placeholder={t("placeholderAdminPassword")}
                                             className="h-11 pr-10"
                                         />
                                         <button type="button" onClick={() => setChangePwdShowAdmin(!changePwdShowAdmin)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                                             {changePwdShowAdmin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                         </button>
                                     </div>
-                                    <p className="text-[10px] text-muted-foreground">Re-enter your admin password for security verification. Optional but recommended.</p>
+                                    <p className="text-[10px] text-muted-foreground">{t("adminPasswordRecommendHint")}</p>
                                 </div>
                             </div>
                         ) : (
@@ -981,14 +989,14 @@ export default function EmployeeDetailPage() {
                                 <div className="p-3 rounded-full bg-emerald-100 dark:bg-emerald-900/30 w-fit mx-auto">
                                     <BadgeCheck className="h-8 w-8 text-emerald-600" />
                                 </div>
-                                <p className="font-semibold text-lg">Password Updated Successfully</p>
+                                <p className="font-semibold text-lg">{t("passwordUpdatedTitle")}</p>
                                 <p className="text-sm text-muted-foreground">
-                                    The password for <strong>{employee.fullName}</strong> has been changed. All existing sessions have been terminated. The staff member must log in with the new password.
+                                    {t("passwordUpdatedDesc")}
                                 </p>
                                 <div className="p-3 rounded-lg bg-muted/50 border text-xs text-muted-foreground">
                                     <p className="flex items-center justify-center gap-1.5">
                                         <Shield className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
-                                        This action has been recorded in the audit trail.
+                                        {t("auditRecordedNotice")}
                                     </p>
                                 </div>
                             </div>
@@ -996,17 +1004,17 @@ export default function EmployeeDetailPage() {
 
                         <DialogFooter>
                             {changePwdStep === "success" ? (
-                                <Button className="w-full text-white" style={{ background: "var(--primary)" }} onClick={resetChangePwdDialog}>Done</Button>
+                                <Button className="w-full text-white" style={{ background: "var(--primary)" }} onClick={resetChangePwdDialog}>{t("btnDone")}</Button>
                             ) : (
                                 <>
-                                    <Button variant="outline" onClick={resetChangePwdDialog}>Cancel</Button>
+                                    <Button variant="outline" onClick={resetChangePwdDialog}>{t("btnCancel")}</Button>
                                     <Button
                                         onClick={handleChangePassword}
                                         disabled={changePwdLoading || changePwdNewPassword.length < 8 || changePwdNewPassword !== changePwdConfirm}
                                         style={{ background: "#F59E0B", color: "white" }}
                                     >
                                         {changePwdLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <KeyRound className="h-4 w-4 mr-2" />}
-                                        Change Password
+                                        {t("changePasswordTitle")}
                                     </Button>
                                 </>
                             )}
@@ -1018,7 +1026,7 @@ export default function EmployeeDetailPage() {
                 <Dialog open={showResetPwd} onOpenChange={(open) => { if (!open) { setShowResetPwd(false); setResetPwdResult(null); } }}>
                     <DialogContent fullScreenMobile className="sm:max-w-md">
                         <DialogHeader>
-                            <DialogTitle>Auto-Generate Password</DialogTitle>
+                            <DialogTitle>{t("autoGeneratePasswordTitle")}</DialogTitle>
                             <DialogDescription>
                                 {resetPwdResult
                                     ? `New password generated for ${employee.fullName}.`
@@ -1030,7 +1038,7 @@ export default function EmployeeDetailPage() {
                             <div className="py-4">
                                 <div className="flex items-center justify-between bg-muted/50 rounded-lg px-3 py-3 border">
                                     <div>
-                                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">New Temporary Password</p>
+                                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{t("newTempPassword")}</p>
                                         <p className="font-mono font-bold text-lg">{resetPwdResult}</p>
                                     </div>
                                     <Button variant="ghost" size="icon" onClick={() => copyToClipboard(resetPwdResult)}>
@@ -1042,13 +1050,13 @@ export default function EmployeeDetailPage() {
 
                         <DialogFooter>
                             {resetPwdResult ? (
-                                <Button className="w-full" onClick={() => { setShowResetPwd(false); setResetPwdResult(null); }}>Done</Button>
+                                <Button className="w-full" onClick={() => { setShowResetPwd(false); setResetPwdResult(null); }}>{t("btnDone")}</Button>
                             ) : (
                                 <>
-                                    <Button variant="outline" onClick={() => setShowResetPwd(false)}>Cancel</Button>
+                                    <Button variant="outline" onClick={() => setShowResetPwd(false)}>{t("btnCancel")}</Button>
                                     <Button onClick={handleResetPassword} disabled={actionLoading} style={{ background: "#F59E0B", color: "white" }}>
                                         {actionLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <KeyRound className="h-4 w-4 mr-2" />}
-                                        Generate Password
+                                        {t("btnGeneratePassword")}
                                     </Button>
                                 </>
                             )}
@@ -1062,9 +1070,9 @@ export default function EmployeeDetailPage() {
                     onClose={() => setShowDeleteConfirm(false)}
                     onConfirm={handleDelete}
                     isDeleting={actionLoading}
-                    entityLabel="employee"
+                    entityLabel={t("deleteEntityLabel")}
                     entityName={employee ? `${employee.fullName} (${employee.employeeId})` : undefined}
-                    consequenceText="will be permanently removed from staff records. This cannot be undone."
+                    consequenceText={t("deleteConsequence")}
                 />
             </div>
         </TooltipProvider>
@@ -1073,11 +1081,12 @@ export default function EmployeeDetailPage() {
 
 // ─── Inline Status Badge ────────────────────────────────────────
 function StatusBadge({ status }: { status: string }) {
+    const t = useTranslations("users");
     const config: Record<string, { label: string; classes: string; icon: any }> = {
-        active: { label: "Active", classes: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-800 dark:text-emerald-400", icon: Check },
-        inactive: { label: "Disabled", classes: "border-red-200 bg-red-50 text-red-700 dark:bg-red-950/20 dark:border-red-800 dark:text-red-400", icon: PowerOff },
-        suspended: { label: "Suspended", classes: "border-amber-200 bg-amber-50 text-amber-700 dark:bg-amber-950/20 dark:border-amber-800 dark:text-amber-400", icon: AlertTriangle },
-        pending_setup: { label: "Pending Setup", classes: "border-blue-200 bg-blue-50 text-blue-700 dark:bg-blue-950/20 dark:border-blue-800 dark:text-blue-400", icon: Clock },
+        active: { label: t("statusActive"), classes: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-800 dark:text-emerald-400", icon: Check },
+        inactive: { label: t("statusInactive"), classes: "border-red-200 bg-red-50 text-red-700 dark:bg-red-950/20 dark:border-red-800 dark:text-red-400", icon: PowerOff },
+        suspended: { label: t("statusSuspended"), classes: "border-amber-200 bg-amber-50 text-amber-700 dark:bg-amber-950/20 dark:border-amber-800 dark:text-amber-400", icon: AlertTriangle },
+        pending_setup: { label: t("statusPendingSetup"), classes: "border-blue-200 bg-blue-50 text-blue-700 dark:bg-blue-950/20 dark:border-blue-800 dark:text-blue-400", icon: Clock },
     };
     const c = config[status] || config.active;
     const Icon = c.icon;

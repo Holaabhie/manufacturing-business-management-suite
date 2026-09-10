@@ -84,6 +84,7 @@ import {
 
 import { exportWorkbook } from "@/lib/excel-export";
 import { useTranslations } from "next-intl";
+import { useAppLocale } from "@/components/LocaleProvider";
 import { motion } from "framer-motion";
 import { staggerItem } from "@/styles/animations";
 
@@ -141,7 +142,10 @@ interface CompanyInfo {
 }
 
 export default function BillingPage() {
+    const t = useTranslations("billing");
     const tCommon = useTranslations("common");
+    const { locale } = useAppLocale();
+    const dateLocale = locale === "hi" ? "hi-IN" : locale === "gu" ? "gu-IN" : locale === "mr" ? "mr-IN" : "en-IN";
     const { progress: collapseProgress } = useCollapseProgress();
     const [bills, setBills] = useState<Bill[]>([]);
     const [clients, setClients] = useState<any[]>([]);
@@ -228,7 +232,7 @@ export default function BillingPage() {
             setBills(billsRes.data || []);
         } catch (error) {
             console.error("Failed to fetch data:", error);
-            toast.error("Failed to fetch data");
+            toast.error(t("toasts.fetchFailed"));
         } finally {
             setLoading(false);
         }
@@ -376,7 +380,7 @@ export default function BillingPage() {
             client_id: clientId,
             items: [...formData.items, newItem]
         });
-        toast.success("Order imported to bill");
+        toast.success(t("toasts.orderImported"));
     };
 
     const calculateTotals = () => {
@@ -401,10 +405,10 @@ export default function BillingPage() {
         e.preventDefault();
 
         if (!formData.client_id) {
-            return toast.error("Please select a client");
+            return toast.error(t("toasts.selectClient"));
         }
         if (formData.items.length === 0) {
-            return toast.error("Please add at least one item");
+            return toast.error(t("toasts.addOneItem"));
         }
 
         const client = clients.find(c => c.id === formData.client_id);
@@ -447,16 +451,16 @@ export default function BillingPage() {
             const json = await res.json();
 
             if (json.error) {
-                toast.error(json.error.message || "Failed to create bill");
+                toast.error(json.error.message || t("toasts.billCreateFailed"));
             } else {
                 const serverBillNumber = json.data?.billNumber || billData.billNumber;
-                toast.success(`Bill ${serverBillNumber} created successfully`);
+                toast.success(t("toasts.billCreated", { number: serverBillNumber }));
                 setIsDialogOpen(false);
                 resetForm();
                 fetchData();
             }
         } catch (error) {
-            toast.error("Failed to create bill");
+            toast.error(t("toasts.billCreateFailed"));
         }
     };
 
@@ -475,16 +479,15 @@ export default function BillingPage() {
     const handleDelete = async (id: string) => {
         try {
             const res = await fetch(`/api/v1/billing/${id}`, { method: "DELETE" });
-            const json = await res.json();
-
-            if (json.error) {
-                toast.error(json.error.message || "Failed to delete bill");
-            } else {
-                toast.success("Bill deleted");
+            if (res.ok || res.status === 404) {
+                toast.success(t("toasts.billDeleted"));
                 fetchData();
+            } else {
+                const json = await res.json().catch(() => ({}));
+                toast.error(json?.error?.message || json?.error || t("toasts.billDeleteFailed"));
             }
         } catch (error) {
-            toast.error("Failed to delete bill");
+            toast.error(t("toasts.billDeleteFailed"));
         } finally {
             setIsDeleteDialogOpen(false);
             setBillToDelete(null);
@@ -529,7 +532,7 @@ export default function BillingPage() {
 
     // ─── WhatsApp Share (Fix 5) ──────────────────────────
     const handleWhatsAppShare = useCallback(async (bill: Bill) => {
-        const message = `Invoice ${bill.billNumber}\nClient: ${bill.clientName}\nAmount: \u20B9${bill.totalAmount.toLocaleString('en-IN')}\nDue: ${new Date(bill.dueDate).toLocaleDateString('en-IN')}`;
+        const message = `Invoice ${bill.billNumber}\nClient: ${bill.clientName}\nAmount: \u20B9${bill.totalAmount.toLocaleString(dateLocale)}\nDue: ${new Date(bill.dueDate).toLocaleDateString('en-IN')}`;
 
         const phoneNumber = bill.clientPhone?.replace(/[^0-9]/g, '') || '';
         const waUrl = phoneNumber
@@ -537,7 +540,7 @@ export default function BillingPage() {
             : `https://wa.me/?text=${encodeURIComponent(message)}`;
 
         window.open(waUrl, '_blank');
-        toast.success("Opening WhatsApp...");
+        toast.success(t("toasts.openingWhatsApp"));
 
         // Fire-and-forget notification log
         try {
@@ -565,13 +568,13 @@ export default function BillingPage() {
             const json = await res.json();
 
             if (json.error) {
-                toast.error(json.error.message || "Failed to update status");
+                toast.error(json.error.message || t("toasts.statusFailed"));
             } else {
-                toast.success(`Bill marked as ${status}`);
+                toast.success(t("toasts.statusUpdated", { status }));
                 fetchData();
             }
         } catch (error) {
-            toast.error("Failed to update status");
+            toast.error(t("toasts.statusFailed"));
         }
     };
 
@@ -646,14 +649,14 @@ export default function BillingPage() {
                     a.click();
                     document.body.removeChild(a);
                     URL.revokeObjectURL(url);
-                    toast.success("Invoice PDF downloaded");
+                    toast.success(t("toasts.pdfDownloaded"));
                 } else {
                     const printWindow = window.open(url);
                     if (printWindow) {
                         printWindow.onload = () => printWindow.print();
-                        toast.success("Opening print dialog...");
+                        toast.success(t("toasts.printDialog"));
                     } else {
-                        toast.error("Popup blocked! Allow popups to print.");
+                        toast.error(t("toasts.popupBlocked"));
                     }
                 }
             } else if (isFallbackHtml || contentType.includes("text/html")) {
@@ -664,15 +667,15 @@ export default function BillingPage() {
                 const w = window.open(url);
                 if (w) {
                     w.onload = () => { if (action === 'print') w.print(); };
-                    toast.info(action === 'print' ? "Opening print dialog..." : "Invoice opened (HTML fallback)");
+                    toast.info(action === 'print' ? t("toasts.printDialog") : t("toasts.htmlFallback"));
                 }
             } else {
                 const err = await res.json().catch(() => ({ message: "Unknown error" }));
-                toast.error(err.message || "PDF generation failed");
+                toast.error(err.message || t("toasts.pdfActionFailed", { action }));
             }
         } catch (error) {
             console.error("PDF generation error:", error);
-            toast.error(`Failed to ${action} PDF`);
+            toast.error(t("toasts.pdfActionFailed", { action }));
         } finally {
             setPdfGenerating(false);
         }
@@ -701,9 +704,9 @@ export default function BillingPage() {
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
                             <FileText className="h-8 w-8 text-emerald-600" />
-                            Tally-Style Billing
+                            {t("title")}
                         </h1>
-                        <p className="text-zinc-500 mt-1">Generate professional GST invoices for your orders</p>
+                        <p className="text-zinc-500 mt-1">{t("ssrSubtitle")}</p>
                     </div>
                 </div>
                 <div className="flex items-center justify-center py-20">
@@ -726,8 +729,8 @@ export default function BillingPage() {
     return (
         <div className="space-y-8 bg-[var(--background)] p-6 rounded-3xl overflow-x-hidden">
             <CollapsingTitle
-                title="Tally-Style Billing"
-                subtitle={`${bills.length} invoices · \u20B9${(stats.totalValue / 100000).toFixed(1)}L total billed · ${stats.paid} paid`}
+                title={t("title")}
+                subtitle={t("subtitleStats", { total: bills.length, totalLakhs: (stats.totalValue / 100000).toFixed(1), paid: stats.paid })}
                 subtitleLoading={loading}
                 collapseProgress={collapseProgress}
             />
@@ -737,11 +740,11 @@ export default function BillingPage() {
                 {!companyLoading && !companyInfo?.companyName && (
                     <Alert variant="default" className="border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800">
                         <AlertTriangle className="h-4 w-4 text-amber-600" />
-                        <AlertTitle className="text-amber-800 dark:text-amber-200">Company details not configured</AlertTitle>
+                        <AlertTitle className="text-amber-800 dark:text-amber-200">{t("companyWarningTitle")}</AlertTitle>
                         <AlertDescription className="text-amber-700 dark:text-amber-300">
-                            Your company information will appear on all invoices.
+                            {t("companyWarningDesc")}
                             <Link href="/dashboard/profile?tab=company" className="ml-1 underline font-medium hover:text-amber-900">
-                                Set up your company details →
+                                {t("companyWarningLink")}
                             </Link>
                         </AlertDescription>
                     </Alert>
@@ -753,22 +756,22 @@ export default function BillingPage() {
                         variant="filled" 
                         onClick={() => {
                             if (filteredBills.length === 0) {
-                                toast.error("No invoices to export");
+                                toast.error(t("toasts.noInvoicesToExport"));
                                 return;
                             }
                             exportToTally(filteredBills);
-                            toast.success("Tally export generated");
+                            toast.success(t("toasts.tallyExportGenerated"));
                         }}
                         style={{ backgroundColor: "#16a34a", borderColor: "#15803d" }}
                         className="shadow-sm hover:opacity-90"
                     >
                         <Download className="min-w-4 h-4 w-4 mr-1.5" />
-                        Tally Export
+                        {t("btnTallyExport")}
                     </IOSButton>
 
                     <IOSButton variant="filled" onClick={() => setIsDialogOpen(true)}>
                         <Plus className="min-w-4 h-5 w-5 mr-1.5" />
-                        Create New Invoice
+                        {t("btnCreateInvoice")}
                     </IOSButton>
 
                     {/* New Redesigned Invoice Modal */}
@@ -786,34 +789,34 @@ export default function BillingPage() {
             {/* Stats Cards */}
             <div className="grid gap-4 md:grid-cols-4">
                 <IOSCard variant="elevated" className="!bg-gradient-to-br from-[var(--erp-success)]/10 to-[var(--erp-success)]/5 dark:from-[var(--erp-success)]/20 dark:to-[var(--erp-success)]/10 border border-[var(--erp-success)]/20">
-                    <IOSCardHeader title="Total Invoiced" className="[&_h3]:text-[11px] [&_h3]:uppercase [&_h3]:tracking-widest [&_h3]:text-[var(--erp-success)] pb-0" />
+                    <IOSCardHeader title={t("cardTotalInvoiced")} className="[&_h3]:text-[11px] [&_h3]:uppercase [&_h3]:tracking-widest [&_h3]:text-[var(--erp-success)] pb-0" />
                     <IOSCardContent className="pt-2">
-                        <div className="text-[28px] font-bold tracking-tight text-[var(--foreground)]">{"\u20B9"}{stats.totalValue.toLocaleString('en-IN')}</div>
-                        <p className="text-[13px] text-[var(--muted-foreground)] font-medium mt-1">{stats.total} invoices generated</p>
+                        <div className="text-[28px] font-bold tracking-tight text-[var(--foreground)]">{"\u20B9"}{stats.totalValue.toLocaleString(dateLocale)}</div>
+                        <p className="text-[13px] text-[var(--muted-foreground)] font-medium mt-1">{t("invoicesGenerated", { count: stats.total })}</p>
                     </IOSCardContent>
                 </IOSCard>
 
                 <IOSCard variant="elevated">
-                    <IOSCardHeader title="Paid" className="[&_h3]:text-[11px] [&_h3]:uppercase [&_h3]:tracking-widest [&_h3]:text-[var(--muted-foreground)] pb-0" />
+                    <IOSCardHeader title={t("cardPaid")} className="[&_h3]:text-[11px] [&_h3]:uppercase [&_h3]:tracking-widest [&_h3]:text-[var(--muted-foreground)] pb-0" />
                     <IOSCardContent className="pt-2">
                         <div className="text-[28px] font-bold tracking-tight text-[var(--foreground)]">{stats.paid}</div>
-                        <p className="text-[13px] text-[var(--erp-success)] font-medium mt-1">{"\u20B9"}{stats.paidValue.toLocaleString('en-IN')} collected</p>
+                        <p className="text-[13px] text-[var(--erp-success)] font-medium mt-1">{t("collected", { amount: stats.paidValue.toLocaleString(dateLocale) })}</p>
                     </IOSCardContent>
                 </IOSCard>
 
                 <IOSCard variant="elevated">
-                    <IOSCardHeader title="Pending" className="[&_h3]:text-[11px] [&_h3]:uppercase [&_h3]:tracking-widest [&_h3]:text-[var(--muted-foreground)] pb-0" />
+                    <IOSCardHeader title={t("cardPending")} className="[&_h3]:text-[11px] [&_h3]:uppercase [&_h3]:tracking-widest [&_h3]:text-[var(--erp-warning)] pb-0" />
                     <IOSCardContent className="pt-2">
                         <div className="text-[28px] font-bold tracking-tight text-[var(--erp-warning)]">{stats.sent}</div>
-                        <p className="text-[13px] text-[var(--muted-foreground)] font-medium mt-1">Awaiting payment</p>
+                        <p className="text-[13px] text-[var(--muted-foreground)] font-medium mt-1">{t("awaitingPayment")}</p>
                     </IOSCardContent>
                 </IOSCard>
 
                 <IOSCard variant="elevated">
-                    <IOSCardHeader title="Drafts" className="[&_h3]:text-[11px] [&_h3]:uppercase [&_h3]:tracking-widest [&_h3]:text-[var(--muted-foreground)] pb-0" />
+                    <IOSCardHeader title={t("cardDrafts")} className="[&_h3]:text-[11px] [&_h3]:uppercase [&_h3]:tracking-widest [&_h3]:text-[var(--muted-foreground)] pb-0" />
                     <IOSCardContent className="pt-2">
                         <div className="text-[28px] font-bold tracking-tight text-[var(--muted-foreground)]">{stats.draft}</div>
-                        <p className="text-[13px] text-[var(--muted-foreground)] font-medium mt-1">Ready to send</p>
+                        <p className="text-[13px] text-[var(--muted-foreground)] font-medium mt-1">{t("readyToSend")}</p>
                     </IOSCardContent>
                 </IOSCard>
             </div>
@@ -822,7 +825,7 @@ export default function BillingPage() {
             <IOSSearchBar
                 value={searchTerm}
                 onChange={setSearchTerm}
-                placeholder="Search invoices by number or client..."
+                placeholder={t("searchPlaceholder")}
                 className="max-w-sm"
             />
 
@@ -831,11 +834,11 @@ export default function BillingPage() {
                 <Table>
                     <TableHeader className="bg-[var(--muted)] border-b border-[var(--border)]">
                         <TableRow className="hover:bg-transparent">
-                            <TableHead className="font-medium text-[var(--muted-foreground)] py-4 pl-6">Invoice</TableHead>
-                            <TableHead className="font-medium text-[var(--muted-foreground)] py-4">Client</TableHead>
-                            <TableHead className="font-medium text-[var(--muted-foreground)] py-4">Date</TableHead>
-                            <TableHead className="font-medium text-[var(--muted-foreground)] py-4 text-right">Amount</TableHead>
-                            <TableHead className="font-medium text-[var(--muted-foreground)] py-4 text-center">Status</TableHead>
+                            <TableHead className="font-medium text-[var(--muted-foreground)] py-4 pl-6">{t("thInvoice")}</TableHead>
+                            <TableHead className="font-medium text-[var(--muted-foreground)] py-4">{t("thClient")}</TableHead>
+                            <TableHead className="font-medium text-[var(--muted-foreground)] py-4">{t("thDate")}</TableHead>
+                            <TableHead className="font-medium text-[var(--muted-foreground)] py-4 text-right">{t("thAmount")}</TableHead>
+                            <TableHead className="font-medium text-[var(--muted-foreground)] py-4 text-center">{t("thStatus")}</TableHead>
                             <TableHead className="w-[100px]"></TableHead>
                         </TableRow>
                     </TableHeader>
@@ -855,7 +858,7 @@ export default function BillingPage() {
                             <TableRow>
                                 <TableCell colSpan={6} className="text-center py-20 text-[var(--muted-foreground)]">
                                     <FileText className="h-10 w-10 mx-auto mb-3 text-[var(--muted-foreground)]" />
-                                    <p className="text-[13px]">No invoices found. Create your first invoice to get started.</p>
+                                    <p className="text-[13px]">{t("noInvoicesFound")}</p>
                                 </TableCell>
                             </TableRow>
                         ) : filteredBills.map((bill, index) => (
@@ -874,18 +877,18 @@ export default function BillingPage() {
                                     <div className="flex flex-col">
                                         <span className="font-medium text-[15px] text-[var(--foreground)]">{bill.clientName}</span>
                                         {bill.clientGSTIN && (
-                                            <span className="text-[12px] text-[var(--muted-foreground)]">GSTIN: {bill.clientGSTIN}</span>
+                                            <span className="text-[12px] text-[var(--muted-foreground)]">{t("gstinLabel", { gstin: bill.clientGSTIN })}</span>
                                         )}
                                     </div>
                                 </TableCell>
                                 <TableCell className="py-4">
                                     <div className="flex flex-col">
-                                        <span className="font-medium text-[14px] text-[var(--foreground)]">{new Date(bill.billDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                                        <span className="text-[12px] text-[var(--muted-foreground)]">Due: {new Date(bill.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                                        <span className="font-medium text-[14px] text-[var(--foreground)]">{new Date(bill.billDate).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                                        <span className="text-[12px] text-[var(--muted-foreground)]">{t("dueLabel", { date: new Date(bill.dueDate).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short' }) })}</span>
                                     </div>
                                 </TableCell>
                                 <TableCell className="py-4 text-right pr-6">
-                                    <span className="font-semibold text-[17px] tracking-tight">{"\u20B9"}{bill.totalAmount.toLocaleString('en-IN')}</span>
+                                    <span className="font-semibold text-[17px] tracking-tight">{"\u20B9"}{bill.totalAmount.toLocaleString(dateLocale)}</span>
                                 </TableCell>
                                 <TableCell className="py-4 text-center">
                                     <div className="flex flex-col items-center gap-1">
@@ -917,19 +920,19 @@ export default function BillingPage() {
                                         <DropdownMenuContent align="end" className="w-48">
                                             <DropdownMenuItem onClick={() => { setSelectedBill(bill); setIsPreviewOpen(true); }}>
                                                 <Eye className="mr-2 h-4 w-4" />
-                                                Preview
+                                                {t("actionPreview")}
                                             </DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => generatePDF(bill, 'download')}>
                                                 <Download className="mr-2 h-4 w-4" />
-                                                Download PDF
+                                                {t("actionDownloadPdf")}
                                             </DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => generatePDF(bill, 'print')}>
                                                 <Printer className="mr-2 h-4 w-4 text-[var(--erp-success)]" />
-                                                Print Invoice
+                                                {t("actionPrint")}
                                             </DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => handleWhatsAppShare(bill)}>
                                                 <Share2 className="mr-2 h-4 w-4 text-green-500" />
-                                                WhatsApp Share
+                                                {t("actionWhatsApp")}
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
                                             <DropdownMenuItem
@@ -954,13 +957,13 @@ export default function BillingPage() {
                                             {bill.status === 'draft' && (
                                                 <DropdownMenuItem onClick={() => updateStatus(bill.id, 'sent')}>
                                                     <Send className="mr-2 h-4 w-4" />
-                                                    Mark as Sent
+                                                    {t("actionMarkSent")}
                                                 </DropdownMenuItem>
                                             )}
                                             {bill.status === 'sent' && (
                                                 <DropdownMenuItem onClick={() => updateStatus(bill.id, 'paid')}>
                                                     <CheckCircle2 className="mr-2 h-4 w-4" />
-                                                    Mark as Paid
+                                                    {t("actionMarkPaid")}
                                                 </DropdownMenuItem>
                                             )}
                                             <DropdownMenuSeparator />
@@ -969,7 +972,7 @@ export default function BillingPage() {
                                                 onClick={() => { setBillToDelete(bill.id); setIsDeleteDialogOpen(true); }}
                                             >
                                                 <Trash2 className="mr-2 h-4 w-4" />
-                                                Delete
+                                                {t("actionDelete")}
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
@@ -993,7 +996,7 @@ export default function BillingPage() {
                 ) : filteredBills.length === 0 ? (
                     <div className="py-16 text-center">
                         <FileText className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-                        <p className="text-muted-foreground text-sm">No invoices found. Create your first invoice to get started.</p>
+                        <p className="text-muted-foreground text-sm">{t("noInvoicesFound")}</p>
                     </div>
                 ) : filteredBills.map((bill) => (
                     <div
@@ -1027,18 +1030,18 @@ export default function BillingPage() {
                                     : bill.status === 'overdue' ? 'bg-red-500/20 text-red-400'
                                     : 'bg-muted text-muted-foreground'
                             )}>
-                                {bill.status.toUpperCase()}
+                                {(bill.status === "paid" ? t("statusPaid") : bill.status === "sent" ? t("statusSent") : bill.status === "overdue" ? t("statusOverdue") : t("statusDraft")).toUpperCase()}
                             </span>
                         </div>
                         {/* Row 2: Client name + Amount */}
                         <div className="flex justify-between items-center mt-1">
                             <span className="text-white text-sm font-semibold truncate mr-2">{bill.clientName}</span>
-                            <span className="text-white text-sm font-bold whitespace-nowrap">{"\u20B9"}{bill.totalAmount.toLocaleString('en-IN')}</span>
+                            <span className="text-white text-sm font-bold whitespace-nowrap">{"\u20B9"}{bill.totalAmount.toLocaleString(dateLocale)}</span>
                         </div>
                         {/* Row 3: Dates */}
                         <div className="flex justify-between mt-1">
-                            <span className="text-muted-foreground text-xs">{new Date(bill.billDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                            <span className="text-muted-foreground text-xs">Due: {new Date(bill.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                            <span className="text-muted-foreground text-xs">{new Date(bill.billDate).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                            <span className="text-muted-foreground text-xs">{t("dueLabel", { date: new Date(bill.dueDate).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short' }) })}</span>
                         </div>
                     </div>
                 ))}
@@ -1047,7 +1050,7 @@ export default function BillingPage() {
             {/* DESKTOP UX REFACTOR — Preview Dialog */}
             <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
                 <DialogContent fullScreen className="!bg-transparent" aria-describedby={undefined}>
-                    <DialogTitle className="sr-only">Invoice Preview</DialogTitle>
+                    <DialogTitle className="sr-only">{t("previewTitle")}</DialogTitle>
                     {/* DESKTOP UX REFACTOR — Centered modal shell */}
                     <div className="fixed inset-0 z-[1] flex items-end lg:items-center lg:justify-center" onClick={() => setIsPreviewOpen(false)}>
                       <div
@@ -1059,7 +1062,7 @@ export default function BillingPage() {
                         <div className="hidden lg:flex items-center justify-between px-6 py-4 border-b border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] backdrop-blur-sm shrink-0">
                           <div className="flex items-center gap-3">
                             <FileText size={18} className="text-[var(--erp-success)]" />
-                            <span className="text-[15px] font-semibold text-[var(--foreground)]">Invoice Preview</span>
+                            <span className="text-[15px] font-semibold text-[var(--foreground)]">{t("previewTitle")}</span>
                             {selectedBill && (
                               <span className="text-[13px] text-[var(--muted-foreground)] font-mono ml-1">{selectedBill.billNumber}</span>
                             )}
@@ -1073,7 +1076,7 @@ export default function BillingPage() {
                                   className="h-9 px-4 rounded-lg border border-[rgba(255,255,255,0.10)] bg-transparent text-[var(--muted-foreground)] text-[13px] font-medium flex items-center gap-2 hover:bg-white/5 transition-colors cursor-pointer disabled:opacity-50"
                                 >
                                   <Printer size={14} />
-                                  Print
+                                  {t("btnPrint")}
                                 </button>
                                 <button
                                   onClick={() => generatePDF(selectedBill, 'download')}
@@ -1081,7 +1084,7 @@ export default function BillingPage() {
                                   className="h-9 px-4 rounded-lg border-none bg-[#2563EB] text-white text-[13px] font-semibold flex items-center gap-2 hover:bg-[#1d4ed8] transition-colors cursor-pointer disabled:opacity-50"
                                 >
                                   {pdfGenerating ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-                                  {pdfGenerating ? "Generating..." : "Download PDF"}
+                                  {pdfGenerating ? t("generatingPdf") : t("btnDownloadPdf")}
                                 </button>
                                 <TallyExportButton
                                   invoiceId={selectedBill.id}
@@ -1114,29 +1117,29 @@ export default function BillingPage() {
                                 <div className="p-4 md:p-6 lg:p-10 pb-[120px] lg:pb-10 overflow-x-hidden" ref={printRef}>
                                 {/* Invoice Header */}
                                 <div className="text-center border-b border-[var(--border)] pb-4 md:pb-6 mb-4 md:mb-6">
-                                    <h1 className="text-lg md:text-[24px] font-bold tracking-tight text-[var(--erp-success)] break-words">{companyInfo?.companyName || "Your Company Name"}</h1>
-                                    <p className="text-[12px] md:text-[13px] text-[var(--muted-foreground)] mt-1 break-words">{companyInfo?.address?.replace('\n', ', ') || "Company Address"}</p>
-                                    <p className="text-[11px] md:text-[12px] text-[var(--muted-foreground)] mt-1 break-words">Phone: {companyInfo?.phone || "N/A"} | Email: {companyInfo?.email || "N/A"}</p>
-                                    <p className="text-[11px] md:text-[12px] text-[var(--muted-foreground)] break-words">GSTIN: {companyInfo?.gstin || "N/A"} | PAN: {companyInfo?.pan || "N/A"}</p>
+                                    <h1 className="text-lg md:text-[24px] font-bold tracking-tight text-[var(--erp-success)] break-words">{companyInfo?.companyName || t("defaultCompanyName")}</h1>
+                                    <p className="text-[12px] md:text-[13px] text-[var(--muted-foreground)] mt-1 break-words">{companyInfo?.address?.replace('\n', ', ') || t("defaultCompanyAddress")}</p>
+                                    <p className="text-[11px] md:text-[12px] text-[var(--muted-foreground)] mt-1 break-words">{t("defaultPhone", { phone: companyInfo?.phone || "N/A", email: companyInfo?.email || "N/A" })}</p>
+                                    <p className="text-[11px] md:text-[12px] text-[var(--muted-foreground)] break-words">{t("defaultGstinPan", { gstin: companyInfo?.gstin || "N/A", pan: companyInfo?.pan || "N/A" })}</p>
                                 </div>
 
                                 <div className="bg-[var(--erp-success)] w-full text-center py-3 text-white font-bold text-lg tracking-widest rounded mb-4 md:mb-6">
-                                    TAX INVOICE
+                                    {t("taxInvoiceBadge")}
                                 </div>
 
                                 {/* Bill To + Invoice Info — stacked on mobile, side by side on desktop */}
                                 <div className="flex flex-col md:grid md:grid-cols-2 gap-4 md:gap-8 mb-4 md:mb-6">
                                     <div className="min-w-0">
-                                        <h3 className="font-bold text-sm text-[var(--muted-foreground)] mb-2">BILL TO:</h3>
+                                        <h3 className="font-bold text-sm text-[var(--muted-foreground)] mb-2">{t("billTo")}</h3>
                                         <p className="font-bold text-base md:text-lg text-[var(--foreground)] break-words">{selectedBill.clientName}</p>
                                         {selectedBill.clientAddress && <p className="text-sm text-[var(--muted-foreground)] break-words">{selectedBill.clientAddress}</p>}
-                                        {selectedBill.clientGSTIN && <p className="text-sm text-[var(--muted-foreground)] break-words">GSTIN: {selectedBill.clientGSTIN}</p>}
-                                        {selectedBill.clientPhone && <p className="text-sm text-[var(--muted-foreground)]">Phone: {selectedBill.clientPhone}</p>}
+                                        {selectedBill.clientGSTIN && <p className="text-sm text-[var(--muted-foreground)] break-words">{t("gstinLabel", { gstin: selectedBill.clientGSTIN })}</p>}
+                                        {selectedBill.clientPhone && <p className="text-sm text-[var(--muted-foreground)]">{t("phoneLabel")}: {selectedBill.clientPhone}</p>}
                                     </div>
                                     <div className="min-w-0 md:text-right">
-                                        <p className="text-sm break-words"><span className="text-[var(--muted-foreground)]">Invoice No:</span> <span className="font-bold">{selectedBill.billNumber}</span></p>
-                                        <p className="text-sm"><span className="text-[var(--muted-foreground)]">Date:</span> {new Date(selectedBill.billDate).toLocaleDateString('en-IN')}</p>
-                                        <p className="text-sm"><span className="text-[var(--muted-foreground)]">Due Date:</span> {new Date(selectedBill.dueDate).toLocaleDateString('en-IN')}</p>
+                                        <p className="text-sm break-words"><span className="text-[var(--muted-foreground)]">{t("invoiceNo")}</span> <span className="font-bold">{selectedBill.billNumber}</span></p>
+                                        <p className="text-sm"><span className="text-[var(--muted-foreground)]">{t("date")}</span> {new Date(selectedBill.billDate).toLocaleDateString(dateLocale)}</p>
+                                        <p className="text-sm"><span className="text-[var(--muted-foreground)]">{t("dueDate")}</span> {new Date(selectedBill.dueDate).toLocaleDateString(dateLocale)}</p>
                                     </div>
                                 </div>
 
@@ -1144,13 +1147,13 @@ export default function BillingPage() {
                                 <table className="hidden md:table w-full mb-6">
                                     <thead>
                                         <tr className="bg-[var(--muted)]">
-                                            <th className="text-left p-2 text-xs font-bold">S.No</th>
-                                            <th className="text-left p-2 text-xs font-bold">Description</th>
-                                            <th className="text-left p-2 text-xs font-bold">HSN</th>
-                                            <th className="text-right p-2 text-xs font-bold">Qty</th>
-                                            <th className="text-right p-2 text-xs font-bold">Rate</th>
-                                            <th className="text-right p-2 text-xs font-bold">GST%</th>
-                                            <th className="text-right p-2 text-xs font-bold">Amount</th>
+                                            <th className="text-left p-2 text-xs font-bold">{t("colSNo")}</th>
+                                            <th className="text-left p-2 text-xs font-bold">{t("colDescription")}</th>
+                                            <th className="text-left p-2 text-xs font-bold">{t("colHsn")}</th>
+                                            <th className="text-right p-2 text-xs font-bold">{t("colQty")}</th>
+                                            <th className="text-right p-2 text-xs font-bold">{t("colRate")}</th>
+                                            <th className="text-right p-2 text-xs font-bold">{t("colGst")}</th>
+                                            <th className="text-right p-2 text-xs font-bold">{t("colAmount")}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1160,9 +1163,9 @@ export default function BillingPage() {
                                                 <td className="p-2 text-sm font-medium">{item.description}</td>
                                                 <td className="p-2 text-sm">{item.hsnCode || '-'}</td>
                                                 <td className="p-2 text-sm text-right">{item.quantity} {item.unit}</td>
-                                                <td className="p-2 text-sm text-right">{"\u20B9"}{item.rate.toLocaleString('en-IN')}</td>
+                                                <td className="p-2 text-sm text-right">{"\u20B9"}{item.rate.toLocaleString(dateLocale)}</td>
                                                 <td className="p-2 text-sm text-right">{item.gstRate}%</td>
-                                                <td className="p-2 text-sm text-right font-bold">{"\u20B9"}{item.amount.toLocaleString('en-IN')}</td>
+                                                <td className="p-2 text-sm text-right font-bold">{"\u20B9"}{item.amount.toLocaleString(dateLocale)}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -1174,14 +1177,14 @@ export default function BillingPage() {
                                         <div key={`${item.id}-${idx}`} className="bg-white/5 rounded-lg px-3 py-2">
                                             <div className="flex justify-between items-start">
                                                 <span className="text-sm font-bold text-[var(--foreground)] break-words min-w-0 flex-1 mr-2">{item.description}</span>
-                                                <span className="text-sm font-bold text-[var(--foreground)] whitespace-nowrap">{"\u20B9"}{item.amount.toLocaleString('en-IN')}</span>
+                                                <span className="text-sm font-bold text-[var(--foreground)] whitespace-nowrap">{"\u20B9"}{item.amount.toLocaleString(dateLocale)}</span>
                                             </div>
                                             {item.hsnCode && (
-                                                <p className="text-xs text-muted-foreground mt-0.5">HSN: {item.hsnCode}</p>
+                                                <p className="text-xs text-muted-foreground mt-0.5">{t("itemHsn", { hsn: item.hsnCode })}</p>
                                             )}
                                             <div className="flex items-center justify-between mt-1">
-                                                <span className="text-xs text-muted-foreground">{item.quantity} {item.unit} × {"\u20B9"}{item.rate.toLocaleString('en-IN')}</span>
-                                                <span className="text-xs text-gray-400 bg-white/10 rounded px-1.5 py-0.5">{item.gstRate}% GST</span>
+                                                <span className="text-xs text-muted-foreground">{item.quantity} {item.unit} × {"\u20B9"}{item.rate.toLocaleString(dateLocale)}</span>
+                                                <span className="text-xs text-gray-400 bg-white/10 rounded px-1.5 py-0.5">{t("taxBadge", { rate: item.gstRate })}</span>
                                             </div>
                                         </div>
                                     ))}
@@ -1191,48 +1194,48 @@ export default function BillingPage() {
                                 <div className="flex justify-end mb-4 md:mb-6">
                                     <div className="w-full md:w-64 space-y-1">
                                         <div className="flex justify-between text-sm">
-                                            <span className="text-[var(--muted-foreground)]">Subtotal</span>
-                                            <span className="font-bold">{"\u20B9"}{selectedBill.subtotal.toLocaleString('en-IN')}</span>
+                                            <span className="text-[var(--muted-foreground)]">{t("subtotal")}</span>
+                                            <span className="font-bold">{"\u20B9"}{selectedBill.subtotal.toLocaleString(dateLocale)}</span>
                                         </div>
                                         {selectedBill.igstAmount > 0 ? (
                                             <div className="flex justify-between text-sm">
-                                                <span className="text-[var(--muted-foreground)]">IGST</span>
-                                                <span>{"\u20B9"}{selectedBill.igstAmount.toLocaleString('en-IN')}</span>
+                                                <span className="text-[var(--muted-foreground)]">{t("igst")}</span>
+                                                <span>{"\u20B9"}{selectedBill.igstAmount.toLocaleString(dateLocale)}</span>
                                             </div>
                                         ) : (
                                             <>
                                                 <div className="flex justify-between text-sm">
-                                                    <span className="text-[var(--muted-foreground)]">CGST</span>
-                                                    <span>{"\u20B9"}{selectedBill.cgstAmount.toLocaleString('en-IN')}</span>
+                                                    <span className="text-[var(--muted-foreground)]">{t("cgst")}</span>
+                                                    <span>{"\u20B9"}{selectedBill.cgstAmount.toLocaleString(dateLocale)}</span>
                                                 </div>
                                                 <div className="flex justify-between text-sm">
-                                                    <span className="text-[var(--muted-foreground)]">SGST</span>
-                                                    <span>{"\u20B9"}{selectedBill.sgstAmount.toLocaleString('en-IN')}</span>
+                                                    <span className="text-[var(--muted-foreground)]">{t("sgst")}</span>
+                                                    <span>{"\u20B9"}{selectedBill.sgstAmount.toLocaleString(dateLocale)}</span>
                                                 </div>
                                             </>
                                         )}
                                         <div className="flex justify-between text-base md:text-lg font-bold text-green-400 border-t border-white/20 pt-2 mt-1">
-                                            <span>Total</span>
-                                            <span className="font-black text-[var(--erp-success)]">{"\u20B9"}{selectedBill.totalAmount.toLocaleString('en-IN')}</span>
+                                            <span>{t("total")}</span>
+                                            <span className="font-black text-[var(--erp-success)]">{"\u20B9"}{selectedBill.totalAmount.toLocaleString(dateLocale)}</span>
                                         </div>
                                     </div>
                                 </div>
 
                                 <p className="text-xs md:text-sm italic text-[var(--muted-foreground)] mb-4 md:mb-6 break-words">
-                                    Amount in words: <span className="font-medium">{selectedBill.amountInWords}</span>
+                                    {t("amountInWords")} <span className="font-medium">{selectedBill.amountInWords}</span>
                                 </p>
 
                                 {/* Bank Details + Terms — stacked on mobile */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 text-xs text-[var(--muted-foreground)] border-t border-[var(--border)] pt-4">
                                     <div className="min-w-0">
-                                        <h4 className="font-bold text-[var(--foreground)] mb-1">Bank Details:</h4>
-                                        <p className="break-words">Bank: {companyInfo?.bankName || "N/A"}</p>
-                                        <p className="break-words">A/C No: {companyInfo?.accountNo || "N/A"}</p>
-                                        <p>IFSC: {companyInfo?.ifsc || "N/A"}</p>
-                                        <p className="break-words">UPI: {companyInfo?.upiId || "N/A"}</p>
+                                        <h4 className="font-bold text-[var(--foreground)] mb-1">{t("bankDetailsTitle")}</h4>
+                                        <p className="break-words">{t("bankName", { bank: companyInfo?.bankName || "N/A" })}</p>
+                                        <p className="break-words">{t("accountNo", { acc: companyInfo?.accountNo || "N/A" })}</p>
+                                        <p>{t("ifsc", { ifsc: companyInfo?.ifsc || "N/A" })}</p>
+                                        <p className="break-words">{t("upi", { upi: companyInfo?.upiId || "N/A" })}</p>
                                     </div>
                                     <div className="min-w-0">
-                                        <h4 className="font-bold text-[var(--foreground)] mb-1">Terms & Conditions:</h4>
+                                        <h4 className="font-bold text-[var(--foreground)] mb-1">{t("termsTitle")}</h4>
                                         <pre className="whitespace-pre-wrap font-sans break-words">{selectedBill.terms}</pre>
                                     </div>
                                 </div>
@@ -1240,13 +1243,13 @@ export default function BillingPage() {
                                 <div className="text-right mt-6 md:mt-8 pt-6 md:pt-8">
                                     <div className="inline-block text-center">
                                         <div className="border-t border-zinc-300 pt-2 px-8">
-                                            <p className="text-xs text-zinc-500">Authorized Signatory</p>
+                                            <p className="text-xs text-zinc-500">{t("authSignatory")}</p>
                                         </div>
                                     </div>
                                 </div>
 
                                 <p className="text-center text-xs text-[var(--muted-foreground)] mt-6 md:mt-8">
-                                    This is a computer generated invoice.
+                                    {t("computerGenerated")}
                                 </p>
                                 </div>
                               </div>
@@ -1271,7 +1274,7 @@ export default function BillingPage() {
                               onClick={() => setIsPreviewOpen(false)}
                               style={{ flex: 1, height: 48, borderRadius: 14, border: "1px solid var(--overlay-border, rgba(255,255,255,0.10))", background: "transparent", color: "var(--overlay-text-secondary, #94a3b8)", fontSize: 14, fontWeight: 500, cursor: "pointer" }}
                             >
-                              Close
+                              {t("btnClose")}
                             </button>
                             {selectedBill && (
                               <button
@@ -1280,7 +1283,7 @@ export default function BillingPage() {
                                 style={{ flex: 1.4, height: 48, borderRadius: 14, border: "none", background: "#2563EB", color: "#FFFFFF", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
                               >
                                 {pdfGenerating ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
-                                {pdfGenerating ? "Generating..." : "Download PDF"}
+                                {pdfGenerating ? t("generatingPdf") : t("btnDownloadPdf")}
                               </button>
                             )}
                           </div>
@@ -1298,7 +1301,7 @@ export default function BillingPage() {
                         {/* Header */}
                         <div className="pb-3 mb-2 border-b border-white/10">
                             <p className="text-[15px] font-semibold text-[var(--foreground)]">{longPressedBill.clientName}</p>
-                            <p className="text-[13px] text-[var(--muted-foreground)]">{longPressedBill.billNumber} · {"\u20B9"}{longPressedBill.totalAmount.toLocaleString('en-IN')}</p>
+                            <p className="text-[13px] text-[var(--muted-foreground)]">{longPressedBill.billNumber} · {"\u20B9"}{longPressedBill.totalAmount.toLocaleString(dateLocale)}</p>
                         </div>
 
                         {/* Preview */}
@@ -1307,7 +1310,7 @@ export default function BillingPage() {
                             className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-left hover:bg-white/5 transition-colors cursor-pointer"
                         >
                             <Eye className="h-[18px] w-[18px] text-blue-400" />
-                            <span className="text-[15px] text-[var(--foreground)]">Preview Invoice</span>
+                            <span className="text-[15px] text-[var(--foreground)]">{t("sheetPreview")}</span>
                         </button>
 
                         {/* Download PDF */}
@@ -1316,7 +1319,7 @@ export default function BillingPage() {
                             className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-left hover:bg-white/5 transition-colors cursor-pointer"
                         >
                             <Download className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
-                            <span className="text-[15px] text-[var(--foreground)]">Download PDF</span>
+                            <span className="text-[15px] text-[var(--foreground)]">{t("sheetDownloadPdf")}</span>
                         </button>
 
                         {/* Print */}
@@ -1325,7 +1328,7 @@ export default function BillingPage() {
                             className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-left hover:bg-white/5 transition-colors cursor-pointer"
                         >
                             <Printer className="h-[18px] w-[18px] text-[var(--erp-success)]" />
-                            <span className="text-[15px] text-[var(--foreground)]">Print Invoice</span>
+                            <span className="text-[15px] text-[var(--foreground)]">{t("sheetPrint")}</span>
                         </button>
 
                         {/* WhatsApp Share */}
@@ -1334,7 +1337,7 @@ export default function BillingPage() {
                             className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-left hover:bg-white/5 transition-colors cursor-pointer"
                         >
                             <Share2 className="h-[18px] w-[18px] text-green-500" />
-                            <span className="text-[15px] text-[var(--foreground)]">Share via WhatsApp</span>
+                            <span className="text-[15px] text-[var(--foreground)]">{t("sheetWhatsApp")}</span>
                         </button>
 
                         <div className="my-1 border-t border-white/10" />
@@ -1346,7 +1349,7 @@ export default function BillingPage() {
                                 className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-left hover:bg-white/5 transition-colors cursor-pointer"
                             >
                                 <Send className="h-[18px] w-[18px] text-blue-400" />
-                                <span className="text-[15px] text-[var(--foreground)]">Mark as Sent</span>
+                                <span className="text-[15px] text-[var(--foreground)]">{t("sheetMarkSent")}</span>
                             </button>
                         )}
 
@@ -1357,7 +1360,7 @@ export default function BillingPage() {
                                 className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-left hover:bg-white/5 transition-colors cursor-pointer"
                             >
                                 <CheckCircle2 className="h-[18px] w-[18px] text-green-400" />
-                                <span className="text-[15px] text-[var(--foreground)]">Mark as Paid</span>
+                                <span className="text-[15px] text-[var(--foreground)]">{t("sheetMarkPaid")}</span>
                             </button>
                         )}
 
@@ -1369,7 +1372,7 @@ export default function BillingPage() {
                             className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-left hover:bg-white/5 transition-colors cursor-pointer"
                         >
                             <Trash2 className="h-[18px] w-[18px] text-red-400" />
-                            <span className="text-[15px] text-red-400">Delete Invoice</span>
+                            <span className="text-[15px] text-red-400">{t("sheetDelete")}</span>
                         </button>
                     </div>
                 )}
@@ -1383,13 +1386,13 @@ export default function BillingPage() {
                         <Trash2 className="h-[18px] w-[18px] text-[#f87171]" />
                       </div>
                       <div>
-                        <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', lineHeight: '22px', margin: 0 }}>Delete Invoice</DialogTitle>
-                        <DialogDescription style={{ fontSize: 13, color: '#64748b', lineHeight: '18px', margin: '2px 0 0' }}>This action cannot be undone.</DialogDescription>
+                        <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', lineHeight: '22px', margin: 0 }}>{t("deleteTitle")}</DialogTitle>
+                        <DialogDescription style={{ fontSize: 13, color: '#64748b', lineHeight: '18px', margin: '2px 0 0' }}>{t("deleteDescription")}</DialogDescription>
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 10, paddingTop: 16 }}>
-                      <button onClick={() => setIsDeleteDialogOpen(false)} style={{ flex: 1, height: 48, borderRadius: 14, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.10)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-                      <button onClick={() => billToDelete && handleDelete(billToDelete)} style={{ flex: 1, height: 48, borderRadius: 14, background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: '#fff', border: '1px solid rgba(239,68,68,0.3)', boxShadow: '0 4px 16px rgba(239,68,68,0.25)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Delete</button>
+                      <button onClick={() => setIsDeleteDialogOpen(false)} style={{ flex: 1, height: 48, borderRadius: 14, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.10)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t("deleteCancel")}</button>
+                      <button onClick={() => billToDelete && handleDelete(billToDelete)} style={{ flex: 1, height: 48, borderRadius: 14, background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: '#fff', border: '1px solid rgba(239,68,68,0.3)', boxShadow: '0 4px 16px rgba(239,68,68,0.25)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t("deleteConfirm")}</button>
                     </div>
                 </DialogContent>
             </Dialog>

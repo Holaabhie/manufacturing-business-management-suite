@@ -67,7 +67,7 @@ export function LanguageSwitcherFull() {
   return (
     <div className="space-y-3">
       <p className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">
-        {t("currentLanguage")}
+        {t("languagePage.currentLanguage")}
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {LOCALES.map((loc) => (
@@ -94,7 +94,7 @@ export function LanguageSwitcherFull() {
                 {LOCALE_NAMES[loc]}
               </p>
               <p className="text-[12px] text-[var(--muted-foreground)]">
-                {loc === "en" ? "English" : loc === "hi" ? "Hindi" : loc === "gu" ? "Gujarati" : "Marathi"}
+                {loc === "en" ? t("languagePage.english") : loc === "hi" ? t("languagePage.hindi") : loc === "gu" ? t("languagePage.gujarati") : t("languagePage.marathi")}
               </p>
             </div>
             {locale === loc && (
@@ -108,7 +108,7 @@ export function LanguageSwitcherFull() {
         ))}
       </div>
       <p className="text-[12px] text-[var(--muted-foreground)] ml-1 mt-2">
-        {t("languageChangeNote")}
+        {t("languagePage.languageChangeNote")}
       </p>
     </div>
   );

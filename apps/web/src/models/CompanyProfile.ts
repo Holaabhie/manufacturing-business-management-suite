@@ -47,6 +47,8 @@ export interface ICompanyProfile extends Document {
     // Tally/Zoho Parity: Tax Configuration
     tax_regime?: 'Regular' | 'Composition' | 'Unregistered';
     default_tax_rate: number;
+    default_hsn_code?: string;
+    show_tax_breakdown: boolean;
     tds_applicable: boolean;
     tcs_applicable: boolean;
     reverse_charge_liable: boolean;
@@ -130,6 +132,8 @@ const CompanyProfileSchema = new Schema<ICompanyProfile>({
 
     tax_regime: { type: String, enum: ['Regular', 'Composition', 'Unregistered'], default: 'Regular' },
     default_tax_rate: { type: Number, default: 18.00 },
+    default_hsn_code: { type: String, default: '' },
+    show_tax_breakdown: { type: Boolean, default: true },
     tds_applicable: { type: Boolean, default: false },
     tcs_applicable: { type: Boolean, default: false },
     reverse_charge_liable: { type: Boolean, default: false },

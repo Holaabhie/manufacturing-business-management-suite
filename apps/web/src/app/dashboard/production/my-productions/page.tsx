@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useAppLocale } from "@/components/LocaleProvider";
 import {
     Activity,
     Clock,
@@ -23,40 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import type { ProductionStatus } from "@/lib/production-types";
 
-// ─── Status config ──────────────────────────────────────────────────
-const statusConfig: Record<
-    string,
-    { label: string; color: string; bgColor: string; borderColor: string; icon: any }
-> = {
-    pending: {
-        label: "Pending",
-        color: "text-amber-600 dark:text-amber-400",
-        bgColor: "bg-amber-500/10",
-        borderColor: "border-amber-500/20",
-        icon: Clock,
-    },
-    running: {
-        label: "Running",
-        color: "text-blue-600 dark:text-blue-400",
-        bgColor: "bg-blue-500/10",
-        borderColor: "border-blue-500/20",
-        icon: Play,
-    },
-    paused: {
-        label: "Paused",
-        color: "text-orange-600 dark:text-orange-400",
-        bgColor: "bg-orange-500/10",
-        borderColor: "border-orange-500/20",
-        icon: Pause,
-    },
-    completed: {
-        label: "Completed",
-        color: "text-green-600 dark:text-green-400",
-        bgColor: "bg-green-500/10",
-        borderColor: "border-green-500/20",
-        icon: CheckCircle2,
-    },
-};
+// Status Config dynamically initialized inside component
 
 // ─── Animation variants ─────────────────────────────────────────────
 const containerVariants: Variants = {
@@ -96,7 +65,46 @@ interface MyProduction {
 
 // ─── Page ───────────────────────────────────────────────────────────
 export default function MyProductionsPage() {
+    const t = useTranslations("production.myProductions");
+    const tFloor = useTranslations("production.floor");
+    const tStatus = useTranslations("production.statuses");
+    const tToast = useTranslations("production.toasts");
+    const { locale } = useAppLocale();
     const router = useRouter();
+
+    const statusConfig: Record<
+        string,
+        { label: string; color: string; bgColor: string; borderColor: string; icon: any }
+    > = {
+        pending: {
+            label: tStatus("pending"),
+            color: "text-amber-600 dark:text-amber-400",
+            bgColor: "bg-amber-500/10",
+            borderColor: "border-amber-500/20",
+            icon: Clock,
+        },
+        running: {
+            label: tStatus("running"),
+            color: "text-blue-600 dark:text-blue-400",
+            bgColor: "bg-blue-500/10",
+            borderColor: "border-blue-500/20",
+            icon: Play,
+        },
+        paused: {
+            label: tStatus("paused"),
+            color: "text-orange-600 dark:text-orange-400",
+            bgColor: "bg-orange-500/10",
+            borderColor: "border-orange-500/20",
+            icon: Pause,
+        },
+        completed: {
+            label: tStatus("completed"),
+            color: "text-green-600 dark:text-green-400",
+            bgColor: "bg-green-500/10",
+            borderColor: "border-green-500/20",
+            icon: CheckCircle2,
+        },
+    };
     const [productions, setProductions] = useState<MyProduction[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -111,10 +119,10 @@ export default function MyProductionsPage() {
             const res = await fetch(`/api/production/my-productions?page=${page}`);
             if (!res.ok) {
                 if (res.status === 403) {
-                    setError("You don't have access to view productions.");
+                    setError(t("accessDenied"));
                     return;
                 }
-                throw new Error("Failed to load productions");
+                throw new Error(tToast("loadProductionFailed"));
             }
             const data = await res.json();
             setProductions(data.productions || []);
@@ -122,7 +130,7 @@ export default function MyProductionsPage() {
             setTotal(data.total || 0);
         } catch (err: any) {
             setError(err.message || "Failed to load productions");
-            toast.error("Failed to load productions");
+            toast.error(tToast("loadProductionFailed"));
         } finally {
             setLoading(false);
         }
@@ -167,7 +175,7 @@ export default function MyProductionsPage() {
     // ─── Loading ────────────────────────────────────────────────
     if (loading && productions.length === 0) {
         return (
-            <div className="space-y-6 pb-28">
+            <div className="w-full min-w-0 overflow-x-hidden space-y-6 pb-28">
                 <div className="space-y-1">
                     <Skeleton className="h-7 w-52 rounded-lg" />
                     <Skeleton className="h-4 w-72 rounded-lg" />
@@ -206,7 +214,7 @@ export default function MyProductionsPage() {
                     onClick={fetchMyProductions}
                     className="h-10 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[13px] font-semibold"
                 >
-                    Retry
+                    {t("btnRetry")}
                 </Button>
             </div>
         );
@@ -219,11 +227,11 @@ export default function MyProductionsPage() {
                 {/* Header */}
                 <div className="space-y-1">
                     <h1 className="text-[24px] font-semibold text-foreground leading-tight">
-                        My Productions
+                        {t("title")}
                     </h1>
                     <p className="text-[14px] text-muted-foreground flex items-center gap-2">
                         <Activity className="h-4 w-4 text-primary" />
-                        Productions assigned to you
+                        {t("subtitle")}
                     </p>
                 </div>
 
@@ -232,10 +240,10 @@ export default function MyProductionsPage() {
                         <Inbox className="h-7 w-7 text-muted-foreground/60" />
                     </div>
                     <p className="text-[16px] font-semibold text-foreground">
-                        No productions assigned to you yet
+                        {t("emptyTitle")}
                     </p>
                     <p className="text-[13px] text-muted-foreground text-center max-w-sm">
-                        Contact your admin if you believe this is a mistake. Productions will appear here once you are assigned.
+                        {t("emptyDesc")}
                     </p>
                 </div>
             </div>
@@ -254,11 +262,11 @@ export default function MyProductionsPage() {
             <motion.div variants={itemVariants} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="space-y-1">
                     <h1 className="text-[24px] font-semibold text-foreground leading-tight">
-                        My Productions
+                        {t("title")}
                     </h1>
                     <p className="text-[14px] text-muted-foreground flex items-center gap-2">
                         <Activity className="h-4 w-4 text-primary" />
-                        {total} production{total !== 1 ? "s" : ""} assigned to you
+                        {t("assignedCount", { count: total })}
                     </p>
                 </div>
                 <Button
@@ -354,7 +362,7 @@ export default function MyProductionsPage() {
                                     <div className="flex items-center gap-1">
                                         <AlertTriangle className="h-2.5 w-2.5 text-red-500" />
                                         <span className="text-[11px] font-semibold text-red-500">
-                                            {production.rejectQuantity} rejected
+                                            {tFloor("rejectedCount", { count: production.rejectQuantity })}
                                         </span>
                                     </div>
                                 )}
@@ -369,7 +377,7 @@ export default function MyProductionsPage() {
                                     </span>
                                 )}
                                 <span className="capitalize">
-                                    {production.shift} shift
+                                    {t("shiftSuffix", { shift: production.shift })}
                                 </span>
                                 <ChevronRight className="h-3 w-3 ml-auto text-muted-foreground/40" />
                             </div>
@@ -391,10 +399,10 @@ export default function MyProductionsPage() {
                         disabled={page <= 1}
                         onClick={() => setPage((p) => Math.max(1, p - 1))}
                     >
-                        Previous
+                        {t("btnPrev")}
                     </Button>
                     <span className="text-[13px] text-muted-foreground tabular-nums px-3">
-                        Page {page} of {totalPages}
+                        {t("pageOf", { current: page, total: totalPages })}
                     </span>
                     <Button
                         variant="outline"
@@ -403,7 +411,7 @@ export default function MyProductionsPage() {
                         disabled={page >= totalPages}
                         onClick={() => setPage((p) => p + 1)}
                     >
-                        Next
+                        {t("btnNext")}
                     </Button>
                 </motion.div>
             )}

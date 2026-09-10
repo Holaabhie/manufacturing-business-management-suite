@@ -10,6 +10,8 @@ import {
     variantsBackdrop,
 } from "@/lib/motion";
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
+import { useTranslations } from "next-intl";
+import { useAppLocale } from "@/components/LocaleProvider";
 
 interface MaterialUsageDrawerProps {
     material: {
@@ -54,6 +56,20 @@ const STATUS_CONFIG: Record<string, { colorClass: string; bgClass: string; label
 };
 
 export function MaterialUsageDrawer({ material, onClose }: MaterialUsageDrawerProps) {
+    const t = useTranslations("inventory");
+    const { locale } = useAppLocale();
+    const dateLocale = locale === "hi" ? "hi-IN" : locale === "gu" ? "gu-IN" : locale === "mr" ? "mr-IN" : "en-IN";
+
+    const getStatusLabel = (status: string) => {
+        switch (status) {
+            case "completed": return t("statusCompleted");
+            case "in_progress": return t("statusInProgress");
+            case "processing": return t("statusInProduction");
+            case "pending": return t("statusPending");
+            case "cancelled": return t("statusCancelled");
+            default: return status;
+        }
+    };
     const [portalMounted, setPortalMounted] = useState(false);
     const [logs, setLogs] = useState<UsageLog[]>([]);
     const [stats, setStats] = useState<UsageStats | null>(null);
@@ -112,10 +128,10 @@ export function MaterialUsageDrawer({ material, onClose }: MaterialUsageDrawerPr
     }, [isOpen, onClose]);
 
     const filters: { key: FilterType; label: string }[] = [
-        { key: "all", label: "All" },
-        { key: "completed", label: "Completed" },
-        { key: "in_progress", label: "In Progress" },
-        { key: "pending", label: "Pending" },
+        { key: "all", label: t("filterAll") },
+        { key: "completed", label: t("filterCompleted") },
+        { key: "in_progress", label: t("filterInProgress") },
+        { key: "pending", label: t("filterPending") },
     ];
 
     // Body scroll lock — centralized, reference-counted
@@ -161,7 +177,7 @@ export function MaterialUsageDrawer({ material, onClose }: MaterialUsageDrawerPr
                                 <div className="min-w-0">
                                     <h2 className="text-[17px] font-bold text-[#0F172A] dark:text-white truncate">{material?.name}</h2>
                                     <p className="text-[13px] text-[#64748B] dark:text-white/50">
-                                        Stock: <span className="text-[#0F172A] dark:text-white/80 font-semibold">{material?.quantity} {material?.unit}</span>
+                                        {t("usageStock")} <span className="text-[#0F172A] dark:text-white/80 font-semibold">{material?.quantity} {material?.unit}</span>
                                     </p>
                                 </div>
                             </div>
@@ -186,10 +202,10 @@ export function MaterialUsageDrawer({ material, onClose }: MaterialUsageDrawerPr
                                     {/* Stats Row */}
                                     <div className="grid grid-cols-2 gap-2">
                                         {[
-                                            { label: "Total Used", value: `${stats?.totalUsed || 0} ${material?.unit}`, icon: BarChart3, colorClass: "text-[#2563EB] dark:text-[#60A5FA]" },
-                                            { label: "Productions", value: stats?.productionCount || 0, icon: Factory, colorClass: "text-[#059669] dark:text-[#34D399]" },
-                                            { label: "Avg / Use", value: `${stats?.avgPerUse || 0} ${material?.unit}`, icon: Clock, colorClass: "text-[#D97706] dark:text-[#FBBF24]" },
-                                            { label: "Total Records", value: stats?.totalRecords || 0, icon: Package, colorClass: "text-[#7C3AED] dark:text-[#A78BFA]" },
+                                            { label: t("totalUsed"), value: `${stats?.totalUsed || 0} ${material?.unit}`, icon: BarChart3, colorClass: "text-[#2563EB] dark:text-[#60A5FA]" },
+                                            { label: t("productions"), value: stats?.productionCount || 0, icon: Factory, colorClass: "text-[#059669] dark:text-[#34D399]" },
+                                            { label: t("avgPerUse"), value: `${stats?.avgPerUse || 0} ${material?.unit}`, icon: Clock, colorClass: "text-[#D97706] dark:text-[#FBBF24]" },
+                                            { label: t("totalRecords"), value: stats?.totalRecords || 0, icon: Package, colorClass: "text-[#7C3AED] dark:text-[#A78BFA]" },
                                         ].map(s => (
                                             <div
                                                 key={s.label}
@@ -235,10 +251,10 @@ export function MaterialUsageDrawer({ material, onClose }: MaterialUsageDrawerPr
                                     {/* Summary Bar */}
                                     <div className="flex items-center justify-between px-1">
                                         <span className="text-[12px] text-[#64748B] dark:text-white/40">
-                                            {filteredLogs.length} record{filteredLogs.length !== 1 ? "s" : ""} for <span className="text-[#0F172A] dark:text-white/60 font-medium">{material?.name}</span>
+                                            {t("recordsForMaterial", { count: filteredLogs.length })} <span className="text-[#0F172A] dark:text-white/60 font-medium">{material?.name}</span>
                                         </span>
                                         <span className="text-[12px] text-[#64748B] dark:text-white/40">
-                                            Total consumed: <span className="text-[#0F172A] dark:text-white/80 font-semibold" style={{ fontVariantNumeric: "tabular-nums" }}>{Math.round(filteredTotal * 100) / 100} {material?.unit}</span>
+                                            {t("totalConsumed")} <span className="text-[#0F172A] dark:text-white/80 font-semibold" style={{ fontVariantNumeric: "tabular-nums" }}>{Math.round(filteredTotal * 100) / 100} {material?.unit}</span>
                                         </span>
                                     </div>
 
@@ -248,9 +264,9 @@ export function MaterialUsageDrawer({ material, onClose }: MaterialUsageDrawerPr
                                             <div className="w-[48px] h-[48px] rounded-[12px] flex items-center justify-center mb-3 bg-[var(--muted)]">
                                                 <AlertCircle className="h-5 w-5 text-[#94A3B8] dark:text-white/30" />
                                             </div>
-                                            <p className="text-[15px] font-medium text-[#64748B] dark:text-white/50">No usage records found</p>
+                                            <p className="text-[15px] font-medium text-[#64748B] dark:text-white/50">{t("noUsageTitle")}</p>
                                             <p className="text-[13px] text-[#94A3B8] dark:text-white/30 mt-1">
-                                                {filter !== "all" ? "Try a different filter" : "This material hasn't been used in any production yet"}
+                                                {filter !== "all" ? t("noUsageEmptyFilter") : t("noUsageEmptyDesc")}
                                             </p>
                                         </div>
                                     ) : (
@@ -303,11 +319,11 @@ export function MaterialUsageDrawer({ material, onClose }: MaterialUsageDrawerPr
                                                                         </span>
                                                                         <span className="text-[14px] font-semibold text-[#0F172A] dark:text-white block truncate mt-0.5">
                                                                             {log.source === "order"
-                                                                                ? (log.batchNumber || log.orderId?.slice(-8).toUpperCase() || "Order")
-                                                                                : (log.batchNumber || "No batch")}
+                                                                                ? (log.batchNumber || log.orderId?.slice(-8).toUpperCase() || t("orderBatchDefault"))
+                                                                                : (log.batchNumber || t("noBatch"))}
                                                                         </span>
                                                                         <span className="text-[11px] text-[#64748B] dark:text-white/40 mt-0.5 block">
-                                                                            {new Date(log.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                                                                            {new Date(log.date).toLocaleDateString(dateLocale, { day: "2-digit", month: "short", year: "numeric" })}
                                                                             {log.operatorName && ` · ${log.operatorName}`}
                                                                         </span>
                                                                     </div>
@@ -324,7 +340,7 @@ export function MaterialUsageDrawer({ material, onClose }: MaterialUsageDrawerPr
                                                                                     sc.colorClass
                                                                                 )}
                                                                             >
-                                                                                {sc.label}
+                                                                                {getStatusLabel(log.status)}
                                                                             </span>
                                                                         </div>
                                                                     </div>
@@ -352,23 +368,23 @@ export function MaterialUsageDrawer({ material, onClose }: MaterialUsageDrawerPr
                                                                             className="mt-3 pt-3 space-y-2 border-t border-[var(--border)]"
                                                                         >
                                                                             <div className="flex items-center justify-between">
-                                                                                <span className="text-[11px] text-[#64748B] dark:text-white/30 uppercase tracking-wider">Product</span>
+                                                                                <span className="text-[11px] text-[#64748B] dark:text-white/30 uppercase tracking-wider">{t("detailProduct")}</span>
                                                                                 <span className="text-[13px] text-[#0F172A] dark:text-white/70 font-medium">{log.orderProductName || "—"}</span>
                                                                             </div>
                                                                             <div className="flex items-center justify-between">
                                                                                 <span className="text-[11px] text-[#64748B] dark:text-white/30 uppercase tracking-wider">
-                                                                                    {log.source === "order" ? "Order Ref" : "Batch"}
+                                                                                    {log.source === "order" ? t("detailOrderRef") : t("detailBatch")}
                                                                                 </span>
                                                                                 <span className="text-[13px] text-[#0F172A] dark:text-white/70 font-medium">{log.batchNumber || "—"}</span>
                                                                             </div>
                                                                             <div className="flex items-center justify-between">
                                                                                 <span className="text-[11px] text-[#64748B] dark:text-white/30 uppercase tracking-wider">
-                                                                                    {log.source === "order" ? "Client" : "Operator"}
+                                                                                    {log.source === "order" ? t("detailClient") : t("detailOperator")}
                                                                                 </span>
                                                                                 <span className="text-[13px] text-[#0F172A] dark:text-white/70 font-medium">{log.operatorName || "—"}</span>
                                                                             </div>
                                                                             <div className="flex items-center justify-between">
-                                                                                <span className="text-[11px] text-[#64748B] dark:text-white/30 uppercase tracking-wider">% of Total</span>
+                                                                                <span className="text-[11px] text-[#64748B] dark:text-white/30 uppercase tracking-wider">{t("detailPctOfTotal")}</span>
                                                                                 <span className="text-[13px] text-[#0F172A] dark:text-white/70 font-medium" style={{ fontVariantNumeric: "tabular-nums" }}>
                                                                                     {stats?.totalUsed ? Math.round((Number(log.qtyUsed) / stats.totalUsed) * 1000) / 10 : 0}%
                                                                                 </span>

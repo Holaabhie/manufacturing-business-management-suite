@@ -16,20 +16,21 @@ import { useAppNotifications } from "@/lib/hooks/use-app-notifications";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { MobileSheet } from "@/components/ui/MobileSheet";
+import { useTranslations } from "next-intl";
 import "./NotificationDropdown.css";
 
 /* ─── Exported helper — testable pure function ─── */
-export function timeAgo(dateStr: string): string {
+export function timeAgo(dateStr: string, t?: (key: any, params?: any) => string): string {
   try {
     const diff = Date.now() - new Date(dateStr).getTime();
     if (isNaN(diff)) return "—";
     const mins = Math.floor(diff / 60000);
-    if (mins < 1) return "Just now";
-    if (mins < 60) return `${mins}m ago`;
+    if (mins < 1) return t ? t("timeJustNow") : "Just now";
+    if (mins < 60) return t ? t("timeMinsAgo", { mins }) : `${mins}m ago`;
     const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}h ago`;
+    if (hrs < 24) return t ? t("timeHoursAgo", { hrs }) : `${hrs}h ago`;
     const days = Math.floor(hrs / 24);
-    return `${days}d ago`;
+    return t ? t("timeDaysAgo", { days }) : `${days}d ago`;
   } catch { return "—"; }
 }
 
@@ -49,6 +50,7 @@ function NotificationPanelContent({
   onClose: () => void;
   onNavigate: (url: string) => void;
 }) {
+  const t = useTranslations("notifications");
   return (
     <>
       {/* ── Sticky Header ── */}
@@ -63,7 +65,7 @@ function NotificationPanelContent({
           {/* Left: Title + badge */}
           <div className="flex items-center gap-2">
             <h3 className="text-[17px] font-bold tracking-[-0.02em] text-[var(--foreground)]">
-              Notifications
+              {t("dropdownTitle")}
             </h3>
             {unreadCount > 0 && (
               <span className="text-[10px] font-bold rounded-full min-w-[20px] h-[20px] flex items-center justify-center px-1.5 bg-[var(--accent-red,#EF4444)] text-white">
@@ -79,7 +81,7 @@ function NotificationPanelContent({
                 onClick={onMarkAllAsRead}
               >
                 <CheckCheck className="h-3.5 w-3.5" />
-                Mark all read
+                {t("markAllRead")}
               </button>
             )}
             <button
@@ -160,7 +162,7 @@ function NotificationPanelContent({
                       {n.message}
                     </p>
                     <span className="text-[11px] mt-0.5 block text-[#94A3B8] dark:text-white/30 tracking-[0.02em]">
-                      {timeAgo(n.createdAt)}
+                      {timeAgo(n.createdAt, t)}
                     </span>
                   </div>
                 </div>
@@ -179,10 +181,10 @@ function NotificationPanelContent({
               <Bell className="h-5 w-5 text-[var(--muted-foreground)]" />
             </div>
             <p className="text-[14px] font-semibold text-[var(--muted-foreground)] tracking-[-0.01em]">
-              All caught up!
+              {t("allCaughtUp")}
             </p>
             <p className="text-[12px] mt-1 text-[var(--muted-foreground)]">
-              No new notifications
+              {t("noNewNotifications")}
             </p>
           </div>
         )}
@@ -196,7 +198,7 @@ function NotificationPanelContent({
             className="flex items-center justify-center gap-1.5 px-4 py-3 text-[13px] font-semibold text-[var(--accent-blue,#007AFF)] hover:bg-[var(--muted)] transition-colors"
             onClick={onClose}
           >
-            See all notifications
+            {t("seeAllNotifications")}
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
@@ -209,6 +211,7 @@ function NotificationPanelContent({
 export function NotificationDropdown() {
   const router = useRouter();
   const isMobile = useIsMobile();
+  const t = useTranslations("notifications");
   const {
     notifications: allNotifications,
     unreadCount,
@@ -247,8 +250,8 @@ export function NotificationDropdown() {
 
   const handleMarkAllAsRead = useCallback(() => {
     hookMarkAllAsRead();
-    toast.success("All notifications marked as read");
-  }, [hookMarkAllAsRead]);
+    toast.success(t("toasts.allMarkedRead"));
+  }, [hookMarkAllAsRead, t]);
 
   const handleNavigate = useCallback((url: string) => {
     router.push(url);
@@ -284,7 +287,7 @@ export function NotificationDropdown() {
             animation: hasNewPulse ? "notif-pulse 2s ease-in-out infinite" : "none",
           }}
         >
-          <span className="sr-only">{unreadCount} unread notifications</span>
+          <span className="sr-only">{t("unreadAriaLabel", { count: unreadCount })}</span>
         </span>
       )}
     </button>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import React, { useState, useMemo, useCallback, useRef, useEffect, Suspense } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -86,6 +87,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { NumericInput, parseNumericValue } from "@/components/ui/numeric-input";
 import { motion } from "framer-motion";
 import { useFormatters } from "@/hooks/useFormatters";
+import { useAppLocale } from "@/components/LocaleProvider";
 import { exportToExcel } from "@/lib/excel-export";
 import { MobileSheet } from "@/components/ui/MobileSheet";
 import { IOSCard } from "@/components/ui/ios/IOSCard";
@@ -114,10 +116,13 @@ import {
 } from "@/lib/hooks/use-orders";
 
 function OrdersContent() {
+  const t = useTranslations("orders");
   const { progress: collapseProgress } = useCollapseProgress();
   const router = useRouter();
   const { role, isAdmin, isStaff, isPro, loading: roleLoading } = useRole();
   const { formatINR } = useFormatters();
+  const { locale } = useAppLocale();
+  const dateLocale = locale === "hi" ? "hi-IN" : locale === "gu" ? "gu-IN" : locale === "mr" ? "mr-IN" : "en-IN";
 
   // Search state (replaces usePaginatedSearch - pagination removed for monthly grouping)
   const searchParams = useSearchParams();
@@ -132,13 +137,13 @@ function OrdersContent() {
   }, []);
   useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current); }, []);
 
- // Page-level UI state cache (search, filters, scroll) 
+  // Page-level UI state cache (search, filters, scroll) 
   const { restoreState, persist, scrollYRef, restoreScroll } = useCachedPage({
     pageKey: "orders",
     maxAgeMs: 5 * 60 * 1000,
   });
 
- // React Query: data fetching ---
+  // React Query: data fetching ---
   const {
     data: orders = [],
     isLoading: ordersLoading,
@@ -148,21 +153,21 @@ function OrdersContent() {
   const { data: clients = [] } = useClients();
   const { data: inventory = [] } = useInventory();
 
- // React Query: mutations ---
+  // React Query: mutations ---
   const createOrder = useCreateOrder();
   const updateOrder = useUpdateOrder();
   const deleteOrder = useDeleteOrder();
   const recordPayment = useRecordPayment();
   const updateOrderStatus = useUpdateOrderStatus();
 
- // Local UI state ---
+  // Local UI state ---
   const [clientProducts, setClientProducts] = useState<any[]>([]);
   const [clientProductMaterials, setClientProductMaterials] = useState<any[]>(
     [],
   );
   const [isLoadingMaterials, setIsLoadingMaterials] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<any>(null);
- // Strictly Isolated Modal Booleans ---
+  // Strictly Isolated Modal Booleans ---
   // Each modal has its own [isOpen, setIsOpen] boolean.
   // open=true is ONLY set by explicit user actions (button clicks).
   // open=false is set by onOpenChange(false) or programmatic close.
@@ -175,7 +180,7 @@ function OrdersContent() {
   const [paymentOrder, setPaymentOrder] = useState<any>(null);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
 
- // Fresh order data for payment modal (Bug #2 fix) 
+  // Fresh order data for payment modal (Bug #2 fix) 
   const paymentOrderId = paymentOrder?.id as string | undefined;
   const { data: freshOrder } = useQuery<Record<string, unknown>>({
     queryKey: queryKeys.order(paymentOrderId ?? ""),
@@ -198,7 +203,7 @@ function OrdersContent() {
     }));
   }, [freshOrder]);
 
- // Completion Confirmation Modal state ---
+  // Completion Confirmation Modal state ---
   const [completionOrder, setCompletionOrder] = useState<any>(null);
   const [isCompletionModalOpen, setIsCompletionModalOpen] = useState(false);
   const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
@@ -206,7 +211,7 @@ function OrdersContent() {
   const [isInvoicePreviewOpen, setIsInvoicePreviewOpen] = useState(false);
   const [invoiceEditData, setInvoiceEditData] = useState<any>(null);
 
- // Long-press & Bottom Sheet state ---
+  // Long-press & Bottom Sheet state ---
   const [longPressedOrder, setLongPressedOrder] = useState<any>(null);
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
   const [pressedCardId, setPressedCardId] = useState<string | null>(null);
@@ -302,18 +307,18 @@ function OrdersContent() {
       getStatusLabel(deriveOrderStatusFromOrder(order)),
       order.delivery_date || order.deliveryDate
         ? new Date(
-            order.delivery_date || order.deliveryDate,
-          ).toLocaleDateString("en-IN")
+          order.delivery_date || order.deliveryDate,
+        ).toLocaleDateString("en-IN")
         : "\u2014",
     ]);
     generateDataExportPDF({
-      title: "Orders & Production Report",
-      subtitle: "Complete list of all production orders",
+      title: t("title"),
+      subtitle: t("subtitle"),
       headers,
       rows,
       filename: `orders_${new Date().toISOString().split("T")[0]}.pdf`,
     });
-    toast.success("Orders report PDF downloaded!");
+    toast.success(t("toasts.pdfDownloaded"));
   };
 
   const exportToXLSX = () => {
@@ -341,7 +346,7 @@ function OrdersContent() {
       dataToExport,
       columns,
     );
-    toast.success("Orders Excel downloaded!");
+    toast.success(t("toasts.excelDownloaded"));
   };
 
   const [formData, setFormData] = useState({
@@ -420,7 +425,7 @@ function OrdersContent() {
     setCurrentOrder(null);
   };
 
- // Safe close helpers (prevent any state cascade) ---
+  // Safe close helpers (prevent any state cascade) ---
   const closeOrderDialog = () => {
     setIsDialogOpen(false);
     resetForm();
@@ -613,7 +618,7 @@ function OrdersContent() {
         const res = await fetch("/api/profile/company");
         const data = await res.json();
         if (data.company) companyData = data.company;
-      } catch {}
+      } catch { }
       const poData: PurchaseOrderData = {
         orderId: order.id,
         orderDate: order.createdAt,
@@ -627,17 +632,17 @@ function OrdersContent() {
         deliveryDate: order.deliveryDate || undefined,
       };
       await generatePurchaseOrderPDF(poData, companyData);
-      toast.success("Purchase order PDF downloaded");
+      toast.success(t("toasts.poPdfDownloaded"));
     } catch (error) {
       console.error("PO PDF error:", error);
-      toast.error("Failed to generate PDF");
+      toast.error(t("toasts.failedPdf"));
     }
   };
 
- // Status-only pre-filter (URL-based) ---
+  // Status-only pre-filter (URL-based) ---
   const statusFilteredOrders = useMemo(() => {
     if (!Array.isArray(orders)) return [];
- // No filter active return all
+    // No filter active return all
     if (!statusFilter) return orders;
     const activeStatus = statusFilter.toLowerCase().trim();
     // "active" = everything NOT completed
@@ -706,7 +711,7 @@ function OrdersContent() {
         groups.set(key, {
           key,
           label: d
-            .toLocaleDateString("en-IN", { month: "long", year: "numeric" })
+            .toLocaleDateString(dateLocale, { month: "long", year: "numeric" })
             .toUpperCase(),
           orders: [],
           orderCount: 0,
@@ -721,7 +726,7 @@ function OrdersContent() {
     }
 
     return Array.from(groups.values());
-  }, [searchFilteredOrders]);
+  }, [searchFilteredOrders, dateLocale]);
 
   // --- Table scroll Ref ---
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -765,7 +770,7 @@ function OrdersContent() {
   }, [scrollYRef]);
 
 
- // Payment Status Color Helper ---
+  // Payment Status Color Helper ---
   const getPaymentBadgeColor = (
     status: string,
   ): "green" | "orange" | "red" | "gray" => {
@@ -774,7 +779,7 @@ function OrdersContent() {
     return "orange";
   };
 
- // Mutation pending state (for disabling buttons) ---
+  // Mutation pending state (for disabling buttons) ---
   const isMutating =
     createOrder.isPending ||
     updateOrder.isPending ||
@@ -782,7 +787,7 @@ function OrdersContent() {
     recordPayment.isPending ||
     updateOrderStatus.isPending;
 
- // Status helpers ---
+  // Status helpers ---
   const getStatusBadgeColor = (status: string): "green" | "orange" | "gray" | "blue" | "red" | "purple" => {
     if (status === "completed") return "green";
     if (status === "processing") return "orange";
@@ -794,13 +799,13 @@ function OrdersContent() {
   };
 
   const getStatusLabel = (status: string): string => {
-    if (status === "completed") return "COMPLETED";
-    if (status === "processing") return "IN PRODUCTION";
-    if (status === "awaiting_payment") return "AWAITING PAYMENT";
-    if (status === "active") return "ACTIVE";
-    if (status === "cancelled") return "CANCELLED";
-    if (status === "on_hold") return "ON HOLD";
-    return "PENDING";
+    if (status === "completed") return t("statuses.completed");
+    if (status === "processing") return t("statuses.inProduction");
+    if (status === "awaiting_payment") return t("statuses.awaitingPayment");
+    if (status === "active") return t("statuses.active");
+    if (status === "cancelled") return t("statuses.cancelled");
+    if (status === "on_hold") return t("statuses.onHold");
+    return t("statuses.pending");
   };
 
   const handleCompleteOnly = () => {
@@ -833,7 +838,7 @@ function OrdersContent() {
             });
             const data = await res.json();
             if (!res.ok || data.error) {
-              showToast(data.error || "Failed to generate invoice");
+              showToast(data.error || t("toasts.failedInvoice"));
               return;
             }
             setGeneratedInvoice(data);
@@ -845,9 +850,9 @@ function OrdersContent() {
               gstRate: 18,
             });
             setIsInvoicePreviewOpen(true);
-            showToast("Invoice generated!");
+            showToast(t("toasts.invoiceGenerated"));
           } catch (err) {
-            showToast("Failed to generate invoice");
+            showToast(t("toasts.failedInvoice"));
           } finally {
             setIsGeneratingInvoice(false);
             setCompletionOrder(null);
@@ -857,7 +862,7 @@ function OrdersContent() {
     );
   };
 
- // Memoized KPI stats (prevent recalc on every render) ---
+  // Memoized KPI stats (prevent recalc on every render) ---
   const orderStats = useMemo(() => {
     if (!Array.isArray(orders)) return { total: 0, pending: 0, processing: 0, completed: 0, revenue: 0, pendingPayment: 0 };
     return {
@@ -870,7 +875,7 @@ function OrdersContent() {
     };
   }, [orders]);
 
- // Auto-computed Material Cost from Inventory ---
+  // Auto-computed Material Cost from Inventory ---
   const computedMaterialCost = useMemo(() => {
     const sourceMaterials = formData.material_source === "own" ? inventory : clientProductMaterials;
     let total = 0;
@@ -918,17 +923,21 @@ function OrdersContent() {
       animate="animate"
       className="space-y-6 overflow-x-hidden"
     >
- {/* Header */}
+      {/* Header */}
       <motion.div variants={staggerItem}>
         <CollapsingTitle
-          title="Orders & Production"
-          subtitle={`${orderStats.total} orders \u00B7 ${orderStats.processing} in progress \u00B7 ${orderStats.pending} pending`}
+          title={t("title")}
+          subtitle={t("subtitleStats", {
+            total: orderStats.total,
+            processing: orderStats.processing,
+            pending: orderStats.pending,
+          })}
           subtitleLoading={ordersLoading}
           collapseProgress={collapseProgress}
         />
       </motion.div>
 
- {/* Enterprise Toolbar (3-Layer Hierarchy) */}
+      {/* Enterprise Toolbar (3-Layer Hierarchy) */}
       <motion.div
         variants={staggerItem}
         className={cn(
@@ -956,7 +965,7 @@ function OrdersContent() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
-                placeholder="Search orders, clients, IDs..."
+                placeholder={t("searchPlaceholder")}
                 id="orders-search"
                 className={cn(
                   "w-full h-10 pl-10 pr-10 rounded-[12px] text-[14px] transition-all duration-200",
@@ -980,7 +989,7 @@ function OrdersContent() {
                   type="button"
                   onClick={() => handleSearch("")}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-muted-foreground transition-colors duration-150 cursor-pointer"
-                  aria-label="Clear search"
+                  aria-label={t("clearSearch")}
                 >
                   <X size={14} />
                 </button>
@@ -996,8 +1005,8 @@ function OrdersContent() {
                 className="flex items-center gap-2 h-10 px-4 rounded-[12px] bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-[13px] font-semibold shadow-[0_2px_8px_rgba(37,99,235,0.25)] hover:shadow-[0_4px_16px_rgba(37,99,235,0.35)] transition-all duration-200 active:scale-[0.98] cursor-pointer"
               >
                 <Plus size={15} />
-                <span className="hidden sm:inline">Add Order</span>
-                <span className="sm:hidden">Add</span>
+                <span className="hidden sm:inline">{t("addOrder")}</span>
+                <span className="sm:hidden">{t("add")}</span>
               </button>
 
               {/* Export -- SECONDARY */}
@@ -1016,7 +1025,7 @@ function OrdersContent() {
                 )}
               >
                 <Download size={14} />
-                <span className="hidden md:inline">Export</span>
+                <span className="hidden md:inline">{t("export")}</span>
               </button>
             </div>
           </div>
@@ -1026,11 +1035,11 @@ function OrdersContent() {
             {/* Status Filter Pills */}
             <div className="flex flex-wrap items-center gap-1.5">
               {[
-                { key: null, label: "All" },
-                { key: "pending", label: "Pending" },
-                { key: "processing", label: "Processing" },
-                { key: "active", label: "Active" },
-                { key: "completed", label: "Completed" },
+                { key: null, label: t("filterAll") },
+                { key: "pending", label: t("filterPending") },
+                { key: "processing", label: t("filterProcessing") },
+                { key: "active", label: t("filterActive") },
+                { key: "completed", label: t("filterCompleted") },
               ].map((item) => (
                 <button
                   key={item.label}
@@ -1044,14 +1053,14 @@ function OrdersContent() {
                     statusFilter === item.key
                       ? "bg-[#2563EB] text-white border-transparent shadow-sm shadow-[rgba(37,99,235,0.25)]"
                       : cn(
-                          // Light
-                          "bg-[rgba(255,255,255,0.60)] hover:bg-[rgba(255,255,255,0.90)] text-[#64748B] hover:text-[#0F172A]",
-                          "border-[rgba(15,23,42,0.08)] hover:border-[rgba(15,23,42,0.14)]",
-                          // Dark -- deep navy glass surface
-                          "dark:bg-[rgba(15,23,42,0.50)] dark:hover:bg-[rgba(30,41,59,0.70)]",
-                          "dark:text-[#94A3B8] dark:hover:text-[#E2E8F0]",
-                          "dark:border-[rgba(148,163,184,0.12)] dark:hover:border-[rgba(148,163,184,0.20)]",
-                        )
+                        // Light
+                        "bg-[rgba(255,255,255,0.60)] hover:bg-[rgba(255,255,255,0.90)] text-[#64748B] hover:text-[#0F172A]",
+                        "border-[rgba(15,23,42,0.08)] hover:border-[rgba(15,23,42,0.14)]",
+                        // Dark -- deep navy glass surface
+                        "dark:bg-[rgba(15,23,42,0.50)] dark:hover:bg-[rgba(30,41,59,0.70)]",
+                        "dark:text-[#94A3B8] dark:hover:text-[#E2E8F0]",
+                        "dark:border-[rgba(148,163,184,0.12)] dark:hover:border-[rgba(148,163,184,0.20)]",
+                      )
                   )}
                 >
                   {item.label}
@@ -1076,7 +1085,7 @@ function OrdersContent() {
                     "bg-transparent hover:bg-[rgba(255,255,255,0.5)] dark:hover:bg-[rgba(30,41,59,0.50)]",
                   )}
                 >
-                  Clear
+                  {t("clear")}
                 </button>
               )}
             </div>
@@ -1084,8 +1093,8 @@ function OrdersContent() {
             {/* Result Count -- passive, right-aligned */}
             <p className="text-[12.5px] text-muted-foreground/70 font-medium whitespace-nowrap shrink-0 sm:text-right tabular-nums">
               {statusFilter
-                ? `Showing ${totalFiltered} ${statusFilter} orders`
-                : `Showing ${totalFiltered} of ${orders.length} orders`
+                ? t("showingOrders", { count: totalFiltered, status: statusFilter })
+                : t("showingOfOrders", { filtered: totalFiltered, total: orders.length })
               }
             </p>
           </div>
@@ -1093,125 +1102,104 @@ function OrdersContent() {
         </div>
       </motion.div>
 
- {/* Error State Banner */}
-        {ordersError && (
-          <motion.div
-            variants={staggerItem}
-            className="flex items-center gap-3 p-4 rounded-[16px] border border-[var(--destructive)]/20 bg-[rgba(255,59,48,0.06)]"
+      {/* Error State Banner */}
+      {ordersError && (
+        <motion.div
+          variants={staggerItem}
+          className="flex items-center gap-3 p-4 rounded-[16px] border border-[var(--destructive)]/20 bg-[rgba(255,59,48,0.06)]"
+        >
+          <div className="w-[40px] h-[40px] rounded-[12px] bg-[rgba(255,59,48,0.10)] flex items-center justify-center flex-shrink-0">
+            <AlertCircle className="h-[18px] w-[18px] text-[var(--destructive)]" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[15px] font-semibold text-[var(--foreground)]">
+              {t("errorLoading")}
+            </p>
+            <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5 truncate">
+              {ordersErrorObj?.message || t("errorRefresh")}
+            </p>
+          </div>
+          <IOSButton
+            variant="filled"
+            color="blue"
+            size="small"
+            onClick={() => window.location.reload()}
           >
-            <div className="w-[40px] h-[40px] rounded-[12px] bg-[rgba(255,59,48,0.10)] flex items-center justify-center flex-shrink-0">
-              <AlertCircle className="h-[18px] w-[18px] text-[var(--destructive)]" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[15px] font-semibold text-[var(--foreground)]">
-                Failed to load orders
-              </p>
-              <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5 truncate">
-                {ordersErrorObj?.message || "Unknown error -- please try refreshing."}
-              </p>
-            </div>
-            <IOSButton
-              variant="filled"
-              color="blue"
-              size="small"
-              onClick={() => window.location.reload()}
-            >
-              Retry
-            </IOSButton>
-          </motion.div>
-        )}
+            {t("retry")}
+          </IOSButton>
+        </motion.div>
+      )}
 
- {/* 
+      {/* 
  LOADING STATE 
  */}
-        {roleLoading || ordersLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-10 h-10 rounded-[12px] bg-[var(--primary)]/20 flex items-center justify-center">
-                <Loader2 className="h-5 w-5 text-[var(--primary)] animate-spin" />
-              </div>
-              <p className="text-[13px] text-[var(--muted-foreground)]">
-                Loading...
-              </p>
+      {roleLoading || ordersLoading ? (
+        <div className="flex items-center justify-center py-20">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-10 h-10 rounded-[12px] bg-[var(--primary)]/20 flex items-center justify-center">
+              <Loader2 className="h-5 w-5 text-[var(--primary)] animate-spin" />
             </div>
+            <p className="text-[13px] text-[var(--muted-foreground)]">
+              {t("loading")}
+            </p>
           </div>
-        ) : isStaff ? (
-          <motion.div initial="initial" animate="animate" variants={staggerContainer} className="w-full">
-            {/* 3-Column Grid: Orders (30%) | Widgets (40%) | Production (30%) */}
-            <div className="grid grid-cols-1 lg:grid-cols-[30fr_40fr_30fr] gap-5">
- {/* LEFT: Orders Panel */}
-              <motion.div variants={staggerItem} className="order-2 lg:order-1">
-                <IOSCard variant="elevated" padding="lg" className="h-full">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="text-[17px] font-bold text-[var(--foreground)] leading-[22px]">
-                        Orders
-                      </h3>
-                      <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5">
-                        {totalFiltered} total
-                      </p>
-                    </div>
+        </div>
+      ) : isStaff ? (
+        <motion.div initial="initial" animate="animate" variants={staggerContainer} className="w-full">
+          {/* 3-Column Grid: Orders (30%) | Widgets (40%) | Production (30%) */}
+          <div className="grid grid-cols-1 lg:grid-cols-[30fr_40fr_30fr] gap-5">
+            {/* LEFT: Orders Panel */}
+            <motion.div variants={staggerItem} className="order-2 lg:order-1">
+              <IOSCard variant="elevated" padding="lg" className="h-full">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-[17px] font-bold text-[var(--foreground)] leading-[22px]">
+                      {t("ordersTitle")}
+                    </h3>
+                    <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5">
+                      {totalFiltered} {t("table.ordersPlural")}
+                    </p>
                   </div>
-                  <div className="max-h-[460px] overflow-y-auto pr-1 staff-scroll">
-                    {/* Status summary */}
-                    <div className="space-y-1 mb-4">
-                      {[
-                        {
-                          icon: Inbox,
-                          label: "Pending",
-                          count: orderStats.pending,
-                          color: "orange" as const,
-                        },
-                        {
-                          icon: Timer,
-                          label: "In Progress",
-                          count: orderStats.processing,
-                          color: "blue" as const,
-                        },
-                        {
-                          icon: CheckCircle2,
-                          label: "Done",
-                          count: orderStats.completed,
-                          color: "green" as const,
-                        },
-                      ].map((item, i, arr) => (
-                        <div key={item.label}>
-                          <div className="flex items-center gap-3 p-2.5 rounded-[12px] hover:bg-[var(--muted)] transition-all">
-                            <div
-                              className="w-[32px] h-[32px] rounded-[9px] flex items-center justify-center flex-shrink-0"
+                </div>
+                <div className="max-h-[460px] overflow-y-auto pr-1 staff-scroll">
+                  {/* Status summary */}
+                  <div className="space-y-1 mb-4">
+                    {[
+                      {
+                        icon: Inbox,
+                        label: t("staff.pending"),
+                        count: orderStats.pending,
+                        color: "orange" as const,
+                      },
+                      {
+                        icon: Timer,
+                        label: t("staff.inProgress"),
+                        count: orderStats.processing,
+                        color: "blue" as const,
+                      },
+                      {
+                        icon: CheckCircle2,
+                        label: t("staff.done"),
+                        count: orderStats.completed,
+                        color: "green" as const,
+                      },
+                    ].map((item, i, arr) => (
+                      <div key={item.label}>
+                        <div className="flex items-center gap-3 p-2.5 rounded-[12px] hover:bg-[var(--muted)] transition-all">
+                          <div
+                            className="w-[32px] h-[32px] rounded-[9px] flex items-center justify-center flex-shrink-0"
+                            style={{
+                              background:
+                                item.color === "orange"
+                                  ? "rgba(255,149,0,0.10)"
+                                  : item.color === "blue"
+                                    ? "rgba(0,122,255,0.10)"
+                                    : "rgba(52,199,89,0.10)",
+                            }}
+                          >
+                            <item.icon
+                              className="h-[15px] w-[15px]"
                               style={{
-                                background:
-                                  item.color === "orange"
-                                    ? "rgba(255,149,0,0.10)"
-                                    : item.color === "blue"
-                                      ? "rgba(0,122,255,0.10)"
-                                      : "rgba(52,199,89,0.10)",
-                              }}
-                            >
-                              <item.icon
-                                className="h-[15px] w-[15px]"
-                                style={{
-                                  color:
-                                    item.color === "orange"
-                                      ? "var(--erp-warning)"
-                                      : item.color === "blue"
-                                        ? "var(--primary)"
-                                        : "var(--erp-success)",
-                                }}
-                              />
-                            </div>
-                            <span className="text-[14px] font-medium text-[var(--foreground)] flex-1">
-                              {item.label}
-                            </span>
-                            <span
-                              className="text-[13px] font-semibold tabular-nums px-2 py-0.5 rounded-full"
-                              style={{
-                                background:
-                                  item.color === "orange"
-                                    ? "rgba(255,149,0,0.10)"
-                                    : item.color === "blue"
-                                      ? "rgba(0,122,255,0.10)"
-                                      : "rgba(52,199,89,0.10)",
                                 color:
                                   item.color === "orange"
                                     ? "var(--erp-warning)"
@@ -1219,38 +1207,59 @@ function OrdersContent() {
                                       ? "var(--primary)"
                                       : "var(--erp-success)",
                               }}
-                            >
-                              {item.count}
-                            </span>
+                            />
                           </div>
-                          {i < arr.length - 1 && (
-                            <div className="h-px bg-[var(--border-divider)] mx-3" />
-                          )}
+                          <span className="text-[14px] font-medium text-[var(--foreground)] flex-1">
+                            {item.label}
+                          </span>
+                          <span
+                            className="text-[13px] font-semibold tabular-nums px-2 py-0.5 rounded-full"
+                            style={{
+                              background:
+                                item.color === "orange"
+                                  ? "rgba(255,149,0,0.10)"
+                                  : item.color === "blue"
+                                    ? "rgba(0,122,255,0.10)"
+                                    : "rgba(52,199,89,0.10)",
+                              color:
+                                item.color === "orange"
+                                  ? "var(--erp-warning)"
+                                  : item.color === "blue"
+                                    ? "var(--primary)"
+                                    : "var(--erp-success)",
+                            }}
+                          >
+                            {item.count}
+                          </span>
                         </div>
-                      ))}
-                    </div>
+                        {i < arr.length - 1 && (
+                          <div className="h-px bg-[var(--border-divider)] mx-3" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
 
-                    {/* Recent Orders List */}
-                    <div className="border-t border-[var(--border-divider)] pt-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--muted-foreground)] px-1 mb-2">
-                        Recent Orders
-                      </p>
-                      {filteredOrders.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-8 text-center">
-                          <div className="w-[40px] h-[40px] rounded-[12px] bg-[rgba(0,122,255,0.08)] flex items-center justify-center mb-3">
-                            <ClipboardList className="h-[18px] w-[18px] text-[var(--primary)]" />
-                          </div>
-                          <p className="text-[13px] font-medium text-[var(--muted-foreground)]">
-                            No orders found
-                          </p>
+                  {/* Recent Orders List */}
+                  <div className="border-t border-[var(--border-divider)] pt-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--muted-foreground)] px-1 mb-2">
+                      {t("staff.recentOrders")}
+                    </p>
+                    {filteredOrders.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-8 text-center">
+                        <div className="w-[40px] h-[40px] rounded-[12px] bg-[rgba(0,122,255,0.08)] flex items-center justify-center mb-3">
+                          <ClipboardList className="h-[18px] w-[18px] text-[var(--primary)]" />
                         </div>
-                      ) : (
-                        <div className="space-y-0.5">
-                          {filteredOrders
-                            .slice(0, 5)
-                            .map((order: any, idx: number) => {
-                              const derived = deriveOrderStatusFromOrder(order);
-                              return (
+                        <p className="text-[13px] font-medium text-[var(--muted-foreground)]">
+                          {t("staff.noOrdersFound")}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-0.5">
+                        {filteredOrders
+                          .slice(0, 5)
+                          .map((order: any, idx: number) => {
+                            const derived = deriveOrderStatusFromOrder(order);
+                            return (
                               <div key={order.id ?? idx}>
                                 <motion.div
                                   initial={{ opacity: 0, y: 4 }}
@@ -1300,197 +1309,172 @@ function OrdersContent() {
                                 </motion.div>
                                 {idx <
                                   Math.min(filteredOrders.length, 5) - 1 && (
-                                  <div className="h-px bg-[var(--border-divider)] mx-3" />
-                                )}
+                                    <div className="h-px bg-[var(--border-divider)] mx-3" />
+                                  )}
                               </div>
                             );
-                            })}
-                        </div>
-                      )}
-                    </div>
+                          })}
+                      </div>
+                    )}
                   </div>
-                </IOSCard>
-              </motion.div>
+                </div>
+              </IOSCard>
+            </motion.div>
 
- {/* CENTER: Summary Widgets */}
+            {/* CENTER: Summary Widgets */}
+            <motion.div
+              variants={staggerItem}
+              className="flex flex-col items-center justify-center gap-5 order-1 lg:order-2 py-2 lg:py-0"
+            >
+              {/* Total Orders */}
               <motion.div
-                variants={staggerItem}
-                className="flex flex-col items-center justify-center gap-5 order-1 lg:order-2 py-2 lg:py-0"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  delay: 0.05,
+                  duration: 0.4,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
+                className="group relative overflow-hidden rounded-[16px] p-5 w-full max-w-[240px] transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  backdropFilter: "blur(20px)",
+                  WebkitBackdropFilter: "blur(20px)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  boxShadow:
+                    "0 2px 12px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.06), 0 0 20px rgba(0,122,255,0.15)",
+                }}
               >
-                {/* Total Orders */}
-                <motion.div
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{
-                    delay: 0.05,
-                    duration: 0.4,
-                    ease: [0.16, 1, 0.3, 1],
-                  }}
-                  className="group relative overflow-hidden rounded-[16px] p-5 w-full max-w-[240px] transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
-                  style={{
-                    background: "rgba(255,255,255,0.04)",
-                    backdropFilter: "blur(20px)",
-                    WebkitBackdropFilter: "blur(20px)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    boxShadow:
-                      "0 2px 12px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.06), 0 0 20px rgba(0,122,255,0.15)",
-                  }}
-                >
+                <div
+                  className="absolute -top-6 -right-6 w-16 h-16 rounded-full opacity-40 blur-xl"
+                  style={{ background: "var(--primary)" }}
+                />
+                <div className="relative flex flex-col items-center text-center gap-3">
                   <div
-                    className="absolute -top-6 -right-6 w-16 h-16 rounded-full opacity-40 blur-xl"
-                    style={{ background: "var(--primary)" }}
-                  />
-                  <div className="relative flex flex-col items-center text-center gap-3">
-                    <div
-                      className="w-[44px] h-[44px] rounded-[13px] flex items-center justify-center"
-                      style={{ background: "rgba(0,122,255,0.10)" }}
-                    >
-                      <ClipboardList
-                        className="h-[20px] w-[20px]"
-                        style={{ color: "var(--primary)" }}
-                      />
-                    </div>
-                    <div>
-                      <p className="text-[28px] font-bold text-[var(--foreground)] leading-[32px] tracking-tight">
-                        {orderStats.total}
-                      </p>
-                      <p className="text-[12px] font-medium text-[var(--muted-foreground)] leading-[16px] mt-1">
-                        Total Orders
-                      </p>
-                    </div>
+                    className="w-[44px] h-[44px] rounded-[13px] flex items-center justify-center"
+                    style={{ background: "rgba(0,122,255,0.10)" }}
+                  >
+                    <ClipboardList
+                      className="h-[20px] w-[20px]"
+                      style={{ color: "var(--primary)" }}
+                    />
                   </div>
-                </motion.div>
-
-                {/* Completed Orders */}
-                <motion.div
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{
-                    delay: 0.1,
-                    duration: 0.4,
-                    ease: [0.16, 1, 0.3, 1],
-                  }}
-                  className="group relative overflow-hidden rounded-[16px] p-5 w-full max-w-[240px] transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
-                  style={{
-                    background: "rgba(255,255,255,0.04)",
-                    backdropFilter: "blur(20px)",
-                    WebkitBackdropFilter: "blur(20px)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    boxShadow:
-                      "0 2px 12px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.06), 0 0 20px rgba(52,199,89,0.15)",
-                  }}
-                >
-                  <div
-                    className="absolute -top-6 -right-6 w-16 h-16 rounded-full opacity-40 blur-xl"
-                    style={{ background: "var(--erp-success)" }}
-                  />
-                  <div className="relative flex flex-col items-center text-center gap-3">
-                    <div
-                      className="w-[44px] h-[44px] rounded-[13px] flex items-center justify-center"
-                      style={{ background: "rgba(52,199,89,0.10)" }}
-                    >
-                      <CheckCircle2
-                        className="h-[20px] w-[20px]"
-                        style={{ color: "var(--erp-success)" }}
-                      />
-                    </div>
-                    <div>
-                      <p className="text-[28px] font-bold text-[var(--foreground)] leading-[32px] tracking-tight">
-                        {
-                          orderStats.completed
-                        }
-                      </p>
-                      <p className="text-[12px] font-medium text-[var(--muted-foreground)] leading-[16px] mt-1">
-                        Completed Orders
-                      </p>
-                    </div>
-                  </div>
-                </motion.div>
-              </motion.div>
-
- {/* RIGHT: Production Panel */}
-              <motion.div variants={staggerItem} className="order-3">
-                <IOSCard variant="elevated" padding="lg" className="h-full">
-                  <div className="mb-4">
-                    <h3 className="text-[17px] font-bold text-[var(--foreground)] leading-[22px]">
-                      Production
-                    </h3>
-                    <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5">
-                      Status & Queue
+                  <div>
+                    <p className="text-[28px] font-bold text-[var(--foreground)] leading-[32px] tracking-tight">
+                      {orderStats.total}
+                    </p>
+                    <p className="text-[12px] font-medium text-[var(--muted-foreground)] leading-[16px] mt-1">
+                      {t("staff.totalOrders")}
                     </p>
                   </div>
-                  <div className="max-h-[460px] overflow-y-auto pr-1 staff-scroll">
-                    {/* Production status items */}
-                    <div className="space-y-1">
-                      {[
-                        {
-                          icon: Layers,
-                          label: "Production Queue",
-                          count: orderStats.processing,
-                          color: "blue" as const,
-                        },
-                        {
-                          icon: Activity,
-                          label: "In Production",
-                          count: orderStats.processing,
-                          color: "orange" as const,
-                        },
-                        {
-                          icon: Clock,
-                          label: "Pending Start",
-                          count: orderStats.pending,
-                          color: "purple" as const,
-                        },
-                        {
-                          icon: CheckCircle2,
-                          label: "Completed",
-                          count: orderStats.completed,
-                          color: "green" as const,
-                        },
-                      ].map((item, i, arr) => (
-                        <div key={item.label}>
-                          <div className="flex items-center gap-3 p-2.5 rounded-[12px] hover:bg-[var(--muted)] transition-all">
-                            <div
-                              className="w-[32px] h-[32px] rounded-[9px] flex items-center justify-center flex-shrink-0"
+                </div>
+              </motion.div>
+
+              {/* Completed Orders */}
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  delay: 0.1,
+                  duration: 0.4,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
+                className="group relative overflow-hidden rounded-[16px] p-5 w-full max-w-[240px] transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  backdropFilter: "blur(20px)",
+                  WebkitBackdropFilter: "blur(20px)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  boxShadow:
+                    "0 2px 12px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.06), 0 0 20px rgba(52,199,89,0.15)",
+                }}
+              >
+                <div
+                  className="absolute -top-6 -right-6 w-16 h-16 rounded-full opacity-40 blur-xl"
+                  style={{ background: "var(--erp-success)" }}
+                />
+                <div className="relative flex flex-col items-center text-center gap-3">
+                  <div
+                    className="w-[44px] h-[44px] rounded-[13px] flex items-center justify-center"
+                    style={{ background: "rgba(52,199,89,0.10)" }}
+                  >
+                    <CheckCircle2
+                      className="h-[20px] w-[20px]"
+                      style={{ color: "var(--erp-success)" }}
+                    />
+                  </div>
+                  <div>
+                    <p className="text-[28px] font-bold text-[var(--foreground)] leading-[32px] tracking-tight">
+                      {
+                        orderStats.completed
+                      }
+                    </p>
+                    <p className="text-[12px] font-medium text-[var(--muted-foreground)] leading-[16px] mt-1">
+                      {t("staff.completedOrders")}
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+
+            {/* RIGHT: Production Panel */}
+            <motion.div variants={staggerItem} className="order-3">
+              <IOSCard variant="elevated" padding="lg" className="h-full">
+                <div className="mb-4">
+                  <h3 className="text-[17px] font-bold text-[var(--foreground)] leading-[22px]">
+                    {t("staff.production")}
+                  </h3>
+                  <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5">
+                    {t("staff.statusAndQueue")}
+                  </p>
+                </div>
+                <div className="max-h-[460px] overflow-y-auto pr-1 staff-scroll">
+                  {/* Production status items */}
+                  <div className="space-y-1">
+                    {[
+                      {
+                        icon: Layers,
+                        label: t("staff.productionQueue"),
+                        count: orderStats.processing,
+                        color: "blue" as const,
+                      },
+                      {
+                        icon: Activity,
+                        label: t("staff.inProduction"),
+                        count: orderStats.processing,
+                        color: "orange" as const,
+                      },
+                      {
+                        icon: Clock,
+                        label: t("staff.pendingStart"),
+                        count: orderStats.pending,
+                        color: "purple" as const,
+                      },
+                      {
+                        icon: CheckCircle2,
+                        label: t("staff.completed"),
+                        count: orderStats.completed,
+                        color: "green" as const,
+                      },
+                    ].map((item, i, arr) => (
+                      <div key={item.label}>
+                        <div className="flex items-center gap-3 p-2.5 rounded-[12px] hover:bg-[var(--muted)] transition-all">
+                          <div
+                            className="w-[32px] h-[32px] rounded-[9px] flex items-center justify-center flex-shrink-0"
+                            style={{
+                              background:
+                                item.color === "blue"
+                                  ? "rgba(0,122,255,0.10)"
+                                  : item.color === "orange"
+                                    ? "rgba(255,149,0,0.10)"
+                                    : item.color === "purple"
+                                      ? "rgba(88,86,214,0.10)"
+                                      : "rgba(52,199,89,0.10)",
+                            }}
+                          >
+                            <item.icon
+                              className="h-[15px] w-[15px]"
                               style={{
-                                background:
-                                  item.color === "blue"
-                                    ? "rgba(0,122,255,0.10)"
-                                    : item.color === "orange"
-                                      ? "rgba(255,149,0,0.10)"
-                                      : item.color === "purple"
-                                        ? "rgba(88,86,214,0.10)"
-                                        : "rgba(52,199,89,0.10)",
-                              }}
-                            >
-                              <item.icon
-                                className="h-[15px] w-[15px]"
-                                style={{
-                                  color:
-                                    item.color === "blue"
-                                      ? "var(--primary)"
-                                      : item.color === "orange"
-                                        ? "var(--erp-warning)"
-                                        : item.color === "purple"
-                                          ? "var(--chart-5)"
-                                          : "var(--erp-success)",
-                                }}
-                              />
-                            </div>
-                            <span className="text-[14px] font-medium text-[var(--foreground)] flex-1">
-                              {item.label}
-                            </span>
-                            <span
-                              className="text-[13px] font-semibold tabular-nums px-2 py-0.5 rounded-full"
-                              style={{
-                                background:
-                                  item.color === "blue"
-                                    ? "rgba(0,122,255,0.10)"
-                                    : item.color === "orange"
-                                      ? "rgba(255,149,0,0.10)"
-                                      : item.color === "purple"
-                                        ? "rgba(88,86,214,0.10)"
-                                        : "rgba(52,199,89,0.10)",
                                 color:
                                   item.color === "blue"
                                     ? "var(--primary)"
@@ -1500,593 +1484,615 @@ function OrdersContent() {
                                         ? "var(--chart-5)"
                                         : "var(--erp-success)",
                               }}
-                            >
-                              {item.count}
-                            </span>
+                            />
                           </div>
-                          {i < arr.length - 1 && (
-                            <div className="h-px bg-[var(--border-divider)] mx-3" />
-                          )}
+                          <span className="text-[14px] font-medium text-[var(--foreground)] flex-1">
+                            {item.label}
+                          </span>
+                          <span
+                            className="text-[13px] font-semibold tabular-nums px-2 py-0.5 rounded-full"
+                            style={{
+                              background:
+                                item.color === "blue"
+                                  ? "rgba(0,122,255,0.10)"
+                                  : item.color === "orange"
+                                    ? "rgba(255,149,0,0.10)"
+                                    : item.color === "purple"
+                                      ? "rgba(88,86,214,0.10)"
+                                      : "rgba(52,199,89,0.10)",
+                              color:
+                                item.color === "blue"
+                                  ? "var(--primary)"
+                                  : item.color === "orange"
+                                    ? "var(--erp-warning)"
+                                    : item.color === "purple"
+                                      ? "var(--chart-5)"
+                                      : "var(--erp-success)",
+                            }}
+                          >
+                            {item.count}
+                          </span>
                         </div>
-                      ))}
-                    </div>
-
-                    {/* Production Progress Bars */}
-                    <div className="mt-5 pt-4 border-t border-[var(--border-divider)]">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--muted-foreground)] px-1 mb-3">
-                        Production Progress
-                      </p>
-                      <div className="space-y-3 px-1">
-                        {[
-                          {
-                            label: "Completion Rate",
-                            value: orderStats.completed,
-                            max: Math.max(orderStats.total, 1),
-                            color: "var(--erp-success)",
-                            bg: "rgba(52,199,89,0.08)",
-                          },
-                          {
-                            label: "In Progress",
-                            value: orderStats.processing,
-                            max: Math.max(orderStats.total, 1),
-                            color: "var(--primary)",
-                            bg: "rgba(0,122,255,0.08)",
-                          },
-                          {
-                            label: "Pending",
-                            value: orderStats.pending,
-                            max: Math.max(orderStats.total, 1),
-                            color: "var(--erp-warning)",
-                            bg: "rgba(255,149,0,0.08)",
-                          },
-                        ].map((bar, i) => {
-                          const pct =
-                            bar.max > 0
-                              ? Math.min((bar.value / bar.max) * 100, 100)
-                              : 0;
-                          return (
-                            <div key={bar.label} className="space-y-1.5">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[13px] font-medium text-[var(--foreground)]">
-                                  {bar.label}
-                                </span>
-                                <span
-                                  className="text-[12px] font-semibold tabular-nums"
-                                  style={{ color: bar.color }}
-                                >
-                                  {bar.value}/{bar.max}
-                                </span>
-                              </div>
-                              <div
-                                className="h-[6px] rounded-full overflow-hidden"
-                                style={{ background: bar.bg }}
-                              >
-                                <motion.div
-                                  className="h-full rounded-full"
-                                  style={{ background: bar.color }}
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${pct}%` }}
-                                  transition={{
-                                    delay: 0.2 + i * 0.1,
-                                    duration: 0.6,
-                                    ease: [0.16, 1, 0.3, 1],
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          );
-                        })}
+                        {i < arr.length - 1 && (
+                          <div className="h-px bg-[var(--border-divider)] mx-3" />
+                        )}
                       </div>
-                    </div>
+                    ))}
+                  </div>
 
-                    {/* Quick Links */}
-                    <div className="mt-5 pt-4 border-t border-[var(--border-divider)]">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--muted-foreground)] px-1 mb-2">
-                        Quick Links
-                      </p>
-                      <div className="space-y-0.5">
-                        {[
-                          {
-                            label: "Production Floor",
-                            icon: Activity,
-                            href: "/dashboard/production",
-                          },
-                          {
-                            label: "Inventory",
-                            icon: Box,
-                            href: "/dashboard/inventory",
-                          },
-                        ].map((link, idx, arr) => (
-                          <a key={link.label} href={link.href}>
-                            <div className="flex items-center gap-2.5 p-2.5 rounded-[10px] hover:bg-[var(--muted)] transition-colors cursor-pointer group">
-                              <link.icon className="h-[14px] w-[14px] text-[var(--muted-foreground)] group-hover:text-[var(--muted-foreground)] transition-colors" />
-                              <span className="text-[13px] font-medium text-[var(--foreground)] flex-1">
-                                {link.label}
+                  {/* Production Progress Bars */}
+                  <div className="mt-5 pt-4 border-t border-[var(--border-divider)]">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--muted-foreground)] px-1 mb-3">
+                      {t("staff.productionProgress")}
+                    </p>
+                    <div className="space-y-3 px-1">
+                      {[
+                        {
+                          label: t("staff.completionRate"),
+                          value: orderStats.completed,
+                          max: Math.max(orderStats.total, 1),
+                          color: "var(--erp-success)",
+                          bg: "rgba(52,199,89,0.08)",
+                        },
+                        {
+                          label: t("staff.inProgress"),
+                          value: orderStats.processing,
+                          max: Math.max(orderStats.total, 1),
+                          color: "var(--primary)",
+                          bg: "rgba(0,122,255,0.08)",
+                        },
+                        {
+                          label: t("staff.pending"),
+                          value: orderStats.pending,
+                          max: Math.max(orderStats.total, 1),
+                          color: "var(--erp-warning)",
+                          bg: "rgba(255,149,0,0.08)",
+                        },
+                      ].map((bar, i) => {
+                        const pct =
+                          bar.max > 0
+                            ? Math.min((bar.value / bar.max) * 100, 100)
+                            : 0;
+                        return (
+                          <div key={bar.label} className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[13px] font-medium text-[var(--foreground)]">
+                                {bar.label}
                               </span>
-                              <ChevronRight className="h-3 w-3 text-[var(--muted-foreground)] group-hover:text-[var(--muted-foreground)] transition-colors" />
+                              <span
+                                className="text-[12px] font-semibold tabular-nums"
+                                style={{ color: bar.color }}
+                              >
+                                {bar.value}/{bar.max}
+                              </span>
                             </div>
-                            {idx < arr.length - 1 && (
-                              <div className="h-px bg-[var(--border-divider)] mx-3" />
-                            )}
-                          </a>
-                        ))}
-                      </div>
+                            <div
+                              className="h-[6px] rounded-full overflow-hidden"
+                              style={{ background: bar.bg }}
+                            >
+                              <motion.div
+                                className="h-full rounded-full"
+                                style={{ background: bar.color }}
+                                initial={{ width: 0 }}
+                                animate={{ width: `${pct}%` }}
+                                transition={{
+                                  delay: 0.2 + i * 0.1,
+                                  duration: 0.6,
+                                  ease: [0.16, 1, 0.3, 1],
+                                }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                </IOSCard>
-              </motion.div>
-            </div>
-          </motion.div>
-        ) : (
-          <motion.div initial="initial" animate="animate" variants={staggerContainer} className="space-y-6">
- {/* 
+
+                  {/* Quick Links */}
+                  <div className="mt-5 pt-4 border-t border-[var(--border-divider)]">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--muted-foreground)] px-1 mb-2">
+                      {t("staff.quickLinks")}
+                    </p>
+                    <div className="space-y-0.5">
+                      {[
+                        {
+                          label: t("staff.productionFloor"),
+                          icon: Activity,
+                          href: "/dashboard/production",
+                        },
+                        {
+                          label: t("staff.inventory"),
+                          icon: Box,
+                          href: "/dashboard/inventory",
+                        },
+                      ].map((link, idx, arr) => (
+                        <a key={link.label} href={link.href}>
+                          <div className="flex items-center gap-2.5 p-2.5 rounded-[10px] hover:bg-[var(--muted)] transition-colors cursor-pointer group">
+                            <link.icon className="h-[14px] w-[14px] text-[var(--muted-foreground)] group-hover:text-[var(--muted-foreground)] transition-colors" />
+                            <span className="text-[13px] font-medium text-[var(--foreground)] flex-1">
+                              {link.label}
+                            </span>
+                            <ChevronRight className="h-3 w-3 text-[var(--muted-foreground)] group-hover:text-[var(--muted-foreground)] transition-colors" />
+                          </div>
+                          {idx < arr.length - 1 && (
+                            <div className="h-px bg-[var(--border-divider)] mx-3" />
+                          )}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </IOSCard>
+            </motion.div>
+          </div>
+        </motion.div>
+      ) : (
+        <motion.div initial="initial" animate="animate" variants={staggerContainer} className="space-y-6">
+          {/* 
  ADMIN/OWNER VIEW: KPI Stats + Table 
  */}
-            {/* KPI Stats */}
-            <div className="kpi-panel">
-              <div className="kpi-panel__glow"></div>
-              <div className="kpi-grid">
-                <StatWidget
-                  label="Total Orders"
-                  value={orderStats.total}
-                  change={0}
-                  icon={Box}
-                  color="blue"
-                  delay={0}
-                />
-                <StatWidget
-                  label="Total Revenue"
-                  value={orderStats.revenue}
-                  displayValue={formatINR(orderStats.revenue)}
-                  change={0}
-                  icon={IndianRupee}
-                  color="green"
-                  delay={1}
-                />
-                <StatWidget
-                  label="Pending Payment"
-                  value={orderStats.pendingPayment}
-                  change={0}
-                  icon={AlertCircle}
-                  color="orange"
-                  delay={2}
-                />
-                <StatWidget
-                  label="Completed"
-                  value={orderStats.completed}
-                  change={0}
-                  icon={CheckCircle2}
-                  color="green"
-                  delay={3}
-                />
-              </div>
+          {/* KPI Stats */}
+          <div className="kpi-panel">
+            <div className="kpi-panel__glow"></div>
+            <div className="kpi-grid">
+              <StatWidget
+                label={t("kpi.totalOrders")}
+                value={orderStats.total}
+                change={0}
+                icon={Box}
+                color="blue"
+                delay={0}
+              />
+              <StatWidget
+                label={t("kpi.totalRevenue")}
+                value={orderStats.revenue}
+                displayValue={formatINR(orderStats.revenue)}
+                change={0}
+                icon={IndianRupee}
+                color="green"
+                delay={1}
+              />
+              <StatWidget
+                label={t("kpi.pendingPayment")}
+                value={orderStats.pendingPayment}
+                change={0}
+                icon={AlertCircle}
+                color="orange"
+                delay={2}
+              />
+              <StatWidget
+                label={t("kpi.completed")}
+                value={orderStats.completed}
+                change={0}
+                icon={CheckCircle2}
+                color="green"
+                delay={3}
+              />
             </div>
+          </div>
 
- {/* Table (Admin/Owner only) */}
-            <motion.div variants={staggerItem}>
-              <IOSCard
-                variant="elevated"
-                padding="none"
-                className="hidden md:block overflow-hidden glass-premium !rounded-[20px]"
-              >
+          {/* Table (Admin/Owner only) */}
+          <motion.div variants={staggerItem}>
+            <IOSCard
+              variant="elevated"
+              padding="none"
+              className="hidden md:block overflow-hidden glass-premium !rounded-[20px]"
+            >
               <div ref={tableContainerRef} className="max-h-[calc(100vh-320px)] overflow-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="glass-table-header hover:bg-transparent border-b border-white/[0.07] dark:border-white/[0.07] sticky top-0 z-10 bg-white/90 dark:bg-[#0F1117]/90 backdrop-blur-sm">
-                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide pl-5">
-                      Order
-                    </TableHead>
-                    {!isStaff && (
-                      <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">
-                        Financials
+                <Table>
+                  <TableHeader>
+                    <TableRow className="glass-table-header hover:bg-transparent border-b border-white/[0.07] dark:border-white/[0.07] sticky top-0 z-10 bg-white/90 dark:bg-[#0F1117]/90 backdrop-blur-sm">
+                      <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide pl-5">
+                        {t("table.order")}
                       </TableHead>
-                    )}
-                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">
-                      Timeline / Status
-                    </TableHead>
-                    <TableHead className="w-[120px] py-3 pr-5 text-right font-semibold text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">
-                      Action
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {ordersLoading ? (
-                    Array.from({ length: 5 }).map((_, i) => (
-                      <TableRow key={i}>
-                        <TableCell className="pl-5">
-                          <div className="h-16 w-full rounded-[10px] bg-[var(--muted)] shimmer" />
-                        </TableCell>
-                        <TableCell>
-                          <div className="h-16 w-full rounded-[10px] bg-[var(--muted)] shimmer" />
-                        </TableCell>
-                        <TableCell>
-                          <div className="h-16 w-full rounded-[10px] bg-[var(--muted)] shimmer" />
-                        </TableCell>
-                        <TableCell className="pr-5">
-                          <div className="h-10 w-10 rounded-full bg-[var(--muted)] shimmer ml-auto" />
+                      {!isStaff && (
+                        <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">
+                          {t("table.financials")}
+                        </TableHead>
+                      )}
+                      <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">
+                        {t("table.timelineStatus")}
+                      </TableHead>
+                      <TableHead className="w-[120px] py-3 pr-5 text-right font-semibold text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">
+                        {t("table.action")}
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {ordersLoading ? (
+                      Array.from({ length: 5 }).map((_, i) => (
+                        <TableRow key={i}>
+                          <TableCell className="pl-5">
+                            <div className="h-16 w-full rounded-[10px] bg-[var(--muted)] shimmer" />
+                          </TableCell>
+                          <TableCell>
+                            <div className="h-16 w-full rounded-[10px] bg-[var(--muted)] shimmer" />
+                          </TableCell>
+                          <TableCell>
+                            <div className="h-16 w-full rounded-[10px] bg-[var(--muted)] shimmer" />
+                          </TableCell>
+                          <TableCell className="pr-5">
+                            <div className="h-10 w-10 rounded-full bg-[var(--muted)] shimmer ml-auto" />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : filteredOrders.length === 0 ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={isStaff ? 3 : 4}
+                          className="text-center"
+                        >
+                          <TableEmptyState
+                            variant={searchQuery ? "no-results" : "no-data"}
+                            title={searchQuery ? t("empty.noSearchMatch") : t("empty.noActive")}
+                            subtitle={searchQuery ? t("empty.adjustSearch") : t("empty.createFirst")}
+                            action={!searchQuery ? { label: t("empty.newOrderBtn"), onClick: handleAddNewClick } : undefined}
+                          />
                         </TableCell>
                       </TableRow>
-                    ))
-                  ) : filteredOrders.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={isStaff ? 3 : 4}
-                        className="text-center"
-                      >
-                        <TableEmptyState
-                          variant={searchQuery ? "no-results" : "no-data"}
-                          title={searchQuery ? "No orders match your search" : "No active orders"}
-                          subtitle={searchQuery ? "Try adjusting your search or filters" : "Create your first order to start production"}
-                          action={!searchQuery ? { label: "+ New Order", onClick: handleAddNewClick } : undefined}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    monthGroupedOrders.map((group) => (
-                      <React.Fragment key={group.key}>
-                        {/* Month group header row */}
-                        <tr>
-                          <td
-                            colSpan={isStaff ? 3 : 4}
-                            className="px-0 pt-6 pb-2"
-                            style={{ background: 'transparent', border: 'none' }}
-                          >
-                            <div className="flex items-center justify-between px-5">
-                              <div className="flex items-center gap-2">
-                                <span className="text-[11px] font-bold tracking-[0.08em] text-[var(--muted-foreground)] uppercase">
-                                  {group.label}
-                                </span>
-                                <span className="text-[10px] font-medium text-[var(--muted-foreground)]/60 tabular-nums">
-                                  {group.orderCount} {group.orderCount === 1 ? 'order' : 'orders'}
-                                </span>
-                              </div>
-                              {!isStaff && (
-                                <span className="text-[11px] font-semibold text-[var(--primary)] tabular-nums">
-                                  {formatINR(group.totalValue)}
-                                </span>
-                              )}
-                            </div>
-                            <div className="mt-1.5 h-px bg-[var(--border)]" />
-                          </td>
-                        </tr>
-                        {group.orders.map((order: any, index: number) => {
-                      const derived = deriveOrderStatusFromOrder(order);
-                      return (
-                      <motion.tr
-                        key={order.id ?? index}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{
-                          delay: index * 0.03,
-                          duration: 0.25,
-                          ease: [0.16, 1, 0.3, 1],
-                        }}
-                        className="group glass-table-row hover:bg-[var(--muted)] border-b border-[var(--border)] transition-colors"
-                      >
-                        <TableCell className="pl-5 py-4">
-                          <div className="flex flex-col">
-                            <span className="text-[17px] font-bold text-[var(--foreground)] leading-[22px]">
-                              {order.productName ?? order.product_name ?? "\u2014"}
-                            </span>
-                            <span className="text-[13px] text-[var(--muted-foreground)] mt-0.5">
-                              Client: {order.client?.name ?? order.clients?.name ?? "\u2014"}
-                            </span>
-                            <div className="flex items-center gap-2 mt-1.5">
-                              <IOSBadge
-                                color="gray"
-                                variant="tinted"
-                                size="small"
-                              >
-                                {order.quantity ?? 0} {order.unit ?? "kg"}
-                              </IOSBadge>
-                              <span className="text-[11px] text-[var(--muted-foreground)] font-mono uppercase">
-                                {(order.id ?? "").slice(0, 8)}
-                              </span>
-                            </div>
-                          </div>
-                        </TableCell>
-                        {/* Financials column -- Owner only */}
-                        {!isStaff && (
-                          <TableCell className="py-4">
-                            <div className="flex flex-col gap-1">
-                              <span className="text-[20px] font-bold text-[var(--primary)]">
-                                {formatINR(Number(order.totalAmount ?? order.total_amount ?? 0))}
-                              </span>
-                              {(order.totalPaid ?? order.total_paid ?? 0) > 0 && (
-                                <span className="text-[13px] text-[var(--erp-success)] font-semibold">
-                                  Paid: {formatINR(Number(order.totalPaid ?? order.total_paid ?? 0))}
-                                </span>
-                              )}
-                              {order.paymentStatus !== "Paid" &&
-                                order.paymentStatus !== "paid" &&
-                                order.totalAmount - (order.totalPaid || 0) >
-                                  0 && (
-                                  <span className="text-[13px] text-[var(--erp-warning)] font-semibold">
-                                    Due: {formatINR(Number(order.totalAmount - (order.totalPaid || 0)))}
+                    ) : (
+                      monthGroupedOrders.map((group) => (
+                        <React.Fragment key={group.key}>
+                          {/* Month group header row */}
+                          <tr>
+                            <td
+                              colSpan={isStaff ? 3 : 4}
+                              className="px-0 pt-6 pb-2"
+                              style={{ background: 'transparent', border: 'none' }}
+                            >
+                              <div className="flex items-center justify-between px-5">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[11px] font-bold tracking-[0.08em] text-[var(--muted-foreground)] uppercase">
+                                    {group.label}
+                                  </span>
+                                  <span className="text-[10px] font-medium text-[var(--muted-foreground)]/60 tabular-nums">
+                                    {group.orderCount} {group.orderCount === 1 ? t("table.orderSingle") : t("table.ordersPlural")}
+                                  </span>
+                                </div>
+                                {!isStaff && (
+                                  <span className="text-[11px] font-semibold text-[var(--primary)] tabular-nums">
+                                    {formatINR(group.totalValue)}
                                   </span>
                                 )}
-                              <IOSBadge
-                                color={getPaymentBadgeColor(
-                                  order.paymentStatus,
+                              </div>
+                              <div className="mt-1.5 h-px bg-[var(--border)]" />
+                            </td>
+                          </tr>
+                          {group.orders.map((order: any, index: number) => {
+                            const derived = deriveOrderStatusFromOrder(order);
+                            return (
+                              <motion.tr
+                                key={order.id ?? index}
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{
+                                  delay: index * 0.03,
+                                  duration: 0.25,
+                                  ease: [0.16, 1, 0.3, 1],
+                                }}
+                                className="group glass-table-row hover:bg-[var(--muted)] border-b border-[var(--border)] transition-colors"
+                              >
+                                <TableCell className="pl-5 py-4">
+                                  <div className="flex flex-col">
+                                    <span className="text-[17px] font-bold text-[var(--foreground)] leading-[22px]">
+                                      {order.productName ?? order.product_name ?? "\u2014"}
+                                    </span>
+                                    <span className="text-[13px] text-[var(--muted-foreground)] mt-0.5">
+                                      {t("table.client")}: {order.client?.name ?? order.clients?.name ?? "\u2014"}
+                                    </span>
+                                    <div className="flex items-center gap-2 mt-1.5">
+                                      <IOSBadge
+                                        color="gray"
+                                        variant="tinted"
+                                        size="small"
+                                      >
+                                        {order.quantity ?? 0} {order.unit ?? "kg"}
+                                      </IOSBadge>
+                                      <span className="text-[11px] text-[var(--muted-foreground)] font-mono uppercase">
+                                        {(order.id ?? "").slice(0, 8)}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                {/* Financials column -- Owner only */}
+                                {!isStaff && (
+                                  <TableCell className="py-4">
+                                    <div className="flex flex-col gap-1">
+                                      <span className="text-[20px] font-bold text-[var(--primary)]">
+                                        {formatINR(Number(order.totalAmount ?? order.total_amount ?? 0))}
+                                      </span>
+                                      {(order.totalPaid ?? order.total_paid ?? 0) > 0 && (
+                                        <span className="text-[13px] text-[var(--erp-success)] font-semibold">
+                                          {t("table.paid")}: {formatINR(Number(order.totalPaid ?? order.total_paid ?? 0))}
+                                        </span>
+                                      )}
+                                      {order.paymentStatus !== "Paid" &&
+                                        order.paymentStatus !== "paid" &&
+                                        order.totalAmount - (order.totalPaid || 0) >
+                                        0 && (
+                                          <span className="text-[13px] text-[var(--erp-warning)] font-semibold">
+                                            {t("table.due")}: {formatINR(Number(order.totalAmount - (order.totalPaid || 0)))}
+                                          </span>
+                                        )}
+                                      <IOSBadge
+                                        color={getPaymentBadgeColor(
+                                          order.paymentStatus,
+                                        )}
+                                        variant="tinted"
+                                        size="small"
+                                      >
+                                        {order.paymentStatus}
+                                      </IOSBadge>
+                                    </div>
+                                  </TableCell>
                                 )}
-                                variant="tinted"
-                                size="small"
-                              >
-                                {order.paymentStatus}
-                              </IOSBadge>
-                            </div>
-                          </TableCell>
-                        )}
-                        <TableCell className="py-4">
-                          <div className="flex flex-col gap-1.5">
-                            {/* Status Badge */}
-                            <div className="flex items-center gap-1.5">
-                              {updatingOrderId === order.id ? (
-                                <Loader2 className="h-[14px] w-[14px] animate-spin text-[var(--primary)]" />
-                              ) : (
-                                <div
-                                  className={cn(
-                                    "h-[8px] w-[8px] rounded-full",
-                                    derived === "completed"
-                                      ? "bg-[var(--erp-success)]"
-                                      : derived === "processing"
-                                        ? "bg-[var(--erp-warning)] animate-pulse"
-                                        : derived === "awaiting_payment"
-                                          ? "bg-amber-500 animate-pulse"
-                                          : derived === "active"
-                                            ? "bg-[var(--primary)]"
-                                            : derived === "cancelled"
-                                              ? "bg-red-500"
-                                              : derived === "on_hold"
-                                                ? "bg-purple-500"
-                                                : "bg-[var(--muted-foreground)]",
-                                  )}
-                                />
-                              )}
-                              <IOSBadge
-                                color={getStatusBadgeColor(derived)}
-                                variant="tinted"
-                                size="small"
-                              >
-                                {getStatusLabel(derived)}
-                              </IOSBadge>
-                            </div>
-                            {/* Due Date */}
-                            {order.deliveryDate && (
-                              <span className="text-[11px] bg-[var(--muted)] w-fit px-2 py-0.5 rounded-[6px] font-medium text-[var(--muted-foreground)] mt-1.5 ml-1 block">
-                                Due:{" "}
-                                {new Date(
-                                  order.deliveryDate,
-                                ).toLocaleDateString()}
-                              </span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="pr-5 text-right py-4">
-                          <div className="flex items-center justify-end gap-1">
- {/* Invoice download Owner only */}
-                            {!isStaff && (
-                              <motion.button
-                                whileTap={{ scale: 0.9 }}
-                                className="h-[36px] w-[36px] rounded-[10px] flex items-center justify-center text-[var(--muted-foreground)] hover:bg-[var(--muted)] transition-colors cursor-pointer"
-                                onClick={() => generateInvoice(order)}
-                              >
-                                <Download className="h-4 w-4" />
-                              </motion.button>
-                            )}
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <motion.button
-                                  whileTap={{ scale: 0.9 }}
-                                  className="h-[36px] w-[36px] rounded-[10px] flex items-center justify-center hover:bg-[var(--muted)] transition-colors cursor-pointer"
-                                >
-                                  <MoreVertical className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
-                                </motion.button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent
-                                align="end"
-                                className="w-52 rounded-[12px]"
-                              >
+                                <TableCell className="py-4">
+                                  <div className="flex flex-col gap-1.5">
+                                    {/* Status Badge */}
+                                    <div className="flex items-center gap-1.5">
+                                      {updatingOrderId === order.id ? (
+                                        <Loader2 className="h-[14px] w-[14px] animate-spin text-[var(--primary)]" />
+                                      ) : (
+                                        <div
+                                          className={cn(
+                                            "h-[8px] w-[8px] rounded-full",
+                                            derived === "completed"
+                                              ? "bg-[var(--erp-success)]"
+                                              : derived === "processing"
+                                                ? "bg-[var(--erp-warning)] animate-pulse"
+                                                : derived === "awaiting_payment"
+                                                  ? "bg-amber-500 animate-pulse"
+                                                  : derived === "active"
+                                                    ? "bg-[var(--primary)]"
+                                                    : derived === "cancelled"
+                                                      ? "bg-red-500"
+                                                      : derived === "on_hold"
+                                                        ? "bg-purple-500"
+                                                        : "bg-[var(--muted-foreground)]",
+                                          )}
+                                        />
+                                      )}
+                                      <IOSBadge
+                                        color={getStatusBadgeColor(derived)}
+                                        variant="tinted"
+                                        size="small"
+                                      >
+                                        {getStatusLabel(derived)}
+                                      </IOSBadge>
+                                    </div>
+                                    {/* Due Date */}
+                                    {order.deliveryDate && (
+                                      <span className="text-[11px] bg-[var(--muted)] w-fit px-2 py-0.5 rounded-[6px] font-medium text-[var(--muted-foreground)] mt-1.5 ml-1 block">
+                                        {t("table.due")}:{" "}
+                                        {new Date(
+                                          order.deliveryDate,
+                                        ).toLocaleDateString()}
+                                      </span>
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="pr-5 text-right py-4">
+                                  <div className="flex items-center justify-end gap-1">
+                                    {/* Invoice download Owner only */}
+                                    {!isStaff && (
+                                      <motion.button
+                                        whileTap={{ scale: 0.9 }}
+                                        className="h-[36px] w-[36px] rounded-[10px] flex items-center justify-center text-[var(--muted-foreground)] hover:bg-[var(--muted)] transition-colors cursor-pointer"
+                                        onClick={() => generateInvoice(order)}
+                                      >
+                                        <Download className="h-4 w-4" />
+                                      </motion.button>
+                                    )}
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <motion.button
+                                          whileTap={{ scale: 0.9 }}
+                                          className="h-[36px] w-[36px] rounded-[10px] flex items-center justify-center hover:bg-[var(--muted)] transition-colors cursor-pointer"
+                                        >
+                                          <MoreVertical className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
+                                        </motion.button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent
+                                        align="end"
+                                        className="w-52 rounded-[12px]"
+                                      >
 
- {/* Edit Order Owner only */}
-                                {!isStaff && (
-                                  <DropdownMenuItem
-                                    onClick={() => openEditDialog(order)}
-                                    className="rounded-[8px]"
-                                  >
-                                    <Edit2 className="mr-2 h-4 w-4" /> Edit
-                                    Order
-                                  </DropdownMenuItem>
-                                )}
- {/* Record Payment Owner only */}
-                                {!isStaff && (
-                                  <DropdownMenuItem
-                                    onClick={() => openPaymentDialog(order)}
-                                    className="rounded-[8px]"
-                                  >
-                                    <IndianRupee className="mr-2 h-4 w-4 text-[var(--erp-success)]" />{" "}
-                                    Record Payment
-                                  </DropdownMenuItem>
-                                )}
-                                {isAdmin && (
-                                  <DropdownMenuItem
-                                    className="text-[var(--destructive)] rounded-[8px]"
-                                    onClick={() => {
-                                      setOrderToDeleteId(order.id);
-                                      setIsDeleteDialogOpenConfirm(true);
-                                    }}
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                    Order
-                                  </DropdownMenuItem>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </TableCell>
-                      </motion.tr>
-                    );
-                        })}
-                      </React.Fragment>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                                        {/* Edit Order Owner only */}
+                                        {!isStaff && (
+                                          <DropdownMenuItem
+                                            onClick={() => openEditDialog(order)}
+                                            className="rounded-[8px]"
+                                          >
+                                            <Edit2 className="mr-2 h-4 w-4" /> {t("table.editOrder")}
+                                          </DropdownMenuItem>
+                                        )}
+                                        {/* Record Payment Owner only */}
+                                        {!isStaff && (
+                                          <DropdownMenuItem
+                                            onClick={() => openPaymentDialog(order)}
+                                            className="rounded-[8px]"
+                                          >
+                                            <IndianRupee className="mr-2 h-4 w-4 text-[var(--erp-success)]" />{" "}{t("table.recordPayment")}
+                                          </DropdownMenuItem>
+                                        )}
+                                        {isAdmin && (
+                                          <DropdownMenuItem
+                                            className="text-[var(--destructive)] rounded-[8px]"
+                                            onClick={() => {
+                                              setOrderToDeleteId(order.id);
+                                              setIsDeleteDialogOpenConfirm(true);
+                                            }}
+                                          >
+                                            <Trash2 className="mr-2 h-4 w-4" /> {t("table.deleteOrder")}
+                                          </DropdownMenuItem>
+                                        )}
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </div>
+                                </TableCell>
+                              </motion.tr>
+                            );
+                          })}
+                        </React.Fragment>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </div>
             </IOSCard>
 
 
- {/* PREMIUM MOBILE ORDER CARDS */}
+            {/* PREMIUM MOBILE ORDER CARDS */}
             <div style={{ padding: '0 2px' }} className="block md:hidden">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {ordersLoading ? (
-                Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="bg-gray-100 dark:bg-[#1C2333] rounded-2xl px-4 py-3 border-l-4 border-gray-300 dark:border-gray-600">
-                    <div className="h-4 w-32 rounded bg-gray-200 dark:bg-gray-700 shimmer" />
-                    <div className="h-4 w-full rounded bg-gray-200 dark:bg-gray-700 shimmer mt-2" />
-                    <div className="h-3 w-24 rounded bg-gray-200 dark:bg-gray-700 shimmer mt-2" />
-                  </div>
-                ))
-              ) : filteredOrders.length === 0 ? (
-                <div style={{ padding: '64px 0', textAlign: 'center' }}>
-                  <Factory style={{ height: 40, width: 40, margin: '0 auto 12px', color: '#475569' }} />
-                  <p style={{ color: '#94a3b8', fontSize: 14, fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif" }}>No active orders</p>
-                </div>
-              ) : monthGroupedOrders.map((group) => (
-                <React.Fragment key={group.key}>
-                  {/* Mobile month header */}
-                  <div className="flex items-center justify-between px-1 pt-4 pb-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-bold tracking-[0.08em] text-[var(--muted-foreground)] uppercase">
-                        {group.label}
-                      </span>
-                      <span className="text-[10px] font-medium text-[var(--muted-foreground)]/60 tabular-nums">
-                        {group.orderCount} {group.orderCount === 1 ? 'order' : 'orders'}
-                      </span>
+                {ordersLoading ? (
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="bg-gray-100 dark:bg-[#1C2333] rounded-2xl px-4 py-3 border-l-4 border-gray-300 dark:border-gray-600">
+                      <div className="h-4 w-32 rounded bg-gray-200 dark:bg-gray-700 shimmer" />
+                      <div className="h-4 w-full rounded bg-gray-200 dark:bg-gray-700 shimmer mt-2" />
+                      <div className="h-3 w-24 rounded bg-gray-200 dark:bg-gray-700 shimmer mt-2" />
                     </div>
-                    {!isStaff && (
-                      <span className="text-[11px] font-semibold text-[var(--primary)] tabular-nums">
-                        {formatINR(group.totalValue)}
-                      </span>
-                    )}
+                  ))
+                ) : filteredOrders.length === 0 ? (
+                  <div style={{ padding: '64px 0', textAlign: 'center' }}>
+                    <Factory style={{ height: 40, width: 40, margin: '0 auto 12px', color: '#475569' }} />
+                    <p style={{ color: '#94a3b8', fontSize: 14, fontFamily: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif" }}>{t("empty.noActive")}</p>
                   </div>
-                  {group.orders.map((order: any, idx: number) => {
-                const derived = deriveOrderStatusFromOrder(order);
-                const s = derived;
-                const borderColor =
-                  s === 'active' ? '#2563EB' :
-                  s === 'pending' ? '#F59E0B' :
-                  s === 'processing' ? '#F59E0B' :
-                  s === 'awaiting_payment' ? '#F59E0B' :
-                  s === 'completed' ? '#22C55E' :
-                  s === 'cancelled' ? '#EF4444' :
-                  s === 'on_hold' ? '#A855F7' : '#94A3B8';
-                const badgeClasses =
-                  s === 'active'           ? 'bg-blue-500/15 text-blue-500 dark:text-blue-400' :
-                  s === 'pending'          ? 'bg-amber-500/15 text-amber-500 dark:text-amber-400' :
-                  s === 'processing'       ? 'bg-amber-500/15 text-amber-500 dark:text-amber-400' :
-                  s === 'awaiting_payment' ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400' :
-                  s === 'completed'        ? 'bg-green-500/15 text-green-500 dark:text-green-400' :
-                  s === 'cancelled'        ? 'bg-red-500/15 text-red-500 dark:text-red-400' :
-                  s === 'on_hold'          ? 'bg-purple-500/15 text-purple-500 dark:text-purple-400' :
-                                             'bg-slate-500/15 text-slate-500 dark:text-slate-400';
-                const statusLabel = getStatusLabel(derived);
-                const paymentRaw = order.paymentStatus;
-                const isPaid = paymentRaw === 'paid' || paymentRaw === 'Paid';
-                const clientName = order.client?.name ?? order.clients?.name;
-                const productName = order.productName ?? order.product_name;
-                const amount = Number(order.totalAmount ?? order.total_amount ?? 0);
-                const qty = order.quantity;
-                const unit = order.unit ?? 'kg';
-                const createdAt = order.createdAt;
-
-                return (
-                  <div
-                    key={order.id ?? idx}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e: React.KeyboardEvent) => {
-                      if ((e.key === 'Enter' || e.key === ' ') && !isBottomSheetOpen) {
-                        e.preventDefault();
-                        openEditDialog(order);
-                      }
-                    }}
-                    className={cn(
-                      "bg-gray-50 dark:bg-[#1C2333] rounded-2xl overflow-hidden",
-                      "shadow-[0_2px_12px_rgba(15,23,42,0.06)] active:scale-[0.98]",
-                      "transition-transform cursor-pointer select-none",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
-                    )}
-                    style={{ borderLeft: `4px solid ${borderColor}` }}
-                    onTouchStart={() => handleLongPressStart(order)}
-                    onTouchEnd={handleLongPressEnd}
-                    onTouchCancel={handleLongPressEnd}
-                    onMouseDown={() => handleLongPressStart(order)}
-                    onMouseUp={handleLongPressEnd}
-                    onMouseLeave={handleLongPressEnd}
-                    onClick={() => {
-                      if (!isBottomSheetOpen) openEditDialog(order);
-                    }}
-                  >
-                    <div className="px-4 py-3">
-                      {/* Row 1: Product name (bold, truncate) \u00B7 status badge */}
-                      <div className="flex justify-between items-center min-h-[22px]">
-                        <span className="text-gray-900 dark:text-white text-sm font-bold truncate mr-2">
-                          {productName || '\u2014'}
+                ) : monthGroupedOrders.map((group) => (
+                  <React.Fragment key={group.key}>
+                    {/* Mobile month header */}
+                    <div className="flex items-center justify-between px-1 pt-4 pb-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-bold tracking-[0.08em] text-[var(--muted-foreground)] uppercase">
+                          {group.label}
                         </span>
-                        <span className={cn(
-                          "text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap uppercase shrink-0",
-                          badgeClasses
-                        )}>
-                          {statusLabel}
+                        <span className="text-[10px] font-medium text-[var(--muted-foreground)]/60 tabular-nums">
+                          {group.orderCount} {group.orderCount === 1 ? t("table.orderSingle") : t("table.ordersPlural")}
                         </span>
                       </div>
-
-                      {/* Row 2: \u20B9 amount (blue) \u00B7 qty + payment badge */}
-                      <div className="flex justify-between items-center mt-1 min-h-[22px]">
-                        <span className="text-blue-500 dark:text-blue-400 text-sm font-semibold tabular-nums">
-                          {formatINR(amount)}
+                      {!isStaff && (
+                        <span className="text-[11px] font-semibold text-[var(--primary)] tabular-nums">
+                          {formatINR(group.totalValue)}
                         </span>
-                        <div className="flex items-center gap-2">
-                          {qty != null && (
-                            <span className="text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap">
-                              {qty} {unit}
-                            </span>
+                      )}
+                    </div>
+                    {group.orders.map((order: any, idx: number) => {
+                      const derived = deriveOrderStatusFromOrder(order);
+                      const s = derived;
+                      const borderColor =
+                        s === 'active' ? '#2563EB' :
+                          s === 'pending' ? '#F59E0B' :
+                            s === 'processing' ? '#F59E0B' :
+                              s === 'awaiting_payment' ? '#F59E0B' :
+                                s === 'completed' ? '#22C55E' :
+                                  s === 'cancelled' ? '#EF4444' :
+                                    s === 'on_hold' ? '#A855F7' : '#94A3B8';
+                      const badgeClasses =
+                        s === 'active' ? 'bg-blue-500/15 text-blue-500 dark:text-blue-400' :
+                          s === 'pending' ? 'bg-amber-500/15 text-amber-500 dark:text-amber-400' :
+                            s === 'processing' ? 'bg-amber-500/15 text-amber-500 dark:text-amber-400' :
+                              s === 'awaiting_payment' ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400' :
+                                s === 'completed' ? 'bg-green-500/15 text-green-500 dark:text-green-400' :
+                                  s === 'cancelled' ? 'bg-red-500/15 text-red-500 dark:text-red-400' :
+                                    s === 'on_hold' ? 'bg-purple-500/15 text-purple-500 dark:text-purple-400' :
+                                      'bg-slate-500/15 text-slate-500 dark:text-slate-400';
+                      const statusLabel = getStatusLabel(derived);
+                      const paymentRaw = order.paymentStatus;
+                      const isPaid = paymentRaw === 'paid' || paymentRaw === 'Paid';
+                      const clientName = order.client?.name ?? order.clients?.name;
+                      const productName = order.productName ?? order.product_name;
+                      const amount = Number(order.totalAmount ?? order.total_amount ?? 0);
+                      const qty = order.quantity;
+                      const unit = order.unit ?? 'kg';
+                      const createdAt = order.createdAt;
+
+                      return (
+                        <div
+                          key={order.id ?? idx}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e: React.KeyboardEvent) => {
+                            if ((e.key === 'Enter' || e.key === ' ') && !isBottomSheetOpen) {
+                              e.preventDefault();
+                              openEditDialog(order);
+                            }
+                          }}
+                          className={cn(
+                            "bg-gray-50 dark:bg-[#1C2333] rounded-2xl overflow-hidden",
+                            "shadow-[0_2px_12px_rgba(15,23,42,0.06)] active:scale-[0.98]",
+                            "transition-transform cursor-pointer select-none",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
                           )}
-                          {paymentRaw && (
-                            <span className={cn(
-                              "text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap uppercase",
-                              isPaid
-                                ? "bg-green-500/15 text-green-500 dark:text-green-400"
-                                : "bg-red-500/15 text-red-500 dark:text-red-400"
-                            )}>
-                              {isPaid ? 'PAID' : 'UNPAID'}
-                            </span>
-                          )}
+                          style={{ borderLeft: `4px solid ${borderColor}` }}
+                          onTouchStart={() => handleLongPressStart(order)}
+                          onTouchEnd={handleLongPressEnd}
+                          onTouchCancel={handleLongPressEnd}
+                          onMouseDown={() => handleLongPressStart(order)}
+                          onMouseUp={handleLongPressEnd}
+                          onMouseLeave={handleLongPressEnd}
+                          onClick={() => {
+                            if (!isBottomSheetOpen) openEditDialog(order);
+                          }}
+                        >
+                          <div className="px-4 py-3">
+                            {/* Row 1: Product name (bold, truncate) \u00B7 status badge */}
+                            <div className="flex justify-between items-center min-h-[22px]">
+                              <span className="text-gray-900 dark:text-white text-sm font-bold truncate mr-2">
+                                {productName || '\u2014'}
+                              </span>
+                              <span className={cn(
+                                "text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap uppercase shrink-0",
+                                badgeClasses
+                              )}>
+                                {statusLabel}
+                              </span>
+                            </div>
+
+                            {/* Row 2: \u20B9 amount (blue) \u00B7 qty + payment badge */}
+                            <div className="flex justify-between items-center mt-1 min-h-[22px]">
+                              <span className="text-blue-500 dark:text-blue-400 text-sm font-semibold tabular-nums">
+                                {formatINR(amount)}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                {qty != null && (
+                                  <span className="text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap">
+                                    {qty} {unit}
+                                  </span>
+                                )}
+                                {paymentRaw && (
+                                  <span className={cn(
+                                    "text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap uppercase",
+                                    isPaid
+                                      ? "bg-green-500/15 text-green-500 dark:text-green-400"
+                                      : "bg-red-500/15 text-red-500 dark:text-red-400"
+                                  )}>
+                                    {isPaid ? t("mobile.paid") : t("mobile.unpaid")}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Row 3: client \u00B7 date \u00B7 chevron */}
+                            <div className="flex justify-between items-center mt-1 min-h-[20px]">
+                              <span className="text-gray-500 dark:text-gray-400 text-xs truncate mr-2">
+                                {clientName || '\u2014'}
+                                {createdAt && ` \u00B7 ${new Date(createdAt).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short' })}`}
+                              </span>
+                              <ChevronRight className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
+                            </div>
+                          </div>
                         </div>
-                      </div>
-
-                      {/* Row 3: client \u00B7 date \u00B7 chevron */}
-                      <div className="flex justify-between items-center mt-1 min-h-[20px]">
-                        <span className="text-gray-500 dark:text-gray-400 text-xs truncate mr-2">
-                          {clientName || '\u2014'}
-                          {createdAt && ` \u00B7 ${new Date(createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`}
-                        </span>
-                        <ChevronRight className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
-                      </div>
-                    </div>
-                  </div>
-                );
-                  })}
-                </React.Fragment>
-              ))}
+                      );
+                    })}
+                  </React.Fragment>
+                ))}
               </div>
             </div>
           </motion.div>
         </motion.div>
       )}
 
- {/* LONG-PRESS BOTTOM SHEET -- MobileSheet */}
+      {/* LONG-PRESS BOTTOM SHEET -- MobileSheet */}
       <MobileSheet open={isBottomSheetOpen} onClose={closeBottomSheet}>
         {longPressedOrder && (
           <>
@@ -2094,7 +2100,7 @@ function OrdersContent() {
             <div style={{ padding: '0 16px 16px', borderBottom: '1px solid var(--overlay-border, rgba(15,23,42,0.06))' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
                 <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--overlay-text-primary, #0F172A)', letterSpacing: '-0.5px', lineHeight: 1.3, margin: 0, fontFamily: "Inter, -apple-system, sans-serif" }}>
-                  {longPressedOrder.productName ?? longPressedOrder.product_name ?? 'Order'}
+                  {longPressedOrder.productName ?? longPressedOrder.product_name ?? t("mobile.order")}
                 </h2>
                 <span style={{
                   fontSize: 11,
@@ -2140,7 +2146,7 @@ function OrdersContent() {
               <p style={{ fontSize: 14, color: 'var(--overlay-text-secondary, #64748B)', margin: 0, display: 'flex', alignItems: 'center', gap: 8, fontFamily: "Inter, sans-serif" }}>
                 <span>{formatINR(Number(longPressedOrder.totalAmount ?? 0))}</span>
                 <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--overlay-text-muted, #94A3B8)', display: 'inline-block' }} />
-                <span>{longPressedOrder.quantity ?? 0} {longPressedOrder.unit ?? 'items'}</span>
+                <span>{longPressedOrder.quantity ?? 0} {longPressedOrder.unit ?? t("mobile.items")}</span>
               </p>
             </div>
 
@@ -2151,15 +2157,15 @@ function OrdersContent() {
                 onClick={() => { closeBottomSheet(); setTimeout(() => openEditDialog(longPressedOrder), 400); }}
               >
                 <Edit2 className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
-                Edit Order
+                {t("mobile.editOrder")}
               </button>
 
               <button
                 className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--muted)] active:bg-[var(--muted)] text-[var(--foreground)] text-left w-full"
-                onClick={() => { closeBottomSheet(); showToast('Share link copied!'); }}
+                onClick={() => { closeBottomSheet(); showToast(t('toasts.shareLinkCopied')); }}
               >
                 <Send className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
-                Share
+                {t("mobile.share")}
               </button>
 
               <button
@@ -2167,15 +2173,15 @@ function OrdersContent() {
                 onClick={() => { closeBottomSheet(); setTimeout(() => generateInvoice(longPressedOrder), 400); }}
               >
                 <FileText className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
-                View Invoice
+                {t("mobile.viewInvoice")}
               </button>
 
               <button
                 className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--muted)] active:bg-[var(--muted)] text-[var(--foreground)] text-left w-full"
-                onClick={() => { closeBottomSheet(); showToast('Order duplicated'); }}
+                onClick={() => { closeBottomSheet(); showToast(t('toasts.orderDuplicated')); }}
               >
                 <Layers className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
-                Duplicate
+                {t("mobile.duplicate")}
               </button>
 
               {/* Delete */}
@@ -2185,7 +2191,7 @@ function OrdersContent() {
                   onClick={() => { closeBottomSheet(); setOrderToDeleteId(longPressedOrder.id); setIsDeleteDialogOpenConfirm(true); }}
                 >
                   <Trash2 className="h-[18px] w-[18px]" />
-                  Delete
+                  {t("mobile.delete")}
                 </button>
               )}
             </div>
@@ -2193,7 +2199,7 @@ function OrdersContent() {
         )}
       </MobileSheet>
 
- {/* TOAST NOTIFICATION */}
+      {/* TOAST NOTIFICATION */}
       {toastMessage && (
         <div style={{
           position: 'fixed', bottom: 90, left: '50%', transform: 'translateX(-50%)',
@@ -2211,7 +2217,7 @@ function OrdersContent() {
         </div>
       )}
 
- {/* DIALOGS */}
+      {/* DIALOGS */}
 
 
 
@@ -2229,12 +2235,12 @@ function OrdersContent() {
           }
         }}
         isDeleting={deleteOrder.isPending}
-        entityLabel="order"
+        entityLabel={t("deleteConfirm.entityLabel")}
         entityName={
           orders.find((o) => o.id === orderToDeleteId)?.productName ||
           orders.find((o) => o.id === orderToDeleteId)?.product_name
         }
-        consequenceText="will be permanently removed from sales history. Note: This will not restore inventory automatically. This cannot be undone."
+        consequenceText={t("deleteConfirm.consequenceText")}
       />
 
       {/* Payment Dialog */}
@@ -2259,7 +2265,7 @@ function OrdersContent() {
               </div>
               <div style={{ minWidth: 0 }}>
                 <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', lineHeight: '22px', margin: 0 }}>
-                  Record Payment
+                  {t("payment.title")}
                 </DialogTitle>
                 <DialogDescription style={{ fontSize: 13, color: '#64748b', lineHeight: '18px', margin: '2px 0 0' }}>
                   {paymentOrder?.productName} ({paymentOrder?.client?.name || "Client"})
@@ -2289,7 +2295,7 @@ function OrdersContent() {
             <form id="payment-form" onSubmit={handlePaymentSubmit} className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-[10px] font-medium tracking-[0.07em] text-[var(--muted-foreground)] uppercase block mb-1.5">
-                  Amount (\u20B9)
+                  {t("payment.amount")}
                 </label>
                 <NumericInput
                   value={paymentFormData.amount}
@@ -2304,7 +2310,7 @@ function OrdersContent() {
               </div>
               <div className="space-y-1.5">
                 <label className="text-[10px] font-medium tracking-[0.07em] text-[var(--muted-foreground)] uppercase block mb-1.5">
-                  Payment Mode
+                  {t("payment.mode")}
                 </label>
                 <Select
                   value={paymentFormData.payment_mode}
@@ -2317,23 +2323,23 @@ function OrdersContent() {
                   </SelectTrigger>
                   <SelectContent className="rounded-[12px]">
                     <SelectItem value="Cash" className="rounded-[8px]">
-                      Cash
+                      {t("payment.modes.cash")}
                     </SelectItem>
                     <SelectItem value="Bank Transfer" className="rounded-[8px]">
-                      Bank Transfer
+                      {t("payment.modes.bankTransfer")}
                     </SelectItem>
                     <SelectItem value="UPI" className="rounded-[8px]">
-                      UPI
+                      {t("payment.modes.upi")}
                     </SelectItem>
                     <SelectItem value="Cheque" className="rounded-[8px]">
-                      Cheque
+                      {t("payment.modes.cheque")}
                     </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
                 <label className="text-[10px] font-medium tracking-[0.07em] text-[var(--muted-foreground)] uppercase block mb-1.5">
-                  Payment Date
+                  {t("payment.date")}
                 </label>
                 <Input
                   type="date"
@@ -2350,7 +2356,7 @@ function OrdersContent() {
               </div>
               <div className="space-y-1.5">
                 <label className="text-[10px] font-medium tracking-[0.07em] text-[var(--muted-foreground)] uppercase block mb-1.5">
-                  Reference / UTR (Optional)
+                  {t("payment.ref")}
                 </label>
                 <Input
                   value={paymentFormData.transaction_ref}
@@ -2361,7 +2367,7 @@ function OrdersContent() {
                     })
                   }
                   className="h-[44px] rounded-[10px] bg-[var(--muted)] border-none"
-                  placeholder="e.g. UPI Ref #1234..."
+                  placeholder={t("payment.refPlaceholder")}
                 />
               </div>
               {/* Action buttons -- inline at end of form */}
@@ -2374,14 +2380,14 @@ function OrdersContent() {
                     onClick={() => closePaymentDialog()}
                     fullWidth
                   >
-                    Cancel
+                    {t("payment.cancel")}
                   </IOSButton>
                   <button
                     type="submit"
                     disabled={recordPayment.isPending}
                     className="flex-1 py-3.5 rounded-xl bg-[var(--erp-success)] text-white text-[13px] font-medium cursor-pointer border-none disabled:opacity-50"
                   >
-                    {recordPayment.isPending ? "Recording..." : "Save Payment"}
+                    {recordPayment.isPending ? t("payment.recording") : t("payment.save")}
                   </button>
                 </div>
               </div>
@@ -2390,7 +2396,7 @@ function OrdersContent() {
         </DialogContent>
       </Dialog>
 
- {/* COMPLETION CONFIRMATION MODAL */}
+      {/* COMPLETION CONFIRMATION MODAL */}
       <CompletionConfirmationModal
         open={isCompletionModalOpen}
         order={completionOrder}
@@ -2400,18 +2406,18 @@ function OrdersContent() {
         isLoading={isGeneratingInvoice}
       />
 
- {/* INVOICE PREVIEW MODAL */}
+      {/* INVOICE PREVIEW MODAL */}
       <InvoicePreviewModal
         open={isInvoicePreviewOpen}
         invoiceData={generatedInvoice}
         editData={invoiceEditData}
         onEditChange={setInvoiceEditData}
         onClose={() => { setIsInvoicePreviewOpen(false); setGeneratedInvoice(null); }}
-        onDownloadPDF={() => {}}
-        onSendWhatsApp={() => {}}
+        onDownloadPDF={() => { }}
+        onSendWhatsApp={() => { }}
       />
 
- {/* GENERATING INVOICE OVERLAY */}
+      {/* GENERATING INVOICE OVERLAY */}
       <AnimatePresence>
         {isGeneratingInvoice && (
           <motion.div
@@ -2428,7 +2434,7 @@ function OrdersContent() {
           >
             <Loader2 size={32} style={{ color: "#10b981", animation: "spin 1s linear infinite" }} />
             <p style={{ color: "#e2e8f0", fontSize: 15, fontWeight: 600, fontFamily: "-apple-system, 'SF Pro Display', sans-serif" }}>
-              Generating invoice...
+              {t("completion.generatingInvoice")}
             </p>
           </motion.div>
         )}
@@ -2470,7 +2476,7 @@ export default function OrdersPage() {
               <div className="h-[48px] w-full sm:w-[280px] rounded-[12px] bg-[var(--muted)] shimmer" />
               <div className="h-[40px] w-[120px] rounded-[10px] bg-[var(--muted)] shimmer" />
             </div>
- {/* Table Skeleton matches real admin order table */}
+            {/* Table Skeleton matches real admin order table */}
             <div className="hidden md:block rounded-[20px] border border-[var(--border)] overflow-hidden">
               <div className="h-[44px] bg-[var(--muted)]/30 border-b border-[var(--border)]" />
               <div className="divide-y divide-[var(--border)]">
@@ -2487,7 +2493,7 @@ export default function OrdersPage() {
                 ))}
               </div>
             </div>
- {/* Mobile Card Skeleton matches mobile card-based order list */}
+            {/* Mobile Card Skeleton matches mobile card-based order list */}
             <div className="md:hidden space-y-3">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="rounded-[16px] border border-[var(--border)] p-4 space-y-3">

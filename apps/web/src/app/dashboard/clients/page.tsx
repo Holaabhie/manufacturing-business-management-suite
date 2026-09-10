@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
+import { useAppLocale } from "@/components/LocaleProvider";
 import {
   Plus,
   Search,
@@ -68,6 +70,9 @@ import { useCachedPage } from "@/hooks/useCachedPage";
 import { ConfirmDeleteSheet } from "@/components/ui/ConfirmDeleteSheet";
 
 export default function ClientsPage() {
+  const t = useTranslations("clients");
+  const { locale } = useAppLocale();
+  const dateLocale = locale === "hi" ? "hi-IN" : locale === "gu" ? "gu-IN" : locale === "mr" ? "mr-IN" : "en-IN";
   const { isAdmin, isPro } = useRole();
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -133,7 +138,7 @@ export default function ClientsPage() {
   };
 
   const exportToPDF = () => {
-    const headers = ["Name", "Company", "Email", "Phone", "Address"];
+    const headers = [t("lblName"), t("lblCompany"), t("lblEmail"), t("lblPhone"), t("lblAddress")];
     const rows = clients.map(client => [
       client.name || "—",
       client.company || "—",
@@ -149,7 +154,7 @@ export default function ClientsPage() {
       rows,
       filename: `clients_${new Date().toISOString().split('T')[0]}.pdf`,
     });
-    toast.success("Clients report PDF downloaded!");
+    toast.success(t("toasts.pdfDownloaded"));
   };
 
     // Products, Materials and Orders for selected client
@@ -178,10 +183,10 @@ export default function ClientsPage() {
     try {
       const res = await fetch("/api/clients");
       const data = await res.json();
-      if (data.error) toast.error("Failed to fetch clients");
+      if (data.error) toast.error(t("toasts.fetchFailed"));
       else setClients(data || []);
     } catch (error) {
-      toast.error("Failed to fetch clients");
+      toast.error(t("toasts.fetchFailed"));
     } finally {
       if (showLoading) setLoading(false);
     }
@@ -204,7 +209,7 @@ export default function ClientsPage() {
       setClientOrders(filteredOrders);
       setExpandedProducts([]);
     } catch (error) {
-      toast.error("Failed to fetch client details");
+      toast.error(t("toasts.fetchDetailsFailed"));
     } finally {
       setLoadingDetails(false);
     }
@@ -219,7 +224,7 @@ export default function ClientsPage() {
       if (json.error) throw new Error(json.error.message);
       setProductMaterials(prev => ({ ...prev, [productId]: json.data || [] }));
     } catch (error) {
-      toast.error("Failed to fetch materials for product");
+      toast.error(t("toasts.fetchMaterialsFailed"));
     } finally {
       setLoadingMaterials(prev => ({ ...prev, [productId]: false }));
     }
@@ -259,16 +264,16 @@ export default function ClientsPage() {
       });
       const data = await res.json();
 
-      if (data.error) toast.error("Failed to create client");
+      if (data.error) toast.error(t("toasts.createFailed"));
       else {
-        toast.success("Client created");
+        toast.success(t("toasts.created"));
         fetchClients();
         setIsDialogOpen(false);
         setFormData({ name: "", company: "", email: "", phone: "", address: "", customerSince: new Date().toISOString().split("T")[0] });
         handleSelectClient(data);
       }
     } catch (error) {
-      toast.error("Failed to create client");
+      toast.error(t("toasts.createFailed"));
     }
   };
 
@@ -283,13 +288,13 @@ export default function ClientsPage() {
       });
       const data = await res.json();
 
-      if (data.error) toast.error("Failed to update client");
+      if (data.error) toast.error(t("toasts.updateFailed"));
       else {
-        toast.success("Client information updated");
+        toast.success(t("toasts.updated"));
         fetchClients();
       }
     } catch (error) {
-      toast.error("Failed to update client");
+      toast.error(t("toasts.updateFailed"));
     }
   };
 
@@ -300,14 +305,14 @@ export default function ClientsPage() {
       });
       const data = await res.json();
 
-      if (data.error) toast.error("Failed to delete client");
+      if (data.error) toast.error(t("toasts.deleteFailed"));
       else {
-        toast.success("Client deleted");
+        toast.success(t("toasts.deleted"));
         if (selectedClient?.id === id) setSelectedClient(null);
         fetchClients();
       }
     } catch (error) {
-      toast.error("Failed to delete client");
+      toast.error(t("toasts.deleteFailed"));
     } finally {
       setIsDeleteDialogOpenConfirm(false);
       setClientToDeleteId(null);
@@ -344,15 +349,16 @@ export default function ClientsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: productForm.name, defaultRate: Number(productForm.defaultRate) }),
       });
-      const data = await res.json();
-      if (data.error) toast.error("Failed to add product");
-      else {
-        toast.success("Product added");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) {
+        toast.error(data?.error?.message || data?.error || "Failed to add product");
+      } else {
+        toast.success(t("toasts.productAdded"));
         setProductForm({ name: "", defaultRate: "" });
         fetchClientDetails(selectedClient);
       }
     } catch (error) {
-      toast.error("Failed to add product");
+      toast.error(t("toasts.productAddFailed"));
     }
   };
 
@@ -362,14 +368,16 @@ export default function ClientsPage() {
       const res = await fetch(`/api/v1/clients/products/${productId}`, {
         method: "DELETE",
       });
-      const data = await res.json();
-      if (data.error) toast.error("Failed to delete product");
-      else {
-        toast.success("Product deleted");
+      if (res.ok || res.status === 404) {
+        toast.success(t("toasts.productDeleted"));
+        setClientProducts((prev) => prev.filter((p) => p.id !== productId));
         fetchClientDetails(selectedClient);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data?.error?.message || data?.error || "Failed to delete product");
       }
     } catch (error) {
-      toast.error("Failed to delete product");
+      toast.error(t("toasts.productDeleteFailed"));
     }
   };
 
@@ -382,15 +390,16 @@ export default function ClientsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: materialForm.name, type: materialForm.type, defaultQty: materialForm.defaultQty || null }),
       });
-      const data = await res.json();
-      if (data.error) toast.error("Failed to add material");
-      else {
-        toast.success("Material added");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) {
+        toast.error(data?.error?.message || data?.error || "Failed to add material");
+      } else {
+        toast.success(t("toasts.materialAdded"));
         setMaterialForm({ productId: "", name: "", type: "", defaultQty: "" });
         fetchMaterialsForProduct(productId);
       }
     } catch (error) {
-      toast.error("Failed to add material");
+      toast.error(t("toasts.materialAddFailed"));
     }
   };
 
@@ -400,14 +409,19 @@ export default function ClientsPage() {
       const res = await fetch(`/api/v1/clients/materials/${materialId}`, {
         method: "DELETE",
       });
-      const data = await res.json();
-      if (data.error) toast.error("Failed to delete material");
-      else {
-        toast.success("Material deleted");
+      if (res.ok || res.status === 404) {
+        toast.success(t("toasts.materialDeleted"));
+        setProductMaterials((prev) => ({
+          ...prev,
+          [productId]: (prev[productId] || []).filter((m) => m.id !== materialId),
+        }));
         fetchMaterialsForProduct(productId);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data?.error?.message || data?.error || "Failed to delete material");
       }
     } catch (error) {
-      toast.error("Failed to delete material");
+      toast.error(t("toasts.materialDeleteFailed"));
     }
   };
 
@@ -434,14 +448,11 @@ export default function ClientsPage() {
   );
 
   return (
-    <motion.div variants={staggerContainer} initial="initial" animate="animate" className="flex h-[calc(100vh-120px)] gap-6 overflow-hidden max-w-7xl mx-auto w-full">
-      {/* Sidebar List */}
-      <motion.div variants={staggerItem} className={cn(
-        "flex flex-col gap-4 min-w-0 transition-all duration-300",
-        "w-full md:max-w-sm lg:max-w-md"
-      )}>
+    <motion.div variants={staggerContainer} initial="initial" animate="animate" className="flex flex-col h-[calc(100vh-120px)] gap-4 overflow-hidden max-w-7xl mx-auto w-full min-w-0">
+      {/* Client List Grid */}
+      <motion.div variants={staggerItem} className="flex flex-col gap-4 min-w-0 w-full flex-1 overflow-hidden">
         <div className="flex justify-between items-center gap-2">
-          <h1 className="text-[28px] sm:text-[34px] font-bold tracking-tight text-[var(--foreground)]">Clients</h1>
+          <h1 className="text-[28px] sm:text-[34px] font-bold tracking-tight text-[var(--foreground)]">{t("title")}</h1>
           <div className="flex items-center gap-2">
             <IOSButton variant="gray" size="small" onClick={exportToPDF} className="hidden sm:flex">
               <Download className="h-4 w-4" />
@@ -450,7 +461,7 @@ export default function ClientsPage() {
               {isAdmin && (
                 <DialogTrigger asChild>
                   <IOSButton variant="filled" size="medium" icon={<Plus className="h-4 w-4" />}>
-                    New Client
+                    {t("btnNewClient")}
                   </IOSButton>
                 </DialogTrigger>
               )}
@@ -462,61 +473,61 @@ export default function ClientsPage() {
                         <User className="h-[18px] w-[18px] text-[var(--primary)]" />
                       </div>
                       <div>
-                        <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: 'var(--foreground)', lineHeight: '22px', margin: 0 }}>Add New Client</DialogTitle>
-                        <p style={{ fontSize: 13, color: 'var(--muted-foreground)', lineHeight: '18px', margin: '2px 0 0' }}>Create a new client profile</p>
+                        <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: 'var(--foreground)', lineHeight: '22px', margin: 0 }}>{t("addDialogTitle")}</DialogTitle>
+                        <p style={{ fontSize: 13, color: 'var(--muted-foreground)', lineHeight: '18px', margin: '2px 0 0' }}>{t("addDialogSubtitle")}</p>
                       </div>
                     </div>
                     <form onSubmit={handleAddClient} className="space-y-4 pt-4">
                       <div className="space-y-2">
-                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">Client Name *</label>
+                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">{t("lblName")} *</label>
                         <IOSInput
                           id="name"
                           value={formData.name}
                           onChange={(e: any) => setFormData({ ...formData, name: e.target.value })}
-                          placeholder="e.g. Acme Corp"
+                          placeholder={t("placeholderName")}
                           required
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">Company</label>
+                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">{t("lblCompany")}</label>
                         <IOSInput
                           id="company"
                           value={formData.company}
                           onChange={(e: any) => setFormData({ ...formData, company: e.target.value })}
-                          placeholder="e.g. Acme Manufacturing Pvt Ltd"
+                          placeholder={t("placeholderCompany")}
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">Email</label>
+                          <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">{t("lblEmail")}</label>
                           <IOSInput
                             id="email"
                             type="email"
                             value={formData.email}
                             onChange={(e: any) => setFormData({ ...formData, email: e.target.value })}
-                            placeholder="client@example.com"
+                            placeholder={t("placeholderEmail")}
                           />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">WhatsApp / Phone</label>
+                          <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">{t("lblPhone")}</label>
                           <IOSInput
                             id="phone"
                             value={formData.phone}
                             onChange={(e: any) => setFormData({ ...formData, phone: e.target.value })}
-                            placeholder="+91..."
+                            placeholder={t("placeholderPhone")}
                           />
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">Address</label>
+                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">{t("lblAddress")}</label>
                         <IOSInput
                           id="address"
                           value={formData.address}
                           onChange={(e: any) => setFormData({ ...formData, address: e.target.value })}
-                          placeholder="Full business address"
+                          placeholder={t("placeholderAddress")}
                         />
                       </div>
-                      <button type="submit" style={{ width: '100%', height: 48, borderRadius: 14, background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', border: '1px solid rgba(16,185,129,0.3)', boxShadow: '0 4px 16px rgba(16,185,129,0.25)', marginTop: 16 }}>Create Client Profile</button>
+                      <button type="submit" style={{ width: '100%', height: 48, borderRadius: 14, background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', border: '1px solid rgba(16,185,129,0.3)', boxShadow: '0 4px 16px rgba(16,185,129,0.25)', marginTop: 16 }}>{t("btnCreateProfile")}</button>
                     </form>
                   </div>
                 </ScrollArea>
@@ -526,83 +537,85 @@ export default function ClientsPage() {
         </div>
 
         <IOSSearchBar
-          placeholder="Search by name, company, or email..."
+          placeholder={t("searchPlaceholder")}
           value={searchTerm}
           onValueChange={setSearchTerm}
         />
 
-        <IOSCard variant="elevated" padding="none" className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto min-h-0 pr-0.5 scrollbar-hide">
           {loading ? (
-            <div className="p-4 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4 p-1">
               {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-20 w-full rounded-[12px]" />
+                <Skeleton key={i} className="h-28 w-full rounded-[16px]" />
               ))}
             </div>
           ) : filteredClients.length === 0 ? (
             searchTerm ? (
               <div className="flex flex-col items-center justify-center h-40 text-center p-4">
                 <User className="h-8 w-8 text-[var(--muted-foreground)] mb-2" />
-                <p className="text-[var(--muted-foreground)] text-[15px]">No clients found matching &quot;{searchTerm}&quot;</p>
+                <p className="text-[var(--muted-foreground)] text-[15px]">{t("noClientsMatch", { term: searchTerm })}</p>
               </div>
             ) : (
               <EmptyState
-                icon="??"
-                title="No clients yet"
-                description="Add your first client to start managing orders, products, and materials"
-                actionLabel="+ Add First Client"
+                icon="👥"
+                title={t("emptyTitle")}
+                description={t("emptyDesc")}
+                actionLabel={t("emptyBtn")}
                 onAction={handleAddNewClick}
               />
             )
           ) : (
-            <div className="divide-y divide-[var(--border)]">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4 p-1">
               {filteredClients.map((client) => (
                 <div
                   key={client.id}
                   onClick={() => handleSelectClient(client)}
                   className={cn(
-                    "group flex flex-col p-4 cursor-pointer transition-all duration-200",
-                    "hover:bg-[var(--muted)]",
-                    selectedClient?.id === client.id ? "bg-[var(--muted)] border-l-4 border-[var(--primary)]" : "border-l-4 border-transparent"
+                    "group flex flex-col justify-between p-4 cursor-pointer transition-all duration-200",
+                    "rounded-[16px] border border-[var(--border)] bg-[var(--card)] shadow-sm hover:shadow-md hover:border-[var(--primary)]/40 min-w-0 overflow-hidden",
+                    selectedClient?.id === client.id ? "bg-[var(--muted)] border-[var(--primary)] ring-1 ring-[var(--primary)]/50" : ""
                   )}
                 >
-                  <div className="flex justify-between items-start">
-                    <h3 className="font-bold text-[17px] leading-[22px] text-[var(--foreground)]">{client.name}</h3>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <button className="h-8 w-8 opacity-0 group-hover:opacity-100 rounded-full flex items-center justify-center hover:bg-[var(--muted)] transition-all cursor-pointer">
-                          <MoreVertical className="h-4 w-4 text-[var(--muted-foreground)]" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleSelectClient(client)}>
-                          <Edit2 className="mr-2 h-4 w-4" /> View Details
-                        </DropdownMenuItem>
-                        {isAdmin && (
-                          <DropdownMenuItem className="text-[var(--destructive)]" onClick={(e) => {
-                            e.stopPropagation();
-                            setClientToDeleteId(client.id);
-                            setIsDeleteDialogOpenConfirm(true);
-                          }}>
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                  <div>
+                    <div className="flex justify-between items-start gap-2">
+                      <h3 className="font-bold text-[17px] leading-[22px] text-[var(--foreground)] truncate min-w-0">{client.name}</h3>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <button className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100 rounded-full flex items-center justify-center hover:bg-[var(--muted)] transition-all cursor-pointer">
+                            <MoreVertical className="h-4 w-4 text-[var(--muted-foreground)]" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleSelectClient(client)}>
+                            <Edit2 className="mr-2 h-4 w-4" /> {t("btnViewDetails")}
                           </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                  {!!client.company && (
-                    <div className="mt-1 text-[12px] text-[var(--muted-foreground)] truncate">
-                      {client.company}
+                          {isAdmin && (
+                            <DropdownMenuItem className="text-[var(--destructive)]" onClick={(e) => {
+                              e.stopPropagation();
+                              setClientToDeleteId(client.id);
+                              setIsDeleteDialogOpenConfirm(true);
+                            }}>
+                              <Trash2 className="mr-2 h-4 w-4" /> {t("btnDelete")}
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                  )}
-                  <div className="flex items-center gap-4 mt-2 text-[var(--muted-foreground)] text-[13px]">
+                    {!!client.company && (
+                      <div className="mt-1 text-[12px] text-[var(--muted-foreground)] truncate">
+                        {client.company}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-4 mt-3 text-[var(--muted-foreground)] text-[13px] flex-wrap">
                     {client.phone && (
-                      <div className="flex items-center">
-                        <Phone className="mr-1 h-3 w-3" /> {client.phone}
+                      <div className="flex items-center min-w-0">
+                        <Phone className="mr-1 h-3 w-3 shrink-0" /> <span className="truncate">{client.phone}</span>
                       </div>
                     )}
                     {client.email && (
-                      <div className="flex items-center max-w-[150px] truncate">
-                        <Mail className="mr-1 h-3 w-3" /> {client.email}
+                      <div className="flex items-center min-w-0 truncate">
+                        <Mail className="mr-1 h-3 w-3 shrink-0" /> <span className="truncate">{client.email}</span>
                       </div>
                     )}
                   </div>
@@ -610,13 +623,13 @@ export default function ClientsPage() {
               ))}
             </div>
           )}
-        </IOSCard>
+        </div>
       </motion.div>
 
       {/* Client profile modal (name, company, profile, orders, sum) */}
       <Dialog open={!!selectedClient} onOpenChange={(open) => { if (!open) setSelectedClient(null); }}>
         <DialogContent fullScreenMobile className="max-w-[900px] w-full p-0 overflow-hidden rounded-2xl" aria-describedby={undefined}>
-          <DialogTitle className="sr-only">Client Profile</DialogTitle>
+          <DialogTitle className="sr-only">{t("profileDialogTitle")}</DialogTitle>
           {selectedClient && (
             <div
               className="flex flex-col overflow-hidden bg-[var(--background)] border border-[var(--border)] shadow-lg"
@@ -627,7 +640,7 @@ export default function ClientsPage() {
                   <X className="h-4 w-4" />
                 </button>
                 <h2 className="text-[17px] font-bold text-[var(--foreground)] tracking-tight">
-                  {selectedClient?.name ? `Client: ${selectedClient.name}` : "Client Profile"}
+                  {selectedClient?.name ? t("clientHeader", { name: selectedClient.name }) : t("profileDialogTitle")}
                 </h2>
                 {isAdmin ? (
                   <button onClick={handleUpdateClient} className="w-[38px] h-[38px] rounded-xl bg-[var(--muted)] border border-[var(--border)] flex items-center justify-center cursor-pointer text-[var(--muted-foreground)] hover:bg-[var(--accent)]/10 transition-colors">
@@ -651,7 +664,7 @@ export default function ClientsPage() {
                         // Reset file input so re-selecting the same file fires onChange
                         e.target.value = '';
                         if (file.size > 500 * 1024) {
-                          toast.error('Avatar must be smaller than 500KB');
+                          toast.error(t("toasts.avatarSize"));
                           return;
                         }
                         setAvatarUploading(true);
@@ -668,7 +681,7 @@ export default function ClientsPage() {
                               body: JSON.stringify({ ...editData, avatarUrl: base64String }),
                             });
                             if (!res.ok) throw new Error('Failed to save avatar');
-                            toast.success('Avatar saved!');
+                            toast.success(t("toasts.avatarSaved"));
                           } catch (err: any) {
                             // Revert on failure
                             setSelectedClient((prev: any) => prev ? { ...prev, avatarUrl: prevAvatar } : prev);
@@ -734,7 +747,7 @@ export default function ClientsPage() {
                     </div>
                     <p className="text-[13px] text-[var(--muted-foreground)] mt-1.5 flex items-center gap-1.5">
                       <History className="h-3.5 w-3.5 opacity-60" />
-                      Customer since {new Date(selectedClient.createdAt || selectedClient.created_at || Date.now()).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
+                      {t("customerSince", { date: new Date(selectedClient.createdAt || selectedClient.created_at || Date.now()).toLocaleDateString(dateLocale, { month: 'short', year: 'numeric' }) })}
                     </p>
                   </div>
                 </div>
@@ -744,14 +757,14 @@ export default function ClientsPage() {
                   <div className="bg-[var(--muted)]/50 border border-[var(--border)] rounded-2xl p-3.5">
                     <div className="flex items-center gap-2">
                       <ShoppingCart className="h-4 w-4 text-emerald-400" />
-                      <span className="text-[11px] font-extrabold text-emerald-400 uppercase tracking-wide">Orders</span>
+                      <span className="text-[11px] font-extrabold text-emerald-400 uppercase tracking-wide">{t("tabOrders")}</span>
                     </div>
                     <div className="mt-2 text-[22px] font-black text-[var(--foreground)]">{clientOrders.length}</div>
                   </div>
                   <div className="bg-[var(--muted)]/50 border border-[var(--border)] rounded-2xl p-3.5">
                     <div className="flex items-center gap-2">
                       <IndianRupee className="h-4 w-4 text-blue-400" />
-                      <span className="text-[11px] font-extrabold text-blue-400 uppercase tracking-wide">Total sum</span>
+                      <span className="text-[11px] font-extrabold text-blue-400 uppercase tracking-wide">{t("totalSum")}</span>
                     </div>
                     <div className="mt-2 text-[22px] font-black text-[var(--foreground)]">₹{selectedOrdersTotal.toLocaleString('en-IN')}</div>
                   </div>
@@ -760,9 +773,9 @@ export default function ClientsPage() {
                 {/* -- Segmented Tabs -- */}
                 <Tabs defaultValue="profile" className="flex flex-col">
             <TabsList className="bg-[var(--muted)] border border-[var(--border)] rounded-[14px] p-[3px] flex gap-0.5 w-full">
-              <TabsTrigger value="profile" className="flex-1 rounded-[11px] text-[13px] font-semibold py-2 transition-all data-[state=active]:!bg-[#007AFF] data-[state=active]:!text-white data-[state=active]:!shadow-[0_2px_12px_rgba(0,122,255,0.35)] text-[var(--muted-foreground)]">Profile</TabsTrigger>
-              <TabsTrigger value="materials" className="flex-1 rounded-[11px] text-[13px] font-semibold py-2 transition-all data-[state=active]:!bg-[#007AFF] data-[state=active]:!text-white data-[state=active]:!shadow-[0_2px_12px_rgba(0,122,255,0.35)] text-[var(--muted-foreground)]">Materials</TabsTrigger>
-              <TabsTrigger value="orders" className="flex-1 rounded-[11px] text-[13px] font-semibold py-2 transition-all data-[state=active]:!bg-[#007AFF] data-[state=active]:!text-white data-[state=active]:!shadow-[0_2px_12px_rgba(0,122,255,0.35)] text-[var(--muted-foreground)]">Orders</TabsTrigger>
+              <TabsTrigger value="profile" className="flex-1 rounded-[11px] text-[13px] font-semibold py-2 transition-all data-[state=active]:!bg-[#007AFF] data-[state=active]:!text-white data-[state=active]:!shadow-[0_2px_12px_rgba(0,122,255,0.35)] text-[var(--muted-foreground)]">{t("tabProfile")}</TabsTrigger>
+              <TabsTrigger value="materials" className="flex-1 rounded-[11px] text-[13px] font-semibold py-2 transition-all data-[state=active]:!bg-[#007AFF] data-[state=active]:!text-white data-[state=active]:!shadow-[0_2px_12px_rgba(0,122,255,0.35)] text-[var(--muted-foreground)]">{t("tabMaterials")}</TabsTrigger>
+              <TabsTrigger value="orders" className="flex-1 rounded-[11px] text-[13px] font-semibold py-2 transition-all data-[state=active]:!bg-[#007AFF] data-[state=active]:!text-white data-[state=active]:!shadow-[0_2px_12px_rgba(0,122,255,0.35)] text-[var(--muted-foreground)]">{t("tabOrders")}</TabsTrigger>
             </TabsList>
 
             {/* --- PROFILE TAB --- */}
@@ -775,21 +788,21 @@ export default function ClientsPage() {
                   <div className="w-7 h-7 rounded-lg bg-[var(--primary)]/10 flex items-center justify-center">
                     <User className="h-3.5 w-3.5 text-[var(--primary)]" />
                   </div>
-                  <span className="text-[16px] font-bold text-[var(--foreground)]">Contact Information</span>
+                  <span className="text-[16px] font-bold text-[var(--foreground)]">{t("secContactInfo")}</span>
                 </div>
                 <div className="p-4">
                   <fieldset disabled={!isAdmin} style={{ border: 'none', padding: 0, margin: 0 }}>
                     <div className="grid grid-cols-2 gap-3">
                       {/* Full Name */}
                       <div>
-                        <label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wide mb-1.5 block">Full Name</label>
+                        <label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wide mb-1.5 block">{t("lblFullName")}</label>
                         <div className="bg-[var(--muted)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-[14px] text-[var(--foreground)]">
                           <input value={editData.name} onChange={(e) => setEditData({ ...editData, name: e.target.value })} className="bg-transparent border-none outline-none text-inherit text-[inherit] w-full" />
                         </div>
                       </div>
                       {/* Company */}
                       <div>
-                        <label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wide mb-1.5 block">Company</label>
+                        <label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wide mb-1.5 block">{t("lblCompany")}</label>
                         <div className="bg-[var(--muted)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-[14px] text-[var(--foreground)]">
                           <input value={editData.company} onChange={(e) => setEditData({ ...editData, company: e.target.value })} className="bg-transparent border-none outline-none text-inherit text-[inherit] w-full" />
                         </div>
@@ -799,7 +812,7 @@ export default function ClientsPage() {
                     <div className="grid grid-cols-2 gap-3 mt-3">
                       {/* Email */}
                       <div>
-                        <label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wide mb-1.5 block">Email Address</label>
+                        <label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wide mb-1.5 block">{t("lblEmailAddress")}</label>
                         <div className="bg-[var(--muted)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-[14px] text-[var(--foreground)] flex items-center gap-2">
                           <Mail className="h-4 w-4 text-[var(--muted-foreground)] shrink-0" />
                           <input value={editData.email} onChange={(e) => setEditData({ ...editData, email: e.target.value })} className="bg-transparent border-none outline-none text-inherit text-[inherit] w-full min-w-0" />
@@ -807,7 +820,7 @@ export default function ClientsPage() {
                       </div>
                       {/* Phone */}
                       <div>
-                        <label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wide mb-1.5 block">Phone Number</label>
+                        <label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wide mb-1.5 block">{t("lblPhoneNumber")}</label>
                         <div className="bg-[var(--muted)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-[14px] text-[var(--foreground)] flex items-center gap-2">
                           <Phone className="h-4 w-4 text-[var(--muted-foreground)] shrink-0" />
                           <input value={editData.phone} onChange={(e) => setEditData({ ...editData, phone: e.target.value })} className="bg-transparent border-none outline-none text-inherit text-[inherit] w-full" />
@@ -821,7 +834,7 @@ export default function ClientsPage() {
               {/* Billing Address Card */}
               <div className="bg-[var(--card)] border border-[var(--border)] rounded-[18px] overflow-hidden">
                 <div className="px-4 py-3.5 border-b border-[var(--border)]">
-                  <span className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wide">Billing Address</span>
+                  <span className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wide">{t("lblBillingAddress")}</span>
                 </div>
                 <div className="p-4">
                   <div className="bg-[var(--muted)] border border-[var(--border)] rounded-xl px-3.5 py-3 flex items-start gap-2.5">
@@ -839,7 +852,7 @@ export default function ClientsPage() {
 
               {isAdmin && (
                 <button onClick={handleUpdateClient} style={{ width: '100%', height: 48, borderRadius: 14, background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', border: '1px solid rgba(16,185,129,0.3)', boxShadow: '0 4px 16px rgba(16,185,129,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                  <Save className="h-4 w-4" /> Save Changes
+                  <Save className="h-4 w-4" /> {t("btnSaveChanges")}
                 </button>
               )}
 
@@ -849,12 +862,12 @@ export default function ClientsPage() {
                 <div className="bg-emerald-500/[0.08] dark:bg-emerald-500/[0.12] border border-emerald-500/15 rounded-[18px] px-4 py-[18px]">
                   <div className="flex items-center gap-2 mb-3">
                     <ShoppingCart className="h-4 w-4 text-emerald-400" />
-                    <span className="text-[11px] font-bold text-emerald-300 dark:text-emerald-300 uppercase tracking-wide">Total Orders</span>
+                    <span className="text-[11px] font-bold text-emerald-300 dark:text-emerald-300 uppercase tracking-wide">{t("cardTotalOrders")}</span>
                   </div>
                   <p className="text-[32px] font-extrabold text-emerald-400 tracking-tight leading-none">{clientOrders.length}</p>
                   {clientOrders.filter(o => { const d = new Date(o.createdAt); const now = new Date(); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).length > 0 && (
                     <span className="inline-block mt-2 text-[11px] font-semibold text-emerald-300 bg-emerald-500/15 px-2.5 py-0.5 rounded-full">
-                      +{clientOrders.filter(o => { const d = new Date(o.createdAt); const now = new Date(); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).length} this month
+                      +{t("thisMonth", { count: clientOrders.filter(o => { const d = new Date(o.createdAt); const now = new Date(); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).length })}
                     </span>
                   )}
                 </div>
@@ -863,14 +876,14 @@ export default function ClientsPage() {
                 <div className="bg-blue-500/[0.08] dark:bg-blue-500/[0.12] border border-blue-500/15 rounded-[18px] px-4 py-[18px]">
                   <div className="flex items-center gap-2 mb-3">
                     <IndianRupee className="h-4 w-4 text-blue-400" />
-                    <span className="text-[11px] font-bold text-blue-300 dark:text-blue-300 uppercase tracking-wide">Total Spent</span>
+                    <span className="text-[11px] font-bold text-blue-300 dark:text-blue-300 uppercase tracking-wide">{t("cardTotalSpent")}</span>
                   </div>
                   <p className="text-[32px] font-extrabold text-blue-400 tracking-tight leading-none">
                     ₹{(() => { const total = clientOrders.reduce((acc, o) => acc + (Number(o.totalAmount || o.total_amount) || 0), 0); return total >= 100000 ? (total / 100000).toFixed(1) + 'L' : total.toLocaleString('en-IN'); })()}
                   </p>
                   {(() => { const thisMonth = clientOrders.filter(o => { const d = new Date(o.createdAt); const now = new Date(); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).reduce((acc, o) => acc + (Number(o.totalAmount || o.total_amount) || 0), 0); return thisMonth > 0 ? (
                     <span className="inline-block mt-2 text-[11px] font-semibold text-blue-300 bg-blue-500/15 px-2.5 py-0.5 rounded-full">
-                      ₹{thisMonth >= 1000 ? (thisMonth / 1000).toFixed(0) + 'K' : thisMonth.toLocaleString('en-IN')} this month
+                      {t("thisMonthAmount", { amount: thisMonth >= 1000 ? (thisMonth / 1000).toFixed(0) + 'K' : thisMonth.toLocaleString('en-IN') })}
                     </span>
                   ) : null; })()}
                 </div>
@@ -880,20 +893,20 @@ export default function ClientsPage() {
               <TabsContent value="materials" className="m-0 space-y-6">
                 {isAdmin && (
                 <IOSCard variant="elevated" padding="none">
-                    <h3 className="text-[17px] font-semibold mb-4 border-b border-[var(--border)] pb-4 px-4 pt-4 text-[var(--foreground)]">Add Client Product</h3>
+                    <h3 className="text-[17px] font-semibold mb-4 border-b border-[var(--border)] pb-4 px-4 pt-4 text-[var(--foreground)]">{t("secAddProduct")}</h3>
                     <div className="p-4">
                       <form onSubmit={handleAddProduct} className="grid sm:grid-cols-3 gap-4 items-end">
                         <div className="space-y-2 sm:col-span-1">
-                          <label className="text-[13px] font-medium text-[var(--muted-foreground)] pl-1">Product Name</label>
+                          <label className="text-[13px] font-medium text-[var(--muted-foreground)] pl-1">{t("lblProductName")}</label>
                           <IOSInput
                             value={productForm.name}
                             onChange={(e: any) => setProductForm({ ...productForm, name: e.target.value })}
-                            placeholder="e.g. Premium Widget"
+                            placeholder={t("placeholderProduct")}
                             required
                           />
                         </div>
                         <div className="space-y-2 sm:col-span-1">
-                          <label className="text-[13px] font-medium text-[var(--muted-foreground)] pl-1">Default Rate (₹)</label>
+                          <label className="text-[13px] font-medium text-[var(--muted-foreground)] pl-1">{t("lblDefaultRate")}</label>
                           <IOSInput
                             type="number"
                             value={productForm.defaultRate}
@@ -906,7 +919,7 @@ export default function ClientsPage() {
                         </div>
                         <div className="sm:col-span-1">
                           <IOSButton type="submit" variant="filled" size="small" className="w-full h-[40px]" icon={<Plus className="h-4 w-4" />}>
-                            Add Product
+                            {t("btnAddProduct")}
                           </IOSButton>
                         </div>
                       </form>
@@ -920,7 +933,7 @@ export default function ClientsPage() {
                   ) : clientProducts.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-40 text-center p-4 glass-section rounded-[16px]">
                       <Package className="h-8 w-8 text-[var(--muted-foreground)] mx-auto mb-2 opacity-50" />
-                      <p className="text-[15px] text-[var(--muted-foreground)]">No products mapped for this client.</p>
+                      <p className="text-[15px] text-[var(--muted-foreground)]">{t("noProductsMapped")}</p>
                     </div>
                   ) : (
                     clientProducts.map((product) => (
@@ -928,7 +941,7 @@ export default function ClientsPage() {
                         <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-[var(--muted)] transition-colors" onClick={() => toggleProductExpand(product.id)}>
                           <div>
                             <h4 className="font-bold text-[16px] text-[var(--foreground)] select-none">{product.name}</h4>
-                            <p className="text-[13px] text-[var(--muted-foreground)] select-none">Rate: <span className="font-semibold text-[var(--foreground)]">₹{Number(product.defaultRate).toLocaleString()}</span></p>
+                            <p className="text-[13px] text-[var(--muted-foreground)] select-none">{t("rateLabel")} <span className="font-semibold text-[var(--foreground)]">₹{Number(product.defaultRate).toLocaleString()}</span></p>
                           </div>
                           <div className="flex items-center gap-3">
                             {isAdmin && (
@@ -947,14 +960,14 @@ export default function ClientsPage() {
                               {isAdmin && (
                                 <form onSubmit={(e) => handleAddMaterial(e, product.id)} className="flex items-end gap-3 glass-section p-3 rounded-[12px]">
                                   <div className="flex-1 space-y-1">
-                                    <label className="text-[11px] font-semibold text-[var(--muted-foreground)] uppercase">New Material Name / Ref</label>
-                                    <IOSInput value={materialForm.productId === product.id ? materialForm.name : ""} onChange={(e: any) => setMaterialForm({ productId: product.id, name: e.target.value, type: materialForm.type, defaultQty: materialForm.defaultQty })} placeholder="e.g. Aluminium Sheet" className="h-9 text-[13px]" required />
+                                    <label className="text-[11px] font-semibold text-[var(--muted-foreground)] uppercase">{t("lblNewMaterial")}</label>
+                                    <IOSInput value={materialForm.productId === product.id ? materialForm.name : ""} onChange={(e: any) => setMaterialForm({ productId: product.id, name: e.target.value, type: materialForm.type, defaultQty: materialForm.defaultQty })} placeholder={t("placeholderMaterial")} className="h-9 text-[13px]" required />
                                   </div>
                                   <div className="w-1/4 space-y-1">
-                                    <label className="text-[11px] font-semibold text-[var(--muted-foreground)] uppercase">Category</label>
-                                    <IOSInput value={materialForm.productId === product.id ? materialForm.type : ""} onChange={(e: any) => setMaterialForm({ ...materialForm, productId: product.id, type: e.target.value })} placeholder="Type" className="h-9 text-[13px]" />
+                                    <label className="text-[11px] font-semibold text-[var(--muted-foreground)] uppercase">{t("lblCategory")}</label>
+                                    <IOSInput value={materialForm.productId === product.id ? materialForm.type : ""} onChange={(e: any) => setMaterialForm({ ...materialForm, productId: product.id, type: e.target.value })} placeholder={t("placeholderCategory")} className="h-9 text-[13px]" />
                                   </div>
-                                  <IOSButton type="submit" variant="filled" size="small" className="h-9 px-4 whitespace-nowrap" icon={<Plus className="h-3 w-3" />}>Add</IOSButton>
+                                  <IOSButton type="submit" variant="filled" size="small" className="h-9 px-4 whitespace-nowrap" icon={<Plus className="h-3 w-3" />}>{t("btnAdd")}</IOSButton>
                                 </form>
                               )}
 
@@ -962,7 +975,7 @@ export default function ClientsPage() {
                                 {loadingMaterials[product.id] ? (
                                   <div className="py-4 text-center text-[var(--muted-foreground)]"><Loader2 className="h-4 w-4 animate-spin mx-auto" /></div>
                                 ) : !productMaterials[product.id] || productMaterials[product.id].length === 0 ? (
-                                  <div className="py-4 text-center text-[13px] text-[var(--muted-foreground)] italic">No specific materials added to this product.</div>
+                                  <div className="py-4 text-center text-[13px] text-[var(--muted-foreground)] italic">{t("noMaterialsForProduct")}</div>
                                 ) : (
                                   productMaterials[product.id].map((mat: any) => (
                                     <div key={mat.id} className="flex justify-between items-center p-3 rounded-[10px] bg-[var(--card)] border border-[var(--border)] hover:border-white/20 transition-all">
@@ -990,9 +1003,9 @@ export default function ClientsPage() {
 
               <TabsContent value="orders" className="m-0 mt-5 space-y-4">
                 <div className="flex justify-between items-center px-1">
-                  <h3 className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wide">Historical Records</h3>
+                  <h3 className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wide">{t("historicalRecords")}</h3>
                   <div className="text-[12px] font-extrabold text-blue-400">
-                    Total: ₹{selectedOrdersTotal.toLocaleString('en-IN')}
+                    {t("totalOrdersAmount", { amount: selectedOrdersTotal.toLocaleString('en-IN') })}
                   </div>
                 </div>
                 {loadingDetails ? (
@@ -1000,7 +1013,7 @@ export default function ClientsPage() {
                 ) : clientOrders.length === 0 ? (
                   <div className="text-center py-12 px-5 rounded-2xl bg-[var(--muted)]/30 border border-[var(--border)]">
                     <Package className="h-10 w-10 mx-auto mb-3 text-[var(--muted-foreground)] opacity-50" />
-                    <p className="text-[15px] text-[var(--muted-foreground)]">No previous orders found for this client.</p>
+                    <p className="text-[15px] text-[var(--muted-foreground)]">{t("noOrdersFound")}</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -1015,7 +1028,7 @@ export default function ClientsPage() {
                           </div>
                           <div>
                             <p className="font-bold text-[var(--foreground)] text-[15px]">{order.productName || order.product_name || 'Unnamed Order'}</p>
-                            <p className="text-[12px] text-[var(--muted-foreground)] mt-0.5">{order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}</p>
+                            <p className="text-[12px] text-[var(--muted-foreground)] mt-0.5">{order.createdAt ? new Date(order.createdAt).toLocaleDateString(dateLocale, { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}</p>
                           </div>
                         </div>
                         <div className="text-right flex flex-col items-end gap-1">
@@ -1044,13 +1057,15 @@ export default function ClientsPage() {
             await handleDeleteClient(clientToDeleteId);
           }
         }}
-        entityLabel="client"
+        entityLabel={t("deleteEntityLabel")}
         entityName={
           clients.find((c) => c.id === clientToDeleteId)?.name ||
           clients.find((c) => c.id === clientToDeleteId)?.companyName ||
           clients.find((c) => c.id === clientToDeleteId)?.contactPerson
         }
-        consequenceText="will be permanently removed along with their contact & order history. This cannot be undone."
+        consequenceText={t("deleteConsequence")}
+        confirmText={t("deleteConfirm")}
+        cancelText={t("deleteCancel")}
       />
     </motion.div>
   );

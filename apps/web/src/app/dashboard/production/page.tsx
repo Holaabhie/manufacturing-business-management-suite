@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useRef, useMemo } from "react";
+import { useTranslations } from "next-intl";
+import { useAppLocale } from "@/components/LocaleProvider";
 import { useCachedPage } from "@/hooks/useCachedPage";
 import { useRouter } from "next/navigation";
 import { usePaginatedSearch } from "@/hooks/usePaginatedSearch";
@@ -53,21 +55,26 @@ import { CollapsingTitle } from "@/components/ui/CollapsingTitle";
 import { useCollapseProgress } from "@/hooks/useCollapseProgress";
 import { ConfirmDeleteSheet } from "@/components/ui/ConfirmDeleteSheet";
 
-// ─── Status Config ───────────────────────────────────────
-const statusConfig: Record<
-    ProductionStatus,
-    { label: string; color: "orange" | "blue" | "red" | "green"; icon: any }
-> = {
-    pending: { label: "Pending", color: "orange", icon: Clock },
-    running: { label: "Running", color: "blue", icon: Play },
-    paused: { label: "Paused", color: "red", icon: Pause },
-    completed: { label: "Completed", color: "green", icon: CheckCircle2 },
-};
+// Status Config dynamically created inside component with translations
 
 // ─── Production Page ─────────────────────────────────────
 export default function ProductionPage() {
+    const t = useTranslations("production.floor");
+    const tStatus = useTranslations("production.statuses");
+    const tToast = useTranslations("production.toasts");
+    const { locale } = useAppLocale();
     const { progress: collapseProgress } = useCollapseProgress();
     const router = useRouter();
+
+    const statusConfig: Record<
+        ProductionStatus,
+        { label: string; color: "orange" | "blue" | "red" | "green"; icon: any }
+    > = {
+        pending: { label: tStatus("pending"), color: "orange", icon: Clock },
+        running: { label: tStatus("running"), color: "blue", icon: Play },
+        paused: { label: tStatus("paused"), color: "red", icon: Pause },
+        completed: { label: tStatus("completed"), color: "green", icon: CheckCircle2 },
+    };
     const { isAdmin, isStaff, loading: roleLoading } = useRole();
     const [productions, setProductions] = useState<Production[]>([]);
     const [loading, setLoading] = useState(true);
@@ -93,7 +100,7 @@ export default function ProductionPage() {
             if (json.error) throw new Error(json.error.message);
             setProductions(json.data || []);
         } catch {
-            toast.error("Failed to fetch productions");
+            toast.error(tToast("fetchFailed"));
         } finally {
             setLoading(false);
         }
@@ -117,15 +124,15 @@ export default function ProductionPage() {
 
             // v1 envelope returns 204 No Content on success (no body)
             if (res.status === 204 || res.ok) {
-                toast.success("Production closed");
+                toast.success(tToast("productionClosed"));
                 setProductions((prev) => prev.filter((p) => p.id !== id));
             } else {
                 // Parse error body only for non-success
                 const json = await res.json().catch(() => null);
-                toast.error(json?.error?.message || "Delete failed");
+                toast.error(json?.error?.message || tToast("deleteFailed"));
             }
         } catch {
-            toast.error("Delete failed");
+            toast.error(tToast("deleteFailed"));
         } finally {
             setDeleteDialogOpen(false);
             setProductionToDelete(null);
@@ -247,30 +254,30 @@ export default function ProductionPage() {
 
     const kpiCards = [
         {
-            label: "Active Runs",
+            label: t("kpiActiveRuns"),
             value: String(stats.running),
-            subtitle: `${stats.paused} paused`,
+            subtitle: t("kpiActiveRunsSub", { count: stats.paused }),
             icon: Activity,
             colorClass: "blue" as const,
         },
         {
-            label: "Pending",
+            label: t("kpiPending"),
             value: String(stats.pending),
-            subtitle: "Awaiting start",
+            subtitle: t("kpiPendingSub"),
             icon: Clock,
             colorClass: "orange" as const,
         },
         {
-            label: "Completed",
+            label: t("kpiCompleted"),
             value: String(stats.completed),
-            subtitle: "All time",
+            subtitle: t("kpiCompletedSub"),
             icon: CheckCircle2,
             colorClass: "green" as const,
         },
         {
-            label: "Avg. Efficiency",
+            label: t("kpiAvgEfficiency"),
             value: `${stats.avgEfficiency}%`,
-            subtitle: "Across batches",
+            subtitle: t("kpiAvgEfficiencySub"),
             icon: TrendingUp,
             colorClass: "purple" as const,
         },
@@ -298,12 +305,12 @@ export default function ProductionPage() {
     };
 
     return (
-        <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-4 md:space-y-6">
+        <motion.div variants={staggerContainer} initial="initial" animate="animate" className="w-full min-w-0 overflow-x-hidden space-y-4 md:space-y-6">
             {/* ── Header ── */}
             <motion.div variants={staggerItem}>
                 <CollapsingTitle
-                    title="Production Floor"
-                    subtitle={`${stats.running} active runs · ${stats.pending} pending · ${stats.completed} completed`}
+                    title={t("title")}
+                    subtitle={t("subtitle", { running: stats.running, pending: stats.pending, completed: stats.completed })}
                     subtitleLoading={loading}
                     collapseProgress={collapseProgress}
                 />
@@ -337,7 +344,7 @@ export default function ProductionPage() {
                                 type="text"
                                 value={searchQuery}
                                 onChange={(e) => handleSearch(e.target.value)}
-                                placeholder="Search by product, batch, client..."
+                                placeholder={t("searchPlaceholder")}
                                 id="production-search"
                                 className={cn(
                                     "w-full h-10 pl-10 pr-10 rounded-[12px] text-[14px] transition-all duration-200",
@@ -361,7 +368,7 @@ export default function ProductionPage() {
                                     type="button"
                                     onClick={() => handleSearch("")}
                                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-muted-foreground transition-colors duration-150 cursor-pointer"
-                                    aria-label="Clear search"
+                                    aria-label={t("clearSearch")}
                                 >
                                     <X size={14} />
                                 </button>
@@ -377,8 +384,8 @@ export default function ProductionPage() {
                                 id="create-production-toolbar-btn"
                             >
                                 <Plus size={15} />
-                                <span className="hidden sm:inline">Create Production</span>
-                                <span className="sm:hidden">Create</span>
+                                <span className="hidden sm:inline">{t("btnCreate")}</span>
+                                <span className="sm:hidden">{t("btnCreateShort")}</span>
                             </button>
                         </div>
                     </div>
@@ -389,11 +396,11 @@ export default function ProductionPage() {
                         <div className="flex flex-wrap items-center gap-1.5">
                             {/* Status Filter Pills */}
                             {([
-                                { key: "all", label: "All" },
-                                { key: "running", label: "Running" },
-                                { key: "pending", label: "Pending" },
-                                { key: "paused", label: "Paused" },
-                                { key: "completed", label: "Completed" },
+                                { key: "all", label: t("filterAll") },
+                                { key: "running", label: tStatus("running") },
+                                { key: "pending", label: tStatus("pending") },
+                                { key: "paused", label: tStatus("paused") },
+                                { key: "completed", label: tStatus("completed") },
                             ] as { key: string; label: string }[]).map((item) => (
                                 <button
                                     key={item.key}
@@ -444,10 +451,10 @@ export default function ProductionPage() {
                                 )}
                                 id="production-date-filter"
                             >
-                                <option value="">All Time</option>
-                                <option value="today">Today</option>
-                                <option value="week">This Week</option>
-                                <option value="month">This Month</option>
+                                <option value="">{t("dateAllTime")}</option>
+                                <option value="today">{t("dateToday")}</option>
+                                <option value="week">{t("dateWeek")}</option>
+                                <option value="month">{t("dateMonth")}</option>
                             </select>
 
                             {/* Clear — only when filters/search are active */}
@@ -469,7 +476,7 @@ export default function ProductionPage() {
                                         "bg-transparent hover:bg-[rgba(255,255,255,0.5)] dark:hover:bg-[rgba(255,255,255,0.06)]",
                                     )}
                                 >
-                                    Clear
+                                    {t("btnClear")}
                                 </button>
                             )}
                         </div>
@@ -477,8 +484,8 @@ export default function ProductionPage() {
                         {/* RIGHT — Result Count (passive metadata) */}
                         <p className="text-[12.5px] text-muted-foreground/70 font-medium whitespace-nowrap shrink-0 sm:text-right tabular-nums">
                             {statusFilter !== "all" || dateFilter
-                                ? `Showing ${totalFiltered} of ${productions.length} productions`
-                                : `${totalFiltered} of ${productions.length} productions`
+                                ? t("showingCount", { filtered: totalFiltered, total: productions.length })
+                                : t("showingTotal", { filtered: totalFiltered, total: productions.length })
                             }
                         </p>
                     </div>
@@ -510,7 +517,7 @@ export default function ProductionPage() {
                 <IOSCard variant="elevated" padding="none" className="md:overflow-hidden">
                     {/* Header Row */}
                     <div className="hidden md:grid grid-cols-[1fr_120px_1fr_160px_120px_60px] gap-4 px-5 py-3 border-b border-border bg-muted/50 sticky top-0 z-10 backdrop-blur-sm">
-                        {["Production", "Status", "Progress", "Machine / Operator", "Order", ""].map((h) => (
+                        {[t("thProduction"), t("thStatus"), t("thProgress"), t("thMachineOperator"), t("thOrder"), ""].map((h) => (
                             <span key={h} className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">{h}</span>
                         ))}
                     </div>
@@ -547,12 +554,12 @@ export default function ProductionPage() {
                     ) : filtered.length === 0 ? (
                         <TableEmptyState
                             variant={searchQuery ? "no-results" : "no-data"}
-                            title={searchQuery ? "No productions match your search" : "No productions found"}
+                            title={searchQuery ? t("emptySearchTitle") : t("emptyTitle")}
                             subtitle={searchQuery || statusFilter !== "all" || dateFilter
-                                ? "Try adjusting your filters to find what you're looking for."
-                                : "Create your first production to start tracking runs."}
+                                ? t("emptySearchSubtitle")
+                                : t("emptySubtitle")}
                             action={!searchQuery && statusFilter === "all" && !dateFilter ? {
-                                label: "Create First Production",
+                                label: t("emptyAction"),
                                 onClick: () => router.push("/dashboard/production/create"),
                             } : undefined}
                         />
@@ -616,7 +623,7 @@ export default function ProductionPage() {
                                                 <div className="flex items-center gap-1">
                                                     <AlertTriangle className="h-2.5 w-2.5 text-destructive" />
                                                     <span className="text-[11px] font-semibold text-destructive">
-                                                        {production.rejectQuantity} rejected
+                                                        {t("rejectedCount", { count: production.rejectQuantity })}
                                                     </span>
                                                 </div>
                                             )}
@@ -628,7 +635,7 @@ export default function ProductionPage() {
                                                 {production.machineName || "—"}
                                             </span>
                                             <span className="text-[11px] text-muted-foreground truncate">
-                                                {production.operatorName || "Unassigned"}
+                                                {production.operatorName || t("unassigned")}
                                             </span>
                                         </div>
 
@@ -657,7 +664,7 @@ export default function ProductionPage() {
                                                         className="rounded-md"
                                                         onClick={() => router.push(`/dashboard/production/${production.id}`)}
                                                     >
-                                                        <Eye className="mr-2 h-4 w-4" /> View Details
+                                                        <Eye className="mr-2 h-4 w-4" /> {t("actionViewDetails")}
                                                     </DropdownMenuItem>
                                                     {isAdmin && (
                                                         <DropdownMenuItem
@@ -667,7 +674,7 @@ export default function ProductionPage() {
                                                                 setDeleteDialogOpen(true);
                                                             }}
                                                         >
-                                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                            <Trash2 className="mr-2 h-4 w-4" /> {t("actionDelete")}
                                                         </DropdownMenuItem>
                                                     )}
                                                 </DropdownMenuContent>
@@ -700,12 +707,12 @@ export default function ProductionPage() {
                         await handleDelete(productionToDelete);
                     }
                 }}
-                entityLabel="production job"
+                entityLabel={t("deleteEntityLabel")}
                 entityName={
                     productions.find((p) => p.id === productionToDelete)?.batchNumber ||
                     productions.find((p) => p.id === productionToDelete)?.productName
                 }
-                consequenceText="will be permanently removed. This cannot be undone."
+                consequenceText={t("deleteConsequence")}
             />
         </motion.div>
     );

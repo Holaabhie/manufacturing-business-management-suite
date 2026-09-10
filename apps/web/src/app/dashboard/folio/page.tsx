@@ -7,25 +7,21 @@ import {
   Trash2,
   MoreVertical,
   Calendar,
-  DollarSign,
-  TrendingUp,
   Tag,
-  FileText,
   StickyNote,
   AlertCircle,
   RefreshCw,
-  X,
   Receipt,
   IndianRupee,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
-  DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
 import {
@@ -144,6 +140,7 @@ function NotesSkeleton() {
 
 // ─── Error State ────────────────────────────────────────
 function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void }) {
+  const tError = useTranslations("folio.error");
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -157,7 +154,7 @@ function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void 
       </div>
       <div className="text-center">
         <p className="text-[16px] font-semibold text-foreground mb-1">
-          Something went wrong
+          {tError("title")}
         </p>
         <p className="text-[13px] text-muted-foreground max-w-[300px]">
           {message}
@@ -168,7 +165,7 @@ function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void 
         className="flex items-center gap-2 px-4 py-2 rounded-md text-[13px] font-medium text-white bg-primary hover:bg-primary/90 cursor-pointer transition-colors active:scale-[0.98]"
       >
         <RefreshCw className="w-4 h-4" />
-        Retry
+        {tError("retry")}
       </button>
     </motion.div>
   );
@@ -178,6 +175,17 @@ function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void 
 // FOLIO PAGE
 // ═════════════════════════════════════════════════════════
 export default function FolioPage() {
+  const t = useTranslations("folio");
+  const tTabs = useTranslations("folio.tabs");
+  const tStats = useTranslations("folio.stats");
+  const tCategories = useTranslations("folio.categories");
+  const tExp = useTranslations("folio.expenses");
+  const tNotes = useTranslations("folio.notes");
+  const tExpModal = useTranslations("folio.expenseModal");
+  const tNoteModal = useTranslations("folio.noteModal");
+  const tError = useTranslations("folio.error");
+  const tToasts = useTranslations("folio.toasts");
+
   const [activeTab, setActiveTab] = useState<ActiveTab>("expenses");
 
   // ─── Expense State ──────────────────────────────────
@@ -211,15 +219,15 @@ export default function FolioPage() {
     setExpensesError(null);
     try {
       const res = await fetch("/api/expenses");
-      if (!res.ok) throw new Error("Failed to load expenses");
+      if (!res.ok) throw new Error(tError("loadExpensesFailed"));
       const data = await res.json();
       setExpenses(Array.isArray(data) ? data : []);
     } catch (err: any) {
-      setExpensesError(err.message || "Unknown error");
+      setExpensesError(err.message || tError("unknown"));
     } finally {
       setExpensesLoading(false);
     }
-  }, []);
+  }, [tError]);
 
   // ─── Fetch Notes ────────────────────────────────────
   const fetchNotes = useCallback(async () => {
@@ -227,15 +235,15 @@ export default function FolioPage() {
     setNotesError(null);
     try {
       const res = await fetch("/api/notes");
-      if (!res.ok) throw new Error("Failed to load notes");
+      if (!res.ok) throw new Error(tError("loadNotesFailed"));
       const data = await res.json();
       setNotes(Array.isArray(data) ? data : []);
     } catch (err: any) {
-      setNotesError(err.message || "Unknown error");
+      setNotesError(err.message || tError("unknown"));
     } finally {
       setNotesLoading(false);
     }
-  }, []);
+  }, [tError]);
 
   useEffect(() => {
     fetchExpenses();
@@ -283,9 +291,11 @@ export default function FolioPage() {
         });
       }
       setExpenseModalOpen(false);
+      toast.success(tToasts("expenseSaved"));
       fetchExpenses();
     } catch (err) {
       console.error("Failed to save expense:", err);
+      toast.error(tToasts("saveExpenseError"));
     } finally {
       setSavingExpense(false);
     }
@@ -295,9 +305,11 @@ export default function FolioPage() {
     setDeletingExpenseId(id);
     try {
       await fetch(`/api/expenses/${id}`, { method: "DELETE" });
+      toast.success(tToasts("expenseDeleted"));
       fetchExpenses();
     } catch (err) {
       console.error("Failed to delete expense:", err);
+      toast.error(tToasts("deleteExpenseError"));
     } finally {
       setDeletingExpenseId(null);
     }
@@ -334,9 +346,11 @@ export default function FolioPage() {
         });
       }
       setNoteModalOpen(false);
+      toast.success(tToasts("noteSaved"));
       fetchNotes();
     } catch (err) {
       console.error("Failed to save note:", err);
+      toast.error(tToasts("saveNoteError"));
     } finally {
       setSavingNote(false);
     }
@@ -346,9 +360,11 @@ export default function FolioPage() {
     setDeletingNoteId(id);
     try {
       await fetch(`/api/notes/${id}`, { method: "DELETE" });
+      toast.success(tToasts("noteDeleted"));
       fetchNotes();
     } catch (err) {
       console.error("Failed to delete note:", err);
+      toast.error(tToasts("deleteNoteError"));
     } finally {
       setDeletingNoteId(null);
     }
@@ -377,7 +393,7 @@ export default function FolioPage() {
   }, [expenses]);
 
   // ─── Helpers ────────────────────────────────────────
-  const formatCurrency = (v: number) => `\u20B9${v.toLocaleString("en-IN")}`;
+  const formatCurrency = (v: number) => `₹${v.toLocaleString("en-IN")}`;
   const formatDate = (d: string) => {
     try {
       return new Date(d).toLocaleDateString("en-IN", {
@@ -392,13 +408,20 @@ export default function FolioPage() {
   const formatTimeAgo = (d: string) => {
     const diff = Date.now() - new Date(d).getTime();
     const minutes = Math.floor(diff / 60000);
-    if (minutes < 1) return "Just now";
-    if (minutes < 60) return `${minutes}m ago`;
+    if (minutes < 1) return tNotes("timeJustNow");
+    if (minutes < 60) return tNotes("timeMinsAgo", { minutes });
     const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
+    if (hours < 24) return tNotes("timeHoursAgo", { hours });
     const days = Math.floor(hours / 24);
-    if (days < 30) return `${days}d ago`;
+    if (days < 30) return tNotes("timeDaysAgo", { days });
     return formatDate(d);
+  };
+
+  const getCategoryLabel = (category: string) => {
+    if (CATEGORIES.includes(category as any)) {
+      return tCategories(category as any);
+    }
+    return category;
   };
 
   // ═══════════════════════════════════════════════
@@ -409,15 +432,15 @@ export default function FolioPage() {
       variants={staggerContainer}
       initial="initial"
       animate="animate"
-      className="space-y-6"
+      className="w-full min-w-0 overflow-x-clip space-y-6 max-w-[1200px] mx-auto pb-28 sm:pb-8"
     >
       {/* ── Page Header ── */}
       <motion.div variants={staggerItem}>
         <h1 className="text-[24px] font-semibold text-foreground leading-tight">
-          Folio
+          {t("title")}
         </h1>
         <p className="text-[14px] text-muted-foreground mt-1">
-          Track expenses and capture quick notes.
+          {t("subtitle")}
         </p>
       </motion.div>
 
@@ -442,7 +465,6 @@ export default function FolioPage() {
                     ? "text-white bg-primary shadow-sm"
                     : "text-muted-foreground hover:text-foreground hover:bg-accent"
                 )}
-                style={undefined}
               >
                 <span className="flex items-center gap-2">
                   {tab === "expenses" ? (
@@ -450,7 +472,7 @@ export default function FolioPage() {
                   ) : (
                     <StickyNote className="w-4 h-4" />
                   )}
-                  {tab === "expenses" ? "Expenses" : "Notes"}
+                  {tab === "expenses" ? tTabs("expenses") : tTabs("notes")}
                 </span>
               </button>
             );
@@ -476,10 +498,10 @@ export default function FolioPage() {
             ) : (
               <div className="space-y-5">
                 {/* ── Summary Bar ── */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full min-w-0">
                   {[
                     {
-                      label: "Total Spent",
+                      label: tStats("totalSpent"),
                       value: formatCurrency(expenseStats.total),
                       icon: IndianRupee,
                       color: "#2563EB",
@@ -487,7 +509,7 @@ export default function FolioPage() {
                       glow: "rgba(37, 99, 235, 0.15)",
                     },
                     {
-                      label: "This Month",
+                      label: tStats("thisMonth"),
                       value: formatCurrency(expenseStats.thisMonth),
                       icon: Calendar,
                       color: "#16A34A",
@@ -495,8 +517,8 @@ export default function FolioPage() {
                       glow: "rgba(22, 163, 74, 0.15)",
                     },
                     {
-                      label: "Top Category",
-                      value: expenseStats.topCategory,
+                      label: tStats("topCategory"),
+                      value: expenseStats.topCategory === "—" ? "—" : getCategoryLabel(expenseStats.topCategory),
                       icon: Tag,
                       color: "#8B5CF6",
                       bg: "rgba(139, 92, 246, 0.10)",
@@ -508,7 +530,7 @@ export default function FolioPage() {
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.06, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                      className="relative overflow-hidden rounded-[14px] p-4"
+                      className="relative overflow-hidden rounded-[14px] p-4 min-w-0 w-full"
                       style={{
                         background: "var(--card)",
                         border: "1px solid var(--border)",
@@ -547,7 +569,7 @@ export default function FolioPage() {
                     className="flex items-center gap-2 px-4 py-2 rounded-md text-[13px] font-medium text-white bg-primary hover:bg-primary/90 cursor-pointer transition-colors active:scale-[0.97]"
                   >
                     <Plus className="w-4 h-4" />
-                    Add Expense
+                    {tExp("addBtn")}
                   </button>
                 </div>
 
@@ -560,10 +582,10 @@ export default function FolioPage() {
                   >
                     <EmptyExpensesIllustration />
                     <p className="text-[16px] font-semibold text-foreground">
-                      No expenses yet
+                      {tExp("emptyTitle")}
                     </p>
                     <p className="text-[13px] text-muted-foreground">
-                      Tap &ldquo;Add Expense&rdquo; to start tracking your spending.
+                      {tExp("emptyDesc")}
                     </p>
                   </motion.div>
                 ) : (
@@ -585,16 +607,19 @@ export default function FolioPage() {
                               borderBottom: "1px solid var(--border)",
                             }}
                           >
-                            {["Date", "Category", "Amount", "Description", ""].map(
-                              (h) => (
-                                <th
-                                  key={h}
-                                  className="text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
-                                >
-                                  {h}
-                                </th>
-                              )
-                            )}
+                            <th className="text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              {tExp("thDate")}
+                            </th>
+                            <th className="text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              {tExp("thCategory")}
+                            </th>
+                            <th className="text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              {tExp("thAmount")}
+                            </th>
+                            <th className="text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              {tExp("thDescription")}
+                            </th>
+                            <th className="text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground" />
                           </tr>
                         </thead>
                         <tbody>
@@ -627,7 +652,7 @@ export default function FolioPage() {
                                     background: CATEGORY_BG[exp.category] || "var(--muted)",
                                   }}
                                 >
-                                  {exp.category}
+                                  {getCategoryLabel(exp.category)}
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-[13px] font-semibold text-foreground tabular-nums">
@@ -641,7 +666,7 @@ export default function FolioPage() {
                                   <button
                                     onClick={() => openEditExpense(exp)}
                                     className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all cursor-pointer"
-                                    title="Edit"
+                                    title={tExp("edit")}
                                   >
                                     <Pencil className="w-4 h-4" />
                                   </button>
@@ -649,7 +674,7 @@ export default function FolioPage() {
                                     onClick={() => handleDeleteExpense(exp.id)}
                                     disabled={deletingExpenseId === exp.id}
                                     className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all cursor-pointer disabled:opacity-50"
-                                    title="Delete"
+                                    title={tExp("delete")}
                                   >
                                     <Trash2 className="w-4 h-4" />
                                   </button>
@@ -667,7 +692,7 @@ export default function FolioPage() {
                             }}
                           >
                             <td className="px-4 py-3 text-[13px] font-bold uppercase tracking-wider text-muted-foreground">
-                              Total
+                              {tExp("total")}
                             </td>
                             <td />
                             <td className="px-4 py-3 text-[14px] font-semibold text-primary tabular-nums">
@@ -711,7 +736,7 @@ export default function FolioPage() {
                                     CATEGORY_BG[exp.category] || "var(--muted)",
                                 }}
                               >
-                                {exp.category}
+                                {getCategoryLabel(exp.category)}
                               </span>
                             </div>
                             <p className="text-[13px] text-muted-foreground truncate">
@@ -732,13 +757,13 @@ export default function FolioPage() {
                                 onClick={() => openEditExpense(exp)}
                                 className="rounded-[8px] gap-2 cursor-pointer"
                               >
-                                <Pencil className="w-3.5 h-3.5" /> Edit
+                                <Pencil className="w-3.5 h-3.5" /> {tExp("edit")}
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => handleDeleteExpense(exp.id)}
                                 className="rounded-[8px] gap-2 cursor-pointer text-[var(--destructive)] focus:text-[var(--destructive)]"
                               >
-                                <Trash2 className="w-3.5 h-3.5" /> Delete
+                                <Trash2 className="w-3.5 h-3.5" /> {tExp("delete")}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -750,7 +775,7 @@ export default function FolioPage() {
                         style={{ background: "var(--muted)" }}
                       >
                         <span className="text-[13px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-                          Total
+                          {tExp("total")}
                         </span>
                         <span className="text-[15px] font-semibold text-primary tabular-nums">
                           {formatCurrency(expenseStats.total)}
@@ -783,10 +808,10 @@ export default function FolioPage() {
               >
                 <EmptyNotesIllustration />
                 <p className="text-[16px] font-semibold text-foreground">
-                  No notes yet
+                  {tNotes("emptyTitle")}
                 </p>
                 <p className="text-[13px] text-muted-foreground">
-                  Tap the + button to jot down something.
+                  {tNotes("emptyDesc")}
                 </p>
               </motion.div>
             ) : (
@@ -815,7 +840,7 @@ export default function FolioPage() {
                       <div className="p-4">
                         <div className="flex items-start justify-between gap-2 mb-2">
                           <h3 className="text-[15px] font-semibold text-[var(--foreground)] leading-tight line-clamp-2">
-                            {note.title || "Untitled"}
+                            {note.title || tNotes("untitled")}
                           </h3>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -828,13 +853,13 @@ export default function FolioPage() {
                                 onClick={() => openEditNote(note)}
                                 className="rounded-[8px] gap-2 cursor-pointer"
                               >
-                                <Pencil className="w-3.5 h-3.5" /> Edit
+                                <Pencil className="w-3.5 h-3.5" /> {tNotes("edit")}
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => handleDeleteNote(note.id)}
                                 className="rounded-[8px] gap-2 cursor-pointer text-[var(--destructive)] focus:text-[var(--destructive)]"
                               >
-                                <Trash2 className="w-3.5 h-3.5" /> Delete
+                                <Trash2 className="w-3.5 h-3.5" /> {tNotes("delete")}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -883,23 +908,23 @@ export default function FolioPage() {
 
       {/* ════════════ EXPENSE MODAL ════════════ */}
       <Dialog open={expenseModalOpen} onOpenChange={setExpenseModalOpen}>
-        <DialogContent fullScreenMobile className="sm:max-w-[480px] !rounded-3xl !p-6 gap-0 overflow-hidden border border-gray-100 dark:border-white/10 bg-white dark:bg-[#161B27] shadow-xl shadow-black/5 dark:shadow-black/40">
+        <DialogContent fullScreenMobile className="sm:max-w-[480px] !rounded-3xl !p-6 gap-0 overflow-hidden border border-[var(--border)] bg-[var(--card)] shadow-xl shadow-black/5 dark:shadow-black/40">
           {/* Header */}
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-11 h-11 rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-              <Receipt className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <div className="w-11 h-11 rounded-2xl bg-[rgba(37,99,235,0.1)] flex items-center justify-center flex-shrink-0">
+              <Receipt className="w-5 h-5 text-[var(--primary)]" />
             </div>
             <div>
-              <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-white">{editingExpense ? "Edit Expense" : "Add Expense"}</DialogTitle>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Track business spending</p>
+              <DialogTitle className="text-lg font-semibold text-[var(--foreground)]">{editingExpense ? tExpModal("editTitle") : tExpModal("addTitle")}</DialogTitle>
+              <p className="text-sm text-[var(--muted-foreground)]">{tExpModal("subtitle")}</p>
             </div>
           </div>
 
           <div className="space-y-4">
             {/* Date */}
             <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                Date
+              <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide">
+                {tExpModal("lblDate")}
               </label>
               <input
                 type="date"
@@ -907,25 +932,25 @@ export default function FolioPage() {
                 onChange={(e) =>
                   setExpenseForm((p) => ({ ...p, date: e.target.value }))
                 }
-                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm transition-all"
+                className="w-full px-4 py-3 rounded-xl bg-[var(--muted)]/50 border border-[var(--border)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)] text-sm transition-all"
               />
             </div>
 
             {/* Category */}
             <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                Category
+              <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide">
+                {tExpModal("lblCategory")}
               </label>
               <select
                 value={expenseForm.category}
                 onChange={(e) =>
                   setExpenseForm((p) => ({ ...p, category: e.target.value }))
                 }
-                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm transition-all appearance-none cursor-pointer"
+                className="w-full px-4 py-3 rounded-xl bg-[var(--muted)]/50 border border-[var(--border)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)] text-sm transition-all appearance-none cursor-pointer"
               >
                 {CATEGORIES.map((c) => (
                   <option key={c} value={c}>
-                    {c}
+                    {getCategoryLabel(c)}
                   </option>
                 ))}
               </select>
@@ -933,8 +958,8 @@ export default function FolioPage() {
 
             {/* Amount */}
             <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                Amount (INR)
+              <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide">
+                {tExpModal("lblAmount")}
               </label>
               <input
                 type="number"
@@ -944,15 +969,15 @@ export default function FolioPage() {
                 onChange={(e) =>
                   setExpenseForm((p) => ({ ...p, amount: e.target.value }))
                 }
-                placeholder="0.00"
-                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm transition-all"
+                placeholder={tExpModal("placeholderAmount")}
+                className="w-full px-4 py-3 rounded-xl bg-[var(--muted)]/50 border border-[var(--border)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)] text-sm transition-all"
               />
             </div>
 
             {/* Description */}
             <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                Description
+              <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide">
+                {tExpModal("lblDescription")}
               </label>
               <input
                 type="text"
@@ -960,28 +985,28 @@ export default function FolioPage() {
                 onChange={(e) =>
                   setExpenseForm((p) => ({ ...p, description: e.target.value }))
                 }
-                placeholder="What was this for?"
-                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm transition-all"
+                placeholder={tExpModal("placeholderDescription")}
+                className="w-full px-4 py-3 rounded-xl bg-[var(--muted)]/50 border border-[var(--border)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)] text-sm transition-all"
               />
             </div>
 
             {/* Actions */}
             <div className="flex gap-3 pt-2">
               <DialogClose asChild>
-                <button className="flex-1 py-3 px-4 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 transition-all cursor-pointer">
-                  Cancel
+                <button className="flex-1 py-3 px-4 rounded-xl text-sm font-medium text-[var(--muted-foreground)] bg-[var(--muted)] hover:bg-[var(--accent)] transition-all cursor-pointer">
+                  {tExpModal("btnCancel")}
                 </button>
               </DialogClose>
               <button
                 onClick={handleSaveExpense}
                 disabled={savingExpense || !expenseForm.amount || Number(expenseForm.amount) <= 0}
-                className="flex-1 py-3 px-4 bg-[#2563EB] hover:bg-[#1D51C8] text-white font-semibold rounded-xl transition-all duration-150 shadow-sm shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.97] cursor-pointer text-sm"
+                className="flex-1 py-3 px-4 bg-[var(--primary)] hover:bg-[var(--primary)]/90 text-white font-semibold rounded-xl transition-all duration-150 shadow-sm shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.97] cursor-pointer text-sm"
               >
                 {savingExpense
-                  ? "Saving…"
+                  ? tExpModal("btnSaving")
                   : editingExpense
-                  ? "Save Changes"
-                  : "Add Expense"}
+                  ? tExpModal("btnSave")
+                  : tExpModal("btnAdd")}
               </button>
             </div>
           </div>
@@ -990,23 +1015,23 @@ export default function FolioPage() {
 
       {/* ════════════ NOTE MODAL ════════════ */}
       <Dialog open={noteModalOpen} onOpenChange={setNoteModalOpen}>
-        <DialogContent fullScreenMobile className="sm:max-w-[520px] !rounded-3xl !p-6 gap-0 overflow-hidden border border-gray-100 dark:border-white/10 bg-white dark:bg-[#161B27] shadow-xl shadow-black/5 dark:shadow-black/40">
+        <DialogContent fullScreenMobile className="sm:max-w-[520px] !rounded-3xl !p-6 gap-0 overflow-hidden border border-[var(--border)] bg-[var(--card)] shadow-xl shadow-black/5 dark:shadow-black/40">
           {/* Header */}
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-11 h-11 rounded-2xl bg-purple-50 dark:bg-purple-500/10 flex items-center justify-center flex-shrink-0">
-              <StickyNote className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            <div className="w-11 h-11 rounded-2xl bg-[rgba(139,92,246,0.1)] flex items-center justify-center flex-shrink-0">
+              <StickyNote className="w-5 h-5 text-[#8B5CF6]" />
             </div>
             <div>
-              <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-white">{editingNote ? "Edit Note" : "New Note"}</DialogTitle>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Quick business notes</p>
+              <DialogTitle className="text-lg font-semibold text-[var(--foreground)]">{editingNote ? tNoteModal("editTitle") : tNoteModal("addTitle")}</DialogTitle>
+              <p className="text-sm text-[var(--muted-foreground)]">{tNoteModal("subtitle")}</p>
             </div>
           </div>
 
           <div className="space-y-4">
             {/* Title */}
             <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                Title
+              <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide">
+                {tNoteModal("lblTitle")}
               </label>
               <input
                 type="text"
@@ -1014,32 +1039,32 @@ export default function FolioPage() {
                 onChange={(e) =>
                   setNoteForm((p) => ({ ...p, title: e.target.value }))
                 }
-                placeholder="Quick title…"
-                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm transition-all"
+                placeholder={tNoteModal("placeholderTitle")}
+                className="w-full px-4 py-3 rounded-xl bg-[var(--muted)]/50 border border-[var(--border)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)] text-sm transition-all"
               />
             </div>
 
             {/* Body */}
             <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                Note
+              <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide">
+                {tNoteModal("lblBody")}
               </label>
               <textarea
                 value={noteForm.body}
                 onChange={(e) =>
                   setNoteForm((p) => ({ ...p, body: e.target.value }))
                 }
-                placeholder="Write your note here…"
+                placeholder={tNoteModal("placeholderBody")}
                 rows={6}
-                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 text-sm resize-none min-h-[120px] transition-all"
+                className="w-full px-4 py-3 rounded-xl bg-[var(--muted)]/50 border border-[var(--border)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[#8B5CF6]/30 focus:border-[#8B5CF6] text-sm resize-none min-h-[120px] transition-all"
               />
             </div>
 
             {/* Actions */}
             <div className="flex gap-3 pt-2">
               <DialogClose asChild>
-                <button className="flex-1 py-3 px-4 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 transition-all cursor-pointer">
-                  Cancel
+                <button className="flex-1 py-3 px-4 rounded-xl text-sm font-medium text-[var(--muted-foreground)] bg-[var(--muted)] hover:bg-[var(--accent)] transition-all cursor-pointer">
+                  {tNoteModal("btnCancel")}
                 </button>
               </DialogClose>
               <button
@@ -1048,13 +1073,13 @@ export default function FolioPage() {
                   savingNote ||
                   (!noteForm.title.trim() && !noteForm.body.trim())
                 }
-                className="flex-1 py-3 px-4 bg-[#2563EB] hover:bg-[#1D51C8] text-white font-semibold rounded-xl transition-all duration-150 shadow-sm shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.97] cursor-pointer text-sm"
+                className="flex-1 py-3 px-4 bg-[var(--primary)] hover:bg-[var(--primary)]/90 text-white font-semibold rounded-xl transition-all duration-150 shadow-sm shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.97] cursor-pointer text-sm"
               >
                 {savingNote
-                  ? "Saving…"
+                  ? tNoteModal("btnSaving")
                   : editingNote
-                  ? "Save Changes"
-                  : "Create Note"}
+                  ? tNoteModal("btnSave")
+                  : tNoteModal("btnCreate")}
               </button>
             </div>
           </div>

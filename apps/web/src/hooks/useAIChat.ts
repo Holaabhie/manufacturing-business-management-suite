@@ -31,7 +31,7 @@ const TYPING_SPEED_MS = 16;
 const WELCOME_MESSAGE: Message = {
   id: "welcome",
   role: "assistant",
-  content: `**Welcome to AI Assistant** ✨
+  content: `**Welcome to AI Assistant**
 
 I'm your intelligent business advisor. Here's how I can help:
 

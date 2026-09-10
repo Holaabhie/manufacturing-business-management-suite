@@ -33,6 +33,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { variantsFadeUp } from "@/lib/motion";
 import { toast } from "sonner";
 import usePageStateCache from "@/infrastructure/state/pageStateCache";
+import { clearAllDrafts } from "@/hooks/useDraftPersistence";
 import {
   Dialog,
   DialogContent,
@@ -316,6 +317,7 @@ function ProfileContent() {
   const handleLogout = async (allDevices = false) => {
     try {
       usePageStateCache.getState().clearAll();
+      clearAllDrafts();
       await fetch("/api/auth/logout", { method: "POST" });
       window.location.href = "/login";
     } catch (error) {

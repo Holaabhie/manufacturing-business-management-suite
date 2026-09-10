@@ -3,8 +3,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Sparkles,
-  Trash2,
-  MessageSquare,
   FileBarChart,
   Settings,
   Send,
@@ -77,6 +75,8 @@ export default function AIAssistantPage() {
   const [reportLoading, setReportLoading] = useState(false);
   const [reportHistory, setReportHistory] = useState<ReportEntry[]>([]);
 
+  const userMessageCount = messages.filter((m) => m.role === "user").length;
+
   // ── Auto-scroll ──
   const scrollToBottom = useCallback(() => {
     if (scrollRef.current) {
@@ -85,8 +85,10 @@ export default function AIAssistantPage() {
   }, []);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
+    if (userMessageCount > 0) {
+      scrollToBottom();
+    }
+  }, [messages, userMessageCount, scrollToBottom]);
 
   // ── Handlers ──
   const handleSend = (value: string) => {
@@ -123,63 +125,15 @@ export default function AIAssistantPage() {
     }
   };
 
-  const userMessageCount = messages.filter((m) => m.role === "user").length;
-
   // ─── Render ──────────────────────────────────────────────
   return (
-    <div className="ai-workspace flex flex-col h-[calc(100dvh-64px-56px)] md:h-[calc(100dvh-64px)] overflow-hidden">
-      {/* Flat topbar — flex-shrink-0 */}
-      <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-white/[0.06]">
-        {/* Left: tabs */}
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setViewMode("chat")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              viewMode === "chat"
-                ? "bg-gray-200/70 text-gray-900 dark:bg-white/10 dark:text-white"
-                : "text-gray-500 hover:text-gray-700 dark:text-white/50 dark:hover:text-white/70"
-            }`}
-          >
-            <MessageSquare className="h-3.5 w-3.5" />
-            Chat
-          </button>
-          <button
-            onClick={() => setViewMode("reports")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              viewMode === "reports"
-                ? "bg-gray-200/70 text-gray-900 dark:bg-white/10 dark:text-white"
-                : "text-gray-500 hover:text-gray-700 dark:text-white/50 dark:hover:text-white/70"
-            }`}
-          >
-            <FileBarChart className="h-3.5 w-3.5" />
-            Smart Reports
-          </button>
-        </div>
-
-        {/* Right: READY status + Clear button */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5">
-            <div className={cn("w-1.5 h-1.5 rounded-full", isContextLoaded ? "bg-emerald-400" : "bg-amber-400")} />
-            <span className={cn("text-xs font-medium", isContextLoaded ? "text-emerald-400" : "text-amber-400")}>
-              {isContextLoaded ? "READY" : "LOADING..."}
-            </span>
-          </div>
-          <button
-            onClick={clearChat}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-white/50 dark:hover:text-white/70 dark:hover:bg-white/[0.06] transition-colors"
-          >
-            <Trash2 className="h-3.5 w-3.5 text-rose-400" />
-            Clear
-          </button>
-        </div>
-      </div>
-
+    <div className="ai-workspace flex flex-col h-[calc(100dvh-44px-56px)] md:h-[calc(100dvh-56px)] overflow-hidden">
       {/* ═══════════ CHAT VIEW ═══════════ */}
       {viewMode === "chat" && (
-        <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden rounded-2xl" style={{ background: "var(--ai-bg-secondary)" }}>
+        <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden" style={{ background: "var(--ai-bg-secondary)" }}>
           {/* AI Not Configured Banner */}
           {aiNotConfigured && (
-            <div className="flex items-center gap-3 mx-4 mt-4 p-3 rounded-[14px] border border-[var(--ai-border-subtle)]" style={{ background: "rgba(245,158,11,0.06)" }}>
+            <div className="flex items-center gap-3 mx-4 mt-3 p-3 rounded-[14px] border border-[var(--ai-border-subtle)]" style={{ background: "rgba(245,158,11,0.06)" }}>
               <div className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: "rgba(245,158,11,0.12)" }}>
                 <Settings className="h-4 w-4 text-amber-400" />
               </div>
@@ -191,7 +145,7 @@ export default function AIAssistantPage() {
           )}
 
           {/* Messages Stream */}
-          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-3 space-y-3" ref={scrollRef}>
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-2 space-y-3" ref={scrollRef}>
             <div className="space-y-4 pb-4 max-w-[900px] mx-auto">
               <AnimatePresence mode="popLayout">
                 {messages.map((message) => {

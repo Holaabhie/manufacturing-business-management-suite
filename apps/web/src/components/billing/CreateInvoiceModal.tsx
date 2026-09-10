@@ -17,6 +17,8 @@ import {
   Info,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
+import { useAppLocale } from "@/components/LocaleProvider";
 import { playCompletionSound } from "@/hooks/useCompletionSound";
 import { cn } from "@/lib/utils";
 
@@ -59,12 +61,12 @@ interface CreateInvoiceModalProps {
 
 // ─── Constants ─────────────────────────────────────────────
 const PAYMENT_TERMS = [
-  { label: "Due on Receipt", days: 0 },
-  { label: "7 Days", days: 7 },
-  { label: "15 Days", days: 15 },
-  { label: "30 Days", days: 30 },
-  { label: "45 Days", days: 45 },
-  { label: "Custom", days: -1 },
+  { label: "Due on Receipt", days: 0, key: "termDueOnReceipt" as const },
+  { label: "7 Days", days: 7, key: "term7Days" as const },
+  { label: "15 Days", days: 15, key: "term15Days" as const },
+  { label: "30 Days", days: 30, key: "term30Days" as const },
+  { label: "45 Days", days: 45, key: "term45Days" as const },
+  { label: "Custom", days: -1, key: "termCustom" as const },
 ];
 
 const GST_RATES = [
@@ -183,6 +185,10 @@ export default function CreateInvoiceModal({
   companyInfo,
   inventoryItems = [],
 }: CreateInvoiceModalProps) {
+  const t = useTranslations("billing");
+  const { locale } = useAppLocale();
+  const dateLocale = locale === "hi" ? "hi-IN" : locale === "gu" ? "gu-IN" : locale === "mr" ? "mr-IN" : "en-IN";
+
   // ─── Invoice Number ────────────────────────────────────
   const [invoiceNumber] = useState(
     () => "INV-" + new Date().getFullYear() + "-" + String(Math.floor(Math.random() * 9000) + 1000)
@@ -348,7 +354,7 @@ export default function CreateInvoiceModal({
       items: [...prev.items, newItem],
     }));
     setImportDropdownOpen(false);
-    toast.success("Order imported to bill");
+    toast.success(t("toasts.orderImported"));
   };
 
   // ─── Calculations (PRESERVED + Extended) ───────────────
@@ -430,10 +436,10 @@ export default function CreateInvoiceModal({
     e.preventDefault();
 
     if (!formData.client_id) {
-      return toast.error("Please select a client");
+      return toast.error(t("toasts.selectClient"));
     }
     if (formData.items.length === 0) {
-      return toast.error("Please add at least one item");
+      return toast.error(t("toasts.addOneItem"));
     }
 
     setSubmitting(true);
@@ -472,16 +478,16 @@ export default function CreateInvoiceModal({
       const json = await res.json();
 
       if (json.error) {
-        toast.error(json.error.message || "Failed to create bill");
+        toast.error(json.error.message || t("toasts.billCreateFailed"));
       } else {
         const serverBillNumber = json.data?.billNumber || billData.billNumber;
-        toast.success(`Bill ${serverBillNumber} created successfully`);
+        toast.success(t("toasts.billCreated", { number: serverBillNumber }));
         playCompletionSound("general");
         onClose();
         onSuccess();
       }
     } catch {
-      toast.error("Failed to create bill");
+      toast.error(t("toasts.billCreateFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -508,9 +514,9 @@ export default function CreateInvoiceModal({
       const stock = inv.stock ?? inv.quantity ?? 0;
       const reorder = inv.reorderLevel ?? inv.reorder_level ?? 10;
       const unit = inv.unit || "KG";
-      if (qty > stock) return { type: "danger" as const, text: `Warning: Exceeds available stock`, stock, unit };
-      if (stock <= reorder) return { type: "warning" as const, text: `Stock: ${stock} ${unit} · Low`, stock, unit };
-      return { type: "ok" as const, text: `Stock: ${stock} ${unit}`, stock, unit };
+      if (qty > stock) return { type: "danger" as const, text: t("stockExceeds"), stock, unit };
+      if (stock <= reorder) return { type: "warning" as const, text: t("stockLow", { stock, unit }), stock, unit };
+      return { type: "ok" as const, text: t("stockNormal", { stock, unit }), stock, unit };
     },
     [inventoryItems]
   );
@@ -521,27 +527,27 @@ export default function CreateInvoiceModal({
       {/* Summary Rows */}
       <div className="space-y-[6px]">
         <div className="flex justify-between text-[11px]">
-          <span className="text-[#64748B] dark:text-[#94A3B8]">Subtotal</span>
+          <span className="text-[#64748B] dark:text-[#94A3B8]">{t("subtotal")}</span>
           <span className="text-[#0F172A] dark:text-[#F1F5F9] font-semibold">
             {fmtCurrency(calculations.subtotal)}
           </span>
         </div>
         {calculations.discountAmount > 0 && (
           <div className="flex justify-between text-[11px]">
-            <span className="text-[#64748B] dark:text-[#94A3B8]">Discount</span>
+            <span className="text-[#64748B] dark:text-[#94A3B8]">{t("discount")}</span>
             <span className="text-red-400">— {fmtCurrency(calculations.discountAmount)}</span>
           </div>
         )}
         {!formData.isIGST ? (
           <>
             <div className="flex justify-between text-[11px]">
-              <span className="text-[#64748B] dark:text-[#94A3B8]">CGST</span>
+              <span className="text-[#64748B] dark:text-[#94A3B8]">{t("cgst")}</span>
               <span className="text-[#0F172A] dark:text-[#F1F5F9]">
                 {fmtCurrency(calculations.cgstAmount)}
               </span>
             </div>
             <div className="flex justify-between text-[11px]">
-              <span className="text-[#64748B] dark:text-[#94A3B8]">SGST</span>
+              <span className="text-[#64748B] dark:text-[#94A3B8]">{t("sgst")}</span>
               <span className="text-[#0F172A] dark:text-[#F1F5F9]">
                 {fmtCurrency(calculations.sgstAmount)}
               </span>
@@ -549,7 +555,7 @@ export default function CreateInvoiceModal({
           </>
         ) : (
           <div className="flex justify-between text-[11px]">
-            <span className="text-[#64748B] dark:text-[#94A3B8]">IGST</span>
+            <span className="text-[#64748B] dark:text-[#94A3B8]">{t("igst")}</span>
             <span className="text-[#0F172A] dark:text-[#F1F5F9]">
               {fmtCurrency(calculations.igstAmount)}
             </span>
@@ -557,19 +563,19 @@ export default function CreateInvoiceModal({
         )}
         {transportCharge > 0 && (
           <div className="flex justify-between text-[11px]">
-            <span className="text-[#64748B] dark:text-[#94A3B8]">Transport</span>
+            <span className="text-[#64748B] dark:text-[#94A3B8]">{t("transport")}</span>
             <span className="text-[#0F172A] dark:text-[#F1F5F9]">{fmtCurrency(transportCharge)}</span>
           </div>
         )}
         {packingCharge > 0 && (
           <div className="flex justify-between text-[11px]">
-            <span className="text-[#64748B] dark:text-[#94A3B8]">Packing</span>
+            <span className="text-[#64748B] dark:text-[#94A3B8]">{t("packing")}</span>
             <span className="text-[#0F172A] dark:text-[#F1F5F9]">{fmtCurrency(packingCharge)}</span>
           </div>
         )}
         {otherCharges > 0 && (
           <div className="flex justify-between text-[11px]">
-            <span className="text-[#64748B] dark:text-[#94A3B8]">Other Charges</span>
+            <span className="text-[#64748B] dark:text-[#94A3B8]">{t("otherCharges")}</span>
             <span className="text-[#0F172A] dark:text-[#F1F5F9]">{fmtCurrency(otherCharges)}</span>
           </div>
         )}
@@ -581,7 +587,7 @@ export default function CreateInvoiceModal({
       {/* Grand Total Card */}
       <div className="bg-green-500/[0.07] border border-green-500/20 rounded-[10px] p-3">
         <span className="text-[10px] uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8] block">
-          Grand Total
+          {t("grandTotal")}
         </span>
         <span className="text-[20px] font-bold text-green-400 tabular-nums">
           {fmtCurrency(calculations.grandTotal)}
@@ -591,23 +597,23 @@ export default function CreateInvoiceModal({
       {/* Amount in Words */}
       <div className="bg-white/30 dark:bg-black/40 border border-[rgba(15,23,42,0.06)] dark:border-[rgba(148,163,184,0.10)] rounded-[8px] p-[10px]">
         <span className="text-[9px] uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8] block mb-1">
-          Amount in Words
+          {t("amountInWords")}
         </span>
         <span className="text-[10px] text-[#0F172A] dark:text-[#F1F5F9] italic leading-relaxed">
-          {numToWords(calculations.grandTotal)} Rupees Only
+          {numToWords(calculations.grandTotal)} {t("rupeesOnly")}
         </span>
       </div>
 
       {/* Payment Tracking */}
       <div className="bg-blue-500/[0.06] border border-blue-500/[0.18] rounded-[8px] p-[10px]">
         <span className="text-[10px] uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8] block mb-2">
-          Payment Tracking
+          {t("paymentTracking")}
         </span>
         <div className="flex justify-between text-[11px] mb-1">
-          <span className="text-[#64748B] dark:text-[#94A3B8]">Due Date</span>
+          <span className="text-[#64748B] dark:text-[#94A3B8]">{t("dueDate")}</span>
           <span className="text-[#0F172A] dark:text-[#F1F5F9] font-medium">
             {formData.dueDate
-              ? new Date(formData.dueDate).toLocaleDateString("en-IN", {
+              ? new Date(formData.dueDate).toLocaleDateString(dateLocale, {
                   day: "numeric",
                   month: "short",
                   year: "numeric",
@@ -616,14 +622,14 @@ export default function CreateInvoiceModal({
           </span>
         </div>
         <div className="flex justify-between text-[11px]">
-          <span className="text-[#64748B] dark:text-[#94A3B8]">Status</span>
-          <span className="text-amber-400 font-medium">Pending</span>
+          <span className="text-[#64748B] dark:text-[#94A3B8]">{t("thStatus")}</span>
+          <span className="text-amber-400 font-medium">{t("statusPending")}</span>
         </div>
       </div>
 
       {/* Advance Received */}
       <div className="space-y-[6px]">
-        <label className={labelClasses}>Advance Received</label>
+        <label className={labelClasses}>{t("advanceReceived")}</label>
         <input
           type="number"
           value={advanceReceived || ""}
@@ -633,7 +639,7 @@ export default function CreateInvoiceModal({
         />
         {advanceReceived > 0 && (
           <div className="text-[11px] font-bold text-amber-400">
-            Balance: {fmtCurrency(calculations.balance)}
+            {t("balance", { amount: fmtCurrency(calculations.balance) })}
           </div>
         )}
       </div>
@@ -681,10 +687,10 @@ export default function CreateInvoiceModal({
                 </div>
                 <div>
                   <h2 className="text-[15px] font-semibold text-[#0F172A] dark:text-[#F1F5F9] leading-tight">
-                    Create Invoice
+                    {t("modalTitle")}
                   </h2>
                   <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8]">
-                    GST compliant · Track payments automatically
+                    {t("modalSubtitle")}
                   </p>
                 </div>
               </div>
@@ -692,7 +698,7 @@ export default function CreateInvoiceModal({
                 <span className="text-[12px] font-semibold text-[#64748B] dark:text-[#94A3B8] hidden sm:inline">
                   {invoiceNumber}
                 </span>
-                <StatusBadge status="DRAFT" />
+                <StatusBadge status={t("draftBadge")} />
                 <button
                   type="button"
                   onClick={onClose}
@@ -711,12 +717,12 @@ export default function CreateInvoiceModal({
                 className="flex-1 overflow-y-auto px-4 md:px-5 py-4 space-y-0"
               >
                 {/* ═══ SECTION 1 — Billing Information ═══ */}
-                <SectionCard num={1} title="Billing Information">
+                <SectionCard num={1} title={t("secBillingInfo")}>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {/* Client Select — full width */}
                     <div className="sm:col-span-2 relative" ref={clientDropdownRef}>
                       <label className={labelClasses}>
-                        Client <span className="text-red-400">*</span>
+                        {t("clientLabel")} <span className="text-red-400">*</span>
                       </label>
                       <button
                         type="button"
@@ -731,7 +737,7 @@ export default function CreateInvoiceModal({
                         )}
                       >
                         <span className={formData.client_id ? "text-[#0F172A] dark:text-[#F1F5F9]" : "text-[#94A3B8]/50"}>
-                          {selectedClient?.name || "Select client..."}
+                          {selectedClient?.name || t("clientPlaceholder")}
                         </span>
                         <ChevronDown
                           size={14}
@@ -746,7 +752,7 @@ export default function CreateInvoiceModal({
                           <div className="p-2 border-b border-[rgba(15,23,42,0.06)] dark:border-[rgba(148,163,184,0.08)]">
                             <input
                               type="text"
-                              placeholder="Search clients..."
+                              placeholder={t("clientSearchPlaceholder")}
                               value={clientSearch}
                               onChange={(e) => setClientSearch(e.target.value)}
                               className={cn(inputClasses, "h-[32px] text-[11px]")}
@@ -784,7 +790,7 @@ export default function CreateInvoiceModal({
                               c.name?.toLowerCase().includes(clientSearch.toLowerCase())
                             ).length === 0 && (
                               <div className="px-3 py-3 text-[11px] text-[#94A3B8] text-center">
-                                No clients found
+                                {t("noClientsFound")}
                               </div>
                             )}
                           </div>
@@ -796,7 +802,7 @@ export default function CreateInvoiceModal({
                     {selectedClient && (
                       <>
                         <div>
-                          <label className={labelClasses}>GST Number</label>
+                          <label className={labelClasses}>{t("gstinLabel", { gstin: "" }).replace(/[:\s]+$/, "")}</label>
                           <input
                             type="text"
                             value={selectedClient.gstin || "N/A"}
@@ -805,7 +811,7 @@ export default function CreateInvoiceModal({
                           />
                         </div>
                         <div>
-                          <label className={labelClasses}>State</label>
+                          <label className={labelClasses}>{t("stateLabel")}</label>
                           <input
                             type="text"
                             value={selectedClient.state || selectedClient.address || "—"}
@@ -814,7 +820,7 @@ export default function CreateInvoiceModal({
                           />
                         </div>
                         <div>
-                          <label className={labelClasses}>Contact Person</label>
+                          <label className={labelClasses}>{t("contactPersonLabel")}</label>
                           <input
                             type="text"
                             value={selectedClient.contactPerson || selectedClient.name || "—"}
@@ -823,7 +829,7 @@ export default function CreateInvoiceModal({
                           />
                         </div>
                         <div>
-                          <label className={labelClasses}>Phone</label>
+                          <label className={labelClasses}>{t("phoneLabel")}</label>
                           <input
                             type="text"
                             value={selectedClient.phone || "—"}
@@ -841,12 +847,12 @@ export default function CreateInvoiceModal({
                       {!formData.isIGST ? (
                         <div className="inline-flex items-center gap-1.5 text-[10px] px-2.5 py-[4px] rounded-md bg-blue-500/[0.06] border border-blue-500/[0.18] text-blue-400">
                           <Info size={11} />
-                          Auto-detected: CGST + SGST (same state as company)
+                          {t("autoDetectedCgstSgst")}
                         </div>
                       ) : (
                         <div className="inline-flex items-center gap-1.5 text-[10px] px-2.5 py-[4px] rounded-md bg-amber-500/[0.06] border border-amber-500/[0.18] text-amber-400">
                           <Info size={11} />
-                          Auto-detected: IGST (inter-state transaction)
+                          {t("autoDetectedIgst")}
                         </div>
                       )}
                     </div>
@@ -854,11 +860,11 @@ export default function CreateInvoiceModal({
                 </SectionCard>
 
                 {/* ═══ SECTION 2 — Invoice Details ═══ */}
-                <SectionCard num={2} title="Invoice Details">
+                <SectionCard num={2} title={t("secInvoiceDetails")}>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <div>
                       <label className={labelClasses}>
-                        Invoice Date <span className="text-red-400">*</span>
+                        {t("invoiceDateLabel")} <span className="text-red-400">*</span>
                       </label>
                       <input
                         type="date"
@@ -870,7 +876,7 @@ export default function CreateInvoiceModal({
                       />
                     </div>
                     <div>
-                      <label className={labelClasses}>Due Date</label>
+                      <label className={labelClasses}>{t("dueDateLabel")}</label>
                       <input
                         type="date"
                         value={formData.dueDate}
@@ -881,7 +887,7 @@ export default function CreateInvoiceModal({
                       />
                     </div>
                     <div>
-                      <label className={labelClasses}>GST Type</label>
+                      <label className={labelClasses}>{t("gstTypeLabel")}</label>
                       <select
                         value={formData.isIGST ? "igst" : "cgst_sgst"}
                         onChange={(e) =>
@@ -892,7 +898,7 @@ export default function CreateInvoiceModal({
                         }
                         className={cn(inputClasses, "cursor-pointer")}
                       >
-                        <option value="cgst_sgst">CGST + SGST</option>
+                        <option value="cgst_sgst">{t("optCgstSgst")}</option>
                         <option value="igst">IGST</option>
                       </select>
                     </div>
@@ -902,7 +908,7 @@ export default function CreateInvoiceModal({
                   <div className="flex flex-wrap gap-[6px] mt-3">
                     {PAYMENT_TERMS.map((term) => (
                       <button
-                        key={term.label}
+                        key={term.key}
                         type="button"
                         onClick={() => handlePaymentTermChange(term.label)}
                         className={cn(
@@ -912,7 +918,7 @@ export default function CreateInvoiceModal({
                             : "bg-white/30 dark:bg-black/50 border-[rgba(15,23,42,0.06)] dark:border-[rgba(148,163,184,0.1)] text-[#64748B] dark:text-[#94A3B8] hover:border-blue-500/30"
                         )}
                       >
-                        {term.label}
+                        {t(term.key)}
                       </button>
                     ))}
                   </div>
@@ -921,13 +927,13 @@ export default function CreateInvoiceModal({
                 {/* ═══ SECTION 3 — Line Items ═══ */}
                 <SectionCard
                   num={3}
-                  title="Line Items"
+                  title={t("secLineItems")}
                   headerRight={
                     <button
                       type="button"
                       onClick={() => {
                         if (!formData.client_id) {
-                          toast.error("Please select a client first");
+                          toast.error(t("toasts.selectClientFirst"));
                           return;
                         }
                         setImportDropdownOpen(!importDropdownOpen);
@@ -935,7 +941,7 @@ export default function CreateInvoiceModal({
                       className="flex items-center gap-1.5 bg-blue-500/[0.08] border border-blue-500/25 text-blue-400 text-[11px] font-medium rounded-[7px] px-3 py-[5px] hover:bg-blue-500/[0.14] transition-colors cursor-pointer"
                     >
                       <PackageOpen size={13} />
-                      Import from Order
+                      {t("btnImportFromOrder")}
                     </button>
                   }
                 >
@@ -944,7 +950,7 @@ export default function CreateInvoiceModal({
                     <div className="mb-3 bg-white/50 dark:bg-[rgba(15,17,25,0.7)] border border-[rgba(15,23,42,0.06)] dark:border-[rgba(148,163,184,0.10)] rounded-lg p-2 max-h-[160px] overflow-y-auto">
                       {clientOrders.length === 0 ? (
                         <p className="text-[11px] text-[#94A3B8] text-center py-3">
-                          No orders found for this client
+                          {t("noOrdersForClient")}
                         </p>
                       ) : (
                         clientOrders.slice(0, 8).map((order) => {
@@ -978,14 +984,14 @@ export default function CreateInvoiceModal({
                         className="h-8 w-8 mx-auto mb-2 text-[#94A3B8]"
                       />
                       <p className="text-[11px] text-[#94A3B8]">
-                        No items added yet. Click &quot;Add Item&quot; or import from orders.
+                        {t("emptyItemsText")}
                       </p>
                     </div>
                   ) : (
                     <>
                       {/* Desktop Table Header */}
                       <div className="hidden md:grid grid-cols-[1fr_70px_60px_90px_60px_90px_28px] gap-[6px] mb-1">
-                        {["Product", "Qty", "Unit", "Rate (₹)", "Tax %", "Total", ""].map(
+                        {[t("colProduct"), t("colQty"), t("colUnit"), `${t("colRate")} (₹)`, t("colGst"), t("colTotal"), ""].map(
                           (h) => (
                             <span
                               key={h}
@@ -1012,7 +1018,7 @@ export default function CreateInvoiceModal({
                                   onChange={(e) =>
                                     updateItem(item.id, "description", e.target.value)
                                   }
-                                  placeholder="Product name"
+                                  placeholder={t("productNamePlaceholder")}
                                   className="w-full bg-white/40 dark:bg-[rgba(15,17,25,0.5)] border border-[rgba(15,23,42,0.04)] dark:border-[rgba(148,163,184,0.08)] rounded-[5px] px-[6px] py-[4px] text-[11px] text-[#0F172A] dark:text-[#F1F5F9] focus:border-blue-500/40 outline-none placeholder:text-[#94A3B8]/40"
                                 />
                                 {stockInfo && (
@@ -1088,7 +1094,7 @@ export default function CreateInvoiceModal({
                                   onChange={(e) =>
                                     updateItem(item.id, "description", e.target.value)
                                   }
-                                  placeholder="Product name"
+                                  placeholder={t("productNamePlaceholder")}
                                   className="flex-1 bg-transparent border-none text-[12px] font-medium text-[#0F172A] dark:text-[#F1F5F9] outline-none p-0 placeholder:text-[#94A3B8]/40"
                                 />
                                 <button
@@ -1115,7 +1121,7 @@ export default function CreateInvoiceModal({
                               )}
                               <div className="grid grid-cols-4 gap-2">
                                 <div>
-                                  <label className="text-[9px] text-[#94A3B8] block">Qty</label>
+                                  <label className="text-[9px] text-[#94A3B8] block">{t("colQty")}</label>
                                   <input
                                     type="number"
                                     value={item.quantity || ""}
@@ -1127,7 +1133,7 @@ export default function CreateInvoiceModal({
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-[9px] text-[#94A3B8] block">Unit</label>
+                                  <label className="text-[9px] text-[#94A3B8] block">{t("colUnit")}</label>
                                   <input
                                     type="text"
                                     value={item.unit}
@@ -1136,7 +1142,7 @@ export default function CreateInvoiceModal({
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-[9px] text-[#94A3B8] block">Rate</label>
+                                  <label className="text-[9px] text-[#94A3B8] block">{t("colRate")}</label>
                                   <input
                                     type="number"
                                     value={item.rate || ""}
@@ -1148,7 +1154,7 @@ export default function CreateInvoiceModal({
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-[9px] text-[#94A3B8] block">GST%</label>
+                                  <label className="text-[9px] text-[#94A3B8] block">{t("colGst")}</label>
                                   <select
                                     value={item.gstRate}
                                     onChange={(e) =>
@@ -1183,16 +1189,16 @@ export default function CreateInvoiceModal({
                     className="flex items-center gap-[5px] text-[11px] text-blue-400 bg-transparent border-none cursor-pointer py-[6px] mt-1 hover:text-blue-300 transition-colors"
                   >
                     <Plus size={12} />
-                    Add Item
+                    {t("btnAddItem")}
                   </button>
                 </SectionCard>
 
                 {/* ═══ SECTION 4 — Tax, Discount & Charges ═══ */}
-                <SectionCard num={4} title="Tax, Discount & Charges">
+                <SectionCard num={4} title={t("secTaxDiscount")}>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* Discount */}
                     <div>
-                      <label className={labelClasses}>Discount</label>
+                      <label className={labelClasses}>{t("discountLabel")}</label>
                       <div className="flex gap-1.5 mb-1.5">
                         <button
                           type="button"
@@ -1204,7 +1210,7 @@ export default function CreateInvoiceModal({
                               : "bg-white/30 dark:bg-black/50 border-[rgba(15,23,42,0.06)] dark:border-[rgba(148,163,184,0.1)] text-[#94A3B8]"
                           )}
                         >
-                          %
+                          {t("pct")}
                         </button>
                         <button
                           type="button"
@@ -1216,7 +1222,7 @@ export default function CreateInvoiceModal({
                               : "bg-white/30 dark:bg-black/50 border-[rgba(15,23,42,0.06)] dark:border-[rgba(148,163,184,0.1)] text-[#94A3B8]"
                           )}
                         >
-                          ₹ Flat
+                          {t("flat")}
                         </button>
                       </div>
                       <input
@@ -1231,7 +1237,7 @@ export default function CreateInvoiceModal({
 
                     {/* Transport */}
                     <div>
-                      <label className={labelClasses}>Transport / Loading</label>
+                      <label className={labelClasses}>{t("transportLabel")}</label>
                       <input
                         type="number"
                         value={transportCharge || ""}
@@ -1244,7 +1250,7 @@ export default function CreateInvoiceModal({
 
                     {/* Packing */}
                     <div>
-                      <label className={labelClasses}>Packing Charges</label>
+                      <label className={labelClasses}>{t("packingLabel")}</label>
                       <input
                         type="number"
                         value={packingCharge || ""}
@@ -1257,7 +1263,7 @@ export default function CreateInvoiceModal({
 
                     {/* Other */}
                     <div>
-                      <label className={labelClasses}>Other Charges</label>
+                      <label className={labelClasses}>{t("otherChargesLabel")}</label>
                       <input
                         type="number"
                         value={otherCharges || ""}
@@ -1271,13 +1277,13 @@ export default function CreateInvoiceModal({
                 </SectionCard>
 
                 {/* ═══ SECTION 5 — E-Way Bill (Collapsible) ═══ */}
-                <SectionCard num={5} title="E-Way Bill Details" className="!mb-3">
+                <SectionCard num={5} title={t("secEwayDetails")} className="!mb-3">
                   <button
                     type="button"
                     onClick={() => setEwayOpen(!ewayOpen)}
                     className="flex items-center gap-1.5 text-[11px] text-[#94A3B8] hover:text-blue-400 transition-colors cursor-pointer -mt-1 mb-1"
                   >
-                    <span>{ewayOpen ? "Hide" : "Show"} E-Way Bill Fields</span>
+                    <span>{ewayOpen ? t("hideEwayFields") : t("showEwayFields")}</span>
                     <ChevronDown
                       size={13}
                       className={cn(
@@ -1297,7 +1303,7 @@ export default function CreateInvoiceModal({
                       >
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
                           <div>
-                            <label className={labelClasses}>Transport Mode</label>
+                            <label className={labelClasses}>{t("transportMode")}</label>
                             <select
                               value={ewayData.transportMode}
                               onChange={(e) =>
@@ -1305,14 +1311,14 @@ export default function CreateInvoiceModal({
                               }
                               className={cn(inputClasses, "cursor-pointer")}
                             >
-                              <option>Road</option>
-                              <option>Rail</option>
-                              <option>Air</option>
-                              <option>Ship</option>
+                              <option value="Road">{t("modeRoad")}</option>
+                              <option value="Rail">{t("modeRail")}</option>
+                              <option value="Air">{t("modeAir")}</option>
+                              <option value="Ship">{t("modeShip")}</option>
                             </select>
                           </div>
                           <div>
-                            <label className={labelClasses}>Vehicle Number</label>
+                            <label className={labelClasses}>{t("vehicleNumber")}</label>
                             <input
                               type="text"
                               value={ewayData.vehicleNumber}
@@ -1327,7 +1333,7 @@ export default function CreateInvoiceModal({
                             />
                           </div>
                           <div>
-                            <label className={labelClasses}>Dispatch Location</label>
+                            <label className={labelClasses}>{t("dispatchLocation")}</label>
                             <input
                               type="text"
                               value={ewayData.dispatchLocation}
@@ -1337,12 +1343,12 @@ export default function CreateInvoiceModal({
                                   dispatchLocation: e.target.value,
                                 }))
                               }
-                              placeholder="City, State"
+                              placeholder={t("locationPlaceholder")}
                               className={inputClasses}
                             />
                           </div>
                           <div>
-                            <label className={labelClasses}>Delivery Location</label>
+                            <label className={labelClasses}>{t("deliveryLocation")}</label>
                             <input
                               type="text"
                               value={ewayData.deliveryLocation}
@@ -1352,7 +1358,7 @@ export default function CreateInvoiceModal({
                                   deliveryLocation: e.target.value,
                                 }))
                               }
-                              placeholder="City, State"
+                              placeholder={t("locationPlaceholder")}
                               className={inputClasses}
                             />
                           </div>
@@ -1363,14 +1369,14 @@ export default function CreateInvoiceModal({
                 </SectionCard>
 
                 {/* ═══ SECTION 6 — Notes ═══ */}
-                <SectionCard num={6} title="Notes">
+                <SectionCard num={6} title={t("secNotes")}>
                   <textarea
                     value={formData.notes}
                     onChange={(e) =>
                       setFormData((prev) => ({ ...prev, notes: e.target.value }))
                     }
                     rows={2}
-                    placeholder="Payment instructions, bank details, terms & conditions..."
+                    placeholder={t("notesPlaceholder")}
                     className={cn(
                       inputClasses,
                       "h-auto resize-none py-2 leading-relaxed"
@@ -1389,7 +1395,7 @@ export default function CreateInvoiceModal({
                       className="w-full flex items-center justify-between px-4 py-3 cursor-pointer"
                     >
                       <span className="text-[11px] font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-wider">
-                        Invoice Summary
+                        {t("summaryTitle")}
                       </span>
                       <div className="flex items-center gap-2">
                         <span className="text-[14px] font-bold text-green-400">
@@ -1438,7 +1444,7 @@ export default function CreateInvoiceModal({
                     ) : (
                       <Receipt size={14} />
                     )}
-                    <span>Generate Invoice</span>
+                    <span>{t("btnGenerateInvoice")}</span>
                   </button>
                 </div>
 
@@ -1449,7 +1455,7 @@ export default function CreateInvoiceModal({
                     onClick={onClose}
                     className="h-[38px] px-5 rounded-[8px] text-[13px] font-medium text-[#64748B] dark:text-[#94A3B8] bg-white/40 dark:bg-white/[0.04] border border-[rgba(15,23,42,0.06)] dark:border-[rgba(148,163,184,0.10)] hover:bg-white/60 dark:hover:bg-white/[0.08] transition-colors cursor-pointer"
                   >
-                    Cancel
+                    {t("btnCancel")}
                   </button>
                   <button
                     type="submit"
@@ -1465,7 +1471,7 @@ export default function CreateInvoiceModal({
                     ) : (
                       <Receipt size={14} />
                     )}
-                    <span>Generate Invoice</span>
+                    <span>{t("btnGenerateInvoice")}</span>
                   </button>
                 </div>
               </div>
@@ -1474,7 +1480,7 @@ export default function CreateInvoiceModal({
               <div className="hidden md:block w-[280px] xl:w-[300px] border-l border-[rgba(15,23,42,0.06)] dark:border-[rgba(148,163,184,0.10)] bg-[#EEF2F7] dark:bg-[#161B27]">
                 <div className="sticky top-0 self-start p-4 overflow-y-auto max-h-[calc(92vh-130px)]">
                   <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8] mb-3">
-                    Invoice Summary
+                    {t("summaryTitle")}
                   </h3>
                   <SummaryContent />
                 </div>

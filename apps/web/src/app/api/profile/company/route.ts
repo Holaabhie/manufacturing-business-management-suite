@@ -68,15 +68,18 @@ export async function PUT(request: Request) {
             );
         }
 
-        // Build company details object with sanitization
+        const orgId = (user as any).organizationId || String(user._id);
+        const existingProfile = await db.collection("companyprofiles").findOne({ organizationId: orgId });
+
+        // Build company details object with sanitization (preserve existing gstin/pan if omitted)
         const companyDetails: CompanyDetails = {
             companyName: body.companyName?.trim() || "",
             address: body.address?.trim() || "",
             phone: body.phone?.trim() || "",
             email: body.email?.trim() || "",
-            logoUrl: body.logoUrl || "",
-            gstin: body.gstin?.trim().toUpperCase() || "",
-            pan: body.pan?.trim().toUpperCase() || "",
+            logoUrl: body.logoUrl !== undefined ? body.logoUrl : (existingProfile?.logoUrl || existingProfile?.logo_url || ""),
+            gstin: body.gstin !== undefined ? body.gstin?.trim().toUpperCase() : (existingProfile?.gst_number || ""),
+            pan: body.pan !== undefined ? body.pan?.trim().toUpperCase() : (existingProfile?.pan_number || existingProfile?.pan || ""),
             bankName: body.bankName?.trim() || "",
             accountNo: body.accountNo?.trim() || "",
             ifsc: body.ifsc?.trim().toUpperCase() || "",
@@ -84,7 +87,6 @@ export async function PUT(request: Request) {
         };
 
         const now = new Date();
-        const orgId = (user as any).organizationId || String(user._id);
 
         // Update users collection (legacy field for backward compatibility)
         await db.collection("users").updateOne(

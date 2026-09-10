@@ -12,6 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -47,11 +48,11 @@ const UNIT_PILLS = ["KG", "PCS", "BOX", "BAG", "ROLL", "TON"] as const;
 // ─── Category Options ───────────────────────────────────────────
 
 const CATEGORIES = [
-  "Raw Material",
-  "Packaging",
-  "Chemical",
-  "Consumable",
-  "Finished Goods",
+  { value: "Raw Material", labelKey: "catRawMaterial" },
+  { value: "Packaging", labelKey: "catPackaging" },
+  { value: "Chemical", labelKey: "catChemical" },
+  { value: "Consumable", labelKey: "catConsumable" },
+  { value: "Finished Goods", labelKey: "catFinishedGoods" },
 ] as const;
 
 // ─── Helpers ────────────────────────────────────────────────────
@@ -143,31 +144,32 @@ function InfoChip({ children }: { children: React.ReactNode }) {
 function getStockHealth(
   qty: number,
   lowStockAlert: number,
-  reorderLevel: number
+  reorderLevel: number,
+  t: (key: any) => string
 ): { label: string; color: string; dotClass: string; bgClass: string } {
   if (qty === 0)
     return {
-      label: "No Stock",
+      label: t("healthNoStock"),
       color: "text-[#94A3B8]",
       dotClass: "bg-[#94A3B8]",
       bgClass: "bg-slate-500/10 border-slate-500/20",
     };
   if (qty <= lowStockAlert)
     return {
-      label: "Critical",
+      label: t("healthCritical"),
       color: "text-[#EF4444]",
       dotClass: "bg-[#EF4444]",
       bgClass: "bg-red-500/10 border-red-500/20",
     };
   if (qty <= reorderLevel)
     return {
-      label: "Low Stock",
+      label: t("healthLowStock"),
       color: "text-[#F59E0B]",
       dotClass: "bg-[#F59E0B]",
       bgClass: "bg-amber-500/10 border-amber-500/20",
     };
   return {
-    label: "Healthy",
+    label: t("healthHealthy"),
     color: "text-[#10B981]",
     dotClass: "bg-[#10B981]",
     bgClass: "bg-green-500/10 border-green-500/20",
@@ -187,6 +189,7 @@ export function AddMaterialModal({
   isEditing,
   zIndex = 100,
 }: AddMaterialModalProps) {
+  const t = useTranslations("inventory");
   // ── Local UI state (does NOT affect API) ──
   const [isGstInclusive, setIsGstInclusive] = useState(false);
   const [category, setCategory] = useState<string>("");
@@ -224,8 +227,8 @@ export function AddMaterialModal({
   );
 
   const stockHealth = useMemo(
-    () => getStockHealth(quantity, lowStockAlert, reorderLevelNum),
-    [quantity, lowStockAlert, reorderLevelNum]
+    () => getStockHealth(quantity, lowStockAlert, reorderLevelNum, t),
+    [quantity, lowStockAlert, reorderLevelNum, t]
   );
 
   // ── Active unit pill ──
@@ -264,7 +267,7 @@ export function AddMaterialModal({
               // Mobile
               "max-md:w-[calc(100vw-16px)] max-md:h-[calc(100dvh-16px)]",
               // Centering
-              "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2",
+              "inset-0 m-auto h-fit",
               // Height control
               "max-h-[90dvh] md:max-h-[88vh]",
               // Safe area
@@ -280,12 +283,10 @@ export function AddMaterialModal({
                 </div>
                 <div>
                   <h2 className="text-base font-semibold text-[#0F172A] dark:text-[#F1F5F9] leading-tight">
-                    {isEditing ? "Edit Material" : "Add New Material"}
+                    {isEditing ? t("modalTitleEdit") : t("modalTitleAdd")}
                   </h2>
                   <p className="text-xs text-[#64748B] dark:text-[#94A3B8] mt-0.5">
-                    {isEditing
-                      ? "Update stock and supplier details"
-                      : "Add raw material to inventory and track stock levels"}
+                    {isEditing ? t("modalSubtitleEdit") : t("modalSubtitleAdd")}
                   </p>
                 </div>
               </div>
@@ -307,12 +308,12 @@ export function AddMaterialModal({
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
                   </span>
                   <span className="text-[12px] font-medium text-[#64748B] dark:text-[#94A3B8]">
-                    Live Preview
+                    {t("livePreview")}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] text-[#64748B] dark:text-[#94A3B8]">
-                    Estimated Inventory Value
+                    {t("estimatedValue")}
                   </span>
                   <span className="text-xl font-bold text-green-400">
                     {formatINR(totalValue)}
@@ -327,7 +328,7 @@ export function AddMaterialModal({
               <div className="flex-1 overflow-y-auto p-5 pb-6 scrollbar-thin">
                 {/* ── MOBILE: Estimated Value Header ── */}
                 <div className="md:hidden dark:bg-[#161B27] bg-[#EEF2F7] border-b border-[rgba(148,163,184,0.10)] py-3 px-5 -mx-5 -mt-5 mb-4">
-                  <p className="text-[11px] uppercase tracking-wider text-[#94A3B8]">Estimated Inventory Value</p>
+                  <p className="text-[11px] uppercase tracking-wider text-[#94A3B8]">{t("estimatedValue")}</p>
                   <p className="text-[22px] font-bold text-green-400 tabular-nums">{formatINR(totalValue)}</p>
                 </div>
                 <form
@@ -336,12 +337,12 @@ export function AddMaterialModal({
                   className="space-y-4 md:space-y-3"
                 >
                   {/* ── SECTION 1: Material Details ── */}
-                  <SectionCard number={1} title="Material Details">
+                  <SectionCard number={1} title={t("section1Title")}>
                     <div className="space-y-3">
                       {/* Material Name */}
                       <div>
                         <FieldLabel htmlFor="modal-name" required>
-                          Material Name
+                          {t("materialName")}
                         </FieldLabel>
                         <Input
                           id="modal-name"
@@ -349,7 +350,7 @@ export function AddMaterialModal({
                           onChange={(e) =>
                             setFormData({ ...formData, name: e.target.value })
                           }
-                          placeholder="e.g. Polyester Yarn"
+                          placeholder={t("materialNamePlaceholder")}
                           required
                           className={inputClasses}
                         />
@@ -358,7 +359,7 @@ export function AddMaterialModal({
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <FieldLabel htmlFor="modal-category">
-                            Category
+                            {t("category")}
                           </FieldLabel>
                           <select
                             id="modal-category"
@@ -366,16 +367,16 @@ export function AddMaterialModal({
                             onChange={(e) => setCategory(e.target.value)}
                             className={inputClasses + " cursor-pointer"}
                           >
-                            <option value="">Select category</option>
+                            <option value="">{t("selectCategory")}</option>
                             {CATEGORIES.map((cat) => (
-                              <option key={cat} value={cat}>
-                                {cat}
+                              <option key={cat.value} value={cat.value}>
+                                {t(cat.labelKey)}
                               </option>
                             ))}
                           </select>
                         </div>
                         <div>
-                          <FieldLabel htmlFor="modal-hsn">HSN Code</FieldLabel>
+                          <FieldLabel htmlFor="modal-hsn">{t("hsnCode")}</FieldLabel>
                           <Input
                             id="modal-hsn"
                             value={formData.hsn_code}
@@ -385,7 +386,7 @@ export function AddMaterialModal({
                                 hsn_code: e.target.value,
                               })
                             }
-                            placeholder="e.g. 5402"
+                            placeholder={t("hsnPlaceholder")}
                             className={inputClasses}
                           />
                         </div>
@@ -394,13 +395,13 @@ export function AddMaterialModal({
                   </SectionCard>
 
                   {/* ── SECTION 2: Inventory Setup ── */}
-                  <SectionCard number={2} title="Inventory Setup">
+                  <SectionCard number={2} title={t("section2Title")}>
                     <div className="space-y-3">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {/* Quantity */}
                         <div>
                           <FieldLabel htmlFor="modal-quantity" required>
-                            Quantity
+                            {t("quantity")}
                           </FieldLabel>
                           <NumericInput
                             id="modal-quantity"
@@ -408,7 +409,7 @@ export function AddMaterialModal({
                             onValueChange={(v) =>
                               setFormData({ ...formData, quantity: v })
                             }
-                            placeholder="Enter quantity"
+                            placeholder={t("quantityPlaceholder")}
                             allowDecimal={true}
                             min={0}
                             className={inputClasses}
@@ -417,7 +418,7 @@ export function AddMaterialModal({
                         {/* Unit */}
                         <div>
                           <FieldLabel htmlFor="modal-unit" required>
-                            Unit
+                            {t("unit")}
                           </FieldLabel>
                           <Input
                             id="modal-unit"
@@ -428,7 +429,7 @@ export function AddMaterialModal({
                                 unit: e.target.value,
                               })
                             }
-                            placeholder="kg, pcs, meters"
+                            placeholder={t("unitPlaceholder")}
                             className={inputClasses}
                           />
                         </div>
@@ -457,19 +458,19 @@ export function AddMaterialModal({
                         ))}
                       </div>
                       <InfoChip>
-                        Total stock after adding will be reflected in inventory
+                        {t("stockReflectNotice")}
                       </InfoChip>
                     </div>
                   </SectionCard>
 
                   {/* ── SECTION 3: Cost & Tax Configuration ── */}
-                  <SectionCard number={3} title="Cost & Tax Configuration">
+                  <SectionCard number={3} title={t("section3Title")}>
                     <div className="space-y-3">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {/* Cost Per Unit */}
                         <div>
                           <FieldLabel htmlFor="modal-cost" required>
-                            Cost Per Unit
+                            {t("costPerUnitLabel")}
                           </FieldLabel>
                           <div className="relative flex items-center">
                             <span className="absolute left-3 text-[13px] text-[#94A3B8] pointer-events-none select-none z-10">₹</span>
@@ -482,7 +483,7 @@ export function AddMaterialModal({
                                   purchase_cost_per_unit: v,
                                 })
                               }
-                              placeholder="0.00"
+                              placeholder={t("costPerUnitPlaceholder")}
                               allowDecimal={true}
                               min={0}
                               className={inputClasses + " pl-7"}
@@ -492,7 +493,7 @@ export function AddMaterialModal({
                         {/* GST % */}
                         <div>
                           <div className="flex items-center gap-1.5 mb-1.5">
-                            <FieldLabel>GST %</FieldLabel>
+                            <FieldLabel>{t("gstLabel")}</FieldLabel>
                           </div>
                           <NumericInput
                             id="modal-tax"
@@ -500,7 +501,7 @@ export function AddMaterialModal({
                             onValueChange={(v) =>
                               setFormData({ ...formData, tax_rate: v })
                             }
-                            placeholder="18"
+                            placeholder={t("gstPlaceholder")}
                             allowDecimal={true}
                             min={0}
                             className={inputClasses}
@@ -511,10 +512,10 @@ export function AddMaterialModal({
                       <div className="flex items-center justify-between">
                         <div>
                           <span className="text-[12px] font-medium text-[#0F172A] dark:text-[#F1F5F9]">
-                            Inclusive of GST
+                            {t("gstInclusive")}
                           </span>
                           <span className="text-[11px] text-[#64748B] dark:text-[#94A3B8] ml-1.5">
-                            · Cost already includes GST
+                            {t("gstInclusiveDesc")}
                           </span>
                         </div>
                         <div
@@ -542,13 +543,13 @@ export function AddMaterialModal({
                   </SectionCard>
 
                   {/* ── SECTION 4: Stock Monitoring ── */}
-                  <SectionCard number={4} title="Stock Monitoring">
+                  <SectionCard number={4} title={t("section4Title")}>
                     <div className="space-y-3">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {/* Low Stock Alert */}
                         <div>
                           <FieldLabel htmlFor="modal-min-stock">
-                            Low Stock Alert
+                            {t("lowStockAlert")}
                           </FieldLabel>
                           <NumericInput
                             id="modal-min-stock"
@@ -556,7 +557,7 @@ export function AddMaterialModal({
                             onValueChange={(v) =>
                               setFormData({ ...formData, min_stock_level: v })
                             }
-                            placeholder="e.g. 10"
+                            placeholder={t("lowStockPlaceholder")}
                             allowDecimal={true}
                             min={0}
                             className={inputClasses}
@@ -565,13 +566,13 @@ export function AddMaterialModal({
                         {/* Reorder Level */}
                         <div>
                           <FieldLabel htmlFor="modal-reorder">
-                            Reorder Level
+                            {t("reorderLevel")}
                           </FieldLabel>
                           <NumericInput
                             id="modal-reorder"
                             value={reorderLevel}
                             onValueChange={setReorderLevel}
-                            placeholder="e.g. 20"
+                            placeholder={t("reorderPlaceholder")}
                             allowDecimal={true}
                             min={0}
                             className={inputClasses}
@@ -579,19 +580,19 @@ export function AddMaterialModal({
                         </div>
                       </div>
                       <InfoChip>
-                        You will be notified when stock reaches low stock level
+                        {t("notifyAlertDesc")}
                       </InfoChip>
                     </div>
                   </SectionCard>
 
                   {/* ── SECTION 5: Additional Information ── */}
-                  <SectionCard number={5} title="Additional Information (Optional)">
+                  <SectionCard number={5} title={t("section5Title")}>
                     <div className="space-y-3">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {/* Supplier WhatsApp */}
                         <div>
                           <FieldLabel htmlFor="modal-whatsapp" required>
-                            Supplier WhatsApp
+                            {t("supplierWhatsApp")}
                           </FieldLabel>
                           <Input
                             id="modal-whatsapp"
@@ -602,19 +603,19 @@ export function AddMaterialModal({
                                 supplier_whatsapp: e.target.value,
                               })
                             }
-                            placeholder="e.g. +91 9876543210"
+                            placeholder={t("supplierWhatsAppPlaceholder")}
                             required
                             className={inputClasses}
                           />
                         </div>
                         {/* Notes */}
                         <div>
-                          <FieldLabel htmlFor="modal-notes">Notes</FieldLabel>
+                          <FieldLabel htmlFor="modal-notes">{t("notes")}</FieldLabel>
                           <textarea
                             id="modal-notes"
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
-                            placeholder="Optional notes..."
+                            placeholder={t("notesPlaceholder")}
                             rows={3}
                             className={cn(
                               inputClasses,
@@ -641,7 +642,7 @@ export function AddMaterialModal({
                           6
                         </div>
                         <span className="text-[11px] font-semibold uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8]">
-                          Inventory Summary
+                          {t("summaryTitle")}
                         </span>
                       </div>
                       <ChevronDown
@@ -668,23 +669,23 @@ export function AddMaterialModal({
                             {/* Material Preview */}
                             <div className="bg-white/60 dark:bg-[rgba(22,27,39,0.9)] border border-[rgba(15,23,42,0.06)] dark:border-[rgba(148,163,184,0.10)] rounded-xl p-3.5 space-y-2.5">
                               <p className="text-[13px] font-semibold text-[#0F172A] dark:text-[#F1F5F9] truncate">
-                                {formData.name || "Material Name"}
+                                {formData.name || t("materialName")}
                               </p>
                               <div className="space-y-1.5">
                                 <div className="flex justify-between text-[12px]">
-                                  <span className="text-[#64748B] dark:text-[#94A3B8]">Quantity</span>
+                                  <span className="text-[#64748B] dark:text-[#94A3B8]">{t("summaryQty")}</span>
                                   <span className="text-[#0F172A] dark:text-[#F1F5F9] font-medium">
                                     {quantity || "\u2014"} {formData.unit || ""}
                                   </span>
                                 </div>
                                 <div className="flex justify-between text-[12px]">
-                                  <span className="text-[#64748B] dark:text-[#94A3B8]">Unit</span>
+                                  <span className="text-[#64748B] dark:text-[#94A3B8]">{t("summaryUnit")}</span>
                                   <span className="text-[#0F172A] dark:text-[#F1F5F9] font-medium">
                                     {formData.unit || "\u2014"}
                                   </span>
                                 </div>
                                 <div className="flex justify-between text-[12px]">
-                                  <span className="text-[#64748B] dark:text-[#94A3B8]">Cost Per Unit</span>
+                                  <span className="text-[#64748B] dark:text-[#94A3B8]">{t("summaryCost")}</span>
                                   <span className="text-[#0F172A] dark:text-[#F1F5F9] font-medium">
                                     {costPerUnit ? formatINR(costPerUnit) : "\u2014"}
                                   </span>
@@ -695,11 +696,11 @@ export function AddMaterialModal({
                               {/* Subtotal + GST */}
                               <div className="space-y-1.5">
                                 <div className="flex justify-between text-[12px]">
-                                  <span className="text-[#10B981] font-medium">Subtotal</span>
+                                  <span className="text-[#10B981] font-medium">{t("summarySubtotal")}</span>
                                   <span className="text-[#10B981] font-semibold">{formatINR(subtotal)}</span>
                                 </div>
                                 <div className="flex justify-between text-[12px]">
-                                  <span className="text-[#64748B] dark:text-[#94A3B8]">GST Tax ({gst}%)</span>
+                                  <span className="text-[#64748B] dark:text-[#94A3B8]">{t("summaryGst", { gst })}</span>
                                   <span className="text-[#64748B] dark:text-[#94A3B8]">{formatINR(taxAmount)}</span>
                                 </div>
                               </div>
@@ -707,7 +708,7 @@ export function AddMaterialModal({
                               <div className="border-t border-[rgba(15,23,42,0.06)] dark:border-[rgba(148,163,184,0.10)]" />
                               {/* Total */}
                               <div className="flex justify-between items-center">
-                                <span className="text-[11px] uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8] font-semibold">Total</span>
+                                <span className="text-[11px] uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8] font-semibold">{t("summaryTotal")}</span>
                                 <span className="text-[17px] font-bold text-green-400">{formatINR(totalValue)}</span>
                               </div>
                             </div>
@@ -715,7 +716,7 @@ export function AddMaterialModal({
                             {/* Stock Health */}
                             <div className="bg-white/60 dark:bg-[rgba(22,27,39,0.9)] border border-[rgba(15,23,42,0.06)] dark:border-[rgba(148,163,184,0.10)] rounded-xl p-3.5">
                               <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] font-medium mb-2">
-                                Stock Health
+                                {t("summaryStockHealth")}
                               </p>
                               <div
                                 className={cn(
@@ -743,14 +744,14 @@ export function AddMaterialModal({
                     className="w-full h-[48px] bg-blue-600 hover:bg-blue-500 text-white font-semibold text-[14px] rounded-[10px] transition-colors duration-150 flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <CheckCircle size={16} />
-                    {isEditing ? "Update Details" : "Save Material"}
+                    {isEditing ? t("updateDetails") : t("saveMaterial")}
                   </button>
                   <button
                     type="button"
                     onClick={onClose}
                     className="w-full h-[48px] bg-transparent border border-[rgba(148,163,184,0.20)] text-[#94A3B8] font-medium text-[14px] rounded-[10px] transition-colors duration-150 cursor-pointer"
                   >
-                    Cancel
+                    {t("cancel")}
                   </button>
                 </div>
               </div>
@@ -760,20 +761,20 @@ export function AddMaterialModal({
                 <div className="sticky top-0 space-y-3">
                   {/* Summary Title */}
                   <h3 className="text-[11px] uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8] font-semibold">
-                    Inventory Summary
+                    {t("summaryTitle")}
                   </h3>
 
                   {/* Material Preview Card */}
                   <div className="bg-white/60 dark:bg-[rgba(22,27,39,0.9)] border border-[rgba(15,23,42,0.06)] dark:border-[rgba(148,163,184,0.10)] rounded-xl p-3.5 space-y-2.5">
                     {/* Name */}
                     <p className="text-[13px] font-semibold text-[#0F172A] dark:text-[#F1F5F9] truncate">
-                      {formData.name || "Material Name"}
+                      {formData.name || t("materialName")}
                     </p>
                     {/* Row items */}
                     <div className="space-y-1.5">
                       <div className="flex justify-between text-[12px]">
                         <span className="text-[#64748B] dark:text-[#94A3B8]">
-                          Quantity
+                          {t("summaryQty")}
                         </span>
                         <span className="text-[#0F172A] dark:text-[#F1F5F9] font-medium">
                           {quantity || "—"} {formData.unit || ""}
@@ -781,7 +782,7 @@ export function AddMaterialModal({
                       </div>
                       <div className="flex justify-between text-[12px]">
                         <span className="text-[#64748B] dark:text-[#94A3B8]">
-                          Unit
+                          {t("summaryUnit")}
                         </span>
                         <span className="text-[#0F172A] dark:text-[#F1F5F9] font-medium">
                           {formData.unit || "—"}
@@ -789,7 +790,7 @@ export function AddMaterialModal({
                       </div>
                       <div className="flex justify-between text-[12px]">
                         <span className="text-[#64748B] dark:text-[#94A3B8]">
-                          Cost Per Unit
+                          {t("summaryCost")}
                         </span>
                         <span className="text-[#0F172A] dark:text-[#F1F5F9] font-medium">
                           {costPerUnit ? formatINR(costPerUnit) : "—"}
@@ -802,7 +803,7 @@ export function AddMaterialModal({
                     <div className="space-y-1.5">
                       <div className="flex justify-between text-[12px]">
                         <span className="text-[#10B981] font-medium">
-                          Subtotal
+                          {t("summarySubtotal")}
                         </span>
                         <span className="text-[#10B981] font-semibold">
                           {formatINR(subtotal)}
@@ -810,7 +811,7 @@ export function AddMaterialModal({
                       </div>
                       <div className="flex justify-between text-[12px]">
                         <span className="text-[#64748B] dark:text-[#94A3B8]">
-                          GST Tax ({gst}%)
+                          {t("summaryGst", { gst })}
                         </span>
                         <span className="text-[#64748B] dark:text-[#94A3B8]">
                           {formatINR(taxAmount)}
@@ -822,7 +823,7 @@ export function AddMaterialModal({
                   {/* Total Inventory Value */}
                   <div className="bg-green-500/[0.07] border border-green-500/20 rounded-xl p-3.5">
                     <p className="text-[10px] uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8] font-semibold mb-1">
-                      Total Inventory Value
+                      {t("estimatedValue")}
                     </p>
                     <p className="text-[17px] font-bold text-green-400">
                       {formatINR(totalValue)}
@@ -832,7 +833,7 @@ export function AddMaterialModal({
                   {/* Stock Health Indicator */}
                   <div className="bg-white/60 dark:bg-[rgba(22,27,39,0.9)] border border-[rgba(15,23,42,0.06)] dark:border-[rgba(148,163,184,0.10)] rounded-xl p-3.5">
                     <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] font-medium mb-2">
-                      Stock Health
+                      {t("summaryStockHealth")}
                     </p>
                     <div
                       className={cn(
@@ -863,7 +864,7 @@ export function AddMaterialModal({
                   onClick={onClose}
                   className="px-5 py-2 rounded-[10px] text-[13px] font-medium text-[#64748B] dark:text-[#94A3B8] border border-[rgba(15,23,42,0.08)] dark:border-[rgba(148,163,184,0.2)] bg-transparent hover:bg-slate-500/5 transition-colors cursor-pointer"
                 >
-                  Cancel
+                  {t("cancel")}
                 </button>
                 {/* Save */}
                 <button
@@ -871,7 +872,7 @@ export function AddMaterialModal({
                   form="inventory-form"
                   className="px-6 py-2 rounded-[10px] text-[13px] font-semibold text-white bg-blue-600 hover:bg-blue-500 transition-colors cursor-pointer shadow-lg shadow-blue-600/20"
                 >
-                  {isEditing ? "Update Details" : "Save to Inventory"}
+                  {isEditing ? t("updateDetails") : t("saveToInventory")}
                 </button>
               </div>
             </div>

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useTranslations } from "next-intl";
+import { useAppLocale } from "@/components/LocaleProvider";
 import { createPortal } from "react-dom";
 import {
   X,
@@ -79,6 +81,11 @@ const PAYMENT_STATUS_CONFIG: Record<string, { dot: string; color: string; bg: st
 // ─── Component ──────────────────────────────────────────────────
 
 export function VendorDetailDrawer({ vendor, orders, onClose }: VendorDetailDrawerProps) {
+  const t = useTranslations("purchasing.vendorDrawer");
+  const tStatus = useTranslations("purchasing.statuses");
+  const tPayStatus = useTranslations("purchasing.paymentStatuses");
+  const { locale } = useAppLocale();
+  const dateLocale = locale === "hi" ? "hi-IN" : locale === "gu" ? "gu-IN" : locale === "mr" ? "mr-IN" : "en-IN";
   const [portalMounted, setPortalMounted] = useState(false);
   const [filter, setFilter] = useState<FilterType>("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -138,10 +145,10 @@ export function VendorDetailDrawer({ vendor, orders, onClose }: VendorDetailDraw
     `\u20B9${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
   const filters: { key: FilterType; label: string }[] = [
-    { key: "all", label: "All" },
-    { key: "Pending", label: "Pending" },
-    { key: "Ordered", label: "Ordered" },
-    { key: "Received", label: "Received" },
+    { key: "all", label: tStatus("all") },
+    { key: "Pending", label: tStatus("pending") },
+    { key: "Ordered", label: tStatus("ordered") },
+    { key: "Received", label: tStatus("received") },
   ];
 
   if (!portalMounted) return null;
@@ -203,21 +210,21 @@ export function VendorDetailDrawer({ vendor, orders, onClose }: VendorDetailDraw
               <div className="grid grid-cols-2 gap-2">
                 {[
                   {
-                    label: "Total Spend",
+                    label: t("lblTotalSpend"),
                     value: formatCurrency(totalSpend),
                     icon: ShoppingCart,
                     colorClass:
                       "text-[#2563EB] dark:text-[#60A5FA]",
                   },
                   {
-                    label: "Amount Paid",
+                    label: t("lblAmountPaid"),
                     value: formatCurrency(totalPaid),
                     icon: IndianRupee,
                     colorClass:
                       "text-[#059669] dark:text-[#34D399]",
                   },
                   {
-                    label: "Balance Due",
+                    label: t("lblBalanceDue"),
                     value: formatCurrency(Math.max(0, balanceDue)),
                     icon: Wallet,
                     colorClass:
@@ -226,7 +233,7 @@ export function VendorDetailDrawer({ vendor, orders, onClose }: VendorDetailDraw
                         : "text-[#059669] dark:text-[#34D399]",
                   },
                   {
-                    label: "PO Count",
+                    label: t("lblPOCount"),
                     value: vendorOrders.length.toString(),
                     icon: ClipboardList,
                     colorClass:
@@ -290,11 +297,10 @@ export function VendorDetailDrawer({ vendor, orders, onClose }: VendorDetailDraw
               {/* Summary Bar */}
               <div className="flex items-center justify-between px-1">
                 <span className="text-[12px] text-[#64748B] dark:text-white/40">
-                  {filteredOrders.length} order
-                  {filteredOrders.length !== 1 ? "s" : ""}
+                  {t("ordersCount", { count: filteredOrders.length })}
                 </span>
                 <span className="text-[12px] text-[#64748B] dark:text-white/40">
-                  Total:{" "}
+                  {t("lblTotal")}{" "}
                   <span
                     className="text-[#0F172A] dark:text-white/80 font-semibold"
                     style={{ fontVariantNumeric: "tabular-nums" }}
@@ -316,12 +322,12 @@ export function VendorDetailDrawer({ vendor, orders, onClose }: VendorDetailDraw
                     <ShoppingCart className="h-5 w-5 text-[#94A3B8] dark:text-white/30" />
                   </div>
                   <p className="text-[15px] font-medium text-[#64748B] dark:text-white/50">
-                    No purchase orders found
+                    {t("emptyOrdersTitle")}
                   </p>
                   <p className="text-[13px] text-[#94A3B8] dark:text-white/30 mt-1">
                     {filter !== "all"
-                      ? "Try a different filter"
-                      : "No orders with this vendor yet"}
+                      ? t("emptyOrdersFilterHint")
+                      : t("emptyOrdersAllHint")}
                   </p>
                 </div>
               ) : (
@@ -385,14 +391,13 @@ export function VendorDetailDrawer({ vendor, orders, onClose }: VendorDetailDraw
                                 <span className="text-[11px] text-[#64748B] dark:text-white/40 mt-0.5 block">
                                   {new Date(
                                     po.orderedAt || po.createdAt
-                                  ).toLocaleDateString("en-IN", {
+                                  ).toLocaleDateString(dateLocale, {
                                     day: "2-digit",
                                     month: "short",
                                     year: "numeric",
                                   })}
                                   {" · "}
-                                  {po.items.length} item
-                                  {po.items.length !== 1 ? "s" : ""}
+                                  {t("itemsCount", { count: po.items.length })}
                                 </span>
                               </div>
                               <div className="text-right flex-shrink-0">
@@ -406,7 +411,7 @@ export function VendorDetailDrawer({ vendor, orders, onClose }: VendorDetailDraw
                                 </span>
                                 {po.paidAmount > 0 && (
                                   <span className="text-[11px] text-[#64748B] dark:text-white/40">
-                                    Paid: {formatCurrency(po.paidAmount)}
+                                    {t("lblPaid")} {formatCurrency(po.paidAmount)}
                                   </span>
                                 )}
                                 <div className="flex items-center gap-1 mt-1 justify-end">
@@ -417,7 +422,7 @@ export function VendorDetailDrawer({ vendor, orders, onClose }: VendorDetailDraw
                                       color: sc.color,
                                     }}
                                   >
-                                    {sc.label}
+                                    {tStatus(po.status.toLowerCase())}
                                   </span>
                                   <span
                                     className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold"
@@ -426,7 +431,7 @@ export function VendorDetailDrawer({ vendor, orders, onClose }: VendorDetailDraw
                                       color: psc.color,
                                     }}
                                   >
-                                    {psc.label}
+                                    {tPayStatus(ps.toLowerCase())}
                                   </span>
                                 </div>
                               </div>
@@ -480,7 +485,7 @@ export function VendorDetailDrawer({ vendor, orders, onClose }: VendorDetailDraw
                                   {/* Balance Due */}
                                   <div className="flex items-center justify-between">
                                     <span className="text-[11px] text-[#64748B] dark:text-white/30 uppercase tracking-wider">
-                                      Balance Due
+                                      {t("lblBalanceDue")}
                                     </span>
                                     <span
                                       className={cn(
@@ -503,7 +508,7 @@ export function VendorDetailDrawer({ vendor, orders, onClose }: VendorDetailDraw
                                   {/* Items list */}
                                   <div className="space-y-1.5">
                                     <span className="text-[11px] text-[#64748B] dark:text-white/30 uppercase tracking-wider block">
-                                      Items
+                                      {t("lblItems")}
                                     </span>
                                     {po.items.map(
                                       (item, i) => (
@@ -530,7 +535,7 @@ export function VendorDetailDrawer({ vendor, orders, onClose }: VendorDetailDraw
                                   {/* Tax */}
                                   <div className="flex items-center justify-between">
                                     <span className="text-[11px] text-[#64748B] dark:text-white/30 uppercase tracking-wider">
-                                      Tax
+                                      {t("lblTax")}
                                     </span>
                                     <span className="text-[13px] text-[#0F172A] dark:text-white/70 font-medium tabular-nums">
                                       {formatCurrency(po.taxAmount)}

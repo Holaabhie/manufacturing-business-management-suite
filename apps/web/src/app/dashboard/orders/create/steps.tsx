@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NumericInput } from "@/components/ui/numeric-input";
@@ -39,6 +40,7 @@ export function StepClientProduct({
   showAllPrevious?: boolean;
   setShowAllPrevious?: (show: boolean) => void;
 }) {
+  const t = useTranslations("orders.create");
   const filtered = clients.filter((c) => c.name?.toLowerCase().includes(clientSearch.toLowerCase()));
   const selectedClient = clients.find((c) => c.id === form.client_id);
 
@@ -60,13 +62,13 @@ export function StepClientProduct({
   return (
     <motion.div {...fadeIn} className="space-y-5">
       {/* Client selection */}
-      <Field label="Client">
+      <Field label={t("clientSection.selectClient")}>
         {!addingClient ? (
           <div className="space-y-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--muted-foreground)]" />
               <Input
-                placeholder="Search clients..."
+                placeholder={t("clientSection.searchClientsPlaceholder")}
                 value={clientSearch}
                 onChange={(e) => setClientSearch(e.target.value)}
                 className={cn(inputClass, "pl-10")}
@@ -74,7 +76,7 @@ export function StepClientProduct({
             </div>
             <div className="max-h-[min(160px,calc(100dvh-200px))] overflow-y-auto scrollbar-thin rounded-[10px] border border-[var(--border)] bg-[var(--muted)]">
               {filtered.length === 0 ? (
-                <p className="text-center text-[13px] text-[var(--muted-foreground)] py-4">No clients found</p>
+                <p className="text-center text-[13px] text-[var(--muted-foreground)] py-4">{t("clientSection.noClientsFound")}</p>
               ) : filtered.slice(0, 8).map((c) => (
                 <button
                   key={c.id} type="button"
@@ -92,23 +94,23 @@ export function StepClientProduct({
             </div>
             {selectedClient && (
               <div className="flex items-center gap-2 px-3 py-2 rounded-[8px] bg-[rgba(0,122,255,0.06)] text-[var(--primary)] text-[13px]">
-                <Check className="h-3.5 w-3.5" /> Selected: <span className="font-semibold">{selectedClient.name}</span>
+                <Check className="h-3.5 w-3.5" /> {t("clientSection.selected")} <span className="font-semibold">{selectedClient.name}</span>
               </div>
             )}
             <button type="button" onClick={() => setAddingClient(true)} className="flex items-center gap-1.5 text-[13px] text-[var(--primary)] font-medium hover:underline cursor-pointer">
-              <UserPlus className="h-3.5 w-3.5" /> Add new client
+              <UserPlus className="h-3.5 w-3.5" /> {t("clientSection.addNewClient")}
             </button>
           </div>
         ) : (
           <div className="space-y-3 p-3 rounded-[10px] border border-dashed border-[var(--primary)]/30 bg-[rgba(0,122,255,0.04)]">
-            <p className="text-[13px] font-semibold text-[var(--primary)]">New Client</p>
-            <Input placeholder="Client name *" value={newClient.name} onChange={(e) => setNewClient({ ...newClient, name: e.target.value })} className={inputClass} />
+            <p className="text-[13px] font-semibold text-[var(--primary)]">{t("clientSection.newClient")}</p>
+            <Input placeholder={t("clientSection.clientNameReq")} value={newClient.name} onChange={(e) => setNewClient({ ...newClient, name: e.target.value })} className={inputClass} />
             <div className="grid grid-cols-2 gap-2">
-              <Input placeholder="Phone" value={newClient.phone} onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })} className={inputClass} />
-              <Input placeholder="Email" value={newClient.email} onChange={(e) => setNewClient({ ...newClient, email: e.target.value })} className={inputClass} />
+              <Input placeholder={t("clientSection.phone")} value={newClient.phone} onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })} className={inputClass} />
+              <Input placeholder={t("clientSection.email")} value={newClient.email} onChange={(e) => setNewClient({ ...newClient, email: e.target.value })} className={inputClass} />
             </div>
             <button type="button" onClick={() => { setAddingClient(false); setNewClient({ name: "", phone: "", email: "" }); }} className="text-[12px] text-[var(--muted-foreground)] hover:text-[var(--muted-foreground)] cursor-pointer">
-              ← Back to client list
+              {t("clientSection.backToClients")}
             </button>
           </div>
         )}
@@ -129,7 +131,7 @@ export function StepClientProduct({
                 <div className="flex items-center gap-2">
                   <Copy className="h-4 w-4 text-[var(--primary)]" />
                   <span className="text-[13px] font-bold text-[var(--foreground)]">
-                    Previous Orders Found
+                    {t("clientSection.previousOrdersFound")}
                   </span>
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--primary)] text-white font-bold">
                     {recentOrders?.length ?? 0}
@@ -142,7 +144,7 @@ export function StepClientProduct({
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="text-[14px] font-semibold text-[var(--foreground)] truncate">
-                      {latestOrder.productName || "Unnamed Product"}
+                      {latestOrder.productName || t("clientSection.unnamedProduct")}
                     </p>
                     <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5">
                       {Number(latestOrder.quantity || 0).toLocaleString('en-IN')} {(latestOrder.unit || 'kg').toUpperCase()}
@@ -152,7 +154,7 @@ export function StepClientProduct({
                     </p>
                     <p className="text-[11px] text-[var(--muted-foreground)] mt-1 flex items-center gap-1">
                       <Clock className="h-3 w-3" />
-                      Created {daysAgo(latestOrder.createdAt)}
+                      {t("clientSection.created")} {daysAgo(latestOrder.createdAt)}
                     </p>
                   </div>
                   <button
@@ -166,9 +168,9 @@ export function StepClientProduct({
                     )}
                   >
                     {cloningOrderId === latestOrder.id ? (
-                      <><Loader2 className="h-3 w-3 animate-spin" /> Loading...</>
+                      <><Loader2 className="h-3 w-3 animate-spin" /> {t("clientSection.loading")}</>
                     ) : (
-                      <><Copy className="h-3 w-3" /> Clone Order</>
+                      <><Copy className="h-3 w-3" /> {t("clientSection.cloneOrder")}</>
                     )}
                   </button>
                 </div>
@@ -181,7 +183,7 @@ export function StepClientProduct({
                   onClick={() => setShowAllPrevious?.(!showAllPrevious)}
                   className="flex items-center gap-1 text-[12px] text-[var(--primary)] font-medium hover:underline cursor-pointer"
                 >
-                  {showAllPrevious ? "Hide" : "View all"} previous orders
+                  {showAllPrevious ? t("clientSection.hide") : t("clientSection.viewAll")} {t("clientSection.previousOrders")}
                   <ChevronRight className={cn("h-3 w-3 transition-transform", showAllPrevious && "rotate-90")} />
                 </button>
               )}
@@ -203,7 +205,7 @@ export function StepClientProduct({
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1">
                             <p className="text-[13px] font-medium text-[var(--foreground)] truncate">
-                              {order.productName || "Unnamed Product"}
+                              {order.productName || t("clientSection.unnamedProduct")}
                             </p>
                             <p className="text-[12px] text-[var(--muted-foreground)] mt-0.5">
                               {Number(order.quantity || 0).toLocaleString('en-IN')} {(order.unit || 'kg').toUpperCase()}
@@ -224,7 +226,7 @@ export function StepClientProduct({
                             {cloningOrderId === order.id ? (
                               <Loader2 className="h-3 w-3 animate-spin" />
                             ) : (
-                              <><Copy className="h-3 w-3" /> Clone</>
+                              <><Copy className="h-3 w-3" /> {t("clientSection.clone")}</>
                             )}
                           </button>
                         </div>
@@ -239,16 +241,16 @@ export function StepClientProduct({
       </AnimatePresence>
 
       {/* Product */}
-      <Field label="Product Name">
-        <Input placeholder="e.g. Steel Rods, Cotton Fabric..." value={form.product_name} onChange={(e) => setForm({ ...form, product_name: e.target.value })} className={inputClass} />
+      <Field label={t("clientSection.productName")}>
+        <Input placeholder={t("clientSection.productNamePlaceholder")} value={form.product_name} onChange={(e) => setForm({ ...form, product_name: e.target.value })} className={inputClass} />
       </Field>
 
       {/* Quantity + Unit */}
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Quantity">
+        <Field label={t("clientSection.quantity")}>
           <NumericInput value={form.quantity} onValueChange={(v) => setForm({ ...form, quantity: v })} placeholder="0" className={inputClass} />
         </Field>
-        <Field label="Unit">
+        <Field label={t("clientSection.unit")}>
           <Select value={form.unit} onValueChange={(v) => setForm({ ...form, unit: v })}>
             <SelectTrigger className={cn(inputClass, "cursor-pointer")}><SelectValue /></SelectTrigger>
             <SelectContent className="rounded-[10px]">
@@ -259,7 +261,7 @@ export function StepClientProduct({
       </div>
 
       {/* Due date */}
-      <Field label="Due Date">
+      <Field label={t("clientSection.dueDate")}>
         <Input type="date" value={form.delivery_date} onChange={(e) => setForm({ ...form, delivery_date: e.target.value })} className={cn(inputClass, "cursor-pointer")} />
       </Field>
     </motion.div>
@@ -302,22 +304,22 @@ export function StepFinancials({ form, setForm }: { form: any; setForm: (f: any)
     <motion.div {...fadeIn} className="space-y-5">
       {/* ── PRICING — Quantity (read-only from Step 1) + Rate Per Unit ── */}
       <div className="rounded-[12px] border border-[var(--border)] bg-[var(--muted)] p-4 space-y-3">
-        <p className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider">Pricing</p>
+        <p className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider">{t("financialsSection.pricing")}</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* Quantity — read-only */}
           <div className="space-y-1.5">
-            <Label className="text-[13px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">Quantity</Label>
+            <Label className="text-[13px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">{t("financialsSection.quantity")}</Label>
             <div className={cn(inputClass, "flex items-center px-3 bg-[var(--card)] border border-[var(--border)] opacity-70 cursor-not-allowed")}>
               <Package className="h-4 w-4 text-[var(--muted-foreground)] mr-2 flex-shrink-0" />
               <span className="text-[15px] font-semibold text-[var(--foreground)]">
                 {productQuantity > 0 ? productQuantity.toLocaleString('en-IN') : '—'} {productUnit}
               </span>
             </div>
-            <p className="text-[11px] text-[var(--muted-foreground)] pl-1">Set in Step 1 — Client & Product</p>
+            <p className="text-[11px] text-[var(--muted-foreground)] pl-1">{t("financialsSection.setInStep1")}</p>
           </div>
 
           {/* Rate Per Unit — editable */}
-          <Field label={`Rate Per ${productUnit}`}>
+          <Field label={t("financialsSection.ratePer", { unit: productUnit })} >
             <NumericInput
               value={form.unit_rate}
               onValueChange={(v) => setForm({ ...form, unit_rate: v })}
@@ -331,7 +333,7 @@ export function StepFinancials({ form, setForm }: { form: any; setForm: (f: any)
       </div>
 
       {/* ── ORDER VALUE — auto-calculated, read-only ── */}
-      <Field label="Order Value">
+      <Field label={t("financialsSection.orderValue")}>
         <div className="relative">
           <NumericInput
             value={form.order_value}
@@ -343,7 +345,7 @@ export function StepFinancials({ form, setForm }: { form: any; setForm: (f: any)
           />
         </div>
         <p className="text-[11px] text-[var(--muted-foreground)] pl-1 mt-1">
-          Calculated from quantity × rate
+          {t("financialsSection.calcFromQtyRate")}
           {calculatedOrderValue > 0 && (
             <span className="ml-1 font-medium text-[var(--primary)]">
               ({productQuantity.toLocaleString('en-IN')} × {formatINR(unitRate)} = {formatINR(calculatedOrderValue)})
@@ -352,11 +354,16 @@ export function StepFinancials({ form, setForm }: { form: any; setForm: (f: any)
         </p>
       </Field>
 
-      <Field label="Payment Terms">
+      <Field label={t("financialsSection.paymentTerms")}>
         <Select value={form.payment_terms} onValueChange={(v) => setForm({ ...form, payment_terms: v })}>
           <SelectTrigger className={cn(inputClass, "cursor-pointer")}><SelectValue /></SelectTrigger>
           <SelectContent className="rounded-[10px]">
-            {["Full Advance", "50% Advance", "On Delivery", "Credit"].map((t) => <SelectItem key={t} value={t} className="rounded-[8px]">{t}</SelectItem>)}
+            {[
+            { val: "Full Advance", label: t("financialsSection.terms.fullAdvance") },
+            { val: "50% Advance", label: t("financialsSection.terms.halfAdvance") },
+            { val: "On Delivery", label: t("financialsSection.terms.onDelivery") },
+            { val: "Credit", label: t("financialsSection.terms.credit") },
+          ].map((item) => <SelectItem key={item.val} value={item.val} className="rounded-[8px]">{item.label}</SelectItem>)}
           </SelectContent>
         </Select>
       </Field>
@@ -364,7 +371,7 @@ export function StepFinancials({ form, setForm }: { form: any; setForm: (f: any)
       <AnimatePresence>
         {form.payment_terms === "Credit" && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-            <Field label="Credit Period (Days)">
+            <Field label={t("financialsSection.creditPeriodDays")}>
               <NumericInput value={form.credit_days} onValueChange={(v) => setForm({ ...form, credit_days: v })} placeholder="30" allowDecimal={false} className={inputClass} />
             </Field>
           </motion.div>
@@ -373,7 +380,7 @@ export function StepFinancials({ form, setForm }: { form: any; setForm: (f: any)
 
       {/* GST Toggle */}
       <div className="flex items-center justify-between p-3 rounded-[10px] bg-[var(--muted)]">
-        <span className="text-[14px] font-medium text-[var(--foreground)]">GST Applicable</span>
+        <span className="text-[14px] font-medium text-[var(--foreground)]">{t("financialsSection.gstApplicable")}</span>
         <button type="button" onClick={() => setForm({ ...form, gst_applicable: !form.gst_applicable })}
           className={cn("w-[51px] h-[31px] rounded-full transition-colors duration-150 relative cursor-pointer active:scale-95", form.gst_applicable ? "bg-[var(--erp-success)]" : "bg-[var(--accent)]")}
         >
@@ -384,7 +391,7 @@ export function StepFinancials({ form, setForm }: { form: any; setForm: (f: any)
       <AnimatePresence>
         {form.gst_applicable && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-            <Field label="GST Rate">
+            <Field label={t("financialsSection.gstRate")}>
               <Select value={form.gst_percent} onValueChange={(v) => setForm({ ...form, gst_percent: v })}>
                 <SelectTrigger className={cn(inputClass, "cursor-pointer")}><SelectValue /></SelectTrigger>
                 <SelectContent className="rounded-[10px]">
@@ -399,24 +406,24 @@ export function StepFinancials({ form, setForm }: { form: any; setForm: (f: any)
       {/* ── Enhanced Summary Card ── */}
       <div className="rounded-[12px] border border-[var(--border)] bg-[var(--muted)] p-4 space-y-2">
         <div className="flex justify-between text-[14px] text-[var(--muted-foreground)]">
-          <span>Quantity</span>
+          <span>{t("financialsSection.quantity")}</span>
           <span className="font-medium text-[var(--foreground)]">{productQuantity > 0 ? productQuantity.toLocaleString('en-IN') : '—'} {productUnit}</span>
         </div>
         <div className="flex justify-between text-[14px] text-[var(--muted-foreground)]">
-          <span>Rate</span>
+          <span>{t("financialsSection.rate")}</span>
           <span className="font-medium text-[var(--foreground)]">{unitRate > 0 ? `${formatINR(unitRate)} / ${productUnit}` : '—'}</span>
         </div>
         <div className="border-t border-[var(--border)] my-1" />
         <div className="flex justify-between text-[14px] text-[var(--muted-foreground)]">
-          <span>Subtotal</span><span className="font-medium text-[var(--foreground)]">{subtotal > 0 ? formatINR(subtotal) : '₹0'}</span>
+          <span>{t("financialsSection.subtotal")}</span><span className="font-medium text-[var(--foreground)]">{subtotal > 0 ? formatINR(subtotal) : '₹0'}</span>
         </div>
         {form.gst_applicable && (
           <div className="flex justify-between text-[14px] text-[var(--muted-foreground)]">
-            <span>GST ({gstPct}%)</span><span className="font-medium text-[var(--foreground)]">{formatINR(gstAmt)}</span>
+            <span>{t("financialsSection.gstLabel", { percent: gstPct })}</span><span className="font-medium text-[var(--foreground)]">{formatINR(gstAmt)}</span>
           </div>
         )}
         <div className="border-t border-[var(--border)] pt-2 flex justify-between text-[16px] font-bold text-[var(--foreground)]">
-          <span>Grand Total</span><span>{grandTotal > 0 ? formatINR(grandTotal) : '₹0'}</span>
+          <span>{t("financialsSection.grandTotal")}</span><span>{grandTotal > 0 ? formatINR(grandTotal) : '₹0'}</span>
         </div>
       </div>
     </motion.div>
@@ -482,8 +489,8 @@ export function StepProduction({
       {/* Toggle */}
       <div className="flex items-center justify-between p-4 rounded-[12px] bg-[var(--muted)] border border-[var(--border)]">
         <div>
-          <p className="text-[15px] font-semibold text-[var(--foreground)]">Set up production now</p>
-          <p className="text-[12px] text-[var(--muted-foreground)] mt-0.5">You can also do this later from Production Floor</p>
+          <p className="text-[15px] font-semibold text-[var(--foreground)]">{t("productionSection.setupNow")}</p>
+          <p className="text-[12px] text-[var(--muted-foreground)] mt-0.5">{t("productionSection.setupLaterHint")}</p>
         </div>
         <button
           type="button"
@@ -512,7 +519,7 @@ export function StepProduction({
               >
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider">
-                    Assignment {idx + 1}
+                    {t("productionSection.assignmentNum", { num: idx + 1 })}
                   </span>
                   {assignments.length > 1 && (
                     <button
@@ -525,18 +532,18 @@ export function StepProduction({
                   )}
                 </div>
 
-                <Field label="Machine / Equipment">
+                <Field label={t("productionSection.machineEquipment")}>
                   <Select value={row.machineId} onValueChange={(v) => updateAssignment(row.id, "machineId", v)}>
-                    <SelectTrigger className={cn(inputClass, "cursor-pointer")}><SelectValue placeholder="Select machine" /></SelectTrigger>
+                    <SelectTrigger className={cn(inputClass, "cursor-pointer")}><SelectValue placeholder={t("productionSection.selectMachine")} /></SelectTrigger>
                     <SelectContent className="rounded-[10px]">
                       {machines.map((m) => <SelectItem key={m.id} value={m.id} className="rounded-[8px]">{m.machineName}{m.machineType ? ` (${m.machineType})` : ""}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </Field>
 
-                <Field label="Assigned Operator">
+                <Field label={t("productionSection.assignedOperator")}>
                   <Select value={row.operatorId} onValueChange={(v) => updateAssignment(row.id, "operatorId", v)}>
-                    <SelectTrigger className={cn(inputClass, "cursor-pointer")}><SelectValue placeholder="Select operator" /></SelectTrigger>
+                    <SelectTrigger className={cn(inputClass, "cursor-pointer")}><SelectValue placeholder={t("productionSection.selectOperator")} /></SelectTrigger>
                     <SelectContent className="rounded-[10px]">
                       {productionStaff.map((e) => <SelectItem key={e.id} value={e.id} className="rounded-[8px]">{e.fullName} — {e.department}</SelectItem>)}
                     </SelectContent>
@@ -549,7 +556,7 @@ export function StepProduction({
             {hasDuplicates && (
               <div className="flex items-center gap-2 px-3 py-2 rounded-[8px] bg-[rgba(255,59,48,0.06)] text-[var(--destructive)] text-[13px]">
                 <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
-                <span className="font-medium">Duplicate machine + operator pair detected</span>
+                <span className="font-medium">{t("productionSection.duplicatePair")}</span>
               </div>
             )}
 
@@ -559,11 +566,11 @@ export function StepProduction({
               onClick={addRow}
               className="flex items-center gap-1.5 text-[13px] text-[var(--primary)] font-medium hover:underline cursor-pointer"
             >
-              <span className="text-[16px] leading-none">+</span> Add Another Machine
+              <span className="text-[16px] leading-none">+</span> {t("productionSection.addAssignment")}
             </button>
 
             {/* Start date — single for the whole production */}
-            <Field label="Target Start Date">
+            <Field label={t("productionSection.targetStartDate")}>
               <Input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} className={cn(inputClass, "cursor-pointer")} />
             </Field>
           </motion.div>
@@ -663,8 +670,8 @@ export function StepMaterials({
     <motion.div {...fadeIn} className="space-y-5">
       {/* Header */}
       <div>
-        <p className="text-[17px] font-semibold text-[var(--foreground)]">Materials Required</p>
-        <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5">Select raw materials needed for this order</p>
+        <p className="text-[17px] font-semibold text-[var(--foreground)]">{t("materialsSection.title")}</p>
+        <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5">{t("materialsSection.subtitle")}</p>
       </div>
 
       {/* Search */}
@@ -672,7 +679,7 @@ export function StepMaterials({
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--muted-foreground)]" />
           <Input
-            placeholder="Search inventory..."
+            placeholder={t("materialsSection.searchPlaceholder")}
             value={searchQuery}
             onChange={(e) => { setSearchQuery(e.target.value); setShowDropdown(true); }}
             onFocus={() => setShowDropdown(true)}
@@ -703,12 +710,12 @@ export function StepMaterials({
                     <div className="min-w-0">
                       <span className="font-medium block truncate">{item.name}</span>
                       <span className="text-[11px] text-[var(--muted-foreground)]">
-                        Stock: {item.quantity} {item.unit}
+                        {t("materialsSection.stock", { qty: item.quantity, unit: item.unit })}
                       </span>
                     </div>
                     {outOfStock && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[rgba(255,59,48,0.1)] text-[var(--destructive)] font-semibold whitespace-nowrap ml-2">
-                        Out of stock
+                        {t("materialsSection.outOfStock")}
                       </span>
                     )}
                   </button>
@@ -725,8 +732,8 @@ export function StepMaterials({
           <div className="w-[48px] h-[48px] rounded-[12px] bg-[var(--muted)] flex items-center justify-center mb-3">
             <Layers className="h-5 w-5 text-[var(--muted-foreground)]" />
           </div>
-          <p className="text-[15px] font-medium text-[var(--muted-foreground)]">No materials added yet</p>
-          <p className="text-[13px] text-[var(--muted-foreground)] mt-1">Materials can also be added later from Production Floor</p>
+          <p className="text-[15px] font-medium text-[var(--muted-foreground)]">{t("materialsSection.noMaterialsYet")}</p>
+          <p className="text-[13px] text-[var(--muted-foreground)] mt-1">{t("materialsSection.materialsLaterHint")}</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -742,16 +749,16 @@ export function StepMaterials({
                     <div className="flex items-center gap-2">
                       <span className="text-[14px] font-semibold text-[var(--foreground)] truncate">{mat.itemName}</span>
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--muted)] text-[var(--muted-foreground)] font-medium whitespace-nowrap">
-                        Material
+                        {t("materialsSection.material")}
                       </span>
                       {mat.currentStock === -1 && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[rgba(255,59,48,0.1)] text-[var(--destructive)] font-semibold whitespace-nowrap">
-                          Not in inventory
+                          {t("materialsSection.notInInventory")}
                         </span>
                       )}
                     </div>
                     <span className="text-[12px] text-[var(--muted-foreground)] mt-0.5 block">
-                      {mat.currentStock === -1 ? "Item not found in current inventory" : `Available: ${mat.currentStock} ${mat.unit}`}
+                      {mat.currentStock === -1 ? t("materialsSection.itemNotFound") : t("materialsSection.available", { stock: mat.currentStock, unit: mat.unit })}
                     </span>
                   </div>
                   <button
@@ -776,7 +783,7 @@ export function StepMaterials({
                   {overStock && (
                     <div className="flex items-center gap-1 text-[var(--erp-warning)] ml-auto">
                       <AlertTriangle className="h-3.5 w-3.5" />
-                      <span className="text-[11px] font-medium">Exceeds stock</span>
+                      <span className="text-[11px] font-medium">{t("materialsSection.exceedsStock")}</span>
                     </div>
                   )}
                 </div>
@@ -793,7 +800,7 @@ export function StepMaterials({
           onClick={onSkip}
           className="text-[13px] text-[var(--muted-foreground)] hover:text-[var(--muted-foreground)] font-medium cursor-pointer transition-colors"
         >
-          Skip this step →
+          {t("materialsSection.skipStep")}
         </button>
       </div>
     </motion.div>
@@ -821,52 +828,52 @@ export function StepReview({ form, clients, machines }: { form: any; clients: an
     <motion.div {...fadeIn} className="space-y-4">
       {/* Client & Product */}
       <div className="rounded-[12px] border border-[var(--border)] bg-[var(--muted)] p-4">
-        <p className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider mb-2">Client & Product</p>
-        <Row label="Client" value={form.new_client_name || client?.name || "—"} accent />
-        <Row label="Product" value={form.product_name || "—"} />
-        <Row label="Quantity" value={`${form.quantity || 0} ${form.unit}`} />
-        <Row label="Due Date" value={form.delivery_date ? new Date(form.delivery_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"} />
+        <p className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider mb-2">{t("steps.clientProduct")}</p>
+        <Row label={t("reviewSection.client")} value={form.new_client_name || client?.name || "—"} accent />
+        <Row label={t("reviewSection.product")} value={form.product_name || "—"} />
+        <Row label={t("reviewSection.quantity")} value={`${form.quantity || 0} ${form.unit}`} />
+        <Row label={t("reviewSection.dueDate")} value={form.delivery_date ? new Date(form.delivery_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"} />
       </div>
 
       {/* Financials */}
       <div className="rounded-[12px] border border-[var(--border)] bg-[var(--muted)] p-4">
-        <p className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider mb-2">Financials</p>
+        <p className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider mb-2">{t("steps.financials")}</p>
         {(Number(form.unit_rate) || 0) > 0 && (
-          <Row label={`Rate Per ${(form.unit || 'unit').toUpperCase()}`} value={`\u20B9${Number(form.unit_rate).toLocaleString("en-IN")} / ${(form.unit || 'unit').toUpperCase()}`} />
+          <Row label={t("reviewSection.ratePer", { unit: (form.unit || 'unit').toUpperCase() })} value={`\u20B9${Number(form.unit_rate).toLocaleString("en-IN")} / ${(form.unit || 'unit').toUpperCase()}`} />
         )}
-        <Row label="Subtotal" value={`\u20B9${orderVal.toLocaleString("en-IN")}`} />
-        {form.gst_applicable && <Row label={`GST (${gstPct}%)`} value={`\u20B9${gstAmt.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`} />}
-        <Row label="Total Amount" value={`\u20B9${total.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`} accent />
-        <Row label="Payment Terms" value={form.payment_terms} />
-        {form.payment_terms === "Credit" && <Row label="Credit Period" value={`${form.credit_days || 0} days`} />}
+        <Row label={t("reviewSection.subtotal")} value={`\u20B9${orderVal.toLocaleString("en-IN")}`} />
+        {form.gst_applicable && <Row label={t("reviewSection.gst", { percent: gstPct })} value={`\u20B9${gstAmt.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`} />}
+        <Row label={t("reviewSection.totalAmount")} value={`\u20B9${total.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`} accent />
+        <Row label={t("reviewSection.paymentTerms")} value={form.payment_terms} />
+        {form.payment_terms === "Credit" && <Row label={t("reviewSection.creditPeriod")} value={t("reviewSection.days", { days: form.credit_days || 0 })} />}
       </div>
 
       {/* Production (if set up) */}
       {form.setup_production && (
         <div className="rounded-[12px] border border-[var(--border)] bg-[var(--muted)] p-4">
-          <p className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider mb-2">Production Setup</p>
+          <p className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider mb-2">{t("dialog.productionSetup")}</p>
           {(form.productionAssignments || [])
             .filter((a: any) => a.machineId || a.operatorId)
             .map((a: any, idx: number) => (
               <div key={a.id || idx} className="py-1.5 border-b border-[var(--border)] last:border-0">
                 <div className="flex justify-between items-center">
-                  <span className="text-[13px] text-[var(--muted-foreground)]">Machine {idx + 1}</span>
+                  <span className="text-[13px] text-[var(--muted-foreground)]">{t("reviewSection.machineNum", { num: idx + 1 })}</span>
                   <span className="text-[14px] font-medium text-[var(--foreground)]">{a.machineName || "—"}</span>
                 </div>
                 <div className="flex justify-between items-center mt-0.5">
-                  <span className="text-[13px] text-[var(--muted-foreground)]">Operator {idx + 1}</span>
+                  <span className="text-[13px] text-[var(--muted-foreground)]">{t("reviewSection.operatorNum", { num: idx + 1 })}</span>
                   <span className="text-[14px] font-medium text-[var(--foreground)]">{a.operatorName || "—"}</span>
                 </div>
               </div>
             ))}
-          <Row label="Start Date" value={form.start_date ? new Date(form.start_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"} />
+          <Row label={t("reviewSection.startDate")} value={form.start_date ? new Date(form.start_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"} />
         </div>
       )}
 
       {/* Materials (if selected) */}
       {Array.isArray(form.materials) && form.materials.length > 0 && (
         <div className="rounded-[12px] border border-[var(--border)] bg-[var(--muted)] p-4">
-          <p className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider mb-2">Materials</p>
+          <p className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider mb-2">{t("steps.materials")}</p>
           {form.materials.map((m: { inventoryItemId: string; itemName: string; quantityRequired: number; unit: string }) => (
             <Row key={m.inventoryItemId} label={m.itemName} value={`${m.quantityRequired} ${m.unit}`} />
           ))}
@@ -884,7 +891,7 @@ export function StepReview({ form, clients, machines }: { form: any; clients: an
         if (mats.length === 0) {
           return (
             <div className="rounded-[12px] border border-dashed border-[var(--border)] bg-[var(--muted)] p-4 text-center">
-              <p className="text-[13px] text-[var(--muted-foreground)] italic">Add materials to see profit estimate</p>
+              <p className="text-[13px] text-[var(--muted-foreground)] italic">{t("reviewSection.addMaterialsHint")}</p>
             </div>
           );
         }
@@ -910,37 +917,37 @@ export function StepReview({ form, clients, machines }: { form: any; clients: an
             <div className="flex items-center gap-2 mb-1">
               <TrendingUp className="h-4 w-4 text-[var(--primary)]" />
               <div>
-                <p className="text-[13px] font-bold text-[var(--foreground)]">Profit Estimate</p>
-                <p className="text-[11px] text-[var(--muted-foreground)]">Based on selected material costs</p>
+                <p className="text-[13px] font-bold text-[var(--foreground)]">{t("reviewSection.profitEstimate")}</p>
+                <p className="text-[11px] text-[var(--muted-foreground)]">{t("reviewSection.basedOnMaterials")}</p>
               </div>
             </div>
 
             {/* Row 1: Order Value */}
             <div className="flex justify-between items-center py-2 border-b border-[var(--border)]">
-              <span className="text-[13px] text-[var(--muted-foreground)]">Order Value</span>
+              <span className="text-[13px] text-[var(--muted-foreground)]">{t("reviewSection.orderValue")}</span>
               <span className="text-[14px] font-medium text-[var(--foreground)]">{"\u20B9"}{ov.toLocaleString("en-IN")}</span>
             </div>
 
             {/* Row 2: Total Cost */}
             <div className="py-2 border-b border-[var(--border)]">
               <div className="flex justify-between items-center">
-                <span className="text-[13px] text-[var(--muted-foreground)]">Total Cost</span>
+                <span className="text-[13px] text-[var(--muted-foreground)]">{t("reviewSection.totalCost")}</span>
                 <span className="text-[14px] font-medium" style={{ color: "var(--erp-warning)" }}>{"\u20B9"}{totalCost.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>
               </div>
               <p className="text-[11px] text-[var(--muted-foreground)] mt-1 truncate" title={materialBreakdown}>
-                Materials: {"\u20B9"}{totalMaterialCost.toLocaleString("en-IN")}{labourCost + overheadCost + otherCost > 0 ? `  |  Other: \u20B9${(labourCost + overheadCost + otherCost).toLocaleString("en-IN")}` : ""}
+                {t("reviewSection.materialsCost")} {"\u20B9"}{totalMaterialCost.toLocaleString("en-IN")}{labourCost + overheadCost + otherCost > 0 ? `  |  ${t("reviewSection.otherCost")} \u20B9${(labourCost + overheadCost + otherCost).toLocaleString("en-IN")}` : ""}
               </p>
             </div>
 
             {/* Row 3: Gross Profit */}
             <div className="flex justify-between items-center pt-1">
-              <span className="text-[13px] font-semibold text-[var(--foreground)]">Gross Profit</span>
+              <span className="text-[13px] font-semibold text-[var(--foreground)]">{t("reviewSection.grossProfit")}</span>
               <div className="text-right">
                 <div className="flex items-center gap-1 justify-end">
                   {!isPositive && <AlertTriangle className="h-3.5 w-3.5" style={{ color: profitColor }} />}
                   <span className="text-[16px] font-bold" style={{ color: profitColor }}>
                     {"\u20B9"}{Math.abs(grossProfit).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
-                    {grossProfit < 0 && " loss"}
+                    {grossProfit < 0 && ` ${t("reviewSection.loss")}`}
                   </span>
                 </div>
                 <span className="text-[11px] font-medium" style={{ color: profitColor }}>

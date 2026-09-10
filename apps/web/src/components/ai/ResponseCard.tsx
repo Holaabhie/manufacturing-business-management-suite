@@ -102,20 +102,22 @@ export function ResponseCard({
       transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
       className="flex gap-3 items-start"
     >
-      {/* AI Avatar */}
-      <div
-        className="flex-shrink-0 w-8 h-8 rounded-[10px] flex items-center justify-center mt-1"
-        style={{
-          background: isError
-            ? "linear-gradient(135deg, #F43F5E, #E11D48)"
-            : "linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%)",
-          boxShadow: isError
-            ? "0 2px 10px rgba(244,63,94,0.3)"
-            : "0 2px 10px rgba(139,92,246,0.3)",
-        }}
-      >
-        <Bot className="h-4 w-4 text-white" />
-      </div>
+      {/* AI Avatar (hidden for welcome card) */}
+      {id !== "welcome" && (
+        <div
+          className="flex-shrink-0 w-8 h-8 rounded-[10px] flex items-center justify-center mt-1"
+          style={{
+            background: isError
+              ? "linear-gradient(135deg, #F43F5E, #E11D48)"
+              : "linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%)",
+            boxShadow: isError
+              ? "0 2px 10px rgba(244,63,94,0.3)"
+              : "0 2px 10px rgba(139,92,246,0.3)",
+          }}
+        >
+          <Bot className="h-4 w-4 text-white" />
+        </div>
+      )}
 
       {/* Card */}
       <div

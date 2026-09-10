@@ -10,6 +10,7 @@
 
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { Download, Eye, Loader2, FileText, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { InvoicePayload } from "@/lib/invoice/types";
@@ -20,6 +21,7 @@ interface InvoicePreviewProps {
 }
 
 export function InvoicePreview({ data, className = "" }: InvoicePreviewProps) {
+    const t = useTranslations("billing.preview");
     const [downloading, setDownloading] = useState(false);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [loadingPreview, setLoadingPreview] = useState(false);
@@ -42,7 +44,7 @@ export function InvoicePreview({ data, className = "" }: InvoicePreviewProps) {
             const url = URL.createObjectURL(blob);
             setPreviewUrl(url);
         } catch (err: any) {
-            toast.error(err.message || "Failed to load preview");
+            toast.error(err.message || t("toastOpenFailed"));
         } finally {
             setLoadingPreview(false);
         }
@@ -77,7 +79,7 @@ export function InvoicePreview({ data, className = "" }: InvoicePreviewProps) {
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
-                toast.success("Invoice PDF downloaded!");
+                toast.success(t("toastDownloaded"));
             } else {
                 // Fallback: open HTML in new window for browser printing
                 const html = await res.text();
@@ -85,11 +87,11 @@ export function InvoicePreview({ data, className = "" }: InvoicePreviewProps) {
                 if (win) {
                     win.document.write(html);
                     win.document.close();
-                    toast.info("Puppeteer unavailable — use browser print (Ctrl+P) to save as PDF");
+                    toast.info(t("toastPuppeteerFallback"));
                 }
             }
         } catch (err: any) {
-            toast.error(err.message || "Failed to generate PDF");
+            toast.error(err.message || t("toastPdfFailed"));
         } finally {
             setDownloading(false);
         }
@@ -111,7 +113,7 @@ export function InvoicePreview({ data, className = "" }: InvoicePreviewProps) {
                 win.document.close();
             }
         } catch {
-            toast.error("Failed to open preview");
+            toast.error(t("toastOpenFailed"));
         }
     }, [data]);
 
@@ -131,7 +133,7 @@ export function InvoicePreview({ data, className = "" }: InvoicePreviewProps) {
                     ) : (
                         <Eye className="h-4 w-4" />
                     )}
-                    Preview
+                    {t("btnPreview")}
                 </Button>
 
                 <Button
@@ -145,7 +147,7 @@ export function InvoicePreview({ data, className = "" }: InvoicePreviewProps) {
                     ) : (
                         <Download className="h-4 w-4" />
                     )}
-                    Download PDF
+                    {t("btnDownloadPdf")}
                 </Button>
 
                 <Button
@@ -155,7 +157,7 @@ export function InvoicePreview({ data, className = "" }: InvoicePreviewProps) {
                     className="gap-2 text-muted-foreground"
                 >
                     <ExternalLink className="h-4 w-4" />
-                    Open in Tab
+                    {t("btnOpenInTab")}
                 </Button>
             </div>
 
@@ -165,20 +167,20 @@ export function InvoicePreview({ data, className = "" }: InvoicePreviewProps) {
                     <div className="absolute top-0 left-0 right-0 h-10 bg-muted/80 backdrop-blur-sm flex items-center justify-between px-4 z-10 border-b">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <FileText className="h-4 w-4" />
-                            Invoice Preview — {data.invoiceNumber}
+                            {t("title", { invoiceNumber: data.invoiceNumber })}
                         </div>
                         <button
                             onClick={() => { setPreviewUrl(null); }}
                             className="text-xs text-muted-foreground hover:text-foreground"
                         >
-                            Close
+                            {t("close")}
                         </button>
                     </div>
                     <iframe
                         src={previewUrl}
                         className="w-full border-0 mt-10"
                         style={{ height: "calc(297mm * 0.8)", minHeight: "700px" }}
-                        title="Invoice Preview"
+                        title={t("title", { invoiceNumber: data.invoiceNumber })}
                     />
                 </div>
             )}

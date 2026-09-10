@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { createPortal } from "react-dom";
 import { X, IndianRupee } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -30,11 +31,15 @@ const PAYMENT_MODES = ["Cash", "UPI", "Bank", "Cheque"] as const;
 // ─── Component ──────────────────────────────────────────────────
 
 export function RecordPaymentModal({
+  // Hooks
+
   isOpen,
   onClose,
   purchaseOrder,
   onPaymentRecorded,
 }: RecordPaymentModalProps) {
+  const t = useTranslations("purchasing.recordPayment");
+  const tToast = useTranslations("purchasing.toasts");
   const [portalMounted, setPortalMounted] = useState(false);
   const [animateOpen, setAnimateOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -109,14 +114,14 @@ export function RecordPaymentModal({
       );
       const data = await res.json();
       if (data.success) {
-        toast.success("Payment recorded successfully");
+        toast.success(tToast("paymentRecorded"));
         onPaymentRecorded(data.data);
         handleModalClose();
       } else {
         toast.error(data.error || "Failed to record payment");
       }
     } catch {
-      toast.error("Failed to record payment");
+      toast.error(tToast("recordPaymentFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -163,7 +168,7 @@ export function RecordPaymentModal({
                     id="record-vendor-payment-title"
                     className="text-[17px] font-semibold text-[#0F172A] dark:text-white leading-tight"
                   >
-                    Record Payment
+                    {t("title")}
                   </h2>
                   <p className="text-[13px] text-[#64748B] dark:text-slate-400 mt-0.5">
                     {purchaseOrder?.poNumber} · {purchaseOrder?.vendorName}
@@ -174,7 +179,7 @@ export function RecordPaymentModal({
               {/* Outstanding badge */}
               <div className="flex flex-col items-end gap-0.5 mr-8 hidden sm:flex">
                 <span className="text-[11px] font-medium text-[#64748B] dark:text-slate-400 uppercase tracking-wide">
-                  Outstanding
+                  {t("lblOutstanding")}
                 </span>
                 <span className="text-[18px] font-bold text-[#0F172A] dark:text-white tabular-nums">
                   {"\u20B9"}
@@ -195,7 +200,7 @@ export function RecordPaymentModal({
             <div className="px-6 pb-3 sm:hidden">
               <div className="flex items-center justify-between rounded-[12px] bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-800/30 px-4 py-2.5">
                 <span className="text-[12px] font-medium text-[#64748B] dark:text-slate-400 uppercase tracking-wide">
-                  Outstanding
+                  {t("lblOutstanding")}
                 </span>
                 <span className="text-[17px] font-bold text-[#0F172A] dark:text-white tabular-nums">
                   {"\u20B9"}
@@ -210,7 +215,7 @@ export function RecordPaymentModal({
                 {/* Amount field */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[12px] font-medium text-[#64748B] dark:text-slate-400 uppercase tracking-wide">
-                    Amount
+                    {t("lblAmount")}
                   </label>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[20px] font-bold text-[#0F172A] dark:text-white select-none pointer-events-none">
@@ -231,7 +236,7 @@ export function RecordPaymentModal({
                 {/* Payment Mode — pill selector */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[12px] font-medium text-[#64748B] dark:text-slate-400 uppercase tracking-wide">
-                    Payment Mode
+                    {t("lblPaymentMode")}
                   </label>
                   <div className="grid grid-cols-4 gap-2 h-[56px]">
                     {PAYMENT_MODES.map((m) => (
@@ -255,7 +260,7 @@ export function RecordPaymentModal({
                 {/* Date field */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[12px] font-medium text-[#64748B] dark:text-slate-400 uppercase tracking-wide">
-                    Payment Date
+                    {t("lblPaymentDate")}
                   </label>
                   <input
                     type="date"
@@ -269,11 +274,11 @@ export function RecordPaymentModal({
                 {/* Reference field */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[12px] font-medium text-[#64748B] dark:text-slate-400 uppercase tracking-wide">
-                    Reference / UTR
+                    {t("lblReference")}
                   </label>
                   <input
                     type="text"
-                    placeholder="TXN..."
+                    placeholder={t("placeholderReference")}
                     value={reference}
                     onChange={(e) => setReference(e.target.value)}
                     className="w-full h-[46px] rounded-[12px] border border-[rgba(15,23,42,0.08)] dark:border-white/[0.08] bg-[rgba(255,255,255,0.72)] dark:bg-white/[0.04] px-4 text-[15px] text-[#0F172A] dark:text-white placeholder:text-[#94a3b8] dark:placeholder:text-slate-500 outline-none focus:border-[#2563EB] focus:ring-0 transition-colors"
@@ -289,10 +294,10 @@ export function RecordPaymentModal({
             <div className="px-6 py-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[12px] font-medium text-[#64748B] dark:text-slate-400 uppercase tracking-wide">
-                  Payment Notes
+                  {t("lblPaymentNotes")}
                 </label>
                 <textarea
-                  placeholder="Note about the payment..."
+                  placeholder={t("placeholderPaymentNotes")}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   className="w-full rounded-[12px] border border-[rgba(15,23,42,0.08)] dark:border-white/[0.08] bg-[rgba(255,255,255,0.72)] dark:bg-white/[0.04] px-4 py-3 text-[14px] text-[#0F172A] dark:text-white placeholder:text-[#94a3b8] dark:placeholder:text-slate-500 resize-none min-h-[80px] focus:border-[#2563EB] outline-none transition-colors"
@@ -304,13 +309,13 @@ export function RecordPaymentModal({
             <div className="mx-6 mb-6">
               <div className="rounded-[16px] bg-[rgba(37,99,235,0.04)] dark:bg-blue-950/20 border border-[rgba(37,99,235,0.12)] dark:border-blue-800/30 p-4">
                 <p className="text-[11px] font-semibold text-[#64748B] dark:text-slate-400 uppercase tracking-widest mb-3">
-                  Payment Summary
+                  {t("summaryTitle")}
                 </p>
 
                 <div className="grid grid-cols-3 gap-x-6 gap-y-3">
                   <div>
                     <p className="text-[11px] text-[#64748B] dark:text-slate-500 mb-0.5">
-                      Outstanding
+                      {t("summaryOutstanding")}
                     </p>
                     <p className="text-[13px] font-medium text-[#0F172A] dark:text-white tabular-nums">
                       {"\u20B9"}
@@ -319,7 +324,7 @@ export function RecordPaymentModal({
                   </div>
                   <div>
                     <p className="text-[11px] text-[#64748B] dark:text-slate-500 mb-0.5">
-                      Recording
+                      {t("summaryRecording")}
                     </p>
                     <p className="text-[13px] font-bold text-[#2563EB] dark:text-blue-400 tabular-nums">
                       {"\u20B9"}
@@ -328,7 +333,7 @@ export function RecordPaymentModal({
                   </div>
                   <div>
                     <p className="text-[11px] text-[#64748B] dark:text-slate-500 mb-0.5">
-                      Remaining
+                      {t("summaryRemaining")}
                     </p>
                     <p
                       className={cn(
@@ -342,7 +347,7 @@ export function RecordPaymentModal({
                     >
                       {"\u20B9"}
                       {formatIndianNumber(Math.abs(remaining))}
-                      {remaining < 0 && " over"}
+                      {remaining < 0 && ` ${t("summaryOver")}`}
                     </p>
                   </div>
                 </div>
@@ -361,7 +366,7 @@ export function RecordPaymentModal({
                 "disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               )}
             >
-              {submitting ? "Recording\u2026" : "Record Payment"}
+              {submitting ? t("btnRecording") : t("btnRecord")}
             </button>
           </div>
         </form>

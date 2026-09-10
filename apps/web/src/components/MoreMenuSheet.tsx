@@ -94,7 +94,6 @@ const STAFF_HIDDEN = [
   "Analytics",
   "Billing & Invoices",
   "Payments",
-  "Tally Export",
   "Upgrade",
 ];
 

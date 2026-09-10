@@ -220,11 +220,14 @@ export function MobileSheet({
                   ? {
                       // ── Centered modal (desktop) ──
                       position: 'fixed',
-                      top: '50%',
-                      left: '50%',
-                      transform: 'translate(-50%, -50%)',
+                      top: 0,
+                      right: 0,
+                      bottom: 0,
+                      left: 0,
+                      margin: 'auto',
                       zIndex: zIndex + 1,
                       width: `min(${maxWidth}, calc(100vw - 32px))`,
+                      height: 'fit-content',
                       maxHeight: 'min(90vh, 700px)',
                       display: 'flex',
                       flexDirection: 'column' as const,

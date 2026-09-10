@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useAppLocale } from "@/components/LocaleProvider";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/hooks/use-orders";
 import {
@@ -63,40 +65,7 @@ import type {
     ProductionProgressEntry,
 } from "@/lib/production-types";
 
-// ─── Status config ──────────────────────────────────────────────────
-const statusConfig: Record<
-    ProductionStatus,
-    { label: string; color: string; bgColor: string; borderColor: string; icon: any }
-> = {
-    pending: {
-        label: "Pending",
-        color: "text-amber-500",
-        bgColor: "bg-amber-500/10",
-        borderColor: "border-amber-500/20",
-        icon: Clock,
-    },
-    running: {
-        label: "Running",
-        color: "text-blue-500",
-        bgColor: "bg-blue-500/10",
-        borderColor: "border-blue-500/20",
-        icon: Play,
-    },
-    paused: {
-        label: "Paused",
-        color: "text-orange-500",
-        bgColor: "bg-orange-500/10",
-        borderColor: "border-orange-500/20",
-        icon: Pause,
-    },
-    completed: {
-        label: "Completed",
-        color: "text-emerald-500",
-        bgColor: "bg-emerald-500/10",
-        borderColor: "border-emerald-500/20",
-        icon: CheckCircle2,
-    },
-};
+// Status Config dynamically initialized inside component
 
 const containerVariants = {
     hidden: { opacity: 0 },
@@ -117,7 +86,47 @@ const itemVariants = {
 
 // ─── Page Component ─────────────────────────────────────────────────
 export default function ProductionDetailPage() {
+    const t = useTranslations("production.detail");
+    const tFloor = useTranslations("production.floor");
+    const tStatus = useTranslations("production.statuses");
+    const tToast = useTranslations("production.toasts");
+    const { locale } = useAppLocale();
+    const dateLocale = locale === "hi" ? "hi-IN" : locale === "gu" ? "gu-IN" : locale === "mr" ? "mr-IN" : "en-IN";
     const router = useRouter();
+
+    const statusConfig: Record<
+        ProductionStatus,
+        { label: string; color: string; bgColor: string; borderColor: string; icon: any }
+    > = {
+        pending: {
+            label: tStatus("pending"),
+            color: "text-amber-500",
+            bgColor: "bg-amber-500/10",
+            borderColor: "border-amber-500/20",
+            icon: Clock,
+        },
+        running: {
+            label: tStatus("running"),
+            color: "text-blue-500",
+            bgColor: "bg-blue-500/10",
+            borderColor: "border-blue-500/20",
+            icon: Play,
+        },
+        paused: {
+            label: tStatus("paused"),
+            color: "text-orange-500",
+            bgColor: "bg-orange-500/10",
+            borderColor: "border-orange-500/20",
+            icon: Pause,
+        },
+        completed: {
+            label: tStatus("completed"),
+            color: "text-emerald-500",
+            bgColor: "bg-emerald-500/10",
+            borderColor: "border-emerald-500/20",
+            icon: CheckCircle2,
+        },
+    };
     const params = useParams();
     const productionId = params.id as string;
     const { isAdmin, isStaff, role } = useRole();
@@ -150,7 +159,7 @@ export default function ProductionDetailPage() {
         try {
             const res = await fetch(`/api/production/${productionId}`);
             if (!res.ok) {
-                toast.error("Production not found");
+                toast.error(tToast("productionNotFound"));
                 router.push("/dashboard/production");
                 return;
             }
@@ -163,7 +172,7 @@ export default function ProductionDetailPage() {
                 formInitialized.current = true;
             }
         } catch {
-            toast.error("Failed to load production");
+            toast.error(tToast("loadProductionFailed"));
             setIsError(true);
         } finally {
             setLoading(false);
@@ -261,7 +270,7 @@ export default function ProductionDetailPage() {
             qc.invalidateQueries({ queryKey: queryKeys.stats });
             fetchProduction();
         } catch {
-            toast.error("Action failed");
+            toast.error(tToast("actionFailed"));
         } finally {
             setUpdating(false);
             setPauseDialogOpen(false);
@@ -309,9 +318,9 @@ export default function ProductionDetailPage() {
                 if (!wasCompleted) {
                     playCompletionSound("general");
                 }
-                toast.success("Production batch completed successfully! 🎉");
+                toast.success(tToast("completedSuccess"));
             } else {
-                toast.success("Progress updated!");
+                toast.success(tToast("progressUpdated"));
             }
             formInitialized.current = false; // allow next fetch to sync
             setUpdateNotes("");
@@ -323,7 +332,7 @@ export default function ProductionDetailPage() {
             fetchProgressHistory();
         } catch {
             setProduction(prevProduction);
-            toast.error("Failed to update progress");
+            toast.error(tToast("progressUpdateFailed"));
         } finally {
             setUpdating(false);
         }
@@ -367,7 +376,7 @@ export default function ProductionDetailPage() {
     // ─── Loading UI ───────────────────────────────────────────
     if (loading) {
         return (
-            <div className="space-y-6 pb-28">
+            <div className="w-full min-w-0 overflow-x-hidden space-y-6 pb-28">
                 <Skeleton className="h-5 w-40 rounded-lg" />
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div className="space-y-2">
@@ -409,9 +418,9 @@ export default function ProductionDetailPage() {
                 <div className="w-14 h-14 rounded-2xl bg-red-500/10 flex items-center justify-center">
                     <AlertTriangle className="h-6 w-6 text-red-500" />
                 </div>
-                <p className="text-[15px] font-semibold">Failed to load production</p>
+                <p className="text-[15px] font-semibold">{t("notFoundTitle")}</p>
                 <p className="text-[13px] text-muted-foreground text-center">
-                    Check your connection and try again.
+                    {t("notFoundDesc")}
                 </p>
                 <Button
                     onClick={() => {
@@ -421,7 +430,7 @@ export default function ProductionDetailPage() {
                     }}
                     className="h-10 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[13px] font-semibold"
                 >
-                    Retry
+                    {t("btnRetry")}
                 </Button>
             </div>
         );
@@ -431,14 +440,14 @@ export default function ProductionDetailPage() {
         return (
             <div className="flex flex-col items-center justify-center py-32 pb-28">
                 <AlertTriangle className="h-12 w-12 text-muted-foreground mb-4" />
-                <h2 className="text-xl font-bold mb-2">Production Not Found</h2>
+                <h2 className="text-xl font-bold mb-2">{t("notFoundTitle")}</h2>
                 <Button
                     variant="outline"
                     onClick={() => router.push("/dashboard/production")}
                     className="gap-2 rounded-xl"
                 >
                     <ArrowLeft className="h-4 w-4" />
-                    Back to Productions
+                    {t("btnBackToProductions")}
                 </Button>
             </div>
         );
@@ -470,7 +479,7 @@ export default function ProductionDetailPage() {
                     onClick={() => router.push("/dashboard/production")}
                     className="hover:text-foreground transition-colors"
                 >
-                    Production
+                    {t("breadcrumbProduction")}
                 </button>
                 <ChevronRight className="h-3.5 w-3.5" />
                 <span className="text-foreground font-medium">
@@ -506,7 +515,7 @@ export default function ProductionDetailPage() {
                         <span>•</span>
                         <span>{production.clientName}</span>
                         <span>•</span>
-                        <span className="capitalize">{production.shift} shift</span>
+                        <span className="capitalize">{t("shiftSuffix", { shift: production.shift })}</span>
                     </div>
                 </div>
 
@@ -520,7 +529,7 @@ export default function ProductionDetailPage() {
                             id="start-production-btn"
                         >
                             <PlayCircle className="h-4 w-4" />
-                            Start Production
+                            {t("btnStart")}
                         </Button>
                     )}
                     {production.status === "running" && canPerformActions && (
@@ -533,7 +542,7 @@ export default function ProductionDetailPage() {
                                 id="pause-production-btn"
                             >
                                 <PauseCircle className="h-4 w-4" />
-                                Pause
+                                {t("btnPause")}
                             </Button>
                             <Button
                                 className="gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white"
@@ -542,7 +551,7 @@ export default function ProductionDetailPage() {
                                 id="complete-production-btn"
                             >
                                 <Flag className="h-4 w-4" />
-                                Complete
+                                {t("btnComplete")}
                             </Button>
                         </>
                     )}
@@ -554,7 +563,7 @@ export default function ProductionDetailPage() {
                             id="resume-production-btn"
                         >
                             <PlayCircle className="h-4 w-4" />
-                            Resume
+                            {t("btnResume")}
                         </Button>
                     )}
                     {isAdmin && canPerformActions && (
@@ -565,7 +574,7 @@ export default function ProductionDetailPage() {
                             id="assign-staff-btn"
                         >
                             <Users className="h-4 w-4" />
-                            Assign Staff
+                            {t("btnAssignStaff")}
                         </Button>
                     )}
                     <Button
@@ -586,7 +595,7 @@ export default function ProductionDetailPage() {
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                             <Target className="h-4 w-4 text-indigo-500" />
-                            <span className="text-sm font-bold">Production Progress</span>
+                            <span className="text-sm font-bold">{t("tabProgress")}</span>
                         </div>
                         <div className="flex items-center gap-3">
                             <span className="text-sm font-semibold">
@@ -620,10 +629,10 @@ export default function ProductionDetailPage() {
                         <div className="flex items-center gap-1.5 mt-2">
                             <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
                             <span className="text-xs font-semibold text-red-500">
-                                {formatNumber(production.rejectQuantity)} {unit} rejected
+                                {formatNumber(production.rejectQuantity)} {unit} {t("statRejected").toLowerCase()}
                             </span>
                             <span className="text-xs text-muted-foreground">
-                                ({kpis?.wastage || 0}% wastage rate)
+                                ({kpis?.wastage || 0}{t("statWastageRate")})
                             </span>
                         </div>
                     )}
@@ -641,12 +650,12 @@ export default function ProductionDetailPage() {
                             <Zap className="h-4 w-4 text-indigo-500" />
                         </div>
                         <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                            Efficiency
+                            {t("statEfficiency")}
                         </span>
                     </div>
                     <p className="text-2xl font-black">{kpis?.efficiency || 0}%</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                        Output vs target
+                        {t("statOutputVsTarget")}
                     </p>
                 </div>
 
@@ -656,14 +665,14 @@ export default function ProductionDetailPage() {
                             <Package className="h-4 w-4 text-teal-500" />
                         </div>
                         <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                            Material Used
+                            {t("statMaterialUsed")}
                         </span>
                     </div>
                     <p className="text-2xl font-black">
                         {kpis?.materialConsumption.toLocaleString() || 0}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                        Total {unit} consumed
+                        {t("statTotalConsumed")} ({unit})
                     </p>
                 </div>
 
@@ -673,12 +682,12 @@ export default function ProductionDetailPage() {
                             <Flame className="h-4 w-4 text-red-500" />
                         </div>
                         <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                            Wastage
+                            {t("statWastage")}
                         </span>
                     </div>
                     <p className="text-2xl font-black">{kpis?.wastage || 0}%</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                        {production.rejectQuantity} rejected
+                        {tFloor("rejectedCount", { count: production.rejectQuantity })}
                     </p>
                 </div>
 
@@ -688,12 +697,12 @@ export default function ProductionDetailPage() {
                             <Award className="h-4 w-4 text-violet-500" />
                         </div>
                         <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                            Staff
+                            {t("statStaff")}
                         </span>
                     </div>
                     <p className="text-lg font-black truncate">{production.operatorName || "—"}</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                        {production.producedQuantity} produced
+                        {production.producedQuantity} {t("statProduced").toLowerCase()}
                     </p>
                 </div>
             </motion.div>
@@ -704,15 +713,15 @@ export default function ProductionDetailPage() {
                     <TabsList className="bg-muted/60 dark:bg-slate-800/60 rounded-xl p-1">
                         <TabsTrigger value="update" className="rounded-lg text-xs font-bold gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm">
                             <BarChart3 className="h-3.5 w-3.5" />
-                            Update Progress
+                            {t("tabUpdateProgress")}
                         </TabsTrigger>
                         <TabsTrigger value="details" className="rounded-lg text-xs font-bold gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm">
                             <Cpu className="h-3.5 w-3.5" />
-                            Production Details
+                            {t("tabDetails")}
                         </TabsTrigger>
                         <TabsTrigger value="activity" className="rounded-lg text-xs font-bold gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm">
                             <History className="h-3.5 w-3.5" />
-                            Activity Log
+                            {t("tabActivityLog")}
                         </TabsTrigger>
                     </TabsList>
 
@@ -723,8 +732,8 @@ export default function ProductionDetailPage() {
                             {isAdmin && (
                                 <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl mb-4" style={{ background: 'rgba(234,179,8,0.1)', border: '1px solid rgba(234,179,8,0.3)', overflow: 'visible' }}>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-semibold" style={{ color: '#facc15' }}>Admin Override Mode</p>
-                                        <p className="text-xs" style={{ color: '#9ca3af' }}>Turn on to update production progress directly</p>
+                                        <p className="text-sm font-semibold" style={{ color: '#facc15' }}>{t("overrideModeTitle")}</p>
+                                        <p className="text-xs" style={{ color: '#9ca3af' }}>{t("overrideModeDesc")}</p>
                                     </div>
                                     <button
                                         type="button"
@@ -749,41 +758,40 @@ export default function ProductionDetailPage() {
                             {production.status === "completed" ? (
                                 <div className="flex flex-col items-center justify-center py-10 text-center">
                                     <CheckCircle2 className="h-8 w-8 text-emerald-500 mb-3" />
-                                    <h3 className="font-bold text-lg mb-1">Production Complete</h3>
+                                    <h3 className="font-bold text-lg mb-1">{t("completionComplete")}</h3>
                                     <p className="text-sm text-muted-foreground max-w-sm">
-                                        This production has been completed. No further updates are
-                                        possible.
+                                        {t("completedNotice")}
                                     </p>
                                 </div>
                             ) : /* Admin read-only view when override is OFF */
                             isAdmin && !overrideMode ? (
                                 <div className="flex flex-col items-center justify-center py-10 text-center">
                                     <BarChart3 className="h-8 w-8 text-indigo-400 mb-3" />
-                                    <h3 className="font-bold text-lg mb-1">Production Summary</h3>
+                                    <h3 className="font-bold text-lg mb-1">{t("completionSummary")}</h3>
                                     <p className="text-sm text-muted-foreground max-w-sm mb-6">
-                                        Enable Override Mode above to update production quantities.
+                                        {t("overrideNotice")}
                                     </p>
                                     <div className="grid grid-cols-2 gap-4 w-full max-w-xs">
                                         <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-4 text-center">
                                             <p className="text-2xl font-black text-emerald-500">{production.producedQuantity}</p>
-                                            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mt-1">Produced</p>
+                                            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mt-1">{t("statProduced")}</p>
                                         </div>
                                         <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-4 text-center">
                                             <p className="text-2xl font-black text-red-500">{production.rejectQuantity}</p>
-                                            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mt-1">Rejected</p>
+                                            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mt-1">{t("statRejected")}</p>
                                         </div>
                                     </div>
                                     <p className="text-xs text-muted-foreground mt-4">
-                                        Target: {formatNumber(production.expectedOutput)} {unit} &middot; Progress: {production.progressPercent}%
+                                        {t("lblTarget")}: {formatNumber(production.expectedOutput)} {unit} &middot; {t("lblProgress")}: {production.progressPercent}%
                                     </p>
                                 </div>
                             ) : (
                                 /* ─── Editable Progress Form (Staff always, Admin when override ON) ─── */
                                 <div className="space-y-6">
                                     <div>
-                                        <h3 className="text-lg font-bold mb-1">Update Output</h3>
+                                        <h3 className="text-lg font-bold mb-1">{t("updateOutputTitle")}</h3>
                                         <p className="text-sm text-muted-foreground">
-                                            Record the current produced and rejected quantities.
+                                            {t("updateOutputDesc")}
                                         </p>
                                     </div>
 
@@ -791,7 +799,7 @@ export default function ProductionDetailPage() {
                                         <div className="space-y-2">
                                             <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                                                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                                                Produced Quantity
+                                                {t("lblProducedQty")}
                                             </Label>
                                             <div className="flex items-center gap-2">
                                                 <Button
@@ -831,14 +839,14 @@ export default function ProductionDetailPage() {
                                                 </Button>
                                             </div>
                                             <p className="text-[10px] text-muted-foreground text-center">
-                                                Target: {formatNumber(production.expectedOutput)} {unit}
+                                                {t("lblTarget")}: {formatNumber(production.expectedOutput)} {unit}
                                             </p>
                                         </div>
 
                                         <div className="space-y-2">
                                             <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                                                 <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
-                                                Rejected Quantity
+                                                {t("lblRejectedQty")}
                                             </Label>
                                             <div className="flex items-center gap-2">
                                                 <Button
@@ -879,7 +887,7 @@ export default function ProductionDetailPage() {
                                             </div>
                                             {rejectedExceedsProduced && (
                                                 <p className="text-[12px] text-red-500 mt-1 text-center">
-                                                    Rejected qty cannot exceed produced qty
+                                                    {t("errRejectExceedsProduced")}
                                                 </p>
                                             )}
                                         </div>
@@ -888,12 +896,12 @@ export default function ProductionDetailPage() {
                                     {/* Notes for this update */}
                                     <div className="space-y-2">
                                         <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                            Update Notes (Optional)
+                                            {t("lblUpdateNotes")}
                                         </Label>
                                         <textarea
                                             value={updateNotes}
                                             onChange={(e) => setUpdateNotes(e.target.value)}
-                                            placeholder="Add notes about this progress update..."
+                                            placeholder={t("placeholderUpdateNotes")}
                                             rows={2}
                                             className={cn(
                                                 "flex w-full rounded-xl border px-4 py-3 text-sm shadow-xs transition-colors resize-none",
@@ -914,12 +922,12 @@ export default function ProductionDetailPage() {
                                         {updating ? (
                                             <>
                                                 <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                                Saving...
+                                                {t("btnSaving")}
                                             </>
                                         ) : (
                                             <>
                                                 <TrendingUp className="h-4 w-4" />
-                                                Save Progress
+                                                {t("btnSaveProgress")}
                                             </>
                                         )}
                                     </Button>
@@ -929,7 +937,7 @@ export default function ProductionDetailPage() {
                                         <div className="mt-6 pt-6 border-t border-border dark:border-slate-800">
                                             <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
                                                 <History className="h-3.5 w-3.5" />
-                                                Progress History
+                                                {t("secProgressHistory")}
                                             </h4>
                                             <div className="space-y-2 max-h-[300px] overflow-y-auto">
                                                 {progressHistory.map((entry) => (
@@ -956,13 +964,13 @@ export default function ProductionDetailPage() {
                                                         </div>
                                                         <div className="flex items-center gap-4 text-xs">
                                                             <span>
-                                                                Produced:{" "}
+                                                                {t("statProduced")}:{" "}
                                                                 <strong className="text-emerald-600">
                                                                     {entry.producedQty}
                                                                 </strong>
                                                             </span>
                                                             <span>
-                                                                Rejected:{" "}
+                                                                {t("statRejected")}:{" "}
                                                                 <strong className="text-red-500">
                                                                     {entry.rejectedQty}
                                                                 </strong>
@@ -990,11 +998,11 @@ export default function ProductionDetailPage() {
                             <div>
                                 <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
                                     <Package className="h-3.5 w-3.5" />
-                                    Order Information
+                                    {t("secOrderInfo")}
                                 </h3>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     <DetailItem label="Product" value={production.orderProductName} />
-                                    <DetailItem label="Client" value={production.clientName} />
+                                    <DetailItem label={t("lblClient")} value={production.clientName} />
                                     <DetailItem
                                         label="Order Qty"
                                         value={`${formatNumber(production.orderQuantity)} ${unit}`}
@@ -1016,13 +1024,13 @@ export default function ProductionDetailPage() {
                             <div>
                                 <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
                                     <Cpu className="h-3.5 w-3.5" />
-                                    Production Setup
+                                    {t("secProductionSetup")}
                                 </h3>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <DetailItem label="Machine" value={production.machineName || "—"} />
-                                    <DetailItem label="Operator" value={production.operatorName || "—"} />
-                                    <DetailItem label="Shift" value={production.shift} />
-                                    <DetailItem label="Batch No." value={production.batchNumber} />
+                                    <DetailItem label={t("lblMachine")} value={production.machineName || "—"} />
+                                    <DetailItem label={t("lblOperator")} value={production.operatorName || "—"} />
+                                    <DetailItem label={t("lblShift")} value={production.shift} />
+                                    <DetailItem label={t("lblBatchNumber")} value={production.batchNumber} />
                                 </div>
                             </div>
 
@@ -1032,7 +1040,7 @@ export default function ProductionDetailPage() {
                             <div>
                                 <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
                                     <Package className="h-3.5 w-3.5" />
-                                    Materials Used ({production.materials.length})
+                                    {t("secMaterialsUsed")} ({production.materials.length})
                                 </h3>
                                 {production.materials.length > 0 ? (
                                     <div className="space-y-2">
@@ -1056,7 +1064,7 @@ export default function ProductionDetailPage() {
                                     </div>
                                 ) : (
                                     <p className="text-sm text-muted-foreground">
-                                        No materials recorded.
+                                        {t("noMaterialsRecorded")}
                                     </p>
                                 )}
                             </div>
@@ -1067,11 +1075,11 @@ export default function ProductionDetailPage() {
                             <div>
                                 <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
                                     <Calendar className="h-3.5 w-3.5" />
-                                    Schedule
+                                    {t("secSchedule")}
                                 </h3>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     <DetailItem
-                                        label="Start Time"
+                                        label={t("lblStartTime")}
                                         value={
                                             production.startTime
                                                 ? new Date(production.startTime).toLocaleString()
@@ -1079,7 +1087,7 @@ export default function ProductionDetailPage() {
                                         }
                                     />
                                     <DetailItem
-                                        label="Target Completion"
+                                        label={t("lblTargetCompletion")}
                                         value={
                                             production.targetCompletion
                                                 ? new Date(
@@ -1113,7 +1121,7 @@ export default function ProductionDetailPage() {
                                     <div className="border-t border-border dark:border-slate-800" />
                                     <div>
                                         <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
-                                            Notes
+                                            {t("secNotes")}
                                         </h3>
                                         <p className="text-sm text-muted-foreground bg-muted/30 dark:bg-slate-800/30 rounded-lg p-3 border border-border dark:border-slate-700">
                                             {production.notes}
@@ -1129,11 +1137,11 @@ export default function ProductionDetailPage() {
                         <div className="rounded-xl border bg-card dark:bg-slate-900 border-border dark:border-slate-800 p-6">
                             <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                                 <History className="h-5 w-5 text-muted-foreground" />
-                                Activity Timeline
+                                {t("secActivityTimeline")}
                             </h3>
                             {production.activityLog.length === 0 ? (
                                 <p className="text-sm text-muted-foreground text-center py-8">
-                                    No activity yet.
+                                    {t("noActivityYet")}
                                 </p>
                             ) : (
                                 <div
@@ -1214,21 +1222,21 @@ export default function ProductionDetailPage() {
                     <DialogHeader className="px-4 pt-3">
                         <DialogTitle className="text-[15px] font-medium flex items-center gap-2">
                             <PauseCircle className="h-4 w-4 text-orange-500" />
-                            Pause Production
+                            {t("pauseModalTitle")}
                         </DialogTitle>
                         <DialogDescription className="text-[13px]">
-                            Optionally provide a reason for pausing.
+                            {t("pauseModalDesc")}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="px-4 py-3">
                         <div className="space-y-2">
                             <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                Reason (Optional)
+                                {t("lblPauseReason")}
                             </Label>
                             <Input
                                 value={pauseReason}
                                 onChange={(e) => setPauseReason(e.target.value)}
-                                placeholder="e.g. Machine malfunction, Material shortage..."
+                                placeholder={t("placeholderPauseReason")}
                                 className="h-10"
                             />
                         </div>
@@ -1240,7 +1248,7 @@ export default function ProductionDetailPage() {
                                 onClick={() => setPauseDialogOpen(false)}
                                 className="flex-1 rounded-xl"
                             >
-                                Cancel
+                                {t("btnCancel")}
                             </Button>
                             <Button
                                 className="flex-1 rounded-xl bg-orange-600 hover:bg-orange-700 text-white"
@@ -1249,7 +1257,7 @@ export default function ProductionDetailPage() {
                                 }
                                 disabled={updating}
                             >
-                                Pause Production
+                                {t("btnConfirmPause")}
                             </Button>
                         </DialogFooter>
                     </div>
@@ -1262,26 +1270,26 @@ export default function ProductionDetailPage() {
                     <DialogHeader className="px-4 pt-3">
                         <DialogTitle className="text-[15px] font-medium flex items-center gap-2">
                             <Flag className="h-4 w-4 text-emerald-500" />
-                            Complete Production
+                            {t("completeModalTitle")}
                         </DialogTitle>
                         <DialogDescription className="text-[13px]">
-                            Mark this production as completed? This action is final.
+                            {t("completeModalDesc")}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="px-4 py-3">
                         <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 p-3 space-y-1">
                             <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">Produced:</span>
+                                <span className="text-muted-foreground">{t("lblProduced")}:</span>
                                 <span className="font-bold">{updateProduced} {unit}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">Rejected:</span>
+                                <span className="text-muted-foreground">{t("lblRejected")}:</span>
                                 <span className="font-bold text-red-500">
                                     {updateReject} {unit}
                                 </span>
                             </div>
                             <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">Target:</span>
+                                <span className="text-muted-foreground">{t("lblTarget")}:</span>
                                 <span className="font-bold">
                                     {formatNumber(production.expectedOutput)} {unit}
                                 </span>
@@ -1295,7 +1303,7 @@ export default function ProductionDetailPage() {
                                 onClick={() => setCompleteDialogOpen(false)}
                                 className="flex-1 rounded-xl"
                             >
-                                Cancel
+                                {t("btnCancel")}
                             </Button>
                             <Button
                                 className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white"
@@ -1307,7 +1315,7 @@ export default function ProductionDetailPage() {
                                 }
                                 disabled={updating}
                             >
-                                Complete
+                                {t("btnConfirmComplete")}
                             </Button>
                         </DialogFooter>
                     </div>

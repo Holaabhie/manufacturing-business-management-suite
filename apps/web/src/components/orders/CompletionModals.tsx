@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import { CheckCircle2, FileText, X, Loader2, Send } from "lucide-react";
 import { MobileSheet } from "@/components/ui/MobileSheet";
@@ -32,8 +33,9 @@ export function CompletionConfirmationModal({
   onCancel,
   isLoading,
 }: CompletionModalProps) {
-  // MobileSheet handles scroll lock, backdrop, animation, focus trap
+  const t = useTranslations("orders.completion");
   return (
+    // MobileSheet handles scroll lock, backdrop, animation, focus trap
     <MobileSheet
       open={open && !!order}
       onClose={onCancel}
@@ -61,7 +63,7 @@ export function CompletionConfirmationModal({
                 fontSize: 18, fontWeight: 600,
                 color: "var(--overlay-text-primary)", margin: 0,
               }}>
-                Complete this order?
+                {t("title")}
               </h3>
             </div>
             <motion.button
@@ -137,10 +139,10 @@ export function CompletionConfirmationModal({
                   fontSize: 15, fontWeight: 600, color: "#16a34a",
                   margin: 0,
                 }}>
-                  Complete & Generate Invoice
+                  {t("completeAndInvoice")}
                 </p>
                 <p style={{ fontSize: 12, color: "var(--overlay-text-secondary)", margin: "3px 0 0" }}>
-                  Mark complete and auto-create a professional invoice
+                  {t("completeAndInvoiceDesc")}
                 </p>
               </div>
               {isLoading && <Loader2 size={18} style={{ color: "#16a34a", animation: "spin 1s linear infinite" }} />}
@@ -174,10 +176,10 @@ export function CompletionConfirmationModal({
                   fontSize: 15, fontWeight: 500, color: "var(--overlay-text-primary)",
                   margin: 0,
                 }}>
-                  Complete Only
+                  {t("completeOnly")}
                 </p>
                 <p style={{ fontSize: 12, color: "var(--overlay-text-secondary)", margin: "3px 0 0" }}>
-                  Just mark this order as completed
+                  {t("completeOnlyDesc")}
                 </p>
               </div>
             </button>
@@ -197,7 +199,7 @@ export function CompletionConfirmationModal({
                 transition: "all 0.15s ease",
               }}
             >
-              Cancel
+              {t("cancel")}
             </motion.button>
           </div>
 
@@ -229,8 +231,10 @@ export function InvoicePreviewModal({
   onEditChange,
   onClose,
   onDownloadPDF,
+
   onSendWhatsApp,
 }: InvoicePreviewProps) {
+  const t = useTranslations("orders");
   const [sending, setSending] = useState(false);
 
   const inv = invoiceData?.invoiceData;
@@ -326,7 +330,7 @@ export function InvoicePreviewModal({
               </div>
               <div>
                 <h3 style={{ fontSize: 18, fontWeight: 600, color: "var(--overlay-text-primary)", margin: 0 }}>
-                  Invoice Preview
+                  {t("completion.invoicePreview")}
                 </h3>
                 <p style={{ fontSize: 13, color: "var(--overlay-text-secondary)", margin: "2px 0 0" }}>
                   {editData?.invoiceNumber || inv.invoiceNumber}
@@ -361,13 +365,13 @@ export function InvoicePreviewModal({
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
                 <div>
-                  <p style={{ fontSize: 11, fontWeight: 500, color: "var(--overlay-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", margin: 0 }}>Bill To</p>
+                  <p style={{ fontSize: 11, fontWeight: 500, color: "var(--overlay-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", margin: 0 }}>{t("invoicePreview.billTo")}</p>
                   {/* Client name — financial context, KEEP semibold */}
                   <p style={{ fontSize: 16, fontWeight: 600, color: "var(--overlay-text-primary)", margin: "4px 0 0" }}>{inv.client?.name || "Client"}</p>
                   {inv.client?.address && <p style={{ fontSize: 12, color: "var(--overlay-text-secondary)", margin: "2px 0 0" }}>{inv.client.address}</p>}
                 </div>
                 <div style={{ textAlign: "right" }}>
-                  <p style={{ fontSize: 11, fontWeight: 500, color: "var(--overlay-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", margin: 0 }}>Total</p>
+                  <p style={{ fontSize: 11, fontWeight: 500, color: "var(--overlay-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", margin: 0 }}>{t("invoicePreview.total")}</p>
                   {/* Invoice total — financial KPI, KEEP strong */}
                   <p style={{ fontSize: 22, fontWeight: 600, color: "#16a34a", margin: "4px 0 0" }}>{"\u20B9"}{Number(inv.totalAmount).toLocaleString("en-IN")}</p>
                 </div>
@@ -385,10 +389,10 @@ export function InvoicePreviewModal({
                   fontSize: 10, fontWeight: 600, color: "var(--overlay-text-muted)",
                   textTransform: "uppercase", letterSpacing: "0.08em",
                 }}>
-                  <span>Item</span>
-                  <span style={{ textAlign: "right" }}>Qty</span>
-                  <span style={{ textAlign: "right" }}>Rate</span>
-                  <span style={{ textAlign: "right" }}>Amount</span>
+                  <span>{t("invoicePreview.item")}</span>
+                  <span style={{ textAlign: "right" }}>{t("invoicePreview.qty")}</span>
+                  <span style={{ textAlign: "right" }}>{t("invoicePreview.rate")}</span>
+                  <span style={{ textAlign: "right" }}>{t("invoicePreview.amount")}</span>
                 </div>
                 {(inv.items || []).map((item: any, i: number) => (
                   <div key={i} style={{
@@ -407,21 +411,21 @@ export function InvoicePreviewModal({
                 {/* Totals */}
                 <div style={{ borderTop: "1px solid var(--overlay-border)", padding: "8px 12px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--overlay-text-muted)", marginBottom: 4 }}>
-                    <span>Subtotal</span><span>{"\u20B9"}{Number(inv.subtotal).toLocaleString("en-IN")}</span>
+                    <span>{t("invoicePreview.subtotal")}</span><span>{"\u20B9"}{Number(inv.subtotal).toLocaleString("en-IN")}</span>
                   </div>
                   {inv.cgstAmount > 0 && (
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--overlay-text-muted)", marginBottom: 4 }}>
-                      <span>CGST (9%)</span><span>{"\u20B9"}{Number(inv.cgstAmount).toLocaleString("en-IN")}</span>
+                      <span>{t("invoicePreview.cgst")}</span><span>{"\u20B9"}{Number(inv.cgstAmount).toLocaleString("en-IN")}</span>
                     </div>
                   )}
                   {inv.sgstAmount > 0 && (
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--overlay-text-muted)", marginBottom: 4 }}>
-                      <span>SGST (9%)</span><span>{"\u20B9"}{Number(inv.sgstAmount).toLocaleString("en-IN")}</span>
+                      <span>{t("invoicePreview.sgst")}</span><span>{"\u20B9"}{Number(inv.sgstAmount).toLocaleString("en-IN")}</span>
                     </div>
                   )}
                   {/* Grand total — financial KPI, KEEP strong */}
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 600, color: "#16a34a", paddingTop: 6, borderTop: "1px solid var(--overlay-border)" }}>
-                    <span>Total</span><span>{"\u20B9"}{Number(inv.totalAmount).toLocaleString("en-IN")}</span>
+                    <span>{t("invoicePreview.total")}</span><span>{"\u20B9"}{Number(inv.totalAmount).toLocaleString("en-IN")}</span>
                   </div>
                 </div>
               </div>
@@ -429,10 +433,10 @@ export function InvoicePreviewModal({
 
             {/* Editable Fields */}
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <p style={{ fontSize: 13, fontWeight: 500, color: "var(--overlay-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", margin: 0 }}>Edit Details</p>
+              <p style={{ fontSize: 13, fontWeight: 500, color: "var(--overlay-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", margin: 0 }}>{t("invoicePreview.editDetails")}</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>
-                  <label style={{ fontSize: 11, fontWeight: 500, color: "var(--overlay-text-muted)", display: "block", marginBottom: 6 }}>Invoice Date</label>
+                  <label style={{ fontSize: 11, fontWeight: 500, color: "var(--overlay-text-muted)", display: "block", marginBottom: 6 }}>{t("invoicePreview.invoiceDate")}</label>
                   <input
                     type="date"
                     value={editData?.issueDate || ""}
@@ -442,12 +446,12 @@ export function InvoicePreviewModal({
                       background: "var(--overlay-card-bg)",
                       border: "1px solid var(--overlay-border)",
                       color: "var(--overlay-text-primary)", fontSize: 13, padding: "0 12px",
-                      outline: "none",
-                    }}
+                    //   outline: "none",
+                    // }}
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: 11, fontWeight: 500, color: "var(--overlay-text-muted)", display: "block", marginBottom: 6 }}>Due Date</label>
+                  <label style={{ fontSize: 11, fontWeight: 500, color: "var(--overlay-text-muted)", display: "block", marginBottom: 6 }}>{t("invoicePreview.dueDate")}</label>
                   <input
                     type="date"
                     value={editData?.dueDate || ""}
@@ -463,11 +467,11 @@ export function InvoicePreviewModal({
                 </div>
               </div>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 500, color: "var(--overlay-text-muted)", display: "block", marginBottom: 6 }}>Notes</label>
+                <label style={{ fontSize: 11, fontWeight: 500, color: "var(--overlay-text-muted)", display: "block", marginBottom: 6 }}>{t("invoicePreview.notes")}</label>
                 <textarea
                   value={editData?.notes || ""}
                   onChange={(e) => onEditChange({ ...editData, notes: e.target.value })}
-                  placeholder="Add a note to the invoice..."
+                  placeholder={t("invoicePreview.notesPlaceholder")}
                   rows={2}
                   style={{
                     width: "100%", borderRadius: 12,
@@ -501,7 +505,7 @@ export function InvoicePreviewModal({
               }}
             >
               <FileText size={16} />
-              Download PDF
+              {t("invoicePreview.downloadPdf")}
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.98 }}
@@ -517,7 +521,7 @@ export function InvoicePreviewModal({
               }}
             >
               <Send size={16} />
-              Send WhatsApp
+              {t("invoicePreview.sendWhatsApp")}
             </motion.button>
           </div>
         </>
