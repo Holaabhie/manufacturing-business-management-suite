@@ -55,3 +55,12 @@ next-env.d.ts
 remote.txt
 status.txt
 version_check.txt
+screenshots/
+scratch/
+
+# build & caches
+.gradle/
+android/app/.gradle/
+
+# root-level temporary images
+/*.png

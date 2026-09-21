@@ -9,6 +9,7 @@ import { withRateLimit } from "@/shared/middleware/rate-limiter";
 import { envelope } from "@/shared/types/api";
 import { getClientService } from "@/modules/clients";
 import { getDataOwnerId } from "@/lib/auth-session";
+import { assertCanCreate } from "@/lib/entitlements";
 
 export const GET = withRateLimit(
     withApiRoute(
@@ -24,6 +25,9 @@ export const GET = withRateLimit(
 export const POST = withRateLimit(
     withApiRoute(
         withAuth(async (request: NextRequest, user: AuthenticatedUser) => {
+            const limitError = await assertCanCreate(user, "clients", 1);
+            if (limitError) return limitError;
+
             const body = await request.json();
             const service = getClientService();
             const item = await service.create(getDataOwnerId(user), body);

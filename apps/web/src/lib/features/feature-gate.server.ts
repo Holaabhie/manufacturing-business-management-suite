@@ -13,6 +13,7 @@ import 'server-only';
 
 import { getDb } from '@/lib/mongodb';
 import { getSessionUser } from '@/lib/auth-session';
+import { getEffectiveTier } from '@/lib/entitlements';
 import { allowAllFeatures } from './dev-mode';
 import {
   checkFeatureAccess,
@@ -96,7 +97,7 @@ export async function checkFeatureForCurrentUser(
 
   const flags = await getFeatureFlags();
   const userRole = (user.role as UserRole) || 'Staff';
-  const userTier = (user.subscription_tier as SubscriptionTier) || 'starter';
+  const userTier = (await getEffectiveTier(user)) as SubscriptionTier;
 
   return checkFeatureAccess(featureKey, userRole, userTier, flags);
 }

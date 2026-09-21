@@ -52,6 +52,7 @@ export function StatWidget({
     label,
     value,
     displayValue,
+    valueTitle,
     change,
     icon: Icon,
     color,
@@ -64,6 +65,8 @@ export function StatWidget({
     value: number;
     /** When set, shown instead of animated numeric value (e.g. formatted currency) */
     displayValue?: string;
+    /** Tooltip shown on hover over the value element (e.g. full unabbreviated amount) */
+    valueTitle?: string;
     change?: number | null;
     icon: any;
     color: "blue" | "green" | "orange" | "purple" | "red" | "gray";
@@ -98,7 +101,7 @@ export function StatWidget({
                 )}
                 tabIndex={0}
                 role={href ? "link" : "article"}
-                aria-label={`${label}: ${prefix}${value.toLocaleString("en-IN")}${suffix}${hasValidChange && change !== 0 ? `, ${isPositive ? t("up") : t("down")} ${Math.abs(change)}%` : ""}`}
+                aria-label={`${label}: ${valueTitle || `${prefix}${value.toLocaleString("en-IN")}${suffix}`}${hasValidChange && change !== 0 ? `, ${isPositive ? t("up") : t("down")} ${Math.abs(change)}%` : ""}`}
                 onClick={href ? () => router.push(href) : undefined}
             >
                 {/* Header: Icon + Badge */}
@@ -120,9 +123,12 @@ export function StatWidget({
                 </div>
 
                 {/* Metric + Label */}
-                <div className="kpi-card__value !text-gray-900 dark:!text-white truncate text-sm sm:text-base lg:text-lg xl:text-xl">
+                <div
+                    className="kpi-card__value !text-gray-900 dark:!text-white truncate text-sm sm:text-base lg:text-lg xl:text-xl"
+                    title={valueTitle}
+                >
                     {displayValue != null ? (
-                        <span>{displayValue}</span>
+                        <span title={valueTitle}>{displayValue}</span>
                     ) : (
                         <AnimatedValue value={value} prefix={prefix} suffix={suffix} />
                     )}

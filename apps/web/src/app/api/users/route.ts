@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/require-role";
+import { getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
@@ -11,10 +12,21 @@ export async function GET() {
             return NextResponse.json({ error: result.error }, { status: result.status });
         }
 
+        const dataOwnerId = getDataOwnerId(result.user);
+        const idMatches: any[] = [dataOwnerId, result.user._id];
+        if (ObjectId.isValid(dataOwnerId)) {
+            idMatches.push(new ObjectId(dataOwnerId));
+        }
+
         const db = await getDb();
         const users = await db
             .collection("users")
-            .find({}, {
+            .find({
+                $or: [
+                    { adminId: dataOwnerId },
+                    { _id: { $in: idMatches } }
+                ]
+            }, {
                 projection: {
                     passwordHash: 0 // Never return password
                 }

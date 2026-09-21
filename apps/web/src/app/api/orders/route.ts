@@ -3,6 +3,7 @@ import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { getFinancialYear } from "@/lib/utils/financial-year";
+import { assertCanCreate } from "@/lib/entitlements";
 
 export async function GET() {
   try {
@@ -64,6 +65,7 @@ export async function GET() {
             createdAt: 1,
             processedAt: 1,
             completedAt: 1,
+            is_sample: 1,
             client: { $arrayElemAt: ["$client", 0] },
           },
         },
@@ -97,6 +99,7 @@ export async function GET() {
       createdAt: o.createdAt,
       processedAt: o.processedAt || null,
       completedAt: o.completedAt || null,
+      is_sample: o.is_sample === true,
       clients: o.client
         ? {
           name: o.client.name,
@@ -122,6 +125,9 @@ export async function POST(request: Request) {
         { status: 401 }
       );
     }
+
+    const limitError = await assertCanCreate(user, "orders", 1);
+    if (limitError) return limitError;
 
     const {
       material_cost = 0,

@@ -625,3 +625,87 @@ When building a full-screen mobile sheet that acts as a page:
   - Mobile 375×812 (1 column, unchanged behavior): `clients_mobile_after_375.png`
   - Client detail dialog verification (desktop): `clients_dialog_opened_after_click.png`
   - Client detail sheet verification (mobile): `clients_mobile_dialog_opened.png`
+
+### Fix 24: Desktop Dialog Frozen/Stuck Blue Bar Artifact & Content Clipping Resolution (`dialog.tsx` and `scroll-area.tsx`)
+
+- **Files Changed**:
+  - `apps/web/src/components/ui/dialog.tsx`
+  - `apps/web/src/components/ui/scroll-area.tsx`
+- **Root Cause**:
+  - Desktop dialogs (such as "Upgrade to Pro (Annual)" and "New Vendor") displayed a thin horizontal blue bar near the bottom edge that appeared stuck or frozen.
+  - The bar was **not** an animated loading bar or progress indicator, but the **primary action button** at the bottom of the modal (`bg-[var(--accent)]` / `.glow-btn`, `#2563EB` blue) being horizontally sliced by `overflow: hidden`.
+  - In `dialog.tsx`, `DialogContent` with `fullScreenMobile` set `fixed inset-0 z-[1001] flex flex-col overflow-hidden` for mobile. On desktop (`md:`), it applied `md:max-h-[85dvh]` to constrain the dialog height to 85% of the viewport, but **failed to specify `md:overflow-y-auto`**, causing the dialog to inherit `overflow: hidden` on desktop. When dialog content exceeded `85dvh` (very common on laptop viewports ≤768px height or browser windows ≤600px), `DialogContent` hard-clamped at `85dvh` and clipped overflowing content. Because `overflow-y-auto` was omitted, the user could not scroll the dialog, leaving the top 5–20px slice of the blue button frozen at the bottom border.
+  - In `scroll-area.tsx`, `ScrollAreaPrimitive.Root` was defined as `className={cn("relative", className)}`, omitting the standard `overflow-hidden`. Without `overflow-hidden`, `ScrollAreaPrimitive.Viewport` (`size-full`) did not respect flex container height bounds, expanding to full content height and spilling into `DialogContent`, where `DialogContent`'s outer `overflow: hidden` clipped the button.
+- **What Changed**:
+  - `dialog.tsx`: Added `md:overflow-y-auto` to desktop classes on `DialogContent` across both `fullScreenMobile` and default branches (`md:w-full md:max-h-[85dvh] md:overflow-y-auto`).
+  - `scroll-area.tsx`: Added `overflow-hidden` to `ScrollAreaPrimitive.Root` (`className={cn("relative overflow-hidden", className)}`) conforming to Radix UI / shadcn specifications.
+  - Mobile bottom-sheet layout, full-bleed mobile page styling (`fixed inset-0 flex flex-col overflow-hidden`), and the Upgrade modal's "Payment Gateway Notice" copy remain 100% untouched.
+- **Visual Verification & Artifacts**:
+  - "Upgrade to Pro (Annual)" modal (Desktop 1280×600):
+    - Before: `before_upgrade_modal.png` (Horizontal blue bar artifact stuck at bottom edge).
+    - After: `after_upgrade_modal.png` (Fully accessible, scrollable, complete "Got it" button).
+  - "New Vendor" modal (Desktop 1280×600):
+    - Before: `before_vendor_modal.png` (Horizontal blue strip artifact stuck at bottom edge).
+    - After: `after_vendor_modal.png` (Fully accessible, smooth internal scroll, complete "Save Vendor" button).
+  - "New Purchase Order" modal (Desktop 1280×600):
+    - After: `after_po_modal.png` (Smooth scroll, complete "Create Purchase Order" button).
+  - "Add New Client" modal (Desktop 1280×600):
+    - Before: `before_client_modal.png` (Submit button clipped in half).
+    - After: `after_client_modal.png` (Complete "Create Client Profile" button with full padding).
+  - "Add New Employee" modal (Desktop 1280×600):
+    - Before: `before_employee_modal.png` (Submit button and password fields clipped off).
+    - After: `after_employee_modal.png` (Fully scrollable, all fields and buttons accessible).
+  - Mobile Full-Bleed Regression Check (Mobile 390×844):
+    - After: `after_upgrade_mobile.png` (Full-bleed edge-to-edge mobile sheet behavior 100% intact).
+
+### Fix 25: Total Revenue KPI Card Desktop Overflow Resolution
+
+- **Files Changed**:
+  - `apps/web/src/lib/formatters.ts`
+  - `apps/web/src/components/ui/StatWidget.tsx`
+  - `apps/web/src/app/dashboard/page.tsx`
+- **Root Cause**:
+  - On desktop viewports (1200px–1280px), the 4-card KPI grid allocates ~146px–166px of content width per card.
+  - Large currency figures formatted unabbreviated (e.g. ₹11,78,650) measure ~166px–171px at 32px font size, triggering `truncate` / `overflow: hidden` mid-number or with an ellipsis (`...`).
+- **What Changed**:
+  - `formatters.ts`: Added `formatIndianCurrencyCompact(val: number)` implementing Indian-style abbreviation:
+    - `>= 1,00,00,000` (1 crore) → `₹X.XXCr` (2 decimals, e.g. `₹1.18Cr`)
+    - `>= 1,00,000` (1 lakh) → `₹X.XXL` (2 decimals, e.g. `₹11.79L`)
+    - `< 1,00,000` → full comma-grouped amount (e.g. `₹85,400`), no abbreviation
+    - Returns `{ formatted, full }` with `full` used for tooltip/a11y.
+  - `StatWidget.tsx`: Added `valueTitle?: string` prop. Bound native `title={valueTitle}` on the value container and child span, and updated `aria-label` to announce the full unabbreviated amount.
+  - `dashboard/page.tsx`: Applied `formatIndianCurrencyCompact` exclusively to the "Total Revenue" card (`widgetMeta.id === "Total Revenue"`), passing `displayValue={compact.formatted}` and `valueTitle={compact.full}` while leaving all other KPI cards and all other pages untouched.
+- **Visual Verification**:
+  - Desktop 1280px: `dashboard_kpi_1280px.png` (displays `₹11.79L`, fits cleanly inside card with generous margins, native tooltip shows `₹11,78,650`).
+  - Desktop 1440px: `dashboard_kpi_1440px.png` (displays `₹11.79L`, no clipping, other 3 cards unaffected).
+  - Desktop 1920px: `dashboard_kpi_1920px.png` (displays `₹11.79L`, no clipping, other 3 cards unaffected).
+  - Tablet 1024px: `dashboard_kpi_1024px.png` (displays `₹11.79L` in 2x2 grid with >150px clearance).
+
+### Fix 26: Cross-Session Persisted In-App Notification Read State
+
+- **Files Changed / Created**:
+  - `apps/web/src/app/api/notifications/read/route.ts` (NEW)
+  - `apps/web/src/lib/hooks/use-app-notifications.ts`
+- **Root Cause**:
+  - In-app notifications are dynamically derived on-the-fly from active business entities (overdue orders, stuck productions, low stock, pending payments) on every mount via `generateNotificationsFromData()`.
+  - Previously, read IDs were persisted solely in client-side `localStorage` (`"ind_notification_read_ids"`). There was zero server-side persistence or database storage for in-app notification read state.
+  - Whenever a user logged in on a fresh browser session, incognito window, or different device (or cleared cache), `localStorage` was empty, causing all notifications to revert to unread.
+- **What Changed**:
+  - **New API Route (`/api/notifications/read`)**:
+    - `GET`: Authenticates session using server-side `getSessionUser()`. Rejects requests without valid session with HTTP 401. Fetches persisted `readIds: string[]` from MongoDB collection `notification_reads` for the authenticated `userId = String(user._id)`.
+    - `POST`: Authenticates session using server-side `getSessionUser()`. Rejects unauthorized calls with HTTP 401. Validates and deduplicates incoming notification IDs.
+    - **FIFO Array Cap Policy**: Implemented application-level trim with FIFO eviction capping `readIds` at 1000 entries. New unique IDs are appended chronologically, and if the total exceeds 1000, oldest entries are evicted from the front (`slice(-1000)`). Upserts document with `updatedAt: new Date()`.
+  - **Hook Integration (`use-app-notifications.ts`)**:
+    - In `refresh()`: In parallel with `/api/orders`, `/api/v1/inventory`, and `/api/payments`, fetches `GET /api/notifications/read`. Synchronizes persisted read IDs into `readIdsRef.current` and caches to `localStorage`.
+    - In `markAsRead(id)`: Optimistically marks read in React state and fires `POST /api/notifications/read` with `{ ids: [id] }`.
+    - In `markAllAsRead()`: Marks all in React state and fires `POST /api/notifications/read` with `{ ids: idsToMark }`.
+    - `generateNotificationsFromData()` and dynamic business rules left 100% untouched.
+- **Proof Bar & Verification**:
+  - Logged in, verified initial unread notifications.
+  - Marked one notification via individual click (`markAsRead`) and remaining via `markAllAsRead`. Verified MongoDB stored all read IDs.
+  - Captured before screenshot (`notifications_read_before_fresh_session.png` / `media_1789065600000`) showing 0 unread badge and all items marked as read.
+  - Executed `localStorage.clear()` (0 keys remaining).
+  - Re-navigated to `/dashboard` on fresh session with clean client storage.
+  - Verified `/api/notifications/read` returned all read IDs from MongoDB. Captured after screenshot (`notifications_read_after_fresh_session.png`) proving all notifications remain read across completely fresh client state.
+
+

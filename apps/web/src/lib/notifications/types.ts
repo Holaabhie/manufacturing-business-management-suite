@@ -21,8 +21,10 @@ export type DeliveryStatus =
   | "queued"
   | "sent"
   | "delivered"
+  | "dispatched"
   | "failed"
-  | "retrying";
+  | "retrying"
+  | "not_configured";
 
 // ── Event fired by application code ─────────────────────
 export interface NotificationEvent {
@@ -174,6 +176,7 @@ export interface ChannelSendParams {
 export const EVENT_TO_TRIGGER: Record<string, string> = {
   order_status_update: "order_status_change",
   invoice_generated: "invoice_created",
+  payment_received: "payment_receipt",
   payment_reminder: "payment_overdue",
   low_stock_alert: "stock_low",
   production_complete: "production_complete",

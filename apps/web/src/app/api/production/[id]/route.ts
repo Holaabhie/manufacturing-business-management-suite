@@ -306,8 +306,9 @@ export async function PUT(
                 recipientContact,
                 payload: {
                     productName: updated.orderProductName || "Unknown Product",
-                    completedQty: updated.producedQuantity || 0,
-                    orderId: updated.orderId || "",
+                    quantity: updated.producedQuantity || 0,
+                    unit: updated.unit || "pcs",
+                    order_id: updated.orderId || "",
                     clientName: recipientName,
                 },
                 triggeredBy: getDataOwnerId(user),

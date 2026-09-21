@@ -9,7 +9,7 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { getDb, isDbUnavailableError } from '@/lib/mongodb';
-import { requireAdmin } from '@/lib/require-role';
+import { requirePlatformAdmin } from '@/lib/platform-admin';
 import { invalidateFeatureCache } from '@/lib/features/feature-gate';
 
 // ─── GET: List all feature flags ────────────────────────────────
@@ -39,9 +39,9 @@ export async function GET() {
   }
 }
 
-// ─── POST: Create a new feature flag (Admin only) ───────────────
+// ─── POST: Create a new feature flag (Platform Admin only) ─────
 export async function POST(req: NextRequest) {
-  const roleCheck = await requireAdmin();
+  const roleCheck = await requirePlatformAdmin();
   if (roleCheck.error) {
     return NextResponse.json(
       { error: roleCheck.error },
@@ -102,9 +102,9 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// ─── PUT: Update a feature flag (Admin only) ────────────────────
+// ─── PUT: Update a feature flag (Platform Admin only) ──────────
 export async function PUT(req: NextRequest) {
-  const roleCheck = await requireAdmin();
+  const roleCheck = await requirePlatformAdmin();
   if (roleCheck.error) {
     return NextResponse.json(
       { error: roleCheck.error },
@@ -162,9 +162,9 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-// ─── DELETE: Delete a feature flag (Admin only) ─────────────────
+// ─── DELETE: Delete a feature flag (Platform Admin only) ───────
 export async function DELETE(req: NextRequest) {
-  const roleCheck = await requireAdmin();
+  const roleCheck = await requirePlatformAdmin();
   if (roleCheck.error) {
     return NextResponse.json(
       { error: roleCheck.error },

@@ -21,6 +21,7 @@ import { envelope } from "@/shared/types/api";
 import { getInventoryService } from "@/modules/inventory";
 import type { InventoryItem } from "@/modules/inventory";
 import { getDataOwnerId } from "@/lib/auth-session";
+import { assertCanCreate } from "@/lib/entitlements";
 
 // ─── Response Mapper: Domain Entity → Frontend snake_case format ──
 // The frontend expects snake_case fields (purchase_cost_per_unit, min_stock_level, etc.)
@@ -65,6 +66,11 @@ export const GET = withRateLimit(
 export const POST = withRateLimit(
     withApiRoute(
         withAuth(async (request: NextRequest, user: AuthenticatedUser) => {
+            const limitErr = await assertCanCreate(user, "inventory", 1);
+            if (limitErr) {
+                return limitErr;
+            }
+
             const body = await request.json();
             // Map legacy and new fields
             const input = {

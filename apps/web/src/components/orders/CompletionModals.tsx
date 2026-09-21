@@ -446,8 +446,8 @@ export function InvoicePreviewModal({
                       background: "var(--overlay-card-bg)",
                       border: "1px solid var(--overlay-border)",
                       color: "var(--overlay-text-primary)", fontSize: 13, padding: "0 12px",
-                    //   outline: "none",
-                    // }}
+                      outline: "none",
+                    }}
                   />
                 </div>
                 <div>

@@ -13,6 +13,7 @@ import { withRateLimit } from "@/shared/middleware/rate-limiter";
 import { envelope } from "@/shared/types/api";
 import { getDb } from "@/lib/mongodb";
 import { getDataOwnerId } from "@/lib/auth-session";
+import { requireAdmin } from "@/lib/require-role";
 import { ObjectId } from "mongodb";
 
 // ── Default templates seeded on first access ──
@@ -94,6 +95,20 @@ const DEFAULT_TEMPLATES = [
         active: true,
         version: 1,
     },
+    {
+        name: "Payment Receipt",
+        trigger: "payment_receipt",
+        channels: ["whatsapp", "email"],
+        template: "Hi {{client_name}}, we\u2019ve received your payment of \u20B9{{amount}} via {{payment_method}}. Thank you!",
+        whatsappContent: "Hi {{client_name}}, we\u2019ve received your payment of *\u20B9{{amount}}* via {{payment_method}}. Thank you! \u2705",
+        telegramContent: "\u2705 *Payment Received*\nHi {{client_name}}, we\u2019ve received your payment of *\u20B9{{amount}}* via {{payment_method}}.",
+        emailSubject: "Payment Received \u2014 \u20B9{{amount}}",
+        emailBody: "<p>Hi {{client_name}},</p><p>We\u2019ve received your payment of <strong>\u20B9{{amount}}</strong> via {{payment_method}}.</p><p>Thank you for your prompt payment!</p>",
+        smsContent: "Payment of \u20B9{{amount}} received via {{payment_method}}. Thank you! \u2014 IND Manager",
+        variables: ["client_name", "amount", "payment_method", "order_id"],
+        active: true,
+        version: 1,
+    },
 ];
 
 // ── GET: Fetch all templates (seed if empty) ──
@@ -153,6 +168,12 @@ export const GET = withRateLimit(
 export const POST = withRateLimit(
     withApiRoute(
         withAuth(async (request: NextRequest, user: AuthenticatedUser) => {
+            // Admin-only: Staff cannot create templates
+            const adminCheck = await requireAdmin();
+            if (adminCheck.error) {
+                return envelope.error(adminCheck.error, adminCheck.status || 403, "FORBIDDEN");
+            }
+
             const db = await getDb();
             const ownerId = getDataOwnerId(user);
             const body = await request.json();
@@ -202,6 +223,12 @@ export const POST = withRateLimit(
 export const PATCH = withRateLimit(
     withApiRoute(
         withAuth(async (request: NextRequest, user: AuthenticatedUser) => {
+            // Admin-only: Staff cannot modify templates
+            const adminCheck = await requireAdmin();
+            if (adminCheck.error) {
+                return envelope.error(adminCheck.error, adminCheck.status || 403, "FORBIDDEN");
+            }
+
             const db = await getDb();
             const ownerId = getDataOwnerId(user);
             const body = await request.json();

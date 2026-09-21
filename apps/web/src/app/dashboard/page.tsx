@@ -51,6 +51,7 @@ import { IOSBadge } from "@/components/ui/ios/IOSBadge";
 import { IOSButton } from "@/components/ui/ios/IOSButton";
 import { staggerContainer, staggerItem } from "@/styles/animations";
 import { StatWidget, AnimatedValue, EmptyWidgetSlot } from "@/components/ui/StatWidget";
+import { formatIndianCurrencyCompact } from "@/lib/formatters";
 import StaffWorkPanel from "@/components/StaffWorkPanel";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
@@ -894,15 +895,29 @@ export default function DashboardPage() {
             const widgetMeta = AVAILABLE_WIDGETS.find((w) => w.id === config.widget_type);
             if (!widgetMeta) return null;
 
+            const isTotalRevenue = widgetMeta.id === "Total Revenue";
+            const rawValue = getWidgetValue(widgetMeta.id, stats);
+
+            let displayValue: string | undefined;
+            let valueTitle: string | undefined;
+
+            if (isTotalRevenue) {
+              const compact = formatIndianCurrencyCompact(rawValue);
+              displayValue = compact.formatted;
+              valueTitle = compact.full;
+            }
+
             return (
               <StatWidget
                 key={config.widget_type}
                 label={widgetMeta.id}
-                value={getWidgetValue(widgetMeta.id, stats)}
-                change={widgetMeta.id === "Total Revenue" ? stats.revenueGrowth : 0}
+                value={rawValue}
+                displayValue={displayValue}
+                valueTitle={valueTitle}
+                change={isTotalRevenue ? stats.revenueGrowth : 0}
                 icon={widgetMeta.icon}
                 color={widgetMeta.color as any}
-                prefix={widgetMeta.prefix}
+                prefix={isTotalRevenue ? undefined : widgetMeta.prefix}
                 delay={position * 0.05}
                 href={WIDGET_ROUTES[widgetMeta.id]}
               />

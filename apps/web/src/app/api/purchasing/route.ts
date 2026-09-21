@@ -12,6 +12,7 @@ import { ObjectId } from "mongodb";
 import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getPurchasingService } from "@/modules/purchasing";
 import { getDb } from "@/lib/mongodb";
+import { assertCanCreate } from "@/lib/entitlements";
 
 export async function GET() {
     try {
@@ -42,6 +43,65 @@ export async function POST(request: Request) {
         // Extract request-only flag before passing to service
         // (Zod schema strips unknown keys, but we read it here explicitly)
         const addToInventory = body.addToInventory === true;
+
+        // ── Pre-check inventory plan limits if addToInventory is true ────────
+        if (addToInventory && Array.isArray(body.items) && body.items.length > 0) {
+            const userId = getDataOwnerId(user);
+            const db = await getDb();
+
+            const candidateOps = body.items.filter((i: any) => {
+                const hasId = i.inventoryItemId && typeof i.inventoryItemId === "string";
+                const hasName = i.materialName && typeof i.materialName === "string" && String(i.materialName).trim().length > 0;
+                const qty = Number(i.quantity);
+                return (hasId || hasName) && qty > 0;
+            });
+
+            if (candidateOps.length > 0) {
+                const uniqueIdMap = new Map<string, ObjectId>();
+                const uniqueNameSet = new Set<string>();
+
+                for (const i of candidateOps) {
+                    const trimmedName = String(i.materialName || "").trim();
+                    const validObjectId = i.inventoryItemId && ObjectId.isValid(i.inventoryItemId);
+                    if (validObjectId) {
+                        uniqueIdMap.set(i.inventoryItemId, new ObjectId(i.inventoryItemId));
+                    } else if (trimmedName) {
+                        uniqueNameSet.add(trimmedName);
+                    }
+                }
+
+                const existingIdSet = new Set<string>();
+                if (uniqueIdMap.size > 0) {
+                    const foundById = await db.collection("inventory").find(
+                        { _id: { $in: Array.from(uniqueIdMap.values()) }, userId },
+                        { projection: { _id: 1 } }
+                    ).toArray();
+                    foundById.forEach((doc) => existingIdSet.add(doc._id.toString()));
+                }
+
+                const existingNameSet = new Set<string>();
+                if (uniqueNameSet.size > 0) {
+                    const foundByName = await db.collection("inventory").find(
+                        { name: { $in: Array.from(uniqueNameSet) }, userId },
+                        { projection: { name: 1 } }
+                    ).toArray();
+                    foundByName.forEach((doc) => existingNameSet.add(doc.name));
+                }
+
+                let newInsertsCount = 0;
+                for (const [idStr] of uniqueIdMap) {
+                    if (!existingIdSet.has(idStr)) newInsertsCount++;
+                }
+                for (const nameStr of uniqueNameSet) {
+                    if (!existingNameSet.has(nameStr)) newInsertsCount++;
+                }
+
+                if (newInsertsCount > 0) {
+                    const limitError = await assertCanCreate(user, "inventory", newInsertsCount);
+                    if (limitError) return limitError;
+                }
+            }
+        }
 
         const service = getPurchasingService();
         const order = await service.createOrder(getDataOwnerId(user), body);

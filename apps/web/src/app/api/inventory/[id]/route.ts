@@ -48,9 +48,10 @@ export async function PUT(
       triggerNotification({
         eventType: "low_stock_alert",
         payload: {
-          itemName: body.name || "Unknown Item",
-          currentStock: newQty,
+          material_name: body.name || "Unknown Item",
+          current_stock: newQty,
           unit: body.unit || "kg",
+          min_level: minStock,
         },
         triggeredBy: getDataOwnerId(user),
       }).catch(() => {}); // fire-and-forget

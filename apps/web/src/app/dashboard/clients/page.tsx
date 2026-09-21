@@ -68,6 +68,7 @@ import { NumericInput } from "@/components/ui/numeric-input";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useCachedPage } from "@/hooks/useCachedPage";
 import { ConfirmDeleteSheet } from "@/components/ui/ConfirmDeleteSheet";
+import { STARTER_LIMIT } from "@/lib/entitlements/limits";
 
 export default function ClientsPage() {
   const t = useTranslations("clients");
@@ -121,8 +122,8 @@ export default function ClientsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const starterLimit = 5;
-  const isAtLimit = !isPro && clients.length >= starterLimit;
+  const starterLimit = STARTER_LIMIT;
+  const isAtLimit = !isPro && clients.filter((c) => c.is_sample !== true).length >= starterLimit;
 
   const handleAddNewClick = () => {
     if (isAtLimit) {
@@ -263,6 +264,16 @@ export default function ClientsPage() {
         body: JSON.stringify(formData),
       });
       const data = await res.json();
+
+      if (res.status === 403 || data.code === "PLAN_LIMIT_REACHED") {
+        toast.error(`Starter tier limit reached (${starterLimit} clients). Please upgrade to Pro for unlimited CRM capacity.`, {
+          action: {
+            label: "Upgrade",
+            onClick: () => window.location.href = "/dashboard/upgrade"
+          }
+        });
+        return;
+      }
 
       if (data.error) toast.error(t("toasts.createFailed"));
       else {

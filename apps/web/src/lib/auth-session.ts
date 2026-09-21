@@ -61,6 +61,13 @@ export type UserDoc = {
   role: "Admin" | "Owner" | "Manager" | "Staff" | "Accountant";
   subscription_tier: "starter" | "pro";
   subscription_status?: string;
+  plan_override?: {
+    tier: "starter" | "pro";
+    expires_at: Date | null;
+    granted_by: string;
+    granted_at: Date;
+    reason: string;
+  };
   notification_preferences?: Record<string, unknown>;
   fullName?: string;
   phone?: string;

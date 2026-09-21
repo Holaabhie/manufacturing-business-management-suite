@@ -15,6 +15,7 @@ import { parseNumericValue } from "@/components/ui/numeric-input";
 import { useCachedPage } from "@/hooks/useCachedPage";
 import { queryKeys, apiFetch } from "@/lib/hooks/use-orders";
 import type { Order } from "@/modules/orders/domain/types";
+import { STARTER_LIMIT } from "@/lib/entitlements/limits";
 
 // ─── Step metadata ───────────────────────────────────────────
 const STEPS = [
@@ -294,6 +295,18 @@ export default function CreateOrderWizard() {
           body: JSON.stringify({ name: newClient.name.trim(), phone: newClient.phone, email: newClient.email }),
         });
         const cData = await cRes.json();
+        if (cRes.status === 403 || cData.code === "PLAN_LIMIT_REACHED") {
+          toast.error(
+            `Starter tier limit reached (${STARTER_LIMIT} clients). Please upgrade to Pro for unlimited CRM capacity.`,
+            {
+              action: {
+                label: "Upgrade",
+                onClick: () => (window.location.href = "/dashboard/upgrade"),
+              },
+            }
+          );
+          return;
+        }
         if (!cRes.ok) throw new Error(cData.message || cData.error || t("toasts.failedCreateClient"));
         clientId = cData.id;
       }
@@ -344,6 +357,18 @@ export default function CreateOrderWizard() {
         body: JSON.stringify(orderPayload),
       });
       const oData = await oRes.json();
+      if (oRes.status === 403 || oData.code === "PLAN_LIMIT_REACHED") {
+        toast.error(
+          `Starter tier limit reached (${STARTER_LIMIT} orders). Upgrade to Pro for unlimited.`,
+          {
+            action: {
+              label: "Upgrade",
+              onClick: () => (window.location.href = "/dashboard/upgrade"),
+            },
+          }
+        );
+        return;
+      }
       if (!oRes.ok) throw new Error(oData.message || oData.error || t("toasts.failedCreateOrder"));
       const orderId = oData.id;
 

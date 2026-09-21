@@ -18,6 +18,7 @@ import {
   CheckCheck,
   ExternalLink,
   Copy,
+  Loader2,
 } from "lucide-react";
 import {
   buildWhatsAppLink,
@@ -39,6 +40,13 @@ import {
   DateGroupHeader,
   getDateGroup,
 } from "@/components/notifications/NotificationFeedItem";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { IOSInput } from "@/components/ui/ios/IOSFormElements";
 
 interface Template {
   id: string;
@@ -80,6 +88,25 @@ export default function NotificationsPage() {
     null
   );
   const [channelFilter, setChannelFilter] = useState<string>("all");
+
+  // Add Template modal state
+  const [addTemplateOpen, setAddTemplateOpen] = useState(false);
+  const [formName, setFormName] = useState("");
+  const [formTrigger, setFormTrigger] = useState("order_status_change");
+  const [formChannels, setFormChannels] = useState<string[]>([
+    "whatsapp",
+    "telegram",
+  ]);
+  const [formTemplate, setFormTemplate] = useState("");
+  const [formWhatsappContent, setFormWhatsappContent] = useState("");
+  const [formTelegramContent, setFormTelegramContent] = useState("");
+  const [formEmailSubject, setFormEmailSubject] = useState("");
+  const [formEmailBody, setFormEmailBody] = useState("");
+  const [formSmsContent, setFormSmsContent] = useState("");
+  const [formVariables, setFormVariables] = useState("");
+  const [formActive, setFormActive] = useState(true);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [nameError, setNameError] = useState(false);
 
   // Activity Feed hook
   const {
@@ -154,6 +181,73 @@ export default function NotificationsPage() {
     }
   };
 
+  const openAddTemplate = () => {
+    setFormName("");
+    setNameError(false);
+    setFormTrigger("order_status_change");
+    setFormChannels(["whatsapp", "telegram"]);
+    setFormTemplate("");
+    setFormWhatsappContent("");
+    setFormTelegramContent("");
+    setFormEmailSubject("");
+    setFormEmailBody("");
+    setFormSmsContent("");
+    setFormVariables("");
+    setFormActive(true);
+    setAddTemplateOpen(true);
+  };
+
+  const toggleChannel = (ch: string) => {
+    setFormChannels((prev) =>
+      prev.includes(ch) ? prev.filter((c) => c !== ch) : [...prev, ch]
+    );
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!formName.trim()) {
+      setNameError(true);
+      toast.error(t("toasts.nameRequired"));
+      return;
+    }
+    setNameError(false);
+    setSavingTemplate(true);
+    try {
+      const vars = formVariables
+        .split(",")
+        .map((v) => v.trim())
+        .filter(Boolean);
+      const res = await fetch("/api/v1/notifications/templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formName.trim(),
+          trigger: formTrigger,
+          channels: formChannels.length > 0 ? formChannels : ["whatsapp"],
+          template: formTemplate,
+          whatsappContent: formChannels.includes("whatsapp") ? formWhatsappContent : undefined,
+          telegramContent: formChannels.includes("telegram") ? formTelegramContent : undefined,
+          emailSubject: formChannels.includes("email") ? formEmailSubject : undefined,
+          emailBody: formChannels.includes("email") ? formEmailBody : undefined,
+          smsContent: formChannels.includes("sms") ? formSmsContent : undefined,
+          variables: vars,
+          active: formActive,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success(t("toasts.templateCreated"));
+        setAddTemplateOpen(false);
+        fetchTemplates();
+      } else {
+        toast.error(data.error?.message || t("toasts.templateCreateFailed"));
+      }
+    } catch {
+      toast.error(t("toasts.templateCreateFailed"));
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
   const handleDispatchSend = async (log: LogEntry) => {
     try {
       const ch = log.channel?.toLowerCase();
@@ -172,16 +266,16 @@ export default function NotificationsPage() {
         if (url) window.open(url, "_blank");
       }
 
-      // Optimistically update status
+      // Optimistically update status to "dispatched"
       setLogs((prev) =>
-        prev.map((l) => (l.id === log.id ? { ...l, status: "sent" } : l)),
+        prev.map((l) => (l.id === log.id ? { ...l, status: "dispatched" } : l)),
       );
 
       // Persist via PATCH
       fetch("/api/v1/notifications/logs", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: log.id, status: "sent" }),
+        body: JSON.stringify({ id: log.id, status: "dispatched" }),
       }).catch(() => {
         // Revert on failure
         setLogs((prev) =>
@@ -598,7 +692,11 @@ export default function NotificationsPage() {
               })}
 
               {/* Add New Template */}
-              <button className="ind-add-btn">
+              <button
+                id="add-template-btn"
+                onClick={openAddTemplate}
+                className="ind-add-btn"
+              >
                 <Plus className="h-4 w-4" /> {t("btnAddTemplate")}
               </button>
             </>
@@ -741,6 +839,7 @@ export default function NotificationsPage() {
                             "ind-badge--green":
                               log.status === "sent" ||
                               log.status === "delivered",
+                            "ind-badge--blue": log.status === "dispatched",
                             "ind-badge--red": log.status === "failed",
                             "ind-badge--orange":
                               log.status === "pending",
@@ -749,12 +848,14 @@ export default function NotificationsPage() {
                           {log.status === "sent" ||
                           log.status === "delivered" ? (
                             <CheckCircle2 className="h-3 w-3" />
+                          ) : log.status === "dispatched" ? (
+                            <CheckCheck className="h-3 w-3" />
                           ) : log.status === "failed" ? (
                             <XCircle className="h-3 w-3" />
                           ) : (
                             <AlertCircle className="h-3 w-3" />
                           )}
-                          {(log.status === "sent" ? t("statusSent") : log.status === "delivered" ? t("statusDelivered") : log.status === "failed" ? t("statusFailed") : log.status === "pending" ? t("statusPending") : log.status === "queued" ? t("statusQueued") : log.status)}
+                          {(log.status === "sent" ? t("statusSent") : log.status === "delivered" ? t("statusDelivered") : log.status === "dispatched" ? t("statusDispatched") : log.status === "failed" ? t("statusFailed") : log.status === "pending" ? t("statusPending") : log.status === "queued" ? t("statusQueued") : log.status)}
                         </span>
                         {/* ── Send action button ── */}
                         {(log.status === "queued" ||
@@ -807,6 +908,294 @@ export default function NotificationsPage() {
           </IOSCard>
         </motion.div>
       )}
+
+      {/* ─── Add Template Dialog ─── */}
+      <Dialog open={addTemplateOpen} onOpenChange={setAddTemplateOpen}>
+        <DialogContent
+          fullScreenMobile
+          className="sm:max-w-[540px] bg-white/95 dark:bg-[rgba(28,28,30,0.95)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px] overflow-hidden p-0 flex flex-col md:max-h-[85dvh]"
+        >
+          {/* Header */}
+          <div className="p-6 pb-4 border-b border-[var(--border)] shrink-0">
+            <div className="flex items-center gap-3">
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  background:
+                    "linear-gradient(135deg, rgba(59,130,246,0.4), rgba(255,255,255,0.06))",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Bell className="h-5 w-5 text-[#60a5fa]" />
+              </div>
+              <div>
+                <DialogTitle
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 700,
+                    color: "var(--foreground)",
+                    lineHeight: "22px",
+                    margin: 0,
+                  }}
+                >
+                  {t("addTemplateTitle")}
+                </DialogTitle>
+                <DialogDescription
+                  style={{
+                    fontSize: 13,
+                    color: "var(--muted-foreground)",
+                    lineHeight: "18px",
+                    margin: "2px 0 0",
+                  }}
+                >
+                  {t("addTemplateDesc")}
+                </DialogDescription>
+              </div>
+            </div>
+          </div>
+
+          {/* Form Scroll Area */}
+          <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
+            {/* Name */}
+            <div className="space-y-1.5">
+              <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">
+                {t("fieldName")} <span className="text-[#FF3B30]">*</span>
+              </label>
+              <IOSInput
+                id="template-name-input"
+                value={formName}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  setFormName(e.target.value);
+                  if (nameError) setNameError(false);
+                }}
+                placeholder={t("placeholderName")}
+                className={cn("h-[44px]", nameError && "!border-[#FF3B30] focus:!ring-[#FF3B30]/30")}
+              />
+              {nameError && (
+                <p id="name-validation-error" className="text-[12px] text-[#FF3B30] font-medium ml-1">
+                  {t("toasts.nameRequired")}
+                </p>
+              )}
+            </div>
+
+            {/* Trigger Event */}
+            <div className="space-y-1.5">
+              <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">
+                {t("fieldTrigger")}
+              </label>
+              <div className="relative">
+                <select
+                  id="template-trigger-select"
+                  value={formTrigger}
+                  onChange={(e) => setFormTrigger(e.target.value)}
+                  className="w-full h-[44px] px-4 rounded-[12px] bg-[var(--muted)] hover:bg-[var(--accent)] border border-[var(--border)] text-[14px] font-medium focus:ring-[3px] focus:ring-[#007AFF]/30 focus:border-[#007AFF] outline-none transition-all appearance-none text-[var(--foreground)]"
+                >
+                  <option value="order_status_change">{t("triggerOrderStatus")}</option>
+                  <option value="invoice_created">{t("triggerInvoice")}</option>
+                  <option value="payment_overdue">{t("triggerPayment")}</option>
+                  <option value="stock_low">{t("triggerStock")}</option>
+                  <option value="production_complete">{t("triggerProduction")}</option>
+                  <option value="payment_critical">{t("triggerPaymentCritical")}</option>
+                  <option value="custom">{t("triggerCustom")}</option>
+                </select>
+                <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none text-[var(--muted-foreground)]" />
+              </div>
+            </div>
+
+            {/* Channels Multi-Select */}
+            <div className="space-y-1.5">
+              <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">
+                {t("fieldChannels")}
+              </label>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {[
+                  { id: "whatsapp", label: "WhatsApp", icon: MessageCircle, color: "#25d366" },
+                  { id: "telegram", label: "Telegram", icon: Send, color: "#0088cc" },
+                  { id: "email", label: "Email", icon: Mail, color: "#a78bfa" },
+                  { id: "sms", label: "SMS", icon: Phone, color: "#38bdf8" },
+                ].map((ch) => {
+                  const selected = formChannels.includes(ch.id);
+                  const Icon = ch.icon;
+                  return (
+                    <button
+                      key={ch.id}
+                      type="button"
+                      onClick={() => toggleChannel(ch.id)}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-2 rounded-[12px] border text-[13px] font-medium transition-all text-left",
+                        selected
+                          ? "border-[#007AFF] bg-[#007AFF]/10 text-[var(--foreground)]"
+                          : "border-[var(--border)] bg-[var(--muted)] text-[var(--muted-foreground)] opacity-70 hover:opacity-100"
+                      )}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" style={{ color: ch.color }} />
+                      <span className="truncate">{ch.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Default Message Template */}
+            <div className="space-y-1.5">
+              <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">
+                {t("fieldTemplate")}
+              </label>
+              <textarea
+                id="template-content-input"
+                value={formTemplate}
+                onChange={(e) => setFormTemplate(e.target.value)}
+                placeholder={t.raw("placeholderTemplate")}
+                rows={3}
+                className="w-full px-4 py-3 rounded-[12px] bg-[var(--muted)] hover:bg-[var(--accent)] border border-[var(--border)] text-[14px] font-normal focus:ring-[3px] focus:ring-[#007AFF]/30 focus:border-[#007AFF] outline-none transition-all resize-none text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/60"
+              />
+            </div>
+
+            {/* Per-Channel Overrides */}
+            {formChannels.includes("whatsapp") && (
+              <div className="space-y-1.5">
+                <label className="text-[12px] font-medium text-[var(--muted-foreground)] ml-1 flex items-center gap-1.5">
+                  <MessageCircle className="h-3.5 w-3.5 text-[#25d366]" />
+                  {t("labelWhatsappContent")}
+                </label>
+                <textarea
+                  value={formWhatsappContent}
+                  onChange={(e) => setFormWhatsappContent(e.target.value)}
+                  placeholder="*Bold*, _italic_ formatted message for WhatsApp..."
+                  rows={2}
+                  className="w-full px-3 py-2 rounded-[10px] bg-[var(--muted)] border border-[var(--border)] text-[13px] focus:ring-2 focus:ring-[#25d366]/30 outline-none resize-none text-[var(--foreground)]"
+                />
+              </div>
+            )}
+
+            {formChannels.includes("telegram") && (
+              <div className="space-y-1.5">
+                <label className="text-[12px] font-medium text-[var(--muted-foreground)] ml-1 flex items-center gap-1.5">
+                  <Send className="h-3.5 w-3.5 text-[#0088cc]" />
+                  {t("labelTelegramContent")}
+                </label>
+                <textarea
+                  value={formTelegramContent}
+                  onChange={(e) => setFormTelegramContent(e.target.value)}
+                  placeholder="Markdown formatted message for Telegram..."
+                  rows={2}
+                  className="w-full px-3 py-2 rounded-[10px] bg-[var(--muted)] border border-[var(--border)] text-[13px] focus:ring-2 focus:ring-[#0088cc]/30 outline-none resize-none text-[var(--foreground)]"
+                />
+              </div>
+            )}
+
+            {formChannels.includes("email") && (
+              <div className="space-y-2 rounded-[12px] p-3 border border-[var(--border)] bg-[var(--muted)]/40">
+                <div className="space-y-1">
+                  <label className="text-[12px] font-medium text-[var(--muted-foreground)] flex items-center gap-1.5">
+                    <Mail className="h-3.5 w-3.5 text-[#a78bfa]" />
+                    {t("labelEmailSubject")}
+                  </label>
+                  <IOSInput
+                    value={formEmailSubject}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormEmailSubject(e.target.value)}
+                    placeholder="e.g. Order Status Update"
+                    className="h-[38px] text-[13px]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[12px] font-medium text-[var(--muted-foreground)]">
+                    {t("labelEmailBody")}
+                  </label>
+                  <textarea
+                    value={formEmailBody}
+                    onChange={(e) => setFormEmailBody(e.target.value)}
+                    placeholder="<p>HTML formatted email body...</p>"
+                    rows={2}
+                    className="w-full px-3 py-2 rounded-[10px] bg-[var(--muted)] border border-[var(--border)] text-[13px] focus:ring-2 focus:ring-[#a78bfa]/30 outline-none resize-none text-[var(--foreground)]"
+                  />
+                </div>
+              </div>
+            )}
+
+            {formChannels.includes("sms") && (
+              <div className="space-y-1.5">
+                <label className="text-[12px] font-medium text-[var(--muted-foreground)] ml-1 flex items-center gap-1.5">
+                  <Phone className="h-3.5 w-3.5 text-[#38bdf8]" />
+                  {t("labelSmsContent")}
+                </label>
+                <input
+                  type="text"
+                  value={formSmsContent}
+                  onChange={(e) => setFormSmsContent(e.target.value)}
+                  placeholder="Plain text SMS (160 chars max)..."
+                  className="w-full h-[38px] px-3 rounded-[10px] bg-[var(--muted)] border border-[var(--border)] text-[13px] focus:ring-2 focus:ring-[#38bdf8]/30 outline-none text-[var(--foreground)]"
+                />
+              </div>
+            )}
+
+            {/* Variables */}
+            <div className="space-y-1.5">
+              <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">
+                {t("fieldVariables")}
+              </label>
+              <IOSInput
+                id="template-variables-input"
+                value={formVariables}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormVariables(e.target.value)}
+                placeholder={t("placeholderVariables")}
+                className="h-[44px]"
+              />
+              <p className="text-[11px] text-[var(--muted-foreground)] ml-1">
+                Comma-separated: e.g. client_name, order_id, status
+              </p>
+            </div>
+
+            {/* Active Toggle */}
+            <div className="flex items-center justify-between pt-1">
+              <label className="text-[13px] font-medium text-[var(--foreground)] ml-1">
+                {t("fieldActive")}
+              </label>
+              <button
+                type="button"
+                onClick={() => setFormActive(!formActive)}
+                className={cn(
+                  "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                  formActive ? "bg-[#34d399]" : "bg-[var(--muted)] border border-[var(--border)]"
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                    formActive ? "translate-x-6" : "translate-x-1"
+                  )}
+                />
+              </button>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="p-6 pt-4 border-t border-[var(--border)] flex gap-3 shrink-0">
+            <button
+              type="button"
+              onClick={() => setAddTemplateOpen(false)}
+              className="flex-1 h-12 rounded-[14px] bg-[var(--muted)] text-[var(--muted-foreground)] border border-[var(--border)] text-[15px] font-semibold transition-opacity hover:opacity-80 cursor-pointer"
+            >
+              {tCommon("cancel")}
+            </button>
+            <button
+              type="button"
+              id="save-template-btn"
+              onClick={handleSaveTemplate}
+              disabled={savingTemplate}
+              className="flex-1 h-12 rounded-[14px] bg-gradient-to-r from-blue-600 to-blue-500 text-white border border-blue-400/30 shadow-[0_4px_16px_rgba(59,130,246,0.25)] text-[15px] font-semibold transition-opacity hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2"
+            >
+              {savingTemplate && <Loader2 className="h-4 w-4 animate-spin" />}
+              {t("saveTemplate")}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

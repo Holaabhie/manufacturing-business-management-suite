@@ -16,6 +16,13 @@ export interface IUser extends Document {
   role: 'Admin' | 'Owner' | 'Manager' | 'Staff' | 'Accountant';
   subscription_tier: 'starter' | 'pro';
   subscription_status?: string;
+  plan_override?: {
+    tier: 'starter' | 'pro';
+    expires_at: Date | null;
+    granted_by: string;
+    granted_at: Date;
+    reason: string;
+  };
 
   // ─── RBAC Fields ──────────────────────────────────────────────
   // Organization scoping
@@ -134,6 +141,19 @@ const UserSchema = new Schema<IUser>({
     default: 'starter'
   },
   subscription_status: String,
+  plan_override: {
+    tier: {
+      type: String,
+      enum: ['starter', 'pro'],
+    },
+    expires_at: {
+      type: Date,
+      default: null,
+    },
+    granted_by: String,
+    granted_at: Date,
+    reason: String,
+  },
 
   // ─── RBAC Fields ──────────────────────────────────────────────
   organizationId: {

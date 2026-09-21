@@ -62,6 +62,41 @@ export function formatINR(
   }
 }
 
+/**
+ * Format Indian currency with compact Lakh/Crore notation:
+ * - >= 1,00,00,000 (1 crore) → ₹X.XXCr (2 decimals, e.g. ₹1.18Cr)
+ * - >= 1,00,000 (1 lakh) → ₹X.XXL (2 decimals, e.g. ₹11.79L)
+ * - below 1 lakh → full value with Indian comma grouping (e.g. ₹85,400), no abbreviation
+ *
+ * Returns both `formatted` (compact string) and `full` (full comma-grouped string for tooltips).
+ */
+export function formatIndianCurrencyCompact(val: number): { formatted: string; full: string } {
+  const num = typeof val === "number" && !isNaN(val) ? val : 0;
+  const isNegative = num < 0;
+  const abs = Math.abs(num);
+  const prefix = isNegative ? "-₹" : "₹";
+  const full = `${prefix}${abs.toLocaleString("en-IN")}`;
+
+  if (abs >= 10_000_000) {
+    return {
+      formatted: `${prefix}${(abs / 10_000_000).toFixed(2)}Cr`,
+      full,
+    };
+  }
+
+  if (abs >= 100_000) {
+    return {
+      formatted: `${prefix}${(abs / 100_000).toFixed(2)}L`,
+      full,
+    };
+  }
+
+  return {
+    formatted: full,
+    full,
+  };
+}
+
 // ─── Numbers ─────────────────────────────────────────────
 
 /**

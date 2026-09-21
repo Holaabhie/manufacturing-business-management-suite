@@ -15,6 +15,7 @@ import { withRateLimit } from "@/shared/middleware/rate-limiter";
 import { envelope } from "@/shared/types/api";
 import { getDb } from "@/lib/mongodb";
 import { getDataOwnerId } from "@/lib/auth-session";
+import { requireAdmin } from "@/lib/require-role";
 import { ObjectId } from "mongodb";
 import { renderForChannel } from "@/lib/notifications/template-renderer";
 import type { NotificationChannel } from "@/lib/notifications/types";
@@ -67,6 +68,12 @@ export const GET = withRateLimit(
 export const PATCH = withRateLimit(
   withApiRoute(
     withAuth(async (request: NextRequest, user: AuthenticatedUser, context?: RouteContext) => {
+      // Admin-only: Staff cannot update templates
+      const adminCheck = await requireAdmin();
+      if (adminCheck.error) {
+        return envelope.error(adminCheck.error, adminCheck.status || 403, "FORBIDDEN");
+      }
+
       const { id } = await context!.params;
       const db = await getDb();
       const ownerId = getDataOwnerId(user);
@@ -140,6 +147,12 @@ export const PATCH = withRateLimit(
 export const DELETE = withRateLimit(
   withApiRoute(
     withAuth(async (_request: NextRequest, user: AuthenticatedUser, context?: RouteContext) => {
+      // Admin-only: Staff cannot delete templates
+      const adminCheck = await requireAdmin();
+      if (adminCheck.error) {
+        return envelope.error(adminCheck.error, adminCheck.status || 403, "FORBIDDEN");
+      }
+
       const { id } = await context!.params;
       const db = await getDb();
       const ownerId = getDataOwnerId(user);

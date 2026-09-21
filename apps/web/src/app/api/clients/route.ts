@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { assertCanCreate } from "@/lib/entitlements";
 
 export async function GET() {
   try {
@@ -24,6 +25,7 @@ export async function GET() {
       email: c.email,
       phone: c.phone,
       address: c.address,
+      is_sample: c.is_sample === true,
       createdAt: c.createdAt,
       created_at: c.createdAt,
     }));
@@ -41,6 +43,9 @@ export async function POST(request: Request) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const limitError = await assertCanCreate(user, "clients", 1);
+    if (limitError) return limitError;
 
     const body = await request.json();
     const db = await getDb();

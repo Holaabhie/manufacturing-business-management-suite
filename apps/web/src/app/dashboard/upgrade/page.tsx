@@ -43,13 +43,10 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { PLAN_LIMITS } from "@/lib/entitlements/limits";
 
 // Enforced limits on Starter tier across production code
-const STARTER_LIMITS = {
-  inventory: 5,
-  orders: 5,
-  clients: 5,
-};
+const STARTER_LIMITS = PLAN_LIMITS.starter;
 
 export default function UpgradePage() {
   const t = useTranslations("upgrade");
@@ -104,9 +101,9 @@ export default function UpgradePage() {
       ]);
 
       if (subRes) setSubscription(subRes);
-      if (Array.isArray(invRes)) setInventoryCount(invRes.length);
-      if (Array.isArray(ordRes)) setOrdersCount(ordRes.length);
-      if (Array.isArray(cliRes)) setClientsCount(cliRes.length);
+      if (Array.isArray(invRes)) setInventoryCount(invRes.filter((i: any) => i.is_sample !== true).length);
+      if (Array.isArray(ordRes)) setOrdersCount(ordRes.filter((o: any) => o.is_sample !== true).length);
+      if (Array.isArray(cliRes)) setClientsCount(cliRes.filter((c: any) => c.is_sample !== true).length);
     } catch (error) {
       console.error("Error fetching upgrade page data:", error);
     } finally {
@@ -156,8 +153,8 @@ export default function UpgradePage() {
     );
   }
 
-  // Tier resolution
-  const userTier = user?.subscription_tier || subscription?.tier || "starter";
+  // Tier resolution (strictly from auth/me user.subscription_tier)
+  const userTier = user?.subscription_tier || "starter";
   const isPro = userTier === "pro";
 
   // Pricing calculations

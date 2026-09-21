@@ -135,8 +135,9 @@ export const POST = withIdempotency(async (request: NextRequest) => {
         // ── Trigger notification for invoice generated ──
         triggerNotification({
             eventType: "invoice_generated",
+            recipientContact: billData.clientPhone || "",
             payload: {
-                invoiceId: insertResult.insertedId.toString(),
+                invoice_number: billData.billNumber,
                 clientName: billData.clientName,
                 amount: billData.totalAmount,
             },

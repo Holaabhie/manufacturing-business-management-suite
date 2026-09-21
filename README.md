@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# IND Manager — Manufacturing Business Management Suite
 
-## Getting Started
+IND Manager is a cloud-native, responsive Manufacturing Operating System and Business Management Suite engineered for Indian MSMEs and growing industrial enterprises.
 
-First, run the development server:
+---
 
+## 🚀 Quick Links & Documentation
+
+- **🍎 macOS Setup & Developer Handover Guide**: [`MAC_SETUP_GUIDE.md`](./MAC_SETUP_GUIDE.md) — *Complete zero-to-one setup for MacBook and AI agents.*
+- **🏛 Architecture & Domain Specification**: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
+- **🔐 Authentication Setup**: [`AUTHENTICATION_SETUP.md`](./AUTHENTICATION_SETUP.md)
+- **🤖 Agent Guidelines & Bug Fix Log**: [`.agents/AGENTS.md`](./.agents/AGENTS.md) — *Layout rules, Fix 1 through Fix 26.*
+
+---
+
+## 🛠 Tech Stack
+
+- **Frontend**: Next.js 15.1 (App Router, Turbopack, React 19), Tailwind CSS, Framer Motion, Radix UI, Lucide Icons.
+- **Backend**: Next.js API Routes + NestJS (`apps/api`) + Express Auth Server (`apps/auth-server`).
+- **Database & Cache**: MongoDB (Core DB), Redis (Session / Cache / Queue), TimescaleDB (Optional telemetry).
+- **ERP Integration**: Tally Prime Desktop Bridge (`tools/tally-bridge`) via Electron.
+- **AI Engine**: Google Gemini 2.0 / 3.x conversational assistant.
+- **Mobile**: Responsive PWA + Capacitor Android wrapper (`android/`).
+
+---
+
+## ⚡ Quick Start
+
+### 1. Prerequisites
+- Node.js >= 20.x LTS (v22 recommended)
+- MongoDB (local or MongoDB Atlas)
+- Redis (local or cloud)
+
+### 2. Install Dependencies
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 3. Environment Configuration
+```bash
+cp apps/web/.env.example apps/web/.env.local
+```
+*(Fill in `MONGODB_URI`, `NEXTAUTH_SECRET`, `AUTH_SECRET`, and optional third-party credentials. Refer to [`MAC_SETUP_GUIDE.md`](./MAC_SETUP_GUIDE.md) for full details).*
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 4. Run Development Server
+```bash
+npm run dev
+```
+Open [http://localhost:3000](http://localhost:3000).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

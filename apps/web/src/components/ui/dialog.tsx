@@ -83,7 +83,7 @@ function DialogContent({
                   "data-[state=open]:animate-[sheetSlideUp_0.28s_ease] data-[state=closed]:animate-[sheetSlideDown_0.22s_ease_forwards]",
                   /* ── Desktop md+: centered dialog (same as default) ── */
                   "md:inset-auto md:fixed md:bottom-auto md:top-1/2 md:left-1/2 md:[translate:none]",
-                  "md:w-full md:max-h-[85dvh]",
+                  "md:w-full md:max-h-[85dvh] md:overflow-y-auto",
                   "md:rounded-[24px]",
                   "md:data-[state=open]:animate-[dialogScaleIn_0.22s_ease] md:data-[state=closed]:animate-[dialogScaleOut_0.18s_ease_forwards]",
                 ]
@@ -97,7 +97,7 @@ function DialogContent({
                   "data-[state=open]:animate-[sheetSlideUp_0.28s_ease] data-[state=closed]:animate-[sheetSlideDown_0.22s_ease_forwards]",
                   /* ── Desktop md+: centered dialog ── */
                   "md:top-1/2 md:bottom-auto md:[translate:none]",
-                  "md:max-h-[85dvh]",
+                  "md:max-h-[85dvh] md:overflow-y-auto",
                   "md:rounded-[24px]",
                   "md:data-[state=open]:animate-[dialogScaleIn_0.22s_ease] md:data-[state=closed]:animate-[dialogScaleOut_0.18s_ease_forwards]",
                 ],

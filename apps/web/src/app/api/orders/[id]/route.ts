@@ -78,19 +78,24 @@ export async function PUT(
     if (body.status) {
       const updatedOrder = await db.collection("orders").findOne({ _id: new ObjectId(id) });
       let clientName = "Unknown Client";
+      let clientPhone = "";
       if (updatedOrder?.client_id) {
         try {
           const client = await db.collection("clients").findOne({ _id: new ObjectId(updatedOrder.client_id) });
-          if (client) clientName = client.name || clientName;
+          if (client) {
+            clientName = client.name || clientName;
+            clientPhone = client.phone || "";
+          }
         } catch { /* client lookup failed, use default */ }
       }
       triggerNotification({
         eventType: "order_status_update",
+        recipientContact: clientPhone,
         payload: {
           orderId: id,
           clientName,
           productName: body.product_name || updatedOrder?.product_name || "Unknown Product",
-          newStatus: body.status,
+          status: body.status,
         },
         triggeredBy: getDataOwnerId(user),
       }).catch(() => {}); // fire-and-forget

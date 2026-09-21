@@ -122,37 +122,25 @@ export async function POST(request: Request) {
 
     // ── Trigger notification for payment received ──
     let clientName = "Unknown Client";
+    let clientPhone = "";
     if (body.client_id) {
       try {
         const client = await db.collection("clients").findOne({ _id: new ObjectId(body.client_id) });
-        if (client) clientName = client.name || clientName;
+        if (client) {
+          clientName = client.name || clientName;
+          clientPhone = client.phone || "";
+        }
       } catch { /* client lookup failed */ }
     }
 
-    // Calculate outstanding amount if order exists
-    let outstandingAmount = 0;
-    let dueDate = "";
-    if (body.order_id) {
-      try {
-        const order = await db.collection("orders").findOne({ _id: new ObjectId(body.order_id) });
-        if (order) {
-          const totalPayments = await db.collection("payments").aggregate([
-            { $match: { order_id: body.order_id, userId: getDataOwnerId(user!) } },
-            { $group: { _id: null, total: { $sum: "$amount" } } },
-          ]).toArray();
-          const paid = totalPayments[0]?.total || 0;
-          outstandingAmount = Math.max(0, Number(order.total_amount || 0) - paid);
-          dueDate = order.delivery_date || "";
-        }
-      } catch { /* order lookup failed */ }
-    }
-
     triggerNotification({
-      eventType: "payment_reminder",
+      eventType: "payment_received",
+      recipientContact: clientPhone,
       payload: {
         clientName,
-        outstandingAmount,
-        dueDate,
+        amount: Number(body.amount),
+        payment_method: body.payment_method || "cash",
+        order_id: body.order_id || "",
       },
       triggeredBy: getDataOwnerId(user!),
     }).catch(() => {}); // fire-and-forget

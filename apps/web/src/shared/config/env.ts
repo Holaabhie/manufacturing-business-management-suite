@@ -65,6 +65,9 @@ const envSchema = z.object({
     NEXT_PUBLIC_APP_NAME: z.string().default("Manufacturing OS"),
     NEXT_PUBLIC_SUPPORT_EMAIL: z.string().email().optional(),
 
+    // ── Platform Admin ────────────────────────────────────
+    PLATFORM_ADMIN_EMAILS: z.string().default(""),
+
     // ── Cron / Internal ───────────────────────────────────
     CRON_SECRET: z.string().min(1).optional(),
 

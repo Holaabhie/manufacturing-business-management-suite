@@ -12,6 +12,7 @@ import { withAuth, type AuthenticatedUser } from "@/shared/middleware/with-auth"
 import { withRateLimit } from "@/shared/middleware/rate-limiter";
 import { envelope } from "@/shared/types/api";
 import { getDataOwnerId } from "@/lib/auth-session";
+import { requireAdmin } from "@/lib/require-role";
 import { sendNotification } from "@/lib/notifications/dispatcher";
 import type { NotificationChannel } from "@/lib/notifications/types";
 
@@ -20,6 +21,12 @@ const VALID_CHANNELS: NotificationChannel[] = ["whatsapp", "telegram", "email", 
 export const POST = withRateLimit(
   withApiRoute(
     withAuth(async (request: NextRequest, user: AuthenticatedUser) => {
+      // Admin-only: Staff cannot manually dispatch notifications
+      const adminCheck = await requireAdmin();
+      if (adminCheck.error) {
+        return envelope.error(adminCheck.error, adminCheck.status || 403, "FORBIDDEN");
+      }
+
       const body = await request.json();
       const userId = getDataOwnerId(user);
 

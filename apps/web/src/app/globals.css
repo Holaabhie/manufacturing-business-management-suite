@@ -4107,6 +4107,66 @@ html, body {
   background: rgba(255,255,255,0.15);
 }
 
+/* ============================================
+   NATIVE FORM ELEMENT DARK MODE FIX
+   Ensures <select>/<option>/<optgroup>/<datalist>
+   and date/time picker popups are readable in dark mode.
+   Uses existing --muted (surface) and --foreground (text) tokens.
+   ============================================ */
+
+/* ── Light mode: enforce light color-scheme ─── */
+select,
+option,
+optgroup,
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+input[type="month"],
+datalist {
+  color-scheme: light;
+}
+
+/* ── Dark mode: enforce dark color-scheme + explicit option colors ─── */
+.dark select,
+.dark input[type="date"],
+.dark input[type="time"],
+.dark input[type="datetime-local"],
+.dark input[type="month"],
+.dark datalist {
+  color-scheme: dark;
+}
+
+.dark option,
+.dark optgroup {
+  background-color: var(--muted);
+  color: var(--foreground);
+}
+
+/* ── Dark mode date/time picker indicator icon visibility ─── */
+.dark input[type="date"]::-webkit-calendar-picker-indicator,
+.dark input[type="time"]::-webkit-calendar-picker-indicator,
+.dark input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+.dark input[type="month"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
+/* ── Autofill overrides for select & textarea (dark + light) ─── */
+/* input:-webkit-autofill is already handled in @layer base above;
+   extend coverage to select and textarea elements. */
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus,
+select:-webkit-autofill:active,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+textarea:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 40px var(--background) inset !important;
+  -webkit-text-fill-color: var(--foreground) !important;
+  caret-color: var(--foreground) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 /* ── Mobile overflow safety ─────────────────── */
 html, body {
   overflow-x: hidden;

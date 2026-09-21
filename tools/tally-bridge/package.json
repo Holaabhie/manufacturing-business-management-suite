@@ -1,0 +1,17 @@
+{
+  "name": "tally-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/main/index.js",
+  "scripts": {
+    "build": "tsc && node scripts/copy-assets.js",
+    "start": "npm run build && electron .",
+    "test": "npm run build && node --test dist/test/bridge.test.js",
+    "fake-tally": "node dist/scripts/fake-tally.js"
+  },
+  "devDependencies": {
+    "@types/node": "22.7.5",
+    "electron": "42.1.0",
+    "typescript": "5.9.3"
+  }
+}

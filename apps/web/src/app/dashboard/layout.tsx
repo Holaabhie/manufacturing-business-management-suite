@@ -282,9 +282,13 @@ export default function DashboardLayout({
     };
     window.addEventListener("keydown", handleKeyDown);
 
+    const onOpenCommandPalette = () => setCommandPaletteOpen(true);
+    window.addEventListener("open-command-palette", onOpenCommandPalette);
+
     return () => {
       window.removeEventListener(USER_UPDATED_EVENT, onUserUpdated);
       window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("open-command-palette", onOpenCommandPalette);
     };
   }, []);
 

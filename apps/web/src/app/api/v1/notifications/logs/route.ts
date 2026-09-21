@@ -204,9 +204,9 @@ export const PATCH = withRateLimit(
             if (!id || !status) {
                 return envelope.error("id and status are required", 400, "VALIDATION_ERROR");
             }
-            if (status !== "sent" && status !== "failed") {
+            if (status !== "sent" && status !== "failed" && status !== "dispatched") {
                 return envelope.error(
-                    'status must be "sent" or "failed"',
+                    'status must be "sent", "failed", or "dispatched"',
                     400,
                     "VALIDATION_ERROR",
                 );

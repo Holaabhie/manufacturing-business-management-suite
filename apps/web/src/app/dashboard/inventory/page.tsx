@@ -60,6 +60,7 @@ import { generateDataExportPDF } from "@/lib/pdf-generator";
 import { NumericInput, parseNumericValue } from "@/components/ui/numeric-input";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { STARTER_LIMIT } from "@/lib/entitlements/limits";
 import { exportToExcel } from "@/lib/excel-export";
 import { ConfirmDeleteSheet } from "@/components/ui/ConfirmDeleteSheet";
 import { IOSCard, IOSCardContent } from "@/components/ui/ios/IOSCard";
@@ -122,10 +123,10 @@ export default function InventoryPage() {
     }
   }, []);
 
-  const starterLimit = 5;
-  const isDev = process.env.NODE_ENV === "development";
-  // In development mode, always bypass the starter tier limit
-  const isAtLimit = isDev ? false : (!isAdmin && !isPro && items.length >= starterLimit);
+  const starterLimit = STARTER_LIMIT;
+  // UI pre-block skipped because /api/v1/inventory domain entity does not expose is_sample.
+  // Guarded server-side by 403 PLAN_LIMIT_REACHED + existing toast.
+  const isAtLimit = false;
 
   const emptyFormState = {
     name: "",
@@ -312,6 +313,18 @@ export default function InventoryPage() {
           body: JSON.stringify(payload),
         });
         const data = await res.json();
+        if (res.status === 403 || data.code === "PLAN_LIMIT_REACHED") {
+          toast.error(
+            t("starterLimitReached", { count: starterLimit }),
+            {
+              action: {
+                label: t("upgrade"),
+                onClick: () => (window.location.href = "/dashboard/upgrade"),
+              },
+            }
+          );
+          return;
+        }
         if (data.error) toast.error(t("addError"));
         else {
           toast.success(t("itemAdded"));

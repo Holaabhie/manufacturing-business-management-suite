@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
+import { getEffectiveTier } from "@/lib/entitlements";
 
 export async function GET() {
   try {
@@ -9,11 +10,13 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const effectiveTier = await getEffectiveTier(user);
+
     return NextResponse.json({
       id: user._id.toString(),
       email: user.email,
       role: user.role,
-      subscription_tier: user.subscription_tier,
+      subscription_tier: effectiveTier,
       subscription_status: user.subscription_status,
       notification_preferences: user.notification_preferences,
       full_name: user.full_name,
@@ -44,7 +47,6 @@ export async function PUT(request: Request) {
 
     if (body.full_name !== undefined) updateData.full_name = body.full_name;
     if (body.phone_number !== undefined) updateData.phone_number = body.phone_number;
-    if (body.role !== undefined) updateData.role = body.role;
     if (body.notification_preferences !== undefined) updateData.notification_preferences = body.notification_preferences;
     if (body.avatar_url !== undefined) updateData.avatar_url = body.avatar_url;
 

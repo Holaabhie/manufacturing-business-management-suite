@@ -123,7 +123,12 @@ async function processJob(job: DeliveryJobDoc): Promise<void> {
         `[WORKER] ✅ Job ${jobId} delivered via ${channel} (attempt #${attempt})`
       );
     } else {
-      logUpdate.status = (result.retryable ? "retrying" : "failed") as DeliveryStatus;
+      // Distinguish "not configured" from real delivery failures
+      if (result.errorCode === "CHANNEL_NOT_CONFIGURED") {
+        logUpdate.status = "not_configured" as DeliveryStatus;
+      } else {
+        logUpdate.status = (result.retryable ? "retrying" : "failed") as DeliveryStatus;
+      }
       logUpdate.error = result.error;
       logUpdate.errorCode = result.errorCode;
 

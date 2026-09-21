@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Sparkles,
   FileBarChart,
@@ -8,33 +10,174 @@ import {
   Send,
   RefreshCw,
   Lightbulb,
+  RotateCcw,
+  TrendingUp,
+  AlertTriangle,
+  Clock,
+  ChevronRight,
+  ArrowUpRight,
+  Paperclip,
+  Pin,
+  BarChart3,
+  Package,
+  Users,
+  CreditCard,
+  ShoppingCart,
+  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
-// ── AI Components ──
+// ── AI Components (untouched internals) ──
 import { AIThinkingLoader } from "@/components/ai/AIThinkingLoader";
 import { SmartInputBar } from "@/components/ai/SmartInputBar";
 import { ResponseCard } from "@/components/ai/ResponseCard";
 import { UserMessageCard } from "@/components/ai/UserMessageCard";
+import { AIAssistantIcon } from "@/components/ai/AIAssistantIcon";
 
-// ── Hook ──
+// ── Hook (untouched chat logic) ──
 import { useAIChat } from "@/hooks/useAIChat";
+
+// ─── 5 Category Cards (Analytics, Inventory, Clients, Payments, Orders) ──
+const CATEGORY_CARDS = [
+  {
+    id: "analytics",
+    title: "Analytics",
+    description: "Track revenue growth, top products, and monthly sales trends",
+    prompt: "Analyze my total revenue, top products by revenue, and month-over-month growth trends.",
+    icon: BarChart3,
+    color: "#2563EB",
+    bg: "rgba(37, 99, 235, 0.10)",
+    border: "rgba(37, 99, 235, 0.20)",
+  },
+  {
+    id: "inventory",
+    title: "Inventory",
+    description: "Check stock levels, low-stock reorder alerts, and turnover rates",
+    prompt: "Which inventory items are running low and need to be restocked soon?",
+    icon: Package,
+    color: "#059669",
+    bg: "rgba(5, 150, 105, 0.10)",
+    border: "rgba(5, 150, 105, 0.20)",
+  },
+  {
+    id: "clients",
+    title: "Clients",
+    description: "Review client profiles, order history, and payment reliability",
+    prompt: "Who are my most valuable clients? Show revenue per client and payment reliability.",
+    icon: Users,
+    color: "#7C3AED",
+    bg: "rgba(124, 58, 237, 0.10)",
+    border: "rgba(124, 58, 237, 0.20)",
+  },
+  {
+    id: "payments",
+    title: "Payments",
+    description: "Monitor incoming payments, pending dues, and cash flow health",
+    prompt: "Give me a summary of collected vs outstanding payments this month.",
+    icon: CreditCard,
+    color: "#D97706",
+    bg: "rgba(217, 119, 6, 0.10)",
+    border: "rgba(217, 119, 6, 0.20)",
+  },
+  {
+    id: "orders",
+    title: "Orders",
+    description: "Track pending orders, fulfillment progress, and delivery status",
+    prompt: "What is the status of all pending and in-progress orders?",
+    icon: ShoppingCart,
+    color: "#4F46E5",
+    bg: "rgba(79, 70, 229, 0.10)",
+    border: "rgba(79, 70, 229, 0.20)",
+  },
+];
 
 // ─── Try Asking Prompts ──────────────────────────────────────
 const SUGGESTION_PROMPTS = [
   {
-    label: "Revenue Summary",
+    label: "Show revenue summary",
     prompt: "Give me a summary of my revenue for this month including total collected, pending, and growth trends.",
   },
   {
-    label: "Low Stock Alert",
+    label: "Which items have low stock?",
     prompt: "Which inventory items are running low and need to be restocked soon?",
   },
   {
-    label: "Outstanding Payments",
+    label: "Pending orders status",
+    prompt: "What is the status of all pending and in-progress orders?",
+  },
+  {
+    label: "Outstanding payments this month",
     prompt: "List all clients with outstanding payments and the amounts due.",
+  },
+  {
+    label: "Production efficiency report",
+    prompt: "How efficient is my production? Show order completion rate, average delivery time, and bottlenecks.",
+  },
+];
+
+// ─── Quick Actions (wired to real routes) ────────────────────
+const QUICK_ACTIONS = [
+  {
+    id: "orders",
+    label: "View Pending Orders",
+    href: "/dashboard/orders",
+    icon: ShoppingCart,
+    color: "#2563EB",
+  },
+  {
+    id: "inventory",
+    label: "Check Inventory",
+    href: "/dashboard/inventory",
+    icon: Package,
+    color: "#059669",
+  },
+  {
+    id: "sales",
+    label: "View Sales Report",
+    href: "/dashboard/analytics",
+    icon: BarChart3,
+    color: "#D97706",
+  },
+  {
+    id: "clients",
+    label: "Add New Client",
+    href: "/dashboard/clients",
+    icon: Users,
+    color: "#7C3AED",
+  },
+  {
+    id: "payments",
+    label: "Record Payment",
+    href: "/dashboard/payments",
+    icon: CreditCard,
+    color: "#DC2626",
+  },
+];
+
+// ─── Recent Insights (Static Placeholder — TODO: connect to live stats API) ──
+const RECENT_INSIGHTS = [
+  {
+    id: "insight-revenue",
+    headline: "Revenue +12.5%",
+    subtext: "Monthly collection pacing 12.5% ahead of previous cycle.",
+    icon: TrendingUp,
+    color: "#059669",
+  },
+  {
+    id: "insight-stock",
+    headline: "3 Low Stock Items",
+    subtext: "Raw material stock is below safety replenishment buffer.",
+    icon: AlertTriangle,
+    color: "#D97706",
+  },
+  {
+    id: "insight-production",
+    headline: "8 Orders In Production",
+    subtext: "All manufacturing lines running with 94% on-time completion.",
+    icon: Clock,
+    color: "#7C3AED",
   },
 ];
 
@@ -56,6 +199,8 @@ const REPORT_PROMPTS = [
 
 // ─── Main Component ─────────────────────────────────────────
 export default function AIAssistantPage() {
+  const router = useRouter();
+
   const {
     messages,
     isLoading,
@@ -68,7 +213,7 @@ export default function AIAssistantPage() {
 
   const [input, setInput] = useState("");
   const [viewMode, setViewMode] = useState<"chat" | "reports">("chat");
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   // ── Smart Reports State ──
   const [reportQuestion, setReportQuestion] = useState("");
@@ -77,11 +222,9 @@ export default function AIAssistantPage() {
 
   const userMessageCount = messages.filter((m) => m.role === "user").length;
 
-  // ── Auto-scroll ──
+  // ── Auto-scroll to bottom of page on new message ──
   const scrollToBottom = useCallback(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
   useEffect(() => {
@@ -92,6 +235,7 @@ export default function AIAssistantPage() {
 
   // ── Handlers ──
   const handleSend = (value: string) => {
+    if (!value.trim()) return;
     sendMessage(value);
     setInput("");
   };
@@ -125,95 +269,164 @@ export default function AIAssistantPage() {
     }
   };
 
-  // ─── Render ──────────────────────────────────────────────
   return (
-    <div className="ai-workspace flex flex-col h-[calc(100dvh-44px-56px)] md:h-[calc(100dvh-56px)] overflow-hidden">
-      {/* ═══════════ CHAT VIEW ═══════════ */}
-      {viewMode === "chat" && (
-        <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden" style={{ background: "var(--ai-bg-secondary)" }}>
-          {/* AI Not Configured Banner */}
-          {aiNotConfigured && (
-            <div className="flex items-center gap-3 mx-4 mt-3 p-3 rounded-[14px] border border-[var(--ai-border-subtle)]" style={{ background: "rgba(245,158,11,0.06)" }}>
-              <div className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: "rgba(245,158,11,0.12)" }}>
-                <Settings className="h-4 w-4 text-amber-400" />
-              </div>
-              <div>
-                <p className="text-[13px] font-semibold text-[var(--ai-text-primary)]">AI not configured</p>
-                <p className="text-[11px] text-[var(--ai-text-tertiary)]">Contact your admin to set up the AI webhook.</p>
-              </div>
+    <div className="space-y-6 w-full min-w-0 overflow-x-hidden">
+      {/* ════════════════ SLIM PAGE HEADING ROW (SINGLE HEADER) ════════════════ */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-[12px] flex items-center justify-center shrink-0 bg-gradient-to-br from-[#8B5CF6] to-[#3B82F6] shadow-md shadow-purple-500/20">
+            <AIAssistantIcon size={20} className="text-white" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground truncate">
+                AI Assistant
+              </h1>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Live
+              </span>
             </div>
-          )}
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 truncate">
+              Your intelligent business advisor
+            </p>
+          </div>
+        </div>
 
-          {/* Messages Stream */}
-          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-2 space-y-3" ref={scrollRef}>
-            <div className="space-y-4 pb-4 max-w-[900px] mx-auto">
-              <AnimatePresence mode="popLayout">
-                {messages.map((message) => {
-                  if (message.isLoading) {
-                    return (
-                      <AIThinkingLoader
-                        key={message.id}
-                        message="Analyzing your data..."
-                      />
-                    );
-                  }
-
-                  if (message.role === "user") {
-                    return (
-                      <UserMessageCard
-                        key={message.id}
-                        content={message.displayedContent ?? message.content}
-                        timestamp={message.timestamp}
-                      />
-                    );
-                  }
-
-                  return (
-                    <ResponseCard
-                      key={message.id}
-                      id={message.id}
-                      content={message.content}
-                      displayedContent={message.displayedContent}
-                      timestamp={message.timestamp}
-                      isTyping={message.isTyping}
-                      isError={message.isError}
-                      errorMessage={message.errorMessage}
-                      onRetry={message.isError ? retryLastMessage : undefined}
-                    />
-                  );
-                })}
-              </AnimatePresence>
-            </div>
+        {/* View Mode Switcher + New Chat Action */}
+        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+          <div className="flex items-center rounded-lg bg-muted p-0.5 border border-border">
+            <button
+              type="button"
+              onClick={() => setViewMode("chat")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors cursor-pointer",
+                viewMode === "chat"
+                  ? "bg-background text-foreground shadow-sm font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              <span>Chat</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("reports")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors cursor-pointer",
+                viewMode === "reports"
+                  ? "bg-background text-foreground shadow-sm font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <FileBarChart className="h-3.5 w-3.5 text-violet-500" />
+              <span>Reports</span>
+            </button>
           </div>
 
-          {/* "Try asking" Suggestion Box — visible when no user messages */}
-          {userMessageCount === 0 && !isLoading && (
-            <div className="px-4 pb-2 flex-shrink-0">
-              <div className="max-w-[900px] mx-auto">
-                <div
-                  className="max-w-[400px] rounded-xl p-2.5 border"
-                  style={{
-                    background: "var(--ai-bg-surface-elevated)",
-                    borderColor: "var(--ai-border-subtle)",
-                  }}
-                >
-                  <p
-                    className="text-[10px] font-semibold uppercase tracking-wider mb-1.5 px-0.5"
-                    style={{ color: "var(--ai-text-tertiary)" }}
-                  >
-                    Try asking
+          {userMessageCount > 0 && viewMode === "chat" && (
+            <button
+              type="button"
+              onClick={clearChat}
+              className="flex items-center gap-1.5 h-[34px] px-3 rounded-lg border border-border hover:bg-rose-500/10 hover:border-rose-500/30 hover:text-rose-600 dark:hover:text-rose-400 text-muted-foreground text-[12px] font-medium transition-all cursor-pointer"
+              title="Reset to Welcome Screen"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span>New Chat</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ═══════════ CHAT VIEW ═══════════ */}
+      {viewMode === "chat" && (
+        <div className="flex flex-col lg:flex-row gap-6 w-full min-w-0">
+          {/* ── Left / Main Content Column ── */}
+          <div className="flex-1 min-w-0 space-y-6">
+            {/* AI Not Configured Banner */}
+            {aiNotConfigured && (
+              <div className="flex items-center gap-3 p-4 rounded-[16px] border border-amber-500/20 bg-amber-500/10">
+                <div className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0 bg-amber-500/20">
+                  <Settings className="h-4 w-4 text-amber-500" />
+                </div>
+                <div>
+                  <p className="text-[13px] font-semibold text-foreground">
+                    AI Not Configured
                   </p>
-                  <div className="flex flex-wrap gap-1.5">
+                  <p className="text-[11px] text-muted-foreground">
+                    Contact your admin to configure the AI webhook in settings.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Welcome Card + Category Cards (shown when userMessageCount === 0) */}
+            {userMessageCount === 0 && (
+              <div className="space-y-6">
+                {/* Welcome Card */}
+                <div className="rounded-[20px] p-5 sm:p-6 bg-card border border-border shadow-[0_8px_30px_rgba(15,23,42,0.04)] flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-[14px] flex items-center justify-center shrink-0 bg-gradient-to-br from-[#8B5CF6] to-[#3B82F6] shadow-md shadow-purple-500/25 ring-2 ring-purple-500/20">
+                    <AIAssistantIcon size={24} className="text-white" />
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="text-lg sm:text-xl font-bold text-foreground tracking-tight leading-snug">
+                      Welcome to <span className="text-primary">IND Manager</span> ✨
+                    </h2>
+                    <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                      Your intelligent business advisor. Ask anything about orders, inventory, payments, production, and more.
+                    </p>
+                  </div>
+                </div>
+
+                {/* 5 Category Cards Grid (NO illustration — reflows smoothly) */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-0.5">
+                    Business Modules
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3.5 w-full min-w-0">
+                    {CATEGORY_CARDS.map((card) => {
+                      const Icon = card.icon;
+                      return (
+                        <button
+                          key={card.id}
+                          onClick={() => handleSend(card.prompt)}
+                          className="group relative flex flex-col justify-between p-4 rounded-[16px] text-left transition-all duration-150 ease-out cursor-pointer bg-card border border-border hover:border-primary/40 hover:shadow-md min-w-0 w-full overflow-hidden"
+                          style={{ boxShadow: "0 4px 20px rgba(15,23,42,0.03)" }}
+                        >
+                          <div className="flex items-start justify-between gap-2 w-full mb-3">
+                            <div
+                              className="w-10 h-10 rounded-[12px] flex items-center justify-center shrink-0 transition-transform duration-150 group-hover:scale-105"
+                              style={{ backgroundColor: card.bg }}
+                            >
+                              <Icon className="w-5 h-5" style={{ color: card.color }} />
+                            </div>
+                            <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-semibold text-foreground mb-1 group-hover:text-primary transition-colors truncate">
+                              {card.title}
+                            </h4>
+                            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                              {card.description}
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* "Try asking..." Horizontal Prompt Chips */}
+                <div className="w-full min-w-0 space-y-2 pt-1">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-0.5">
+                    Try asking...
+                  </p>
+                  <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
                     {SUGGESTION_PROMPTS.map((item, idx) => (
                       <button
                         key={idx}
                         onClick={() => handleSend(item.prompt)}
-                        className="text-[12px] font-medium px-2.5 py-1 rounded-lg border transition-all hover:scale-[1.02] active:scale-[0.98] text-left cursor-pointer"
-                        style={{
-                          background: "var(--ai-bg-surface)",
-                          borderColor: "var(--ai-border-subtle)",
-                          color: "var(--ai-text-primary)",
-                        }}
+                        className="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-150 ease-out cursor-pointer bg-card border border-border text-foreground hover:border-primary/40 hover:text-primary hover:bg-primary/5 shadow-sm"
                       >
                         {item.label}
                       </button>
@@ -221,96 +434,234 @@ export default function AIAssistantPage() {
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Input bar — flex-shrink-0, safe-area padding on mobile */}
-          <div className="flex-shrink-0 w-full" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-            <SmartInputBar
-              value={input}
-              onChange={setInput}
-              onSubmit={handleSend}
-              isLoading={isLoading}
-            />
+            {/* Active Message Stream */}
+            {userMessageCount > 0 && (
+              <div className="space-y-4 pb-2">
+                <AnimatePresence mode="popLayout">
+                  {messages.map((message) => {
+                    if (message.isLoading) {
+                      return (
+                        <AIThinkingLoader
+                          key={message.id}
+                          message="Analyzing your data..."
+                        />
+                      );
+                    }
+
+                    if (message.role === "user") {
+                      return (
+                        <UserMessageCard
+                          key={message.id}
+                          content={message.displayedContent ?? message.content}
+                          timestamp={message.timestamp}
+                        />
+                      );
+                    }
+
+                    return (
+                      <ResponseCard
+                        key={message.id}
+                        id={message.id}
+                        content={message.content}
+                        displayedContent={message.displayedContent}
+                        timestamp={message.timestamp}
+                        isTyping={message.isTyping}
+                        isError={message.isError}
+                        errorMessage={message.errorMessage}
+                        onRetry={message.isError ? retryLastMessage : undefined}
+                      />
+                    );
+                  })}
+                </AnimatePresence>
+              </div>
+            )}
+
+            {/* Chat Input Bar: SmartInputBar with Option (a) Decorative Wrappers */}
+            <div className="sticky bottom-0 z-10 pt-2 pb-2 bg-background/90 backdrop-blur-md">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  title="Attach file (coming soon)"
+                  className="hidden sm:flex h-10 w-10 rounded-full items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0 cursor-not-allowed"
+                  disabled
+                >
+                  <Paperclip className="h-4 w-4" />
+                </button>
+                <div className="flex-1 min-w-0">
+                  <SmartInputBar
+                    value={input}
+                    onChange={setInput}
+                    onSubmit={handleSend}
+                    isLoading={isLoading}
+                  />
+                </div>
+                <button
+                  type="button"
+                  title="Quick Prompts"
+                  onClick={() => {
+                    const randomPrompt =
+                      SUGGESTION_PROMPTS[
+                        Math.floor(Math.random() * SUGGESTION_PROMPTS.length)
+                      ].prompt;
+                    setInput(randomPrompt);
+                  }}
+                  className="hidden sm:flex h-10 w-10 rounded-full items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors shrink-0 cursor-pointer"
+                >
+                  <Pin className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            <div ref={bottomRef} />
           </div>
+
+          {/* ── Right Sidebar: Quick Actions + Recent Insights ── */}
+          <aside className="w-full lg:w-[280px] xl:w-[320px] shrink-0 flex flex-col sm:flex-row lg:flex-col gap-4">
+            {/* Panel 1: Quick Actions */}
+            <div className="flex-1 lg:flex-initial rounded-[20px] p-4 bg-card border border-border shadow-[0_8px_30px_rgba(15,23,42,0.04)]">
+              <div className="flex items-center gap-2 mb-3 px-1">
+                <Zap className="h-4 w-4 text-amber-500 shrink-0" />
+                <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                  Quick Actions
+                </h3>
+              </div>
+              <div className="space-y-1">
+                {QUICK_ACTIONS.map((action) => {
+                  const ActionIcon = action.icon;
+                  return (
+                    <button
+                      key={action.id}
+                      onClick={() => router.push(action.href)}
+                      className="w-full flex items-center justify-between p-2 rounded-[12px] hover:bg-muted transition-colors duration-150 text-left group cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div
+                          className="w-7 h-7 rounded-[9px] flex items-center justify-center shrink-0"
+                          style={{ backgroundColor: `${action.color}14` }}
+                        >
+                          <ActionIcon
+                            className="w-3.5 h-3.5"
+                            style={{ color: action.color }}
+                          />
+                        </div>
+                        <span className="text-xs font-medium text-foreground truncate">
+                          {action.label}
+                        </span>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all shrink-0" />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Panel 2: Recent Insights (Static Placeholder — TODO: connect to live stats API) */}
+            <div className="flex-1 lg:flex-initial rounded-[20px] p-4 bg-card border border-border shadow-[0_8px_30px_rgba(15,23,42,0.04)]">
+              <div className="flex items-center justify-between mb-3 px-1">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-purple-500 shrink-0" />
+                  <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                    Recent Insights
+                  </h3>
+                </div>
+                <Link
+                  href="/dashboard/analytics"
+                  className="text-[11px] font-medium text-primary hover:underline"
+                >
+                  View all
+                </Link>
+              </div>
+              {/* Static Placeholder content flagged as TODO */}
+              <div className="space-y-2.5">
+                {RECENT_INSIGHTS.map((item) => {
+                  const InsightIcon = item.icon;
+                  return (
+                    <div
+                      key={item.id}
+                      className="p-2.5 rounded-[12px] bg-muted/50 border border-border/50 flex items-start gap-2.5"
+                    >
+                      <div
+                        className="w-7 h-7 rounded-[8px] flex items-center justify-center shrink-0 mt-0.5"
+                        style={{ backgroundColor: `${item.color}14` }}
+                      >
+                        <InsightIcon
+                          className="w-3.5 h-3.5"
+                          style={{ color: item.color }}
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold text-foreground leading-tight">
+                          {item.headline}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                          {item.subtext}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </aside>
         </div>
       )}
 
       {/* ═══════════ REPORTS VIEW ═══════════ */}
       {viewMode === "reports" && (
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35 }}
-          className="flex-1 overflow-y-auto space-y-5 px-1"
+          transition={{ duration: 0.2 }}
+          className="space-y-6"
         >
-          {/* Report Header */}
-          <div className="flex items-center gap-2 mb-1">
-            <div
-              className="w-8 h-8 rounded-[10px] flex items-center justify-center"
-              style={{ background: "rgba(139,92,246,0.15)" }}
-            >
-              <FileBarChart className="h-4 w-4 text-violet-400" />
-            </div>
-            <div>
-              <p className="text-[14px] font-semibold text-[var(--ai-text-primary)]">
-                AI-Powered Analytics
-              </p>
-              <p className="text-[11px] text-[var(--ai-text-tertiary)]">
-                Generate structured business reports with data-backed insights
-              </p>
-            </div>
-          </div>
-
           {/* Preset Prompts Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             {REPORT_PROMPTS.map((rp, idx) => (
-              <motion.button
+              <button
                 key={idx}
-                whileHover={{ scale: 1.01, y: -2 }}
-                whileTap={{ scale: 0.98 }}
                 onClick={() => sendReport(rp.prompt)}
                 disabled={reportLoading}
-                className="ai-bento-widget text-left disabled:opacity-40"
+                className="rounded-[16px] p-4 text-left bg-card border border-border hover:border-primary/40 hover:shadow-md transition-all duration-150 disabled:opacity-40 cursor-pointer"
               >
-                <span className="text-[20px] mb-2 block">{rp.icon}</span>
-                <span className="text-[13px] font-semibold block text-[var(--ai-text-primary)]">
+                <span className="text-xl mb-2 block">{rp.icon}</span>
+                <span className="text-sm font-semibold block text-foreground">
                   {rp.label}
                 </span>
-                <span className="text-[10px] mt-1 block text-[var(--ai-text-tertiary)] line-clamp-2">
+                <span className="text-xs mt-1 block text-muted-foreground line-clamp-2">
                   {rp.prompt.substring(0, 60)}...
                 </span>
-              </motion.button>
+              </button>
             ))}
           </div>
 
           {/* Custom Question Input */}
-          <div
-            className="rounded-[14px] p-4"
-            style={{ background: "var(--ai-bg-surface)", border: "1px solid var(--ai-border-subtle)" }}
-          >
-            <p className="text-[11px] font-semibold uppercase tracking-wider mb-2 text-[var(--ai-text-tertiary)]">
+          <div className="rounded-[16px] p-4 bg-card border border-border shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wider mb-2 text-muted-foreground">
               Ask a Custom Question
             </p>
             <div className="flex gap-2">
               <input
                 value={reportQuestion}
                 onChange={(e) => setReportQuestion(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") sendReport(reportQuestion); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") sendReport(reportQuestion);
+                }}
                 placeholder="e.g., What's my best performing product category?"
-                className="flex-1 h-[40px] rounded-[10px] px-4 text-[13px] outline-none border border-[var(--ai-border-subtle)] bg-[var(--ai-bg-surface-elevated)] text-[var(--ai-text-primary)] placeholder:text-[var(--ai-text-tertiary)] focus:border-[var(--ai-border-focus)] transition-colors"
+                className="flex-1 h-[40px] rounded-[10px] px-4 text-sm outline-none border border-input bg-background text-foreground placeholder:text-muted-foreground focus:border-primary transition-colors"
                 disabled={reportLoading}
               />
               <button
                 onClick={() => sendReport(reportQuestion)}
                 disabled={!reportQuestion.trim() || reportLoading}
-                className="flex items-center gap-2 px-4 h-[40px] rounded-[10px] text-[13px] font-semibold text-white disabled:opacity-40 transition-all cursor-pointer"
-                style={{
-                  background: "linear-gradient(135deg, #8B5CF6, #3B82F6)",
-                  boxShadow: "0 4px 14px rgba(139,92,246,0.25)",
-                }}
+                className="flex items-center gap-2 px-4 h-[40px] rounded-[10px] text-sm font-semibold text-white disabled:opacity-40 transition-all cursor-pointer bg-gradient-to-r from-[#8B5CF6] to-[#3B82F6] shadow-sm"
               >
-                {reportLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {reportLoading ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
                 Analyze
               </button>
             </div>
@@ -323,13 +674,7 @@ export default function AIAssistantPage() {
           {reportHistory.map((report, idx) => {
             const r = report.response as Record<string, unknown>;
             return (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.05 }}
-                className="space-y-3"
-              >
+              <div key={idx} className="space-y-3">
                 {/* User Question */}
                 <div className="flex justify-end">
                   <div className="ai-user-msg">{report.question}</div>
@@ -337,16 +682,13 @@ export default function AIAssistantPage() {
 
                 {/* AI Report Card */}
                 <div className="flex gap-3 items-start">
-                  <div
-                    className="flex-shrink-0 w-8 h-8 rounded-[10px] flex items-center justify-center"
-                    style={{ background: "linear-gradient(135deg, #8B5CF6, #3B82F6)" }}
-                  >
+                  <div className="shrink-0 w-8 h-8 rounded-[10px] flex items-center justify-center bg-gradient-to-br from-[#8B5CF6] to-[#3B82F6]">
                     <Sparkles className="h-4 w-4 text-white" />
                   </div>
                   <div className="ai-response-card flex-1">
                     {/* Summary */}
                     {r.summary && (
-                      <p className="text-[14px] font-medium mb-4 text-[var(--ai-text-primary)] leading-relaxed">
+                      <p className="text-sm font-medium mb-4 text-foreground leading-relaxed">
                         {r.summary as string}
                       </p>
                     )}
@@ -357,13 +699,12 @@ export default function AIAssistantPage() {
                         {r.data.map((d: Record<string, unknown>, di: number) => (
                           <div
                             key={di}
-                            className="rounded-[10px] p-3"
-                            style={{ background: "var(--ai-bg-surface-elevated)", border: "1px solid var(--ai-border-subtle)" }}
+                            className="rounded-[10px] p-3 bg-muted/60 border border-border"
                           >
-                            <span className="text-[10px] uppercase tracking-wider block text-[var(--ai-text-tertiary)] mb-1">
+                            <span className="text-[10px] uppercase tracking-wider block text-muted-foreground mb-1">
                               {d.label as string}
                             </span>
-                            <span className="text-[18px] font-bold text-[var(--ai-text-primary)]">
+                            <span className="text-lg font-bold text-foreground">
                               {d.val as string}
                             </span>
                           </div>
@@ -373,42 +714,39 @@ export default function AIAssistantPage() {
 
                     {/* Insight */}
                     {r.insight && (
-                      <div
-                        className="rounded-[10px] p-3 flex items-start gap-2"
-                        style={{ background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.12)" }}
-                      >
-                        <Lightbulb className="h-4 w-4 flex-shrink-0 mt-0.5 text-[var(--ai-accent-purple)]" />
-                        <p className="text-[12px] text-[var(--ai-text-secondary)] leading-relaxed">
+                      <div className="rounded-[10px] p-3 flex items-start gap-2 bg-purple-500/10 border border-purple-500/20">
+                        <Lightbulb className="h-4 w-4 shrink-0 mt-0.5 text-purple-600 dark:text-purple-400" />
+                        <p className="text-xs text-foreground leading-relaxed">
                           {r.insight as string}
                         </p>
                       </div>
                     )}
 
                     {/* Timestamp */}
-                    <p className="text-[10px] mt-3 text-[var(--ai-text-tertiary)]">
+                    <p className="text-[10px] mt-3 text-muted-foreground">
                       {new Date(report.timestamp).toLocaleString("en-IN", {
-                        day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+                        day: "numeric",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
                       })}
                     </p>
                   </div>
                 </div>
-              </motion.div>
+              </div>
             );
           })}
 
           {/* Empty State */}
           {!reportLoading && reportHistory.length === 0 && (
             <div className="flex flex-col items-center justify-center py-16">
-              <div
-                className="w-12 h-12 rounded-[14px] flex items-center justify-center mb-3"
-                style={{ background: "rgba(139,92,246,0.12)" }}
-              >
-                <FileBarChart className="h-5 w-5 text-violet-400" />
+              <div className="w-12 h-12 rounded-[14px] flex items-center justify-center mb-3 bg-purple-500/10">
+                <FileBarChart className="h-5 w-5 text-purple-500" />
               </div>
-              <p className="text-[14px] font-medium text-[var(--ai-text-primary)]">
+              <p className="text-sm font-medium text-foreground">
                 No reports yet
               </p>
-              <p className="text-[12px] text-[var(--ai-text-tertiary)]">
+              <p className="text-xs text-muted-foreground">
                 Click a preset above or ask a custom question
               </p>
             </div>

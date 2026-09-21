@@ -114,6 +114,7 @@ import {
   useUpdateOrderStatus,
   queryKeys,
 } from "@/lib/hooks/use-orders";
+import { STARTER_LIMIT } from "@/lib/entitlements/limits";
 
 function OrdersContent() {
   const t = useTranslations("orders");
@@ -267,10 +268,10 @@ function OrdersContent() {
     notes: "",
   });
 
-  const starterLimit = 5;
-  const isDev = process.env.NODE_ENV === "development";
-  const isAtLimit =
-    !isDev && !isAdmin && !isPro && orders.length >= starterLimit;
+  const starterLimit = STARTER_LIMIT;
+  // UI pre-block skipped because /api/v1/orders domain entity does not expose is_sample.
+  // Guarded server-side by 403 PLAN_LIMIT_REACHED + existing toast in orders/create/page.tsx.
+  const isAtLimit = false;
 
   const handleAddNewClick = () => {
     if (isAtLimit) {

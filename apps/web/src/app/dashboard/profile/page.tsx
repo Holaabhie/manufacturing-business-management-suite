@@ -256,7 +256,6 @@ function ProfileContent() {
         body: JSON.stringify({
           full_name: formData.full_name,
           phone_number: formData.phone_number,
-          role: formData.role,
         }),
       });
       const data = await res.json();
@@ -568,6 +567,7 @@ function ProfileContent() {
                           <Briefcase className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--muted-foreground)] pointer-events-none" />
                           <select
                             id="role"
+                            disabled
                             value={formData.role}
                             onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                             className="w-full h-[44px] pl-11 pr-4 rounded-[10px] bg-[var(--muted)] border-none text-[15px] text-[var(--foreground)] focus:ring-[3px] focus:ring-[var(--primary)]/30 focus:border-[var(--primary)] outline-none transition-all appearance-none"

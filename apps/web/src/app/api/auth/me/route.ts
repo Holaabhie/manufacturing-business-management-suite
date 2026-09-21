@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth-session";
 import { isDbUnavailableError } from "@/lib/mongodb";
 import { resolvePermissions, type FlatPermissionMap } from "@/lib/permissions";
+import { getEffectiveTier } from "@/lib/entitlements";
 
 export async function GET() {
   try {
@@ -17,6 +18,8 @@ export async function GET() {
       user.customPermissions as FlatPermissionMap
     );
 
+    const effectiveTier = await getEffectiveTier(user);
+
     return NextResponse.json({
       user: {
         id: user._id,
@@ -25,7 +28,7 @@ export async function GET() {
         phone: user.phone || user.phone_number,
         avatar_url: user.avatar_url,
         role: user.role,
-        subscription_tier: user.subscription_tier,
+        subscription_tier: effectiveTier,
         subscription_status: user.subscription_status,
         notification_preferences: user.notification_preferences,
         company_details: user.company_details,

@@ -275,7 +275,7 @@ export function useAppNotifications() {
     fetchingRef.current = true;
 
     try {
-      const [ordersRes, inventoryRes, paymentsRes] = await Promise.all([
+      const [ordersRes, inventoryRes, paymentsRes, readRes] = await Promise.all([
         fetch("/api/orders")
           .then((r) => (r.ok ? r.json() : []))
           .catch(() => []),
@@ -285,7 +285,18 @@ export function useAppNotifications() {
         fetch("/api/payments")
           .then((r) => (r.ok ? r.json() : []))
           .catch(() => []),
+        fetch("/api/notifications/read")
+          .then((r) => (r.ok ? r.json() : { readIds: [] }))
+          .catch(() => ({ readIds: [] })),
       ]);
+
+      // 0. Synchronize persisted read IDs from server
+      if (Array.isArray(readRes?.readIds)) {
+        for (const id of readRes.readIds) {
+          readIdsRef.current.add(id);
+        }
+        saveReadIds(readIdsRef.current);
+      }
 
       // 1. Generate fresh notifications from API data
       const fresh = generateNotificationsFromData(
@@ -358,18 +369,40 @@ export function useAppNotifications() {
       prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
     );
     setUnreadCount((prev) => Math.max(0, prev - 1));
+
+    // Persist to server
+    fetch("/api/notifications/read", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: [id] }),
+    }).catch((err) => {
+      console.warn("Failed to persist notification read state to server:", err);
+    });
   }, []);
 
   // ── Mark all as read ──
   const markAllAsRead = useCallback(() => {
+    const idsToMark: string[] = [];
     setNotifications((prev) => {
       for (const n of prev) {
         readIdsRef.current.add(n.id);
+        idsToMark.push(n.id);
       }
       saveReadIds(readIdsRef.current);
       return prev.map((n) => ({ ...n, isRead: true }));
     });
     setUnreadCount(0);
+
+    if (idsToMark.length > 0) {
+      // Persist to server
+      fetch("/api/notifications/read", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: idsToMark }),
+      }).catch((err) => {
+        console.warn("Failed to persist all notifications read state to server:", err);
+      });
+    }
   }, []);
 
   return {
