@@ -26,6 +26,9 @@ interface DeductionWarning {
 export const PATCH = withRateLimit(
     withApiRoute(
         withAuth(async (request: NextRequest, user: AuthenticatedUser, context?: RouteContext) => {
+            if (user.role === "Staff") {
+                return envelope.error("Forbidden: Staff members cannot update order status", 403, "FORBIDDEN");
+            }
             const { id } = await context!.params;
             const body = await request.json();
             const service = getOrderService();

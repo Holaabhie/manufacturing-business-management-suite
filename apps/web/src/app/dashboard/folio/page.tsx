@@ -31,6 +31,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { staggerContainer, staggerItem } from "@/styles/animations";
+import { MonthYearFilter, matchesMonthYear, type MonthYearFilterValue } from "@/components/ui/month-year-filter";
+import { useTenantCreationDate } from "@/hooks/useTenantCreationDate";
 
 // ─── Types ──────────────────────────────────────────────
 interface Expense {
@@ -187,6 +189,13 @@ export default function FolioPage() {
   const tToasts = useTranslations("folio.toasts");
 
   const [activeTab, setActiveTab] = useState<ActiveTab>("expenses");
+
+  // ─── Tenant Earliest Date & Month/Year Filter ───────
+  const { earliestDate } = useTenantCreationDate();
+  const [monthYear, setMonthYear] = useState<MonthYearFilterValue>({
+    year: new Date().getFullYear(),
+    month: "all",
+  });
 
   // ─── Expense State ──────────────────────────────────
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -392,6 +401,24 @@ export default function FolioPage() {
     return { total, thisMonth, topCategory };
   }, [expenses]);
 
+  // ─── Filtered Lists by Month/Year ───────────────────
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter((exp) => {
+      const dateVal = exp.date || exp.createdAt;
+      return matchesMonthYear(dateVal, monthYear);
+    });
+  }, [expenses, monthYear]);
+
+  const filteredNotes = useMemo(() => {
+    return notes.filter((note) => {
+      return matchesMonthYear(note.createdAt, monthYear);
+    });
+  }, [notes, monthYear]);
+
+  const filteredExpenseTotal = useMemo(() => {
+    return filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
+  }, [filteredExpenses]);
+
   // ─── Helpers ────────────────────────────────────────
   const formatCurrency = (v: number) => `₹${v.toLocaleString("en-IN")}`;
   const formatDate = (d: string) => {
@@ -444,41 +471,52 @@ export default function FolioPage() {
         </p>
       </motion.div>
 
-      {/* ── Pill Tab Switcher ── */}
-      <motion.div variants={staggerItem} className="flex justify-center">
-        <div
-          className="inline-flex rounded-md p-[3px] gap-[2px] bg-muted border border-border"
-          style={{
-            background: "var(--muted)",
-            border: "1px solid var(--border)",
-          }}
-        >
-          {(["expenses", "notes"] as const).map((tab) => {
-            const isActive = activeTab === tab;
-            return (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={cn(
-                  "relative px-6 py-2 rounded-md text-[13px] font-medium transition-all duration-200 cursor-pointer",
-                  isActive
-                    ? "text-white bg-primary shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
-                )}
-              >
-                <span className="flex items-center gap-2">
-                  {tab === "expenses" ? (
-                    <Receipt className="w-4 h-4" />
-                  ) : (
-                    <StickyNote className="w-4 h-4" />
+      {/* ── Toolbar: Pill Tab Switcher & Month/Year Filter ── */}
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 w-full min-w-0">
+        <motion.div variants={staggerItem} className="flex">
+          <div
+            className="inline-flex rounded-md p-[3px] gap-[2px] bg-muted border border-border"
+            style={{
+              background: "var(--muted)",
+              border: "1px solid var(--border)",
+            }}
+          >
+            {(["expenses", "notes"] as const).map((tab) => {
+              const isActive = activeTab === tab;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={cn(
+                    "relative px-6 py-2 rounded-md text-[13px] font-medium transition-all duration-200 cursor-pointer",
+                    isActive
+                      ? "text-white bg-primary shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent"
                   )}
-                  {tab === "expenses" ? tTabs("expenses") : tTabs("notes")}
-                </span>
-              </button>
-            );
-          })}
+                >
+                  <span className="flex items-center gap-2">
+                    {tab === "expenses" ? (
+                      <Receipt className="w-4 h-4" />
+                    ) : (
+                      <StickyNote className="w-4 h-4" />
+                    )}
+                    {tab === "expenses" ? tTabs("expenses") : tTabs("notes")}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </motion.div>
+
+        {/* Month/Year Filter */}
+        <div className="w-full md:w-auto min-w-0 md:max-w-xl">
+          <MonthYearFilter
+            earliestDate={earliestDate}
+            value={monthYear}
+            onChange={setMonthYear}
+          />
         </div>
-      </motion.div>
+      </div>
 
       {/* ── Tab Content ── */}
       <AnimatePresence mode="wait">
@@ -574,7 +612,7 @@ export default function FolioPage() {
                 </div>
 
                 {/* ── Table or Empty ── */}
-                {expenses.length === 0 ? (
+                {filteredExpenses.length === 0 ? (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -623,7 +661,7 @@ export default function FolioPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {expenses.map((exp, idx) => (
+                          {filteredExpenses.map((exp, idx) => (
                             <motion.tr
                               key={exp.id}
                               initial={{ opacity: 0, x: -8 }}
@@ -707,7 +745,7 @@ export default function FolioPage() {
 
                     {/* Mobile Card List */}
                     <div className="sm:hidden divide-y divide-[var(--border)]">
-                      {expenses.map((exp) => (
+                      {filteredExpenses.map((exp) => (
                         <div key={exp.id} className="p-4 flex items-center gap-3">
                           <div
                             className="w-[40px] h-[40px] rounded-[10px] flex items-center justify-center flex-shrink-0"
@@ -778,7 +816,7 @@ export default function FolioPage() {
                           {tExp("total")}
                         </span>
                         <span className="text-[15px] font-semibold text-primary tabular-nums">
-                          {formatCurrency(expenseStats.total)}
+                          {formatCurrency(filteredExpenseTotal)}
                         </span>
                       </div>
                     </div>
@@ -800,7 +838,7 @@ export default function FolioPage() {
               <NotesSkeleton />
             ) : notesError ? (
               <ErrorCard message={notesError} onRetry={fetchNotes} />
-            ) : notes.length === 0 ? (
+            ) : filteredNotes.length === 0 ? (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -816,7 +854,7 @@ export default function FolioPage() {
               </motion.div>
             ) : (
               <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 [column-fill:_balance]">
-                {notes.map((note, idx) => (
+                {filteredNotes.map((note, idx) => (
                   <motion.div
                     key={note.id}
                     initial={{ opacity: 0, y: 16 }}

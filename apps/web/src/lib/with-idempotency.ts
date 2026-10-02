@@ -61,12 +61,12 @@ async function defaultGetUserId(request: NextRequest): Promise<string> {
  * Wrap a Next.js API route handler with idempotency protection.
  */
 export function withIdempotency(
-    handler: (request: NextRequest) => Promise<NextResponse>,
+    handler: (request: NextRequest, context: any) => Promise<NextResponse>,
     options: IdempotencyOptions = {},
 ) {
     const { required = false, getUserId = defaultGetUserId } = options;
 
-    return async function idempotentHandler(request: NextRequest): Promise<NextResponse> {
+    return async function idempotentHandler(request: NextRequest, context?: any): Promise<NextResponse> {
         const idempotencyKey = request.headers.get("idempotency-key");
 
         // ── No key provided ─────────────────────────────────
@@ -81,7 +81,7 @@ export function withIdempotency(
                     { status: 400 },
                 );
             }
-            return handler(request);
+            return handler(request, context);
         }
 
         // ── Validate UUID format ────────────────────────────
@@ -148,7 +148,7 @@ export function withIdempotency(
             }
 
             // ── Execute the actual handler ────────────────────
-            const response = await handler(request);
+            const response = await handler(request, context);
 
             // ── Cache the response ────────────────────────────
             try {

@@ -82,7 +82,11 @@ export class MongoOrderRepository implements IOrderRepository {
         } catch { return null; }
     }
 
-    async findAll(userId: string, filters?: { clientId?: string }): Promise<Order[]> {
+    async findAll(
+        userId: string,
+        filters?: { clientId?: string; restrictToOrderIds?: string[] },
+        restrictToOrderIds?: string[]
+    ): Promise<Order[]> {
         const col = await this.ordersCol();
         const matchStage: any = { userId };
         
@@ -91,6 +95,18 @@ export class MongoOrderRepository implements IOrderRepository {
                 { client_id: filters.clientId },
                 { customer_id: filters.clientId }
             ];
+        }
+
+        const targetOrderIds = restrictToOrderIds || filters?.restrictToOrderIds;
+        if (targetOrderIds && targetOrderIds.length > 0) {
+            const convertedOrderIds: (ObjectId | string)[] = [];
+            for (const id of targetOrderIds) {
+                if (typeof id === "string" && ObjectId.isValid(id)) {
+                    convertedOrderIds.push(new ObjectId(id));
+                }
+                convertedOrderIds.push(String(id));
+            }
+            matchStage._id = { $in: convertedOrderIds };
         }
 
         const docs = await col.aggregate([

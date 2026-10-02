@@ -34,6 +34,46 @@ export function timeAgo(dateStr: string, t?: (key: any, params?: any) => string)
   } catch { return "—"; }
 }
 
+export function getNotificationDisplayText(
+  n: {
+    templateKey?: string;
+    params?: Record<string, unknown>;
+    title?: string;
+    message?: string;
+  },
+  t: (key: any, params?: any) => string
+): { title: string; message: string } {
+  if (n.templateKey && n.params) {
+    const titleKey = `${n.templateKey}Title`;
+    const messageKey = `${n.templateKey}Message`;
+    try {
+      const params = { ...n.params };
+      if (params.client === "client") {
+        params.client = t("fallbackClient");
+      }
+      if (typeof params.order === "string" && params.order.startsWith("Order #")) {
+        const id = params.order.replace("Order #", "");
+        params.order = t("fallbackOrder", { id });
+      }
+      if (params.awaitingPayment) {
+        params.paymentStatus = t("productionCompletedAwaitingPayment");
+      } else if (params.paymentStatus === undefined) {
+        params.paymentStatus = "";
+      }
+      return {
+        title: t(titleKey, params),
+        message: t(messageKey, params),
+      };
+    } catch {
+      // Fallback below
+    }
+  }
+  return {
+    title: n.title || "",
+    message: n.message || "",
+  };
+}
+
 /* ─── Shared inner content — rendered by both Popover and MobileSheet ─── */
 function NotificationPanelContent({
   notifications,
@@ -106,6 +146,7 @@ function NotificationPanelContent({
       >
         {notifications.length > 0 ? (
           notifications.map((n, idx) => {
+            const { title, message } = getNotificationDisplayText(n, t);
             return (
               <div
                 key={n.id}
@@ -147,7 +188,7 @@ function NotificationPanelContent({
                           ? "font-semibold text-[#0F172A] dark:text-[#F8FAFC]"
                           : "font-normal text-[#64748B] dark:text-white/50"
                       )}>
-                        {n.title}
+                        {title}
                       </p>
                       {!n.isRead && (
                         <div className="flex-shrink-0 mt-1.5 rounded-full w-2 h-2 bg-blue-500" />
@@ -159,7 +200,7 @@ function NotificationPanelContent({
                         ? "text-[#94A3B8] dark:text-white/30"
                         : "text-[var(--muted-foreground)]"
                     )}>
-                      {n.message}
+                      {message}
                     </p>
                     <span className="text-[11px] mt-0.5 block text-[#94A3B8] dark:text-white/30 tracking-[0.02em]">
                       {timeAgo(n.createdAt, t)}

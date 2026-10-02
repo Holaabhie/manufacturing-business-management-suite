@@ -10,6 +10,13 @@ export interface Client {
     phone: string;
     address: string;
     avatarUrl?: string;
+    gstin?: string;
+    state?: string;
+    tallySync?: {
+        status: "pending" | "synced" | "failed" | "not_configured";
+        lastSyncedAt?: Date;
+        lastError?: string;
+    };
     createdAt: Date;
     updatedAt: Date;
 }
@@ -19,6 +26,13 @@ export interface CreateClientDTO {
     email?: string;
     phone?: string;
     address?: string;
+    gstin?: string;
+    state?: string;
+    tallySync?: {
+        status: "pending" | "synced" | "failed" | "not_configured";
+        lastSyncedAt?: Date;
+        lastError?: string;
+    };
 }
 
 export interface UpdateClientDTO {
@@ -27,6 +41,13 @@ export interface UpdateClientDTO {
     phone?: string;
     address?: string;
     avatarUrl?: string;
+    gstin?: string;
+    state?: string;
+    tallySync?: {
+        status: "pending" | "synced" | "failed" | "not_configured";
+        lastSyncedAt?: Date;
+        lastError?: string;
+    };
 }
 
 export interface ClientProduct {

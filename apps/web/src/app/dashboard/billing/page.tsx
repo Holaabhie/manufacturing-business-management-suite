@@ -69,6 +69,8 @@ import { NumericInput, parseNumericValue } from "@/components/ui/numeric-input";
 import TallyExportButton from "@/components/billing/TallyExportButton";
 import CreateInvoiceModal from "@/components/billing/CreateInvoiceModal";
 import { useCachedPage } from "@/hooks/useCachedPage";
+import { MonthYearFilter, matchesMonthYear, type MonthYearFilterValue } from "@/components/ui/month-year-filter";
+import { useTenantCreationDate } from "@/hooks/useTenantCreationDate";
 
 // --- iOS Components ---
 import {
@@ -178,6 +180,13 @@ export default function BillingPage() {
 
     // Company details state (fetched from Profile)
     const [companyInfo, setCompanyInfo] = useState<CompanyInfo | null>(null);
+
+    // Tenant earliest date & Month-Year filter
+    const { earliestDate } = useTenantCreationDate();
+    const [monthYear, setMonthYear] = useState<MonthYearFilterValue>({
+        year: new Date().getFullYear(),
+        month: "all",
+    });
     const [companyLoading, setCompanyLoading] = useState(true);
 
     // Form state - initialized with empty strings to prevent hydration mismatch
@@ -682,10 +691,13 @@ export default function BillingPage() {
     };
 
     const totals = calculateTotals();
-    const filteredBills = bills.filter(bill =>
-        bill.billNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        bill.clientName.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredBills = bills.filter(bill => {
+        const matchesSearch =
+            bill.billNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            bill.clientName.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesDate = matchesMonthYear(bill.billDate, monthYear);
+        return matchesSearch && matchesDate;
+    });
 
     const stats = {
         total: bills.length,
@@ -821,13 +833,22 @@ export default function BillingPage() {
                 </IOSCard>
             </div>
 
-            {/* Search */}
-            <IOSSearchBar
-                value={searchTerm}
-                onChange={setSearchTerm}
-                placeholder={t("searchPlaceholder")}
-                className="max-w-sm"
-            />
+            {/* Search & Month/Year Filter */}
+            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+                <IOSSearchBar
+                    value={searchTerm}
+                    onChange={setSearchTerm}
+                    placeholder={t("searchPlaceholder")}
+                    className="w-full md:max-w-xs shrink-0"
+                />
+                <div className="w-full md:w-auto min-w-0 md:max-w-xl">
+                    <MonthYearFilter
+                        earliestDate={earliestDate}
+                        value={monthYear}
+                        onChange={setMonthYear}
+                    />
+                </div>
+            </div>
 
             {/* Bills Table — Desktop only */}
             <div className="hidden md:block rounded-2xl border bg-[var(--card)] shadow-sm overflow-hidden border-[var(--border)]">

@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useCallback, useRef } from "react";
+import { useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 /**
  * Google One Tap — Seamless sign-in prompt.
  *
- * Loads the GSI client script and initializes One Tap.
+ * Loads the GSI client script and initializes One Tap with FedCM support.
  * When the user taps, the credential is sent to our
  * /api/auth/google-one-tap endpoint for server-side verification.
  */
@@ -24,6 +24,8 @@ declare global {
                 };
             };
         };
+        __googleOneTapInitialized?: boolean;
+        __googleOneTapPrompted?: boolean;
     }
 }
 
@@ -34,7 +36,6 @@ interface GoogleOneTapProps {
 
 export function GoogleOneTap({ onSuccess }: GoogleOneTapProps) {
     const router = useRouter();
-    const initialized = useRef(false);
 
     const handleCredentialResponse = useCallback(
         async (response: { credential: string }) => {
@@ -68,35 +69,52 @@ export function GoogleOneTap({ onSuccess }: GoogleOneTapProps) {
 
         let timeoutId: NodeJS.Timeout;
 
+        // Catch harmless browser-level FedCM abort errors (user dismisses prompt, cooldown, etc.)
+        const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+            const reason = event.reason;
+            const isFedCmAbort =
+                reason?.name === "AbortError" ||
+                String(reason?.message || reason).includes("signal is aborted") ||
+                String(reason?.message || reason).includes("FedCM");
+
+            if (isFedCmAbort) {
+                event.preventDefault();
+                console.debug("[OneTap] Handled expected FedCM abort notification.");
+            }
+        };
+        window.addEventListener("unhandledrejection", handleUnhandledRejection);
+
         const initializeOneTap = () => {
             if (!window.google?.accounts?.id) return;
 
             // Initialize only once per window
-            if (!(window as any).__googleOneTapInitialized) {
+            if (!window.__googleOneTapInitialized) {
                 window.google.accounts.id.initialize({
                     client_id: clientId,
                     callback: handleCredentialResponse,
-                    auto_select: true,
+                    auto_select: false, // Don't auto-abort when no pre-existing single credential exists
                     cancel_on_tap_outside: true,
                     itp_support: true,
-                    use_fedcm_for_prompt: false, // Attempt to fallback to iframe
+                    use_fedcm_for_prompt: true, // Modern Chrome FedCM requirement
                 });
-                (window as any).__googleOneTapInitialized = true;
+                window.__googleOneTapInitialized = true;
             }
 
             // Prompt only once per window to prevent FedCM collision
-            if (!(window as any).__googleOneTapPrompted) {
-                (window as any).__googleOneTapPrompted = true;
-                
+            if (!window.__googleOneTapPrompted) {
+                window.__googleOneTapPrompted = true;
+
                 timeoutId = setTimeout(() => {
                     window.google?.accounts?.id?.prompt((notification: any) => {
                         if (notification.isNotDisplayed()) {
-                            console.debug("[OneTap] Not displayed:", notification.getNotDisplayedReason());
-                            (window as any).__googleOneTapPrompted = false;
-                        }
-                        if (notification.isSkippedMoment()) {
-                            console.debug("[OneTap] Skipped:", notification.getSkippedReason());
-                            (window as any).__googleOneTapPrompted = false;
+                            console.debug("[OneTap] Not displayed:", notification.getNotDisplayedReason?.());
+                            window.__googleOneTapPrompted = false;
+                        } else if (notification.isSkippedMoment()) {
+                            console.debug("[OneTap] Skipped:", notification.getSkippedReason?.());
+                            window.__googleOneTapPrompted = false;
+                        } else if (notification.isDismissedMoment()) {
+                            console.debug("[OneTap] Dismissed:", notification.getDismissedReason?.());
+                            window.__googleOneTapPrompted = false;
                         }
                     });
                 }, 300);
@@ -128,10 +146,7 @@ export function GoogleOneTap({ onSuccess }: GoogleOneTapProps) {
 
         return () => {
             if (timeoutId) clearTimeout(timeoutId);
-            // We intentionally DO NOT reset the global flags here. 
-            // Google's FedCM promise cannot be synchronously aborted. 
-            // Resetting the flag would cause the next StrictMode mount to trigger 
-            // a second prompt() while the first is still outstanding.
+            window.removeEventListener("unhandledrejection", handleUnhandledRejection);
         };
     }, [handleCredentialResponse]);
 

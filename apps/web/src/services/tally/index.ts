@@ -30,7 +30,16 @@ export {
     generatePartyLedgerXml,
     generateSalesLedgerXml,
     generateGSTLedgerXml,
+    generateRoundOffLedgerXml,
+    buildClientLedgerXml,
+    type PartyInfo,
 } from "./generateLedgerXml";
+
+// Unit XML generator
+export {
+    generateUnitXml,
+    buildUnitMessageXml,
+} from "./generateUnitXml";
 
 // Stock item XML generators
 export {
@@ -43,3 +52,10 @@ export {
     generateSalesVoucherXml,
     billToVoucherPayload,
 } from "./generateSalesVoucherXml";
+
+// Response parser
+export {
+    parseTallyResponse,
+    type ParsedTallyResponse,
+    type TallyOutcome,
+} from "./parseTallyResponse";

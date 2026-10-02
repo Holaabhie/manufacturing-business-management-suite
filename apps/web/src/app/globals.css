@@ -309,6 +309,8 @@ html, body {
   --border: rgba(15, 23, 42, 0.06);
   --input: rgba(15, 23, 42, 0.06);
   --ring: #2563EB;
+  --g-accent-blue: #2563EB;
+  --g-accent-blue-glow: rgba(37, 99, 235, 0.35);
 
   /* ── Chart Colors ───────────────────────────── */
   --chart-1: #2563EB;
@@ -516,6 +518,8 @@ html, body {
   --border: rgba(241, 245, 249, 0.08);
   --input: rgba(241, 245, 249, 0.08);
   --ring: #3B82F6;
+  --g-accent-blue: rgba(99, 210, 255, 0.8);
+  --g-accent-blue-glow: rgba(99, 210, 255, 0.35);
 
   --chart-1: #3B82F6;
   --chart-2: #22C55E;
@@ -4187,4 +4191,71 @@ html {
 
 html::-webkit-scrollbar {
   display: none;                /* Chrome, Safari, Opera */
+}
+
+/* ══════════════════════════════════════════════════════
+   Client Profile Modal — Field Styles
+   Scoped to .client-profile-field  (clients/page.tsx only)
+   All values use theme CSS variables — no hardcoded colors.
+   ══════════════════════════════════════════════════════ */
+
+/* Hover: slightly stronger border */
+.client-profile-field:hover:not(:focus-within) {
+  border-color: var(--border-input) !important;
+  /* border-input is already stronger than --border; add mild brightness */
+  filter: brightness(1);
+  box-shadow: 0 0 0 1px var(--ring) / 0;
+}
+/* A cleaner hover — just lift the opacity of the border a bit */
+@supports not (border-color: color-mix(in srgb, red 50%, blue)) {
+  .client-profile-field:hover:not(:focus-within) {
+    border-color: var(--ring) !important;
+    opacity: 1;
+  }
+}
+.client-profile-field:hover:not(:focus-within) {
+  border-color: color-mix(in srgb, var(--border-input) 100%, var(--ring) 30%) !important;
+}
+
+/* Focus-within: accent border + soft ring */
+.client-profile-field:focus-within {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent) !important;
+  outline: none;
+}
+
+/* Icon turns accent on focus */
+.client-profile-field:focus-within .client-profile-field-icon {
+  color: var(--primary) !important;
+}
+
+/* Placeholder: muted, visibly lighter than entered text */
+.client-profile-field-input::placeholder {
+  color: var(--muted-foreground);
+  opacity: 0.7;
+}
+
+/* Mobile font size — prevents iOS zoom (must be >= 16px on <640px) */
+@media (max-width: 639px) {
+  .client-profile-field-input {
+    font-size: 16px !important;
+  }
+}
+
+/* Disabled (read-only) state: no focus ring, muted opacity */
+.client-profile-field:has(input:disabled),
+.client-profile-field:has(textarea:disabled) {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+.client-profile-field:has(input:disabled):focus-within,
+.client-profile-field:has(textarea:disabled):focus-within {
+  border-color: var(--border-input) !important;
+  box-shadow: none !important;
+}
+
+/* ── Hide Next.js dev tools indicator & dev overlay badge ── */
+nextjs-portal,
+#devtools-indicator {
+  display: none !important;
 }

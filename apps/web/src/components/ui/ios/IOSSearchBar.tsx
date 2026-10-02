@@ -71,7 +71,7 @@ export const IOSSearchBar = React.forwardRef<HTMLInputElement, IOSSearchBarProps
                         'h-[36px] rounded-[10px]',
                         'bg-[var(--muted)]',
                         'transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)]',
-                        isFocused && 'ring-2 ring-[var(--primary)]'
+                        isFocused && 'ring-1 ring-[var(--primary)]'
                     )}
                 >
                     <Search

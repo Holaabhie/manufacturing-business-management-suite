@@ -15,6 +15,7 @@ import {
 import { useCommandPaletteSearch } from "@/hooks/useCommandPaletteSearch";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { useTranslations } from "next-intl";
 
 export interface InlineMobileSearchProps {
   isActive: boolean;
@@ -49,6 +50,13 @@ export function InlineMobileSearch({
   const [isFocused, setIsFocused] = useState(false);
   const [portalMounted, setPortalMounted] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const t = useTranslations("commandPalette");
+
+  const typeBadgeMap: Record<string, string> = {
+    order: t("typeOrder"),
+    client: t("typeClient"),
+    inventory: t("typeInventory"),
+  };
 
   // SSR guard — only render portals after mount
   useEffect(() => {
@@ -151,14 +159,14 @@ export function InlineMobileSearch({
           {isSearching ? (
             <div className="flex flex-col items-center justify-center py-8 gap-2 text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              <span className="text-[13px] font-medium">Searching records...</span>
+              <span className="text-[13px] font-medium">{t("searchingRecords")}</span>
             </div>
           ) : searchQuery.trim().length >= 2 ? (
             /* ── Case 2: Typed search query results ── */
             <div className="space-y-3">
               <div className="flex items-center justify-between px-1">
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Search Results ({searchResults.length})
+                  {t("searchResultsHeading", { count: searchResults.length })}
                 </span>
               </div>
 
@@ -166,10 +174,10 @@ export function InlineMobileSearch({
                 <div className="py-8 text-center space-y-2">
                   <Search className="h-8 w-8 mx-auto text-muted-foreground/40" />
                   <p className="text-[13px] font-medium text-foreground">
-                    No matching records found
+                    {t("noMatchingTitle")}
                   </p>
                   <p className="text-[11px] text-muted-foreground">
-                    Try searching for an order number, client name, or item code.
+                    {t("noMatchingDesc")}
                   </p>
                 </div>
               ) : (
@@ -199,7 +207,7 @@ export function InlineMobileSearch({
                           variant="secondary"
                           className="text-[9px] uppercase font-semibold tracking-wider shrink-0"
                         >
-                          {result.type}
+                          {typeBadgeMap[result.type] || result.type}
                         </Badge>
                         <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
                       </button>
@@ -216,7 +224,7 @@ export function InlineMobileSearch({
                 <div className="flex items-center gap-1.5 px-1">
                   <Sparkles className="h-3.5 w-3.5 text-primary" />
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Quick Actions
+                    {t("quickActionsHeading")}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -232,7 +240,7 @@ export function InlineMobileSearch({
                           <ActionIcon className="h-3.5 w-3.5" />
                         </div>
                         <span className="text-[12px] font-medium text-foreground truncate">
-                          {action.name}
+                          {action.labelKey ? t(action.labelKey as any) : action.name}
                         </span>
                       </button>
                     );
@@ -245,7 +253,7 @@ export function InlineMobileSearch({
                 <div className="flex items-center gap-1.5 px-1 pt-1">
                   <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Recent Activity
+                    {t("recentActivityHeading")}
                   </span>
                 </div>
                 <div className="space-y-1">
@@ -262,7 +270,7 @@ export function InlineMobileSearch({
                           {item.name}
                         </span>
                         <span className="text-[10px] text-muted-foreground uppercase font-mono px-1.5 py-0.5 rounded bg-muted">
-                          {item.type}
+                          {typeBadgeMap[item.type] || item.type}
                         </span>
                       </button>
                     );
@@ -319,7 +327,7 @@ export function InlineMobileSearch({
             onChange={(e) => setSearchQuery(e.target.value)}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
-            placeholder="Search orders, clients, inventory..."
+            placeholder={t("mobileSearchPlaceholder")}
             className="w-full h-full bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground outline-none border-none"
           />
 
@@ -336,7 +344,7 @@ export function InlineMobileSearch({
                   setSearchQuery("");
                   inputRef.current?.focus();
                 }}
-                aria-label="Clear search query"
+                aria-label={t("clearQueryAria")}
                 className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-muted-foreground/20 text-muted-foreground hover:bg-muted-foreground/40 hover:text-foreground cursor-pointer ml-1"
               >
                 <X className="h-2.5 w-2.5" />

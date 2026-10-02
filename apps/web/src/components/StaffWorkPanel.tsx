@@ -26,6 +26,7 @@ import { motion } from "framer-motion";
 import { IOSCard, IOSCardHeader, IOSCardContent } from "@/components/ui/ios/IOSCard";
 import { IOSButton } from "@/components/ui/ios/IOSButton";
 import { staggerContainer, staggerItem } from "@/styles/animations";
+import { StaffOrderDetailSheet, type StaffOrderData } from "@/components/staff/StaffOrderDetailSheet";
 
 // ─── Types ───────────────────────────────────────────────
 interface WorkPanelStats {
@@ -37,22 +38,41 @@ interface WorkPanelStats {
 
 interface AssignedOrder {
     _id: string;
+    id?: string;
     orderNumber: string;
     productName?: string;
     clientName: string;
     status: string;
     priority: string;
     dueDate: string;
+    orderDate?: string | Date | null;
+    deliveryDate?: string | Date | null;
+    quantity?: number;
+    unit?: string;
+    productionStatus?: string;
+    materials?: any[];
+    productionId?: string;
     items?: number;
 }
 
 interface TaskItem {
     id: string;
+    orderId?: string;
     title: string;
     type: "production" | "packing" | "inventory" | "order";
     status: "pending" | "in_progress" | "completed";
     priority: "high" | "medium" | "low";
     dueTime?: string;
+    orderNumber?: string;
+    productName?: string;
+    clientName?: string;
+    orderDate?: string | Date | null;
+    deliveryDate?: string | Date | null;
+    quantity?: number;
+    unit?: string;
+    productionStatus?: string;
+    materials?: any[];
+    productionId?: string;
 }
 
 // ─── Status/Priority Color Maps ──────────────────────────
@@ -221,6 +241,13 @@ export default function StaffWorkPanel({ userName }: { userName?: string }) {
     const [orders, setOrders] = useState<AssignedOrder[]>([]);
     const [tasks, setTasks] = useState<TaskItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [selectedOrder, setSelectedOrder] = useState<StaffOrderData | null>(null);
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+    const handleOpenDetail = (orderOrTask: any) => {
+        setSelectedOrder(orderOrTask);
+        setIsDetailOpen(true);
+    };
 
     useEffect(() => {
         const fetchWorkPanelData = async () => {
@@ -385,7 +412,7 @@ export default function StaffWorkPanel({ userName }: { userName?: string }) {
                                     </p>
                                     <div className="space-y-0.5">
                                         {orders.slice(0, 3).map((order) => (
-                                            <Link key={order._id} href="/dashboard/orders">
+                                            <div key={order._id} onClick={() => handleOpenDetail(order)} className="cursor-pointer">
                                                 <div className="flex items-center gap-2.5 p-2.5 rounded-[10px] hover:bg-[var(--muted)] transition-colors cursor-pointer group">
                                                     {order.priority && (
                                                         <div className={cn("w-[5px] h-[5px] rounded-full flex-shrink-0", priorityDots[order.priority] || priorityDots.medium)} />
@@ -407,7 +434,7 @@ export default function StaffWorkPanel({ userName }: { userName?: string }) {
                                                         {order.status || "pending"}
                                                     </span>
                                                 </div>
-                                            </Link>
+                                            </div>
                                         ))}
                                     </div>
                                 </div>
@@ -434,6 +461,7 @@ export default function StaffWorkPanel({ userName }: { userName?: string }) {
                         label="Completed Tasks"
                         value={stats?.completedTasks ?? 0}
                         color="green"
+                        href="/dashboard/orders?status=completed"
                         delay={0.1}
                     />
 
@@ -443,6 +471,7 @@ export default function StaffWorkPanel({ userName }: { userName?: string }) {
                         label="Pending Work"
                         value={stats?.pendingWork ?? 0}
                         color="orange"
+                        href="/dashboard/orders?status=pending"
                         delay={0.15}
                     />
 
@@ -452,6 +481,7 @@ export default function StaffWorkPanel({ userName }: { userName?: string }) {
                         label="Today's Tasks"
                         value={stats?.todaysTasks ?? 0}
                         color="purple"
+                        href="/dashboard/orders"
                         delay={0.2}
                     />
                 </motion.div>
@@ -468,7 +498,7 @@ export default function StaffWorkPanel({ userName }: { userName?: string }) {
                                 <StatusItem
                                     icon={Layers}
                                     label="Production Queue"
-                                    count={stats?.assignedOrders ?? 0}
+                                    count={orderStatusCounts.inProgress}
                                     color="blue"
                                     href="/dashboard/production"
                                     delay={0}
@@ -481,23 +511,6 @@ export default function StaffWorkPanel({ userName }: { userName?: string }) {
                                     color="cyan"
                                     href="/dashboard/inventory"
                                     delay={0.05}
-                                />
-                                <div className="h-px bg-[var(--border-divider)] mx-3" />
-                                <StatusItem
-                                    icon={Cpu}
-                                    label="Machine Status"
-                                    count={0}
-                                    color="purple"
-                                    href="/dashboard/production"
-                                    delay={0.1}
-                                />
-                                <div className="h-px bg-[var(--border-divider)] mx-3" />
-                                <StatusItem
-                                    icon={Users2}
-                                    label="Worker Status"
-                                    count={0}
-                                    color="green"
-                                    delay={0.15}
                                 />
                             </div>
 
@@ -566,7 +579,7 @@ export default function StaffWorkPanel({ userName }: { userName?: string }) {
                             ) : (
                                 <div className="space-y-1">
                                     {orders.slice(0, 6).map((order, idx) => (
-                                        <Link key={order._id} href="/dashboard/orders">
+                                        <div key={order._id} onClick={() => handleOpenDetail(order)} className="cursor-pointer">
                                             <motion.div
                                                 className="flex items-center gap-3 p-3 rounded-[10px] hover:bg-[var(--muted)] transition-colors cursor-pointer group"
                                                 whileTap={{ scale: 0.97 }}
@@ -607,7 +620,7 @@ export default function StaffWorkPanel({ userName }: { userName?: string }) {
                                             {idx < Math.min(orders.length, 6) - 1 && (
                                                 <div className="h-px bg-[var(--border-divider)] mx-3" />
                                             )}
-                                        </Link>
+                                        </div>
                                     ))}
                                 </div>
                             )}
@@ -641,55 +654,58 @@ export default function StaffWorkPanel({ userName }: { userName?: string }) {
                                         const TaskIcon = taskTypeIcons[task.type] || ListTodo;
                                         return (
                                             <div key={task.id}>
-                                                <motion.div
-                                                    className="flex items-center gap-3 p-3 rounded-[10px] hover:bg-[var(--muted)] transition-colors"
-                                                    whileTap={{ scale: 0.97 }}
-                                                >
-                                                    <div
-                                                        className={cn(
-                                                            "w-[36px] h-[36px] rounded-[8px] flex items-center justify-center flex-shrink-0",
-                                                            task.status === "completed"
-                                                                ? "bg-[rgba(52,199,89,0.12)] text-[var(--erp-success)]"
-                                                                : task.status === "in_progress"
-                                                                    ? "bg-[rgba(0,122,255,0.12)] text-[var(--primary)]"
-                                                                    : "bg-[rgba(255,149,0,0.12)] text-[var(--erp-warning)]"
-                                                        )}
+                                                <div onClick={() => handleOpenDetail(task)} className="cursor-pointer">
+                                                    <motion.div
+                                                        className="flex items-center gap-3 p-3 rounded-[10px] hover:bg-[var(--muted)] transition-colors cursor-pointer group"
+                                                        whileTap={{ scale: 0.97 }}
                                                     >
-                                                        {task.status === "completed" ? (
-                                                            <CheckCircle2 className="h-[16px] w-[16px]" />
-                                                        ) : (
-                                                            <TaskIcon className="h-[16px] w-[16px]" />
-                                                        )}
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <p
+                                                        <div
                                                             className={cn(
-                                                                "text-[15px] font-medium truncate leading-[20px]",
+                                                                "w-[36px] h-[36px] rounded-[8px] flex items-center justify-center flex-shrink-0",
                                                                 task.status === "completed"
-                                                                    ? "text-[var(--muted-foreground)] line-through"
-                                                                    : "text-[var(--foreground)]"
+                                                                    ? "bg-[rgba(52,199,89,0.12)] text-[var(--erp-success)]"
+                                                                    : task.status === "in_progress"
+                                                                        ? "bg-[rgba(0,122,255,0.12)] text-[var(--primary)]"
+                                                                        : "bg-[rgba(255,149,0,0.12)] text-[var(--erp-warning)]"
                                                             )}
                                                         >
-                                                            {task.title}
-                                                        </p>
-                                                        <div className="flex items-center gap-2 mt-0.5">
-                                                            <span className="text-[12px] text-[var(--muted-foreground)] capitalize">
-                                                                {task.type}
-                                                            </span>
-                                                            {task.dueTime && (
-                                                                <>
-                                                                    <span className="text-[var(--muted-foreground)]">·</span>
-                                                                    <span className="text-[12px] text-[var(--muted-foreground)]">
-                                                                        {task.dueTime}
-                                                                    </span>
-                                                                </>
+                                                            {task.status === "completed" ? (
+                                                                <CheckCircle2 className="h-[16px] w-[16px]" />
+                                                            ) : (
+                                                                <TaskIcon className="h-[16px] w-[16px]" />
                                                             )}
                                                         </div>
-                                                    </div>
-                                                    {task.priority && (
-                                                        <div className={cn("w-[6px] h-[6px] rounded-full flex-shrink-0", priorityDots[task.priority])} />
-                                                    )}
-                                                </motion.div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p
+                                                                className={cn(
+                                                                    "text-[15px] font-medium truncate leading-[20px]",
+                                                                    task.status === "completed"
+                                                                        ? "text-[var(--muted-foreground)] line-through"
+                                                                        : "text-[var(--foreground)]"
+                                                                )}
+                                                            >
+                                                                {task.title}
+                                                            </p>
+                                                            <div className="flex items-center gap-2 mt-0.5">
+                                                                <span className="text-[12px] text-[var(--muted-foreground)] capitalize">
+                                                                    {task.type}
+                                                                </span>
+                                                                {task.dueTime && (
+                                                                    <>
+                                                                        <span className="text-[var(--muted-foreground)]">·</span>
+                                                                        <span className="text-[12px] text-[var(--muted-foreground)]">
+                                                                            {task.dueTime}
+                                                                        </span>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        {task.priority && (
+                                                            <div className={cn("w-[6px] h-[6px] rounded-full flex-shrink-0", priorityDots[task.priority])} />
+                                                        )}
+                                                        <ChevronRight className="h-[14px] w-[14px] text-[var(--muted-foreground)] group-hover:text-[var(--muted-foreground)] transition-colors flex-shrink-0" />
+                                                    </motion.div>
+                                                </div>
                                                 {idx < tasks.length - 1 && (
                                                     <div className="h-px bg-[var(--border-divider)] mx-3" />
                                                 )}
@@ -702,6 +718,16 @@ export default function StaffWorkPanel({ userName }: { userName?: string }) {
                     </IOSCard>
                 </motion.div>
             </div>
+
+            {/* Read-Only Order Details Sheet for Staff */}
+            <StaffOrderDetailSheet
+                open={isDetailOpen}
+                onClose={() => {
+                    setIsDetailOpen(false);
+                    setSelectedOrder(null);
+                }}
+                order={selectedOrder}
+            />
         </motion.div>
     );
 }

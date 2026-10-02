@@ -53,6 +53,8 @@ export const ROLE_PERMISSIONS: Record<string, {
             "/dashboard",
             "/dashboard/dashboard",
             "/dashboard/orders",
+            "/dashboard/quotes",
+            "/dashboard/delivery-challans",
             "/dashboard/production",
             "/dashboard/machines",
             "/dashboard/inventory",
@@ -83,11 +85,17 @@ export const ROLE_PERMISSIONS: Record<string, {
             "/dashboard",
             "/dashboard/dashboard",
             "/dashboard/orders",
+            "/dashboard/quotes",
+            "/dashboard/delivery-challans",
             "/dashboard/billing",
             "/dashboard/payments",
+            "/dashboard/vendor-bills",
             "/dashboard/analytics",
             "/dashboard/reports/previous-years",
+            "/dashboard/reports/receivables",
+            "/dashboard/reports/payables",
             "/dashboard/profile",
+            "/dashboard/settings/reminders",
         ],
         hiddenSections: ["OPERATIONS", "INTELLIGENCE", "SYSTEM"],
         readOnlyRoutes: ["/dashboard/orders"],
@@ -189,17 +197,17 @@ export function isRouteReadOnly(
  * Get allowed navigation items for a role from navigation groups.
  * Enhanced: Uses granular permissions when available.
  */
-export function filterNavigationByRole(
-    navigationGroups: Array<{
+export function filterNavigationByRole<
+    T extends {
         label: string;
-        items: Array<{ name: string; href: string; icon: any; badge?: number }>;
-    }>,
+        items: Array<{ name: string; href: string; icon: any; badge?: number; [key: string]: any }>;
+        [key: string]: any;
+    }
+>(
+    navigationGroups: T[],
     rawRole: UserRole | null,
     permissions?: FlatPermissionMap | null
-): Array<{
-    label: string;
-    items: Array<{ name: string; href: string; icon: any; badge?: number }>;
-}> {
+): T[] {
     const role = normalizeRole(rawRole);
     if (!role) return [];
 
@@ -214,18 +222,20 @@ export function filterNavigationByRole(
                 isRouteAllowed(role, item.href, permissions)
             ),
         }))
-        .filter(group => group.items.length > 0);
+        .filter(group => group.items.length > 0) as T[];
 }
 
 /**
  * Get allowed mobile nav items for a role.
  * Enhanced: Uses granular permissions when available.
  */
-export function filterMobileNavByRole(
-    mobileNavItems: Array<{ name: string; href: string; icon: any; isMore?: boolean }>,
+export function filterMobileNavByRole<
+    T extends { name: string; href: string; icon: any; isMore?: boolean; [key: string]: any }
+>(
+    mobileNavItems: T[],
     rawRole: UserRole | null,
     permissions?: FlatPermissionMap | null
-): Array<{ name: string; href: string; icon: any; isMore?: boolean }> {
+): T[] {
     const role = normalizeRole(rawRole);
     if (!role) return [];
 

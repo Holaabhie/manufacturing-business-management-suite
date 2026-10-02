@@ -80,8 +80,8 @@ export function SearchBar({
           "placeholder:text-[#94A3B8] dark:placeholder:text-[rgba(148,163,184,0.50)]",
           "outline-none",
           // Focus
-          "focus:ring-2 focus:ring-[#2563EB]/30 focus:border-[#2563EB]/40",
-          "dark:focus:ring-[rgba(96,165,250,0.15)] dark:focus:border-[rgba(96,165,250,0.50)]",
+          "focus:ring-1 focus:ring-[#2563EB]/30 focus:border-[#2563EB]/40",
+          "dark:focus:ring-1 dark:focus:ring-[rgba(96,165,250,0.25)] dark:focus:border-[rgba(96,165,250,0.50)]",
           "transition-all duration-150"
         )}
       />

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ENVELOPE>
+  <HEADER>
+    <TALLYREQUEST>Import Data</TALLYREQUEST>
+  </HEADER>
+  <BODY>
+    <IMPORTDATA>
+      <REQUESTDESC>
+        <REPORTNAME>All Masters</REPORTNAME>
+        <STATICVARIABLES>
+          <SVCURRENTCOMPANY>Ind Manager</SVCURRENTCOMPANY>
+        </STATICVARIABLES>
+      </REQUESTDESC>
+      <REQUESTDATA>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <LEDGER NAME="Spike Traders &amp; Sons Enterprise muf9cvfq-b" ACTION="Create or Alter">
+            <NAME>Spike Traders &amp; Sons Enterprise muf9cvfq-b</NAME>
+            <PARENT>Sundry Debtors</PARENT>
+            <ISBILLWISEON>Yes</ISBILLWISEON>
+            <AFFECTSSTOCK>No</AFFECTSSTOCK>
+            <PARTYGSTIN>27AABCS1429B1ZV</PARTYGSTIN>
+            <GSTIN>27AABCS1429B1ZV</GSTIN>
+            <INCOMETAXNUMBER>AABCS1429B</INCOMETAXNUMBER>
+            <ADDRESS.LIST>
+              <ADDRESS>123 Test Street, Mumbai</ADDRESS>
+            </ADDRESS.LIST>
+            <LEDSTATENAME>Maharashtra</LEDSTATENAME>
+            <GSTREGISTRATIONTYPE>Regular</GSTREGISTRATIONTYPE>
+          </LEDGER>
+        </TALLYMESSAGE>
+      </REQUESTDATA>
+    </IMPORTDATA>
+  </BODY>
+</ENVELOPE>

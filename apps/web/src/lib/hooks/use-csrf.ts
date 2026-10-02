@@ -40,7 +40,7 @@ export function useCsrf() {
 
         // If no token exists, trigger an API call to generate one
         if (!t) {
-            fetch("/api/auth/csrf", { method: "GET", credentials: "include" })
+            fetch("/api/csrf", { method: "GET", credentials: "include" })
                 .then(() => {
                     const newToken = getCsrfTokenFromCookie();
                     setToken(newToken);

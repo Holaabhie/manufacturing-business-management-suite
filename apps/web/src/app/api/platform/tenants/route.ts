@@ -71,7 +71,12 @@ export async function GET(req: NextRequest) {
           name: doc.full_name || doc.fullName || "",
           subscription_tier: doc.subscription_tier || "starter",
           effective_tier: effectiveTier,
-          plan_override: doc.plan_override || null,
+          plan_override: doc.plan_override
+            ? {
+                ...doc.plan_override,
+                granted_by: doc.plan_override.granted_by ?? null,
+              }
+            : null,
           counts: {
             inventory: inventoryCount,
             orders: ordersCount,

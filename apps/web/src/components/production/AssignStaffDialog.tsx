@@ -160,7 +160,7 @@ export function AssignStaffDialog({
                                 "w-full h-9 pl-9 pr-8 rounded-xl text-[13px] transition-all",
                                 "bg-muted/50 border border-border",
                                 "placeholder:text-muted-foreground/50",
-                                "focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40"
+                                "focus:outline-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40"
                             )}
                         />
                         {search && (

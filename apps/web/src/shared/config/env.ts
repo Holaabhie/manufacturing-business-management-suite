@@ -26,23 +26,33 @@ const envSchema = z.object({
     MONGODB_URI: z.string().min(1, "MONGODB_URI is required"),
     MONGODB_DB: z.string().default("ind_manager"),
 
-    // ── Auth ──────────────────────────────────────────────
+    // ── Auth (Auth.js v5 & NextAuth) ──────────────────────
+    AUTH_URL: z.string().url().optional(),
     NEXTAUTH_URL: z.string().url().optional(),
-    NEXTAUTH_SECRET: z.string().min(1).optional(),
     AUTH_SECRET: z.string().min(1).optional(),
+    NEXTAUTH_SECRET: z.string().min(1).optional(),
     AUTH_TRUST_HOST: z
         .string()
         .transform((v) => v === "true")
         .optional(),
 
-    // ── Google OAuth ──────────────────────────────────────
+    // ── Google OAuth (Inferred via AUTH_GOOGLE_*) ──────────
+    AUTH_GOOGLE_ID: z.string().min(1).optional(),
+    AUTH_GOOGLE_SECRET: z.string().min(1).optional(),
     GOOGLE_CLIENT_ID: z.string().min(1).optional(),
     GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
 
-    // ── Microsoft Entra ID ────────────────────────────────
+    // ── Microsoft Entra ID (Inferred via AUTH_MICROSOFT_ENTRA_ID_*) ──
+    AUTH_MICROSOFT_ENTRA_ID_ID: z.string().min(1).optional(),
+    AUTH_MICROSOFT_ENTRA_ID_SECRET: z.string().min(1).optional(),
+    AUTH_MICROSOFT_ENTRA_ID_ISSUER: z.string().min(1).optional(),
     AZURE_AD_CLIENT_ID: z.string().min(1).optional(),
     AZURE_AD_CLIENT_SECRET: z.string().min(1).optional(),
     AZURE_AD_TENANT_ID: z.string().min(1).optional(),
+
+    // ── GitHub OAuth (Inferred via AUTH_GITHUB_*) ──────────
+    AUTH_GITHUB_ID: z.string().min(1).optional(),
+    AUTH_GITHUB_SECRET: z.string().min(1).optional(),
 
     // ── Stripe ────────────────────────────────────────────
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().min(1).optional(),

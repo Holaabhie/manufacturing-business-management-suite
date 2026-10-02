@@ -357,8 +357,8 @@ export default function ProductionPage() {
                                     "dark:placeholder:text-[rgba(148,163,184,0.72)]",
                                     "dark:shadow-none",
                                     // Focus
-                                    "focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[rgba(37,99,235,0.15)]",
-                                    "dark:focus:border-[rgba(37,99,235,0.5)] dark:focus:ring-[rgba(37,99,235,0.2)]",
+                                    "focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[rgba(37,99,235,0.25)]",
+                                    "dark:focus:border-[rgba(37,99,235,0.5)] dark:focus:ring-1 dark:focus:ring-[rgba(37,99,235,0.25)]",
                                     // Caret
                                     "caret-primary",
                                 )}
@@ -444,8 +444,8 @@ export default function ProductionPage() {
                                     "border border-[rgba(15,23,42,0.08)] hover:border-[rgba(15,23,42,0.14)]",
                                     "dark:bg-[rgba(255,255,255,0.06)] dark:hover:bg-[rgba(255,255,255,0.10)]",
                                     "dark:text-[#94A3B8] dark:border-[rgba(255,255,255,0.08)] dark:hover:border-[rgba(255,255,255,0.14)]",
-                                    "focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[rgba(37,99,235,0.12)]",
-                                    "dark:focus:border-[rgba(37,99,235,0.5)] dark:focus:ring-[rgba(37,99,235,0.2)]",
+                                    "focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[rgba(37,99,235,0.25)]",
+                                    "dark:focus:border-[rgba(37,99,235,0.5)] dark:focus:ring-1 dark:focus:ring-[rgba(37,99,235,0.25)]",
                                     "bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%2712%27%20height=%2712%27%20fill=%27none%27%20viewBox=%270%200%2024%2024%27%3E%3Cpath%20stroke=%27%2364748B%27%20stroke-linecap=%27round%27%20stroke-linejoin=%27round%27%20stroke-width=%272%27%20d=%27m6%209%206%206%206-6%27/%3E%3C/svg%3E')]",
                                     "bg-no-repeat bg-[right_10px_center]",
                                 )}

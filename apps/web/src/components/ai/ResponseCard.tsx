@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Copy, Check, RefreshCw, Share2, ChevronDown, ChevronUp, Bot } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 interface ResponseCardProps {
   id: string;
@@ -48,16 +49,18 @@ export function ResponseCard({
   errorMessage,
   onRetry,
 }: ResponseCardProps) {
+  const t = useTranslations("assistant");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isShared, setIsShared] = useState(false);
   const [isExpanded, setIsExpanded] = useState(true);
-  const displayText = displayedContent ?? content;
-  const isLong = content.length > 600;
+  const rawText = displayedContent ?? content;
+  const displayText = id === "welcome" ? t("welcomeMessage") : rawText;
+  const isLong = displayText.length > 600;
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(content);
+    navigator.clipboard.writeText(displayText);
     setCopiedId(id);
-    toast.success("Copied to clipboard");
+    toast.success(t("toastCopied"));
     setTimeout(() => setCopiedId(null), 2000);
   };
 
@@ -65,7 +68,7 @@ export function ResponseCard({
     if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
       try {
         await navigator.share({
-          text: content,
+          text: displayText,
         });
         setIsShared(true);
         setTimeout(() => setIsShared(false), 2000);
@@ -74,9 +77,9 @@ export function ResponseCard({
           return;
         }
         try {
-          await navigator.clipboard.writeText(content);
+          await navigator.clipboard.writeText(displayText);
           setIsShared(true);
-          toast.success("Copied to share");
+          toast.success(t("toastShared"));
           setTimeout(() => setIsShared(false), 2000);
         } catch {
           // Ignore
@@ -84,9 +87,9 @@ export function ResponseCard({
       }
     } else if (typeof navigator !== "undefined" && navigator.clipboard) {
       try {
-        await navigator.clipboard.writeText(content);
+        await navigator.clipboard.writeText(displayText);
         setIsShared(true);
-        toast.success("Copied to share");
+        toast.success(t("toastShared"));
         setTimeout(() => setIsShared(false), 2000);
       } catch {
         // Ignore
@@ -152,11 +155,11 @@ export function ResponseCard({
           >
             {isExpanded ? (
               <>
-                <ChevronUp className="h-3 w-3" /> Show less
+                <ChevronUp className="h-3 w-3" /> {t("showLess")}
               </>
             ) : (
               <>
-                <ChevronDown className="h-3 w-3" /> Show more
+                <ChevronDown className="h-3 w-3" /> {t("showMore")}
               </>
             )}
           </button>
@@ -168,7 +171,7 @@ export function ResponseCard({
             onClick={onRetry}
             className="flex items-center gap-1.5 mt-3 text-[12px] text-[var(--ai-error)] font-semibold hover:underline"
           >
-            <RefreshCw className="h-3 w-3" /> Retry
+            <RefreshCw className="h-3 w-3" /> {t("retry")}
           </button>
         )}
 
@@ -181,7 +184,7 @@ export function ResponseCard({
               ) : (
                 <Copy className="h-3 w-3" />
               )}
-              {copiedId === id ? "Copied" : "Copy"}
+              {copiedId === id ? t("btnCopied") : t("btnCopy")}
             </button>
             <button onClick={handleShare} className="ai-response-card__action-btn">
               {isShared ? (
@@ -189,11 +192,11 @@ export function ResponseCard({
               ) : (
                 <Share2 className="h-3 w-3" />
               )}
-              {isShared ? "Shared" : "Share"}
+              {isShared ? t("btnShared") : t("btnShare")}
             </button>
             {onRetry && (
               <button onClick={onRetry} className="ai-response-card__action-btn">
-                <RefreshCw className="h-3 w-3" /> Regenerate
+                <RefreshCw className="h-3 w-3" /> {t("btnRegenerate")}
               </button>
             )}
             <span className="ml-auto text-[10px] text-[var(--ai-text-tertiary)] self-center">

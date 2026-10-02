@@ -1,0 +1,31 @@
+{
+  "name": "ind-manager-demo-video",
+  "version": "1.0.0",
+  "private": true,
+  "description": "IND Manager Product Launch Demo Video (Remotion)",
+  "scripts": {
+    "start": "remotion studio",
+    "build:master": "remotion render MasterCut out/master-4k.mp4 --codec h264 --crf 16 --pixel-format yuv420p",
+    "build:reels": "remotion render ReelsCut out/reels-1080x1920.mp4 --codec h264 --crf 16 --pixel-format yuv420p",
+    "build:preview": "remotion render MasterCut out/preview-1080p.mp4 --codec h264 --crf 20 --scale 0.5",
+    "upgrade": "remotion upgrade"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.220",
+    "@remotion/google-fonts": "4.0.220",
+    "@remotion/media-utils": "4.0.220",
+    "@remotion/shapes": "4.0.220",
+    "@remotion/zod-types": "4.0.220",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.220",
+    "zod": "3.22.3"
+  },
+  "devDependencies": {
+    "@types/node": "20.12.7",
+    "@types/react": "18.3.1",
+    "@types/react-dom": "18.3.1",
+    "prettier": "3.2.5",
+    "typescript": "5.4.5"
+  }
+}

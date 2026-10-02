@@ -8,6 +8,7 @@
 
 import { NextResponse, NextRequest } from "next/server";
 import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
+import { requireRole } from "@/lib/require-role";
 import { getPurchasingService } from "@/modules/purchasing";
 
 export async function GET(
@@ -36,10 +37,11 @@ export async function PATCH(
     { params }: { params: Promise<{ id: string }> },
 ) {
     try {
-        const user = await getSessionUser();
-        if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const authResult = await requireRole(["Owner", "Admin", "Manager", "Accountant"]);
+        if (authResult.error || !authResult.user) {
+            return NextResponse.json({ error: authResult.error || "Unauthorized" }, { status: authResult.status || 401 });
         }
+        const user = authResult.user;
 
         const { id } = await params;
         const body = await request.json();
@@ -61,10 +63,11 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string }> },
 ) {
     try {
-        const user = await getSessionUser();
-        if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const authResult = await requireRole(["Owner", "Admin", "Manager", "Accountant"]);
+        if (authResult.error || !authResult.user) {
+            return NextResponse.json({ error: authResult.error || "Unauthorized" }, { status: authResult.status || 401 });
         }
+        const user = authResult.user;
 
         const { id } = await params;
         const service = getPurchasingService();

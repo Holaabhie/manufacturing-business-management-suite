@@ -2,27 +2,45 @@
  * Tally Stock Item XML Generator
  * ─────────────────────────────────────────────────────────
  * Generates XML to auto-create stock items in Tally Prime
- * from invoice line items. Each item gets HSN code,
- * GST rate, and mapped unit.
+ * from invoice line items. Ensures the "Primary" Stock Group
+ * and the item's unit master exist via idempotent "Create or Alter"
+ * blocks before the stock item is declared.
+ *
+ * Implemented per research, unverified against live Tally.
  */
 
 import { escapeXml, mapUnitToTally } from "./tallyXmlHelpers";
+import { buildUnitMessageXml } from "./generateUnitXml";
 import type { TallyLineItem } from "./tallyXmlTypes";
 
 /**
- * Generates XML to create a stock item in Tally.
- * Called once per unique line item in an invoice.
+ * Builds the idempotent Primary stock group XML message.
+ */
+function buildPrimaryStockGroupXml(): string {
+  return `          <STOCKGROUP NAME="Primary" ACTION="Create or Alter">
+            <NAME>Primary</NAME>
+            <PARENT/>
+          </STOCKGROUP>`;
+}
+
+/**
+ * Generates XML to create or alter a stock item in Tally.
+ * Ensures "Primary" stock group and unit master exist.
  */
 export function generateStockItemXml(
-    item: TallyLineItem,
-    companyName: string,
+  item: TallyLineItem,
+  companyName: string,
 ): string {
-    const name = escapeXml(item.description);
-    const company = escapeXml(companyName);
-    const hsn = escapeXml(item.hsnCode || "");
-    const unit = mapUnitToTally(item.unit);
+  const name = escapeXml(item.description);
+  const company = escapeXml(companyName);
+  const hsn = escapeXml(item.hsnCode || "");
+  const unit = mapUnitToTally(item.unit);
 
-    return `<ENVELOPE>
+  const groupXml = buildPrimaryStockGroupXml();
+  const unitXml = buildUnitMessageXml(unit);
+
+  return `<?xml version="1.0" encoding="utf-8"?>
+<ENVELOPE>
   <HEADER>
     <TALLYREQUEST>Import Data</TALLYREQUEST>
   </HEADER>
@@ -36,7 +54,9 @@ export function generateStockItemXml(
       </REQUESTDESC>
       <REQUESTDATA>
         <TALLYMESSAGE xmlns:UDF="TallyUDF">
-          <STOCKITEM NAME="${name}" ACTION="Create">
+${groupXml}
+${unitXml}
+          <STOCKITEM NAME="${name}" ACTION="Create or Alter">
             <NAME>${name}</NAME>
             <PARENT>Primary</PARENT>${hsn ? `
             <HSNCODE>${hsn}</HSNCODE>` : ""}
@@ -53,30 +73,38 @@ export function generateStockItemXml(
 
 /**
  * Generates XML for multiple stock items in a single envelope.
- * More efficient than individual calls when importing a full invoice.
+ * Pre-creates "Primary" stock group and all unique units referenced.
  */
 export function generateBatchStockItemXml(
-    items: TallyLineItem[],
-    companyName: string,
+  items: TallyLineItem[],
+  companyName: string,
 ): string {
-    const company = escapeXml(companyName);
+  const company = escapeXml(companyName);
 
-    // Deduplicate by description (same product = same stock item)
-    const seen = new Set<string>();
-    const uniqueItems = items.filter((item) => {
-        const key = item.description.toLowerCase().trim();
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-    });
+  // Deduplicate by description (same product = same stock item)
+  const seenItems = new Set<string>();
+  const uniqueItems = items.filter((item) => {
+    const key = item.description.toLowerCase().trim();
+    if (seenItems.has(key)) return false;
+    seenItems.add(key);
+    return true;
+  });
 
-    const stockItemsXml = uniqueItems
-        .map((item) => {
-            const name = escapeXml(item.description);
-            const hsn = escapeXml(item.hsnCode || "");
-            const unit = mapUnitToTally(item.unit);
+  // Extract all unique units referenced
+  const uniqueUnits = Array.from(
+    new Set(uniqueItems.map((item) => mapUnitToTally(item.unit))),
+  );
 
-            return `          <STOCKITEM NAME="${name}" ACTION="Create">
+  const groupXml = buildPrimaryStockGroupXml();
+  const unitsXml = uniqueUnits.map((u) => buildUnitMessageXml(u)).join("\n");
+
+  const stockItemsXml = uniqueItems
+    .map((item) => {
+      const name = escapeXml(item.description);
+      const hsn = escapeXml(item.hsnCode || "");
+      const unit = mapUnitToTally(item.unit);
+
+      return `          <STOCKITEM NAME="${name}" ACTION="Create or Alter">
             <NAME>${name}</NAME>
             <PARENT>Primary</PARENT>${hsn ? `
             <HSNCODE>${hsn}</HSNCODE>` : ""}
@@ -84,10 +112,11 @@ export function generateBatchStockItemXml(
             <GSTRATE>${item.gstRate}</GSTRATE>
             <BASEUNITS>${unit}</BASEUNITS>
           </STOCKITEM>`;
-        })
-        .join("\n");
+    })
+    .join("\n");
 
-    return `<ENVELOPE>
+  return `<?xml version="1.0" encoding="utf-8"?>
+<ENVELOPE>
   <HEADER>
     <TALLYREQUEST>Import Data</TALLYREQUEST>
   </HEADER>
@@ -101,6 +130,8 @@ export function generateBatchStockItemXml(
       </REQUESTDESC>
       <REQUESTDATA>
         <TALLYMESSAGE xmlns:UDF="TallyUDF">
+${groupXml}
+${unitsXml}
 ${stockItemsXml}
         </TALLYMESSAGE>
       </REQUESTDATA>

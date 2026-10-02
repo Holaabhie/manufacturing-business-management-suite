@@ -21,6 +21,9 @@ import { getDataOwnerId } from "@/lib/auth-session";
 export const GET = withRateLimit(
     withApiRoute(
         withAuth(async (_request: NextRequest, user: AuthenticatedUser) => {
+            if (user.role === "Staff") {
+                return envelope.error("Forbidden: Staff members cannot view profit margins", 403, "FORBIDDEN");
+            }
             const db = await getDb();
             const ownerId = getDataOwnerId(user);
 

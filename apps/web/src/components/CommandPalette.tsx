@@ -32,10 +32,13 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useTranslations } from "next-intl";
+import { isRouteAllowed } from "@/lib/role-permissions";
 
 interface CommandPaletteProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    role?: string | null;
 }
 
 // ── Sidebar category definitions ──────────────────────────
@@ -60,7 +63,7 @@ const categoryTypeMap: Record<CategoryKey, string | null> = {
     reports: null,
 };
 
-export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
+export function CommandPalette({ open, onOpenChange, role }: CommandPaletteProps) {
     const {
         searchQuery,
         setSearchQuery,
@@ -72,8 +75,37 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
         handleSelect: selectAndNavigate,
     } = useCommandPaletteSearch();
 
+    const allowedQuickActions = React.useMemo(() => {
+        if (!role) return quickActions;
+        return quickActions.filter((a) => isRouteAllowed(role, a.href.split("?")[0]));
+    }, [quickActions, role]);
+
+    const allowedNavigationItems = React.useMemo(() => {
+        if (!role) return navigationItems;
+        return navigationItems.filter((item) => isRouteAllowed(role, item.href));
+    }, [navigationItems, role]);
+
     const isMobile = useIsMobile();
     const [activeCategory, setActiveCategory] = React.useState<CategoryKey>("all");
+    const t = useTranslations("commandPalette");
+    const tNav = useTranslations("nav");
+    const tCommon = useTranslations("common");
+
+    const categoryLabelMap: Record<CategoryKey, string> = {
+        all: t("catAll"),
+        "quick-actions": t("catQuickActions"),
+        orders: t("catOrders"),
+        clients: t("catClients"),
+        inventory: t("catInventory"),
+        reports: t("catReports"),
+    };
+
+    const typeBadgeMap: Record<string, string> = {
+        order: t("typeOrder"),
+        client: t("typeClient"),
+        inventory: t("typeInventory"),
+        report: t("typeReport"),
+    };
 
     // Reset category when modal opens/closes
     React.useEffect(() => {
@@ -115,7 +147,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                         }`}
                     >
                         <Icon className="h-4 w-4 shrink-0" />
-                        <span className="truncate">{cat.label}</span>
+                        <span className="truncate">{categoryLabelMap[cat.key] || cat.label}</span>
                     </button>
                 );
             })}
@@ -155,7 +187,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             className="md:max-w-[860px]"
         >
                 <CommandInput
-                    placeholder="Search orders, clients, inventory..."
+                    placeholder={t("inputPlaceholder")}
                     value={searchQuery}
                     onValueChange={setSearchQuery}
                     className="text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]"
@@ -171,14 +203,14 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                                 {isSearching ? (
                                     <div className="flex items-center justify-center py-6 gap-2">
                                         <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                                        <span className="text-muted-foreground">Searching...</span>
+                                        <span className="text-muted-foreground">{t("searchingRecords")}</span>
                                     </div>
                                 ) : (
                                     <div className="py-6 text-center">
                                         <Search className="h-10 w-10 mx-auto text-muted-foreground/50 mb-2" />
-                                        <p className="text-muted-foreground">No results found.</p>
+                                        <p className="text-muted-foreground">{t("noResultsFound")}</p>
                                         <p className="text-xs text-muted-foreground/70 mt-1">
-                                            Try searching for an order ID, client name, or product.
+                                            {t("trySearchingHint")}
                                         </p>
                                     </div>
                                 )}
@@ -186,7 +218,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
 
                             {/* Search Results */}
                             {searchResults.length > 0 && (
-                                <CommandGroup heading="Search results" className="[&_[cmdk-group-heading]]:text-[var(--muted-foreground)]">
+                                <CommandGroup heading={t("groupSearchResults")} className="[&_[cmdk-group-heading]]:text-[var(--muted-foreground)]">
                                     {searchResults.map((result) => (
                                         <CommandItem
                                             key={`${result.type}-${result.id}`}
@@ -201,7 +233,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                                                 <span className="text-xs text-muted-foreground truncate">{result.description}</span>
                                             </div>
                                             <Badge variant="secondary" className="text-[10px] capitalize">
-                                                {result.type}
+                                                {typeBadgeMap[result.type] || result.type}
                                             </Badge>
                                         </CommandItem>
                                     ))}
@@ -211,10 +243,10 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                             {/* Quick Actions - Only show when not searching */}
                             {!searchQuery && showQuickActions && (
                                 <>
-                                    <CommandGroup heading="Quick actions" className="[&_[cmdk-group-heading]]:text-[var(--muted-foreground)]">
+                                    <CommandGroup heading={t("groupQuickActions")} className="[&_[cmdk-group-heading]]:text-[var(--muted-foreground)]">
                                         {/* Desktop: 2-column grid */}
                                         <div className="hidden md:grid grid-cols-2 gap-2 px-1 pb-1">
-                                            {quickActions.map((action) => (
+                                            {allowedQuickActions.map((action) => (
                                                 <CommandItem
                                                     key={action.name}
                                                     onSelect={() => handleSelect(action.href)}
@@ -224,13 +256,15 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                                                     <div className="p-2 rounded-[var(--radius-md)] bg-[#2563EB]/10 shrink-0">
                                                         <action.icon className="h-4 w-4 text-[var(--muted-foreground)]" />
                                                     </div>
-                                                    <span className="text-[13px] font-medium truncate">{action.name}</span>
+                                                    <span className="text-[13px] font-medium truncate">
+                                                        {action.labelKey ? t(action.labelKey as any) : action.name}
+                                                    </span>
                                                 </CommandItem>
                                             ))}
                                         </div>
                                         {/* Mobile: stacked list (unchanged) */}
                                         <div className="md:hidden">
-                                            {quickActions.map((action) => (
+                                            {allowedQuickActions.map((action) => (
                                                 <CommandItem
                                                     key={action.name}
                                                     onSelect={() => handleSelect(action.href)}
@@ -239,7 +273,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                                                     <div className="p-2 rounded-[var(--radius-md)] bg-[#2563EB]/10">
                                                         <action.icon className="h-4 w-4 text-[var(--muted-foreground)]" />
                                                     </div>
-                                                    <span>{action.name}</span>
+                                                    <span>{action.labelKey ? t(action.labelKey as any) : action.name}</span>
                                                 </CommandItem>
                                             ))}
                                         </div>
@@ -252,7 +286,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                             {/* Recent Items */}
                             {!searchQuery && showRecent && filteredRecentItems.length > 0 && (
                                 <>
-                                    <CommandGroup heading="Recent" className="[&_[cmdk-group-heading]]:text-[var(--muted-foreground)]">
+                                    <CommandGroup heading={t("groupRecent")} className="[&_[cmdk-group-heading]]:text-[var(--muted-foreground)]">
                                         {filteredRecentItems.map((item) => (
                                             <CommandItem
                                                 key={`${item.type}-${item.id}`}
@@ -265,7 +299,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                                                     variant="secondary"
                                                     className="text-[10px] capitalize shrink-0"
                                                 >
-                                                    {item.type}
+                                                    {typeBadgeMap[item.type] || item.type}
                                                 </Badge>
                                             </CommandItem>
                                         ))}
@@ -277,22 +311,25 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
 
                             {/* Navigation */}
                             {!searchQuery && showNavigation && (
-                                <CommandGroup heading="Navigation" className="[&_[cmdk-group-heading]]:text-[var(--muted-foreground)]">
-                                    {navigationItems.slice(0, 8).map((item) => (
-                                        <CommandItem
-                                            key={item.name}
-                                            onSelect={() => handleSelect(item.href)}
-                                            className="flex items-center gap-3 py-2.5 rounded-[var(--radius-md)] aria-selected:bg-white/[0.05] aria-selected:text-[var(--foreground)] text-[var(--foreground)]"
-                                        >
-                                            <item.icon className="h-4 w-4 text-muted-foreground" />
-                                            <span>{item.name}</span>
-                                            {item.shortcut && (
-                                                <CommandShortcut className="ml-auto">
-                                                    ⌘{item.shortcut}
-                                                </CommandShortcut>
-                                            )}
-                                        </CommandItem>
-                                    ))}
+                                <CommandGroup heading={t("groupNavigation")} className="[&_[cmdk-group-heading]]:text-[var(--muted-foreground)]">
+                                    {allowedNavigationItems.slice(0, 10).map((item) => {
+                                        const navLabel = item.namespace === "common" ? tCommon(item.nameKey as any) : tNav(item.nameKey as any);
+                                        return (
+                                            <CommandItem
+                                                key={item.name}
+                                                onSelect={() => handleSelect(item.href)}
+                                                className="flex items-center gap-3 py-2.5 rounded-[var(--radius-md)] aria-selected:bg-white/[0.05] aria-selected:text-[var(--foreground)] text-[var(--foreground)]"
+                                            >
+                                                <item.icon className="h-4 w-4 text-muted-foreground" />
+                                                <span>{navLabel}</span>
+                                                {item.shortcut && (
+                                                    <CommandShortcut className="ml-auto">
+                                                        ⌘{item.shortcut}
+                                                    </CommandShortcut>
+                                                )}
+                                            </CommandItem>
+                                        );
+                                    })}
                                 </CommandGroup>
                             )}
                         </CommandList>

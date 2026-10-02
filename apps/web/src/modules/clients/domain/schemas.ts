@@ -5,6 +5,8 @@ export const createClientSchema = z.object({
     email: z.string().email("Invalid email").trim().optional().or(z.literal("")),
     phone: z.string().max(50).trim().optional().default(""),
     address: z.string().max(500).trim().optional().default(""),
+    gstin: z.string().max(50).trim().optional().or(z.literal("")),
+    state: z.string().max(100).trim().optional().or(z.literal("")),
 });
 
 export const updateClientSchema = z.object({
@@ -13,6 +15,13 @@ export const updateClientSchema = z.object({
     phone: z.string().max(50).trim().optional(),
     address: z.string().max(500).trim().optional(),
     avatarUrl: z.string().optional(),
+    gstin: z.string().max(50).trim().optional().or(z.literal("")),
+    state: z.string().max(100).trim().optional().or(z.literal("")),
+    tallySync: z.object({
+        status: z.enum(["pending", "synced", "failed", "not_configured"]),
+        lastSyncedAt: z.coerce.date().optional(),
+        lastError: z.string().optional(),
+    }).optional(),
 });
 
 export type CreateClientInput = z.infer<typeof createClientSchema>;

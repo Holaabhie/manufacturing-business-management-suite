@@ -4,6 +4,12 @@ import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { getFinancialYear } from "@/lib/utils/financial-year";
 import { assertCanCreate } from "@/lib/entitlements";
+import { sanitizeOrderForStaff } from "@/lib/sanitizeOrderForStaff";
+import { getQuoteRepository } from "@/modules/quotes";
+import { logDataOperation } from "@/lib/audit";
+import { ensureQuoteOrderIndexes } from "@/lib/migrations/ensureQuoteOrderIndexes";
+
+let quoteIndexEnsured = false;
 
 export async function GET() {
   try {
@@ -13,10 +19,46 @@ export async function GET() {
     }
 
     const db = await getDb();
+    const ownerId = getDataOwnerId(user);
+    const matchFilter: Record<string, any> = { userId: ownerId };
+
+    if (user.role === "Staff") {
+        const productions = await db
+            .collection("productions")
+            .find({
+                userId: ownerId,
+                assignedStaff: String(user._id),
+            })
+            .project({ orderId: 1 })
+            .toArray();
+
+        const orderIds = [
+            ...new Set(
+                productions
+                    .map((p: any) => p.orderId)
+                    .filter((id: any) => id != null && String(id).trim() !== "")
+            ),
+        ];
+
+        if (orderIds.length === 0) {
+            return NextResponse.json([]);
+        }
+
+        const convertedOrderIds: (ObjectId | string)[] = [];
+        for (const id of orderIds) {
+            if (typeof id === "string" && ObjectId.isValid(id)) {
+                convertedOrderIds.push(new ObjectId(id));
+            }
+            convertedOrderIds.push(String(id));
+        }
+
+        matchFilter._id = { $in: convertedOrderIds };
+    }
+
     const orders = await db
       .collection("orders")
       .aggregate([
-        { $match: { userId: getDataOwnerId(user) } },
+        { $match: matchFilter },
         { $sort: { createdAt: -1 } },
         // Convert string client_id to ObjectId for proper lookup
         {
@@ -109,6 +151,10 @@ export async function GET() {
         : null,
     }));
 
+    if (user.role === "Staff") {
+      return NextResponse.json(sanitizeOrderForStaff(formatted));
+    }
+
     return NextResponse.json(formatted);
   } catch (error: any) {
     console.error("Error fetching orders:", error);
@@ -126,6 +172,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (user.role === "Staff") {
+      return NextResponse.json(
+        { success: false, message: "Forbidden: Staff members cannot create orders" },
+        { status: 403 }
+      );
+    }
+
     const limitError = await assertCanCreate(user, "orders", 1);
     if (limitError) return limitError;
 
@@ -133,10 +186,28 @@ export async function POST(request: Request) {
       material_cost = 0,
       labour_cost = 0,
       overhead_cost = 0,
+      quotation_id,
+      quotation_line_index,
       ...body
     } = await request.json();
     const db = await getDb();
     const ownerId = getDataOwnerId(user);
+
+    if (!quoteIndexEnsured) {
+      ensureQuoteOrderIndexes().catch(() => {});
+      quoteIndexEnsured = true;
+    }
+
+    const isFromQuote = Boolean(
+      quotation_id !== undefined &&
+      quotation_id !== null &&
+      quotation_id !== "" &&
+      quotation_line_index !== undefined &&
+      quotation_line_index !== null &&
+      quotation_line_index !== ""
+    );
+    const quotationId = isFromQuote ? String(quotation_id) : "";
+    const quotationLineIndex = isFromQuote ? Number(quotation_line_index) : -1;
 
     // ─── Pre-check material stock BEFORE creating order ─────
     const materialsToDeduct = Array.isArray(body.materials)
@@ -184,53 +255,126 @@ export async function POST(request: Request) {
       }
     }
 
-    // ─── Create order ───────────────────────────────────────
-    const orderResult = await db.collection("orders").insertOne({
-      userId: ownerId,
-      client_id: body.client_id,
-      product_name: body.product_name,
-      quantity: Number(body.quantity),
-      unit: body.unit || "kg",
-      material_source: body.material_source || "own",
-      rate: Number(body.rate),
-      total_amount: Number(body.total_amount),
-      material_cost: Number(material_cost) || 0,
-      labour_cost: Number(labour_cost) || 0,
-      overhead_cost: Number(overhead_cost) || 0,
-      delivery_date: body.delivery_date || null,
-      status: body.status || "pending",
-      payment_status: body.payment_status || "pending",
-      materials: Array.isArray(body.materials) ? body.materials : [],
-      estimated_material_cost: Number(body.estimated_material_cost) || 0,
-      estimated_gross_profit: Number(body.estimated_gross_profit) || 0,
-      estimated_margin: Number(body.estimated_margin) || 0,
-      priority: body.priority || "normal",
-      notes: body.notes || "",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      financial_year: getFinancialYear(new Date()),
-    });
+    // ─── Claim Quote Line if from quotation ─────────────────
+    let quoteRepo: ReturnType<typeof getQuoteRepository> | null = null;
+    if (isFromQuote) {
+      quoteRepo = getQuoteRepository();
+      const claimedQuote = await quoteRepo.claimLine(quotationId, ownerId, quotationLineIndex);
+      if (!claimedQuote) {
+        const existingQuote = await quoteRepo.findById(quotationId, ownerId);
+        const existingLine = existingQuote?.converted_lines?.find((cl) => cl.line_index === quotationLineIndex);
+        return NextResponse.json(
+          {
+            success: false,
+            error: "QUOTE_LINE_ALREADY_CONVERTED_OR_NOT_ELIGIBLE",
+            message: "Quote line already converted or not eligible",
+            existing_order_id: existingLine?.order_id || null,
+          },
+          { status: 409 }
+        );
+      }
+    }
 
-    // ─── Deduct inventory using $inc (atomic) ───────────────
-    for (const mat of materialsToDeduct) {
-      await db.collection("inventory").updateOne(
-        { _id: new ObjectId(mat.inventoryItemId), userId: ownerId },
-        {
-          $inc: { quantity: -Math.abs(Number(mat.quantityRequired)) },
-          $set: { updatedAt: new Date() },
-        }
+    // ─── Create order and deduct inventory ──────────────────
+    let orderResult;
+    try {
+      const orderDoc: Record<string, unknown> = {
+        userId: ownerId,
+        client_id: body.client_id,
+        product_name: body.product_name,
+        quantity: Number(body.quantity),
+        unit: body.unit || "kg",
+        material_source: body.material_source || "own",
+        rate: Number(body.rate),
+        total_amount: Number(body.total_amount),
+        material_cost: Number(material_cost) || 0,
+        labour_cost: Number(labour_cost) || 0,
+        overhead_cost: Number(overhead_cost) || 0,
+        delivery_date: body.delivery_date || null,
+        status: body.status || "pending",
+        payment_status: body.payment_status || "pending",
+        materials: Array.isArray(body.materials) ? body.materials : [],
+        estimated_material_cost: Number(body.estimated_material_cost) || 0,
+        estimated_gross_profit: Number(body.estimated_gross_profit) || 0,
+        estimated_margin: Number(body.estimated_margin) || 0,
+        priority: body.priority || "normal",
+        notes: body.notes || "",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        financial_year: getFinancialYear(new Date()),
+      };
+
+      if (isFromQuote) {
+        orderDoc.quotation_id = quotationId;
+      }
+
+      orderResult = await db.collection("orders").insertOne(orderDoc);
+
+      // ─── Deduct inventory using $inc (atomic) ───────────────
+      for (const mat of materialsToDeduct) {
+        await db.collection("inventory").updateOne(
+          { _id: new ObjectId(mat.inventoryItemId), userId: ownerId },
+          {
+            $inc: { quantity: -Math.abs(Number(mat.quantityRequired)) },
+            $set: { updatedAt: new Date() },
+          }
+        );
+
+        // Record deduction for audit trail
+        await db.collection("order_inventory_items").insertOne({
+          order_id: orderResult.insertedId.toString(),
+          inventory_id: mat.inventoryItemId,
+          item_name: mat.itemName || "",
+          quantity_deducted: Number(mat.quantityRequired),
+          userId: ownerId,
+          createdAt: new Date(),
+          financial_year: getFinancialYear(new Date()),
+        });
+      }
+    } catch (createErr) {
+      if (isFromQuote && quoteRepo) {
+        await quoteRepo.releaseClaim(quotationId, ownerId, quotationLineIndex);
+      }
+      throw createErr;
+    }
+
+    // ─── Attach order and audit log ─────────────────────────
+    if (isFromQuote && quoteRepo && orderResult) {
+      const attachRes = await quoteRepo.attachOrder(
+        quotationId,
+        ownerId,
+        quotationLineIndex,
+        orderResult.insertedId.toString()
       );
 
-      // Record deduction for audit trail
-      await db.collection("order_inventory_items").insertOne({
-        order_id: orderResult.insertedId.toString(),
-        inventory_id: mat.inventoryItemId,
-        item_name: mat.itemName || "",
-        quantity_deducted: Number(mat.quantityRequired),
-        userId: ownerId,
-        createdAt: new Date(),
-        financial_year: getFinancialYear(new Date()),
+      const userAny = user as any;
+      await logDataOperation({
+        organizationId: ownerId,
+        userId: String(user._id),
+        userName: userAny.fullName || userAny.name || user.email || "Unknown User",
+        userRole: "Admin",
+        action: `Created order ${orderResult.insertedId.toString()} from quotation ${attachRes?.quote.quotation_number || quotationId}, line ${quotationLineIndex}`,
+        actionType: "create",
+        module: "orders",
+        resourceId: orderResult.insertedId.toString(),
+        resourceType: "order",
       });
+
+      if (attachRes?.statusChangedToAccepted) {
+        await logDataOperation({
+          organizationId: ownerId,
+          userId: String(user._id),
+          userName: userAny.fullName || userAny.name || user.email || "Unknown User",
+          userRole: "Admin",
+          action: `Quotation ${attachRes.quote.quotation_number} status automatically changed from Sent to Accepted upon order conversion`,
+          actionType: "update",
+          module: "quotes",
+          resourceId: quotationId,
+          resourceType: "quotation",
+          beforeState: { status: "Sent" },
+          afterState: { status: "Accepted" },
+        });
+      }
     }
 
     const order = await db.collection("orders").findOne({ _id: orderResult.insertedId });

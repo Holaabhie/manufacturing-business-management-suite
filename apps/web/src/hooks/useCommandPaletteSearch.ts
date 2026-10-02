@@ -9,10 +9,13 @@ import {
   ShoppingCart,
   CreditCard,
   FileText,
+  Truck,
+  ReceiptText,
   Bot,
   User,
   Crown,
   Settings,
+  Clock,
 } from "lucide-react";
 
 export interface SearchResultItem {
@@ -26,6 +29,7 @@ export interface SearchResultItem {
 
 export interface QuickActionItem {
   name: string;
+  labelKey: string;
   icon: any;
   href: string;
 }
@@ -40,6 +44,8 @@ export interface RecentItem {
 
 export interface NavigationItem {
   name: string;
+  nameKey: string;
+  namespace?: "nav" | "common";
   href: string;
   icon: any;
   shortcut?: string;
@@ -53,23 +59,31 @@ export const recentItems: RecentItem[] = [
 ];
 
 export const navigationItems: NavigationItem[] = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, shortcut: "D" },
-  { name: "Orders", href: "/dashboard/orders", icon: ShoppingCart, shortcut: "O" },
-  { name: "Inventory", href: "/dashboard/inventory", icon: Package, shortcut: "I" },
-  { name: "Clients", href: "/dashboard/clients", icon: Users, shortcut: "C" },
-  { name: "Billing", href: "/dashboard/billing", icon: FileText, shortcut: "B" },
-  { name: "Payments", href: "/dashboard/payments", icon: CreditCard },
-  { name: "AI Assistant", href: "/dashboard/assistant", icon: Bot, shortcut: "A" },
-  { name: "Profile", href: "/dashboard/profile", icon: User },
-  { name: "Settings", href: "/dashboard/profile?tab=settings", icon: Settings },
-  { name: "Upgrade", href: "/dashboard/upgrade", icon: Crown },
+  { name: "Dashboard", nameKey: "dashboard", href: "/dashboard", icon: LayoutDashboard, shortcut: "D" },
+  { name: "Orders", nameKey: "orders", href: "/dashboard/orders", icon: ShoppingCart, shortcut: "O" },
+  { name: "Quotes", nameKey: "quotes", href: "/dashboard/quotes", icon: FileText, shortcut: "Q" },
+  { name: "Delivery Challans", nameKey: "deliveryChallans", href: "/dashboard/delivery-challans", icon: Truck },
+  { name: "Inventory", nameKey: "inventory", href: "/dashboard/inventory", icon: Package, shortcut: "I" },
+  { name: "Clients", nameKey: "clients", href: "/dashboard/clients", icon: Users, shortcut: "C" },
+  { name: "Billing", nameKey: "billing", href: "/dashboard/billing", icon: FileText, shortcut: "B" },
+  { name: "Payments", nameKey: "payments", href: "/dashboard/payments", icon: CreditCard },
+  { name: "Vendor Bills", nameKey: "vendorBills", href: "/dashboard/vendor-bills", icon: ReceiptText },
+  { name: "Payables", nameKey: "payables", href: "/dashboard/reports/payables", icon: Clock },
+  { name: "Payment Reminders", nameKey: "paymentReminders", href: "/dashboard/settings/reminders", icon: Clock },
+  { name: "AI Assistant", nameKey: "aiAssistant", href: "/dashboard/assistant", icon: Bot, shortcut: "A" },
+  { name: "Profile", nameKey: "profile", namespace: "common", href: "/dashboard/profile", icon: User },
+  { name: "Settings", nameKey: "settings", namespace: "common", href: "/dashboard/profile?tab=settings", icon: Settings },
+  { name: "Upgrade", nameKey: "upgrade", href: "/dashboard/upgrade", icon: Crown },
 ];
 
 export const quickActions: QuickActionItem[] = [
-  { name: "New Order", icon: ShoppingCart, href: "/dashboard/orders?new=true" },
-  { name: "New Client", icon: Users, href: "/dashboard/clients?new=true" },
-  { name: "Add Inventory Item", icon: Package, href: "/dashboard/inventory?new=true" },
-  { name: "Generate Report", icon: FileText, href: "/dashboard/assistant" },
+  { name: "New Order", labelKey: "actionNewOrder", icon: ShoppingCart, href: "/dashboard/orders?new=true" },
+  { name: "New Quote", labelKey: "actionNewQuote", icon: FileText, href: "/dashboard/quotes?new=true" },
+  { name: "New Challan", labelKey: "actionNewChallan", icon: Truck, href: "/dashboard/delivery-challans?new=true" },
+  { name: "New Client", labelKey: "actionNewClient", icon: Users, href: "/dashboard/clients?new=true" },
+  { name: "New Vendor Bill", labelKey: "actionNewVendorBill", icon: ReceiptText, href: "/dashboard/vendor-bills?action=new" },
+  { name: "Add Inventory Item", labelKey: "actionAddInventoryItem", icon: Package, href: "/dashboard/inventory?new=true" },
+  { name: "Generate Report", labelKey: "actionGenerateReport", icon: FileText, href: "/dashboard/assistant" },
 ];
 
 export function useCommandPaletteSearch() {

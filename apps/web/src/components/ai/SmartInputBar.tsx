@@ -4,6 +4,7 @@ import { useRef, useEffect } from "react";
 import { Send, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 interface SmartInputBarProps {
   value: string;
@@ -18,9 +19,11 @@ export function SmartInputBar({
   onChange,
   onSubmit,
   isLoading,
-  placeholder = "Ask anything about your business...",
+  placeholder,
 }: SmartInputBarProps) {
+  const t = useTranslations("assistant");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const resolvedPlaceholder = placeholder ?? t("inputPlaceholder");
 
   // Auto-resize textarea
   useEffect(() => {
@@ -48,7 +51,7 @@ export function SmartInputBar({
   };
 
   return (
-    <div className="flex-shrink-0 px-4 py-3 border-t border-gray-200 dark:border-white/[0.06]">
+    <div className="w-full flex-shrink-0">
       <form onSubmit={handleSubmit} className="max-w-[900px] mx-auto">
         <div className="ai-input-bar flex items-end gap-3">
           {/* Textarea */}
@@ -57,7 +60,7 @@ export function SmartInputBar({
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={placeholder}
+            placeholder={resolvedPlaceholder}
             rows={1}
             disabled={isLoading}
             className={cn(
@@ -75,16 +78,11 @@ export function SmartInputBar({
             className={cn(
               "flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center text-white",
               "transition-all duration-200",
+              value.trim()
+                ? "bg-primary shadow-sm hover:bg-primary/90"
+                : "bg-muted text-muted-foreground",
               "disabled:opacity-30 disabled:cursor-not-allowed"
             )}
-            style={{
-              background: value.trim()
-                ? "linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%)"
-                : "var(--ai-bg-surface-elevated)",
-              boxShadow: value.trim()
-                ? "0 4px 14px rgba(139, 92, 246, 0.3)"
-                : "none",
-            }}
           >
             {isLoading ? (
               <motion.div
@@ -99,18 +97,18 @@ export function SmartInputBar({
           </motion.button>
         </div>
 
-        {/* Hints */}
-        <div className="flex items-center justify-center gap-3 mt-2">
+        {/* Hints (desktop only to preserve mobile screen real estate) */}
+        <div className="hidden sm:flex items-center justify-center gap-3 mt-2">
           <span className="text-[10px] text-[var(--ai-text-tertiary)]">
-            Press{" "}
+            {t("inputHintPress")}
             <kbd className="px-1.5 py-0.5 bg-gray-100 dark:bg-white/5 rounded text-[9px] border border-gray-200 dark:border-white/8 font-mono">
               Enter
-            </kbd>{" "}
-            to send ·{" "}
+            </kbd>
+            {t("inputHintToSend")}
             <kbd className="px-1.5 py-0.5 bg-gray-100 dark:bg-white/5 rounded text-[9px] border border-gray-200 dark:border-white/8 font-mono">
               Shift+Enter
-            </kbd>{" "}
-            for new line
+            </kbd>
+            {t("inputHintForNewline")}
           </span>
         </div>
       </form>

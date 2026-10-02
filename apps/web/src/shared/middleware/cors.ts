@@ -36,9 +36,10 @@ function getAllowedOrigins(): string[] {
         );
     }
 
-    // Allow the configured NEXTAUTH_URL
-    if (process.env.NEXTAUTH_URL) {
-        origins.push(process.env.NEXTAUTH_URL);
+    // Allow the configured AUTH_URL or NEXTAUTH_URL
+    const configuredAuthUrl = process.env.AUTH_URL || process.env.NEXTAUTH_URL;
+    if (configuredAuthUrl) {
+        origins.push(configuredAuthUrl);
     }
 
     return origins;

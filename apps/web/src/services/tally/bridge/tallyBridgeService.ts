@@ -366,6 +366,12 @@ export async function ackJob(
                 },
             },
         );
+        if (result) {
+            await syncClientTallyStatus(db, organizationId, result.dedupeKey, result.sourceRef, {
+                status: "synced",
+                lastSyncedAt: now,
+            });
+        }
         return { updated: !!result };
     }
 
@@ -388,6 +394,15 @@ export async function ackJob(
                 },
             },
         );
+        if (result) {
+            const lastError = payload.tallyResponse !== undefined
+                ? payload.tallyResponse
+                : (payload.errorMessage || "Unknown error");
+            await syncClientTallyStatus(db, organizationId, result.dedupeKey, result.sourceRef, {
+                status: "failed",
+                lastError,
+            });
+        }
         return { updated: !!result };
     }
 
@@ -403,7 +418,7 @@ export async function ackJob(
 
     if (job.attempts >= job.maxAttempts) {
         // Max attempts reached → failed
-        await db.collection("tallysyncjobs").findOneAndUpdate(
+        const result = await db.collection("tallysyncjobs").findOneAndUpdate(
             {
                 _id: oid,
                 organizationId,
@@ -421,6 +436,15 @@ export async function ackJob(
                 },
             },
         );
+        if (result) {
+            const lastError = payload.tallyResponse !== undefined
+                ? payload.tallyResponse
+                : (payload.errorMessage || "Max attempts reached");
+            await syncClientTallyStatus(db, organizationId, result.dedupeKey, result.sourceRef, {
+                status: "failed",
+                lastError,
+            });
+        }
         return { updated: true };
     }
 
@@ -447,6 +471,36 @@ export async function ackJob(
         },
     );
     return { updated: true };
+}
+
+async function syncClientTallyStatus(
+    db: any,
+    organizationId: string,
+    dedupeKey?: string,
+    sourceRef?: { entityType?: string; entityId?: string },
+    tallySync?: { status: "synced" | "failed"; lastSyncedAt?: Date; lastError?: string },
+) {
+    if (!tallySync) return;
+    const isClientJob = (dedupeKey && dedupeKey.startsWith("client:")) || sourceRef?.entityType === "client";
+    if (!isClientJob) return;
+
+    const clientId = sourceRef?.entityId || dedupeKey?.replace(/^client:/, "");
+    if (!clientId) return;
+
+    try {
+        const { ObjectId } = await import("mongodb");
+        await db.collection("clients").updateOne(
+            { _id: new ObjectId(clientId), userId: organizationId },
+            {
+                $set: {
+                    tallySync,
+                    updatedAt: new Date(),
+                },
+            },
+        );
+    } catch (err) {
+        console.error(`[TallySync] Failed to update client ${clientId} tallySync status:`, err);
+    }
 }
 
 // ─── Job Enqueue (Service Function) ─────────────────────────────
@@ -510,6 +564,13 @@ export async function enqueueTallyJob(
                 status: { $in: ["pending", "processing"] },
             });
             if (existing) {
+                // If existing job is still pending, update requestXml so latest changes reach Tally
+                if (existing.status === "pending") {
+                    await db.collection("tallysyncjobs").updateOne(
+                        { _id: existing._id, status: "pending" },
+                        { $set: { requestXml: input.requestXml, updatedAt: now } },
+                    );
+                }
                 return { jobId: existing._id.toString(), isExisting: true };
             }
         }

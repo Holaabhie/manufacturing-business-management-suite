@@ -11,6 +11,7 @@ import { AuthProvider } from "@/components/AuthProvider";
 import { QueryProvider } from "@/components/QueryProvider";
 import { FeatureGateProvider } from "@/components/FeatureGateProvider";
 import { LocaleProvider } from "@/components/LocaleProvider";
+import { AppBootGate } from "@/components/AppBootGate";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -61,28 +62,14 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Script
-            id="orchids-browser-logs"
-            src="https://slelguoygbfzlpylpxfs.supabase.co/storage/v1/object/public/scripts/orchids-browser-logs.js"
-            strategy="afterInteractive"
-            data-orchids-project-id="fb5f37f5-26b1-40f3-be9b-f83c65b0de52"
-          />
           <ErrorReporter />
-          <Script
-            src="https://slelguoygbfzlpylpxfs.supabase.co/storage/v1/object/public/scripts//route-messenger.js"
-            strategy="afterInteractive"
-            data-target-origin="*"
-            data-message-type="ROUTE_CHANGE"
-            data-include-search-params="true"
-            data-only-in-iframe="true"
-            data-debug="true"
-            data-custom-data='{"appName": "YourApp", "version": "1.0.0", "greeting": "hi"}'
-          />
           <LocaleProvider>
             <AuthProvider>
               <QueryProvider>
                 <FeatureGateProvider>
-                  {children}
+                  <AppBootGate>
+                    {children}
+                  </AppBootGate>
                 </FeatureGateProvider>
               </QueryProvider>
             </AuthProvider>

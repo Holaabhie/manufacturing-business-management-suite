@@ -1,0 +1,26 @@
+<ENVELOPE>
+  <HEADER>
+    <TALLYREQUEST>Import Data</TALLYREQUEST>
+  </HEADER>
+  <BODY>
+    <IMPORTDATA>
+      <REQUESTDESC>
+        <REPORTNAME>All Masters</REPORTNAME>
+        <STATICVARIABLES>
+          <SVCURRENTCOMPANY>Ind Manager</SVCURRENTCOMPANY>
+        </STATICVARIABLES>
+      </REQUESTDESC>
+      <REQUESTDATA>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <LEDGER NAME="CGST" ACTION="Create or Alter">
+            <NAME>CGST</NAME>
+            <PARENT>Duties &amp; Taxes</PARENT>
+            <TAXTYPE>Central Tax</TAXTYPE>
+            <AFFECTSSTOCK>No</AFFECTSSTOCK>
+            <ISDUTYLEDGER>Yes</ISDUTYLEDGER>
+          </LEDGER>
+        </TALLYMESSAGE>
+      </REQUESTDATA>
+    </IMPORTDATA>
+  </BODY>
+</ENVELOPE>

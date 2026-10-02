@@ -94,7 +94,7 @@ export async function POST(request: Request) {
         try {
             const resendApiKey = process.env.RESEND_API_KEY;
             if (resendApiKey) {
-                const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+                const baseUrl = process.env.AUTH_URL || process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
                 const inviteUrl = `${baseUrl}/invite/accept?token=${token}`;
 
                 const emailRes = await fetch("https://api.resend.com/emails", {
@@ -104,7 +104,7 @@ export async function POST(request: Request) {
                         "Content-Type": "application/json",
                     },
                     body: JSON.stringify({
-                        from: process.env.RESEND_FROM_EMAIL || "noreply@indmanager.com",
+                        from: process.env.RESEND_FROM_EMAIL || "noreply@indmanager.in",
                         to: [email],
                         subject: `You're invited to join ${user.company_details?.companyName || "the team"} on IND Manager`,
                         html: `

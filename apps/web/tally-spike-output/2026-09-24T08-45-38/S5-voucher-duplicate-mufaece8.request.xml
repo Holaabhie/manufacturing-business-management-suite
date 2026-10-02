@@ -1,0 +1,81 @@
+<ENVELOPE>
+  <HEADER>
+    <TALLYREQUEST>Import Data</TALLYREQUEST>
+  </HEADER>
+  <BODY>
+    <IMPORTDATA>
+      <REQUESTDESC>
+        <REPORTNAME>Vouchers</REPORTNAME>
+        <STATICVARIABLES>
+          <SVCURRENTCOMPANY>Ind Manager</SVCURRENTCOMPANY>
+        </STATICVARIABLES>
+      </REQUESTDESC>
+      <REQUESTDATA>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <VOUCHER VCHTYPE="Sales" ACTION="Create" OBJVIEW="Invoice Voucher View">
+            <DATE>20260901</DATE>
+            <VOUCHERNUMBER>SPIKE-S4-mufaece8</VOUCHERNUMBER>
+            <REFERENCE>SPIKE-S4-mufaece8</REFERENCE>
+            <PARTYLEDGERNAME>Spike Traders &amp; Sons Enterprise mufaece8</PARTYLEDGERNAME>
+            <NARRATION>Spike test S4 — exactly balanced</NARRATION>
+            <ISINVOICE>Yes</ISINVOICE>
+            <PERSISTEDVIEW>Invoice Voucher View</PERSISTEDVIEW>
+
+            <!-- Duplicate prevention UDF tag -->
+            <UDF:IND_MANAGER_REF.LIST>
+              <UDF:IND_MANAGER_REF>IND_MANAGER_spike-inv-s4-mufaece8</UDF:IND_MANAGER_REF>
+            </UDF:IND_MANAGER_REF.LIST>
+
+            <!-- Party Ledger Entry (Dr) — Receivable -->
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>Spike Traders &amp; Sons Enterprise mufaece8</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+              <AMOUNT>-1456.78</AMOUNT>
+              <BILLALLOCATIONS.LIST>
+                <NAME>SPIKE-S4-mufaece8</NAME>
+                <BILLTYPE>New Ref</BILLTYPE>
+                <AMOUNT>-1456.78</AMOUNT>
+              </BILLALLOCATIONS.LIST>
+            </ALLLEDGERENTRIES.LIST>
+
+            <!-- Sales Ledger Entry (Cr) — Revenue -->
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>Sales Account</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <AMOUNT>1234.56</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+
+            <!-- GST Ledger Entries (Cr) -->
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>CGST</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <AMOUNT>111.11</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>SGST</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <AMOUNT>111.11</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+            <!-- Inventory Entries -->
+            <INVENTORYENTRIES.LIST>
+              <STOCKITEMNAME>Spike Widget Alpha mufaece8</STOCKITEMNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <RATE>123.46/NOS</RATE>
+              <AMOUNT>1234.56</AMOUNT>
+              <ACTUALQTY>10 NOS</ACTUALQTY>
+              <BILLEDQTY>10 NOS</BILLEDQTY>
+              <HSNCODE>8471</HSNCODE>
+              <BATCHALLOCATIONS.LIST>
+                <GODOWNNAME>Main Location</GODOWNNAME>
+                <BATCHNAME>Primary Batch</BATCHNAME>
+                <AMOUNT>1234.56</AMOUNT>
+                <ACTUALQTY>10 NOS</ACTUALQTY>
+                <BILLEDQTY>10 NOS</BILLEDQTY>
+              </BATCHALLOCATIONS.LIST>
+            </INVENTORYENTRIES.LIST>
+          </VOUCHER>
+        </TALLYMESSAGE>
+      </REQUESTDATA>
+    </IMPORTDATA>
+  </BODY>
+</ENVELOPE>

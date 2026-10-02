@@ -49,12 +49,15 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useTranslations } from "next-intl";
 
 // ─── Types ────────────────────────────────────────────────────
 
 export interface MoreMenuItem {
   name: string;
+  nameKey?: string;
   desc: string;
+  descKey?: string;
   icon: React.ComponentType<any>;
   emoji: string;
   href: string;
@@ -62,12 +65,14 @@ export interface MoreMenuItem {
 
 export interface MoreMenuSection {
   label: string;
+  labelKey?: string;
   color: string;
   items: MoreMenuItem[];
 }
 
 export interface QuickAction {
   label: string;
+  labelKey?: string;
   href: string;
   icon: React.ComponentType<any>;
 }
@@ -93,7 +98,10 @@ const STORAGE_KEY = "ind-more-menu-config";
 const STAFF_HIDDEN = [
   "Analytics",
   "Billing & Invoices",
+  "Quotes",
+  "Delivery Challans",
   "Payments",
+  "Vendor Bills",
   "Upgrade",
 ];
 
@@ -153,6 +161,7 @@ function SortableMenuItem({
   isVisible: boolean;
   onToggle: () => void;
 }) {
+  const t = useTranslations("moreMenu");
   const {
     attributes,
     listeners,
@@ -226,7 +235,7 @@ function SortableMenuItem({
             transition: "all 200ms ease",
           }}
         >
-          {item.name}
+          {item.nameKey ? t(item.nameKey as any) : item.name}
         </p>
       </div>
 
@@ -290,6 +299,7 @@ function CustomizationOverlay({
   onConfigChange: (config: MenuConfig) => void;
   onReset: () => void;
 }) {
+  const t = useTranslations("moreMenu");
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
@@ -343,13 +353,13 @@ function CustomizationOverlay({
 
   // Group ordered items by section for categorized display
   const groupedSections = useMemo(() => {
-    const result: { label: string; color: string; items: MoreMenuItem[] }[] = [];
+    const result: { label: string; labelKey?: string; color: string; items: MoreMenuItem[] }[] = [];
     for (const section of sections) {
       const sectionItems = orderedItemsBySection.filter((item) =>
         section.items.some((si) => si.name === item.name)
       );
       if (sectionItems.length > 0) {
-        result.push({ label: section.label, color: section.color, items: sectionItems });
+        result.push({ label: section.label, labelKey: section.labelKey, color: section.color, items: sectionItems });
       }
     }
     return result;
@@ -471,7 +481,7 @@ function CustomizationOverlay({
                         lineHeight: 1.2,
                       }}
                     >
-                      Customise Menu
+                      {t("customiseTitle")}
                     </h2>
                     <p
                       style={{
@@ -480,7 +490,7 @@ function CustomizationOverlay({
                         margin: "3px 0 0",
                       }}
                     >
-                      Drag to reorder · Toggle to show/hide
+                      {t("customiseSubtitle")}
                     </p>
                   </div>
                 </div>
@@ -549,7 +559,7 @@ function CustomizationOverlay({
                             margin: "0 0 8px 8px",
                           }}
                         >
-                          {section.label}
+                          {section.labelKey ? t(section.labelKey as any) : section.label}
                         </p>
 
                         {/* Items in this section */}
@@ -607,7 +617,7 @@ function CustomizationOverlay({
                   }}
                 >
                   <RotateCcw size={15} />
-                  Reset
+                  {t("reset")}
                 </button>
 
                 {/* Done — solid accent button */}
@@ -635,7 +645,7 @@ function CustomizationOverlay({
                     e.currentTarget.style.background = "#2563EB";
                   }}
                 >
-                  Done
+                  {t("done")}
                 </button>
               </div>
             </motion.div>
@@ -660,6 +670,7 @@ export function MoreMenuSheet({
 }: MoreMenuSheetProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const t = useTranslations("moreMenu");
   const [mounted, setMounted] = useState(false);
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const [sheetExpanded, setSheetExpanded] = useState(false);
@@ -710,6 +721,7 @@ export function MoreMenuSheet({
     // Re-group by section for display
     const result: {
       label: string;
+      labelKey?: string;
       color: string;
       items: MoreMenuItem[];
     }[] = [];
@@ -721,6 +733,7 @@ export function MoreMenuSheet({
       if (sectionItems.length > 0) {
         result.push({
           label: section.label,
+          labelKey: section.labelKey,
           color: section.color,
           items: sectionItems,
         });
@@ -788,7 +801,7 @@ export function MoreMenuSheet({
             className="text-[22px] font-semibold tracking-tight"
             style={{ color: "var(--overlay-text-primary)" }}
           >
-            More
+            {t("title")}
           </h2>
           <button
             onClick={() => setCustomizeOpen(true)}
@@ -808,7 +821,7 @@ export function MoreMenuSheet({
             }
           >
             <Settings2 size={14} />
-            Customise
+            {t("customise")}
           </button>
         </div>
 
@@ -846,7 +859,7 @@ export function MoreMenuSheet({
                 }
               >
                 <Plus size={14} strokeWidth={2.5} />
-                {action.label}
+                {action.labelKey ? t(action.labelKey as any) : action.label}
               </button>
             );
           })}
@@ -861,7 +874,7 @@ export function MoreMenuSheet({
                 className="text-[12px] font-medium tracking-[0.08em] uppercase mb-2 px-1"
                 style={{ color: "var(--overlay-text-muted)" }}
               >
-                {section.label}
+                {section.labelKey ? t(section.labelKey as any) : section.label}
               </p>
 
               {/* Section card container */}
@@ -920,7 +933,7 @@ export function MoreMenuSheet({
                                 : "var(--overlay-text-primary)",
                             }}
                           >
-                            {item.name}
+                            {item.nameKey ? t(item.nameKey as any) : item.name}
                           </p>
                           <p
                             className="text-[12px] truncate mt-0.5"
@@ -928,7 +941,7 @@ export function MoreMenuSheet({
                               color: "var(--overlay-text-muted)",
                             }}
                           >
-                            {item.desc}
+                            {item.descKey ? t(item.descKey as any) : item.desc}
                           </p>
                         </div>
 

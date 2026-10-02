@@ -1,8 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -52,6 +52,7 @@ const initialForm = {
   productionAssignments: [{ id: "", machineId: "", machineName: "", operatorId: "", operatorName: "" }] as ProductionAssignment[],
   new_client_name: "", new_client_phone: "", new_client_email: "",
   materials: [] as MaterialEntry[],
+  notes: "",
 };
 
 // ─── Clone source metadata ───────────────────────────────
@@ -62,13 +63,19 @@ interface ClonedFromInfo {
   gstDerived?: boolean; // true when GST was inferred, not read from DB
 }
 
-export default function CreateOrderWizard() {
+export function CreateOrderWizardContent() {
   const t = useTranslations("orders");
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { restoreState, persist, clearPageState } = useCachedPage({
     pageKey: "create_order",
     maxAgeMs: 5 * 60 * 1000,
   });
+
+  const source = searchParams.get("source");
+  const quoteIdParam = searchParams.get("quote_id");
+  const lineParam = searchParams.get("line");
+  const isFromQuote = source === "quote" && !!quoteIdParam;
 
   const [step, setStep] = useState(0);
   const [form, setForm] = useState(initialForm);
@@ -85,8 +92,17 @@ export default function CreateOrderWizard() {
   const [showAllPrevious, setShowAllPrevious] = useState(false);
   const prevClientIdRef = useRef(form.client_id);
 
-  // Restore state on mount
+  // ─── Quote prefill state ───────────────────────────────────
+  const [fromQuoteInfo, setFromQuoteInfo] = useState<{
+    quotation_id: string;
+    quotation_number: string;
+    quotation_line_index: number;
+    roundingWarning?: string | null;
+  } | null>(null);
+
+  // Restore state on mount (skipped if source=quote)
   useEffect(() => {
+    if (isFromQuote) return;
     const cached = restoreState();
     if (cached) {
       if (typeof cached.step === "number") setStep(cached.step);
@@ -94,17 +110,113 @@ export default function CreateOrderWizard() {
       if (cached.newClient) setNewClient(cached.newClient as typeof newClient);
       if (typeof cached.addingClient === "boolean") setAddingClient(cached.addingClient);
     }
-  }, [restoreState]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Persist state on change
+  // Persist state on change (skipped if from quote)
   useEffect(() => {
+    if (isFromQuote) return;
     persist({
       step,
       form,
       newClient,
       addingClient,
     });
-  }, [step, form, newClient, addingClient, persist]);
+  }, [step, form, newClient, addingClient, persist, isFromQuote]);
+
+  // ─── Fetch quote when source=quote ─────────────────────────
+  useEffect(() => {
+    if (!isFromQuote || !quoteIdParam) return;
+    let isMounted = true;
+    const lineIndex = lineParam ? parseInt(lineParam, 10) : 0;
+
+    (async () => {
+      try {
+        const res = await fetch(`/api/quotes/${quoteIdParam}`, { credentials: "include" });
+        if (!res.ok) throw new Error("Failed to load quotation details");
+        const quote = await res.json();
+        if (!isMounted || !quote) return;
+
+        const line = quote.items?.[lineIndex] || quote.items?.[0];
+        if (!line) {
+          toast.error("Quote line item not found");
+          return;
+        }
+
+        if ((line.discount || 0) >= line.qty * line.rate) {
+          toast.error(t("cannotConvertDiscountTooHigh") || "Cannot convert line where discount equals or exceeds line amount");
+          router.push("/dashboard/quotes");
+          return;
+        }
+
+        const hasClient = Boolean(quote.clientId);
+        const qty = line.qty || 1;
+        const discount = line.discount || 0;
+        const effectiveRate = qty > 0 ? (qty * (line.rate || 0) - discount) / qty : (line.rate || 0);
+        const unitRateStr = String(effectiveRate);
+        const orderVal = String(qty * effectiveRate);
+
+        const termsText = quote.terms ? quote.terms.trim() : "None";
+        let notesText = `Created from Quote ${quote.quotation_number}, line ${lineIndex + 1}. Quote terms: ${termsText}`;
+        if (discount > 0) {
+          notesText += `. Quote rate ${line.rate}, line discount ${discount} applied → effective rate ${effectiveRate}`;
+        }
+
+        const gstApplicable = Boolean(line.gst_rate && line.gst_rate > 0);
+        const gstPct = gstApplicable ? line.gst_rate : 0;
+        const prefillOrderVal = qty * effectiveRate;
+        const wizardTotal = prefillOrderVal + (prefillOrderVal * gstPct / 100);
+        const quoteLineTotal = line.line_total || 0;
+        const delta = Math.abs(wizardTotal - quoteLineTotal);
+        const roundingWarning = delta > 0.05
+          ? t("create.fromQuoteBanner.roundingWarning", { delta: delta.toFixed(2) })
+          : null;
+
+        setForm((prev) => ({
+          ...prev,
+          client_id: hasClient ? quote.clientId : "",
+          product_name: line.description || "",
+          quantity: String(line.qty || ""),
+          unit: line.unit || "pcs",
+          unit_rate: unitRateStr,
+          order_value: orderVal,
+          delivery_date: "",
+          gst_applicable: gstApplicable,
+          gst_percent: line.gst_rate ? String(line.gst_rate) : "18",
+          materials: [],
+          setup_production: false,
+          start_date: "",
+          productionAssignments: [{ id: "", machineId: "", machineName: "", operatorId: "", operatorName: "" }],
+          notes: notesText,
+        }));
+
+        if (!hasClient) {
+          setAddingClient(true);
+          setNewClient({
+            name: quote.customer?.name || "",
+            phone: quote.customer?.phone || "",
+            email: quote.customer?.email || "",
+          });
+        } else {
+          setAddingClient(false);
+        }
+
+        setFromQuoteInfo({
+          quotation_id: quote.id,
+          quotation_number: quote.quotation_number,
+          quotation_line_index: lineIndex,
+          roundingWarning,
+        });
+      } catch (err: any) {
+        console.error(err);
+        toast.error(err.message || "Failed to load quotation for order prefill");
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isFromQuote, quoteIdParam, lineParam]);
 
   // ─── Data fetching ─────────────────────────────────────────
   const [clients, setClients] = useState<any[]>([]);
@@ -349,6 +461,13 @@ export default function CreateOrderWizard() {
         estimated_margin: orderVal > 0
           ? Math.round(((orderVal - form.materials.reduce((acc, m) => acc + m.quantityRequired * (m.purchase_cost_per_unit || 0), 0)) / orderVal) * 1000) / 10
           : 0,
+        notes: form.notes || "",
+        ...(fromQuoteInfo
+          ? {
+              quotation_id: fromQuoteInfo.quotation_id,
+              quotation_line_index: fromQuoteInfo.quotation_line_index,
+            }
+          : {}),
       };
 
       const oRes = await fetch("/api/orders", {
@@ -357,6 +476,17 @@ export default function CreateOrderWizard() {
         body: JSON.stringify(orderPayload),
       });
       const oData = await oRes.json();
+      if (oRes.status === 409 && oData.error === "QUOTE_LINE_ALREADY_CONVERTED_OR_NOT_ELIGIBLE") {
+        toast.error(t("toasts.quoteLineAlreadyConverted") || "Quote line already converted or not eligible", {
+          action: oData.existing_order_id
+            ? {
+                label: "View Order",
+                onClick: () => router.push(`/dashboard/orders/${oData.existing_order_id}`),
+              }
+            : undefined,
+        });
+        return;
+      }
       if (oRes.status === 403 || oData.code === "PLAN_LIMIT_REACHED") {
         toast.error(
           `Starter tier limit reached (${STARTER_LIMIT} orders). Upgrade to Pro for unlimited.`,
@@ -467,6 +597,43 @@ export default function CreateOrderWizard() {
         <motion.div className="h-full bg-[var(--primary)] rounded-full" animate={{ width: `${((step + 1) / STEPS.length) * 100}%` }} transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }} />
       </div>
 
+      {/* ── From Quote banner ── */}
+      <AnimatePresence>
+        {fromQuoteInfo && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mb-4 overflow-hidden"
+          >
+            <div className="flex items-center gap-3 px-4 py-3 rounded-[12px] border border-[var(--primary)]/20 bg-[rgba(0,122,255,0.06)]">
+              <Info className="h-4 w-4 text-[var(--primary)] flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-semibold text-[var(--primary)]">
+                  {t("create.fromQuoteBanner.title", { number: fromQuoteInfo.quotation_number })}
+                </p>
+                <p className="text-[11px] text-[var(--muted-foreground)] mt-0.5">
+                  {t("create.fromQuoteBanner.hint")}
+                </p>
+                {fromQuoteInfo.roundingWarning && (
+                  <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1 font-medium">
+                    {fromQuoteInfo.roundingWarning}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setFromQuoteInfo(null)}
+                className="w-[28px] h-[28px] rounded-[8px] flex items-center justify-center hover:bg-[rgba(0,122,255,0.1)] transition-colors cursor-pointer flex-shrink-0"
+                aria-label={t("create.fromQuoteBanner.dismiss")}
+              >
+                <X className="h-3.5 w-3.5 text-[var(--primary)]" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ── Template Loaded banner ── */}
       <AnimatePresence>
         {clonedFrom && (
@@ -555,5 +722,13 @@ export default function CreateOrderWizard() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function CreateOrderWizard() {
+  return (
+    <Suspense fallback={<div className="p-6 text-xs text-[var(--muted-foreground)]">Loading...</div>}>
+      <CreateOrderWizardContent />
+    </Suspense>
   );
 }

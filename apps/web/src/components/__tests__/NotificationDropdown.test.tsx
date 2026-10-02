@@ -57,3 +57,56 @@ describe("NotificationDropdown — timeAgo helper", () => {
     expect(timeAgo("")).toBe("—");
   });
 });
+
+import { getNotificationDisplayText } from "../NotificationDropdown";
+import enMessages from "@/messages/en";
+import hiMessages from "@/messages/hi";
+import guMessages from "@/messages/gu";
+import mrMessages from "@/messages/mr";
+
+function createMockT(messages: Record<string, any>) {
+  return (key: string, params?: Record<string, any>) => {
+    const template = messages.notifications?.[key] || key;
+    if (!params) return template;
+    return template.replace(/\{(\w+)\}/g, (_: string, match: string) => params[match] ?? `{${match}}`);
+  };
+}
+
+describe("NotificationDropdown — getNotificationDisplayText locale switch", () => {
+  const sameStoredNotification = {
+    templateKey: "overdue",
+    params: {
+      order: "Order #1042",
+      client: "Acme Corp",
+      date: "22 Sep",
+    },
+  };
+
+  it("renders the exact same stored notification correctly in English", () => {
+    const tEn = createMockT(enMessages);
+    const result = getNotificationDisplayText(sameStoredNotification, tEn);
+    expect(result.title).toBe("Order #1042 is overdue");
+    expect(result.message).toBe("For Acme Corp — was due 22 Sep");
+  });
+
+  it("re-renders the exact same stored notification in Hindi upon locale switch", () => {
+    const tHi = createMockT(hiMessages);
+    const result = getNotificationDisplayText(sameStoredNotification, tHi);
+    expect(result.title).toBe("ऑर्डर #1042 अतिदेय है");
+    expect(result.message).toBe("Acme Corp के लिए — नियत तारीख 22 Sep थी");
+  });
+
+  it("re-renders the exact same stored notification in Gujarati upon locale switch", () => {
+    const tGu = createMockT(guMessages);
+    const result = getNotificationDisplayText(sameStoredNotification, tGu);
+    expect(result.title).toBe("ઓર્ડર #1042 બાકી/અતિદેય છે");
+    expect(result.message).toBe("Acme Corp માટે — નિયત તારીખ 22 Sep હતી");
+  });
+
+  it("re-renders the exact same stored notification in Marathi upon locale switch", () => {
+    const tMr = createMockT(mrMessages);
+    const result = getNotificationDisplayText(sameStoredNotification, tMr);
+    expect(result.title).toBe("ऑर्डर #1042 थकीत आहे");
+    expect(result.message).toBe("Acme Corp साठी — देय तारीख 22 Sep होती");
+  });
+});

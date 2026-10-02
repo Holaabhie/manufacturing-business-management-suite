@@ -109,12 +109,39 @@ function buildExportLedgersXml(company: string): string {
   <BODY>
     <EXPORTDATA>
       <REQUESTDESC>
-        <REPORTNAME>List of Ledgers</REPORTNAME>
+        <REPORTNAME>List of Accounts</REPORTNAME>
         <STATICVARIABLES>
           <SVCURRENTCOMPANY>${escapeXml(company)}</SVCURRENTCOMPANY>
         </STATICVARIABLES>
       </REQUESTDESC>
     </EXPORTDATA>
+  </BODY>
+</ENVELOPE>`;
+}
+
+// ── Prerequisite Stock Group "Primary" XML ───────────────────────────
+function buildStockGroupPrimaryXml(company: string): string {
+  return `<ENVELOPE>
+  <HEADER>
+    <TALLYREQUEST>Import Data</TALLYREQUEST>
+  </HEADER>
+  <BODY>
+    <IMPORTDATA>
+      <REQUESTDESC>
+        <REPORTNAME>All Masters</REPORTNAME>
+        <STATICVARIABLES>
+          <SVCURRENTCOMPANY>${escapeXml(company)}</SVCURRENTCOMPANY>
+        </STATICVARIABLES>
+      </REQUESTDESC>
+      <REQUESTDATA>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <STOCKGROUP NAME="Primary" ACTION="Create">
+            <NAME>Primary</NAME>
+            <PARENT/>
+          </STOCKGROUP>
+        </TALLYMESSAGE>
+      </REQUESTDATA>
+    </IMPORTDATA>
   </BODY>
 </ENVELOPE>`;
 }
@@ -126,21 +153,23 @@ interface ScenarioResult {
   created: number;
   altered: number;
   errors: number;
+  exceptionsCount: number;
   lineError: string;
   exceptions: string;
 }
 
 // ── Parse Tally response for import stats ─────────────────────────────
-function parseImportResponse(body: string): { created: number; altered: number; errors: number; lineError: string; exceptions: string } {
+function parseImportResponse(body: string): { created: number; altered: number; errors: number; exceptionsCount: number; lineError: string; exceptions: string } {
   const created = parseInt(extractTag(body, "CREATED") || "0", 10) || 0;
   const altered = parseInt(extractTag(body, "ALTERED") || "0", 10) || 0;
 
   // Errors: check LINEERROR, ERRORS count, or EXCEPTIONS
   const lineError = extractTag(body, "LINEERROR");
   const errors = parseInt(extractTag(body, "ERRORS") || "0", 10) || (lineError ? 1 : 0);
+  const exceptionsCount = parseInt(extractTag(body, "EXCEPTIONS") || "0", 10) || 0;
   const exceptions = extractTag(body, "FAULTSTRING") || extractTag(body, "EXCEPTION") || "";
 
-  return { created, altered, errors, lineError, exceptions };
+  return { created, altered, errors, exceptionsCount, lineError, exceptions };
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -208,11 +237,17 @@ async function main() {
         created: parsed.created,
         altered: parsed.altered,
         errors: parsed.errors,
+        exceptionsCount: parsed.exceptionsCount,
         lineError: parsed.lineError.slice(0, 120),
         exceptions: parsed.exceptions.slice(0, 120),
       };
       results.push(result);
-      console.log(`  HTTP ${status} | C:${parsed.created} A:${parsed.altered} E:${parsed.errors} ${parsed.lineError ? "LINEERR:" + parsed.lineError.slice(0, 60) : "OK"}`);
+      const statusNote = parsed.lineError
+        ? `LINEERR:${parsed.lineError.slice(0, 60)}`
+        : parsed.exceptionsCount > 0
+        ? `EXCEPTIONS:${parsed.exceptionsCount}`
+        : "OK";
+      console.log(`  HTTP ${status} | C:${parsed.created} A:${parsed.altered} E:${parsed.errors} ${statusNote}`);
       return result;
     } catch (err: any) {
       const result: ScenarioResult = {
@@ -221,6 +256,7 @@ async function main() {
         created: 0,
         altered: 0,
         errors: 1,
+        exceptionsCount: 0,
         lineError: "",
         exceptions: err.message,
       };
@@ -264,6 +300,18 @@ async function main() {
   // ── S1-export: Export Ledger collection ────────────────────────────
   const exportXml = buildExportLedgersXml(company);
   await runScenario(`S1-export-ledgers-${suffix}`, exportXml);
+  const exportResFile = path.join(outDir, `S1-export-ledgers-${suffix}.response.xml`);
+  if (fs.existsSync(exportResFile)) {
+    const exportBody = fs.readFileSync(exportResFile, "utf-8");
+    const found1a = exportBody.includes(escapeXml(partyName1a));
+    const found1b = exportBody.includes(escapeXml(partyName1b));
+    console.log(`  🔍 Export verification (List of Accounts): found S1a ledger: ${found1a}, S1b ledger: ${found1b}`);
+  }
+
+  // ── Prereq: Stock Group "Primary" (FIX 1) ──────────────────────────
+  console.log("\n▶ Creating prerequisite stock group (Primary) ...");
+  const stockGroupPrimaryXml = buildStockGroupPrimaryXml(company);
+  await runScenario(`S-prereq-stockgroup-primary-${suffix}`, stockGroupPrimaryXml);
 
   // ── S2: Stock item create ──────────────────────────────────────────
   const testItem: TallyLineItem = {
@@ -371,8 +419,9 @@ async function main() {
     "CREATED".padStart(7),
     "ALTERED".padStart(7),
     "ERRORS".padStart(6),
-    "LINEERROR".padEnd(60),
-    "EXCEPTIONS".padEnd(60),
+    "EXCEPTIONS".padStart(10),
+    "LINEERROR".padEnd(50),
+    "EXCEPTION_MSG".padEnd(50),
   ].join(" | ");
   const sep = "─".repeat(header.length);
 
@@ -387,8 +436,9 @@ async function main() {
       String(r.created).padStart(7),
       String(r.altered).padStart(7),
       String(r.errors).padStart(6),
-      (r.lineError || "-").padEnd(60),
-      (r.exceptions || "-").padEnd(60),
+      String(r.exceptionsCount).padStart(10),
+      (r.lineError || "-").padEnd(50),
+      (r.exceptions || "-").padEnd(50),
     ].join(" | "));
   }
 
@@ -396,7 +446,7 @@ async function main() {
   console.log(`\nOutput files: ${outDir}`);
   console.log(`Total scenarios: ${results.length}`);
   console.log(`  Passed (created>0 or altered>0): ${results.filter(r => r.created > 0 || r.altered > 0).length}`);
-  console.log(`  Errors: ${results.filter(r => r.errors > 0).length}`);
+  console.log(`  Errors / Exceptions: ${results.filter(r => r.errors > 0 || r.exceptionsCount > 0).length}`);
   console.log(`  Failed (HTTP 0): ${results.filter(r => r.httpStatus === 0).length}`);
 }
 

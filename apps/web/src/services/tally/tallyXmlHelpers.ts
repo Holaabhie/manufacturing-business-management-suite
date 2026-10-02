@@ -7,12 +7,13 @@
  */
 
 /**
- * Converts ISO date string to Tally date format.
+ * Converts ISO date string or Date object to Tally date format.
  * "2026-05-19" → "20260519"
  */
-export function formatTallyDate(isoDate: string): string {
-    if (!isoDate) return "";
-    const cleaned = isoDate.split("T")[0]; // strip time if present
+export function formatTallyDate(date: string | Date): string {
+    if (!date) return "";
+    const str = date instanceof Date ? date.toISOString() : String(date);
+    const cleaned = str.split("T")[0]; // strip time if present
     return cleaned.replace(/-/g, "");
 }
 
@@ -155,7 +156,16 @@ export function getTallyStateName(stateCode: string): string {
         "38": "Ladakh",
     };
 
-    return stateMap[stateCode] || "Other Territory";
+    if (stateMap[stateCode]) return stateMap[stateCode];
+
+    // If input is already a known state name (case-insensitive)
+    const normalizedInput = stateCode.trim().toLowerCase();
+    const matchedState = Object.values(stateMap).find(
+        (name) => name.toLowerCase() === normalizedInput,
+    );
+    if (matchedState) return matchedState;
+
+    return "Other Territory";
 }
 
 /**

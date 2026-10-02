@@ -26,15 +26,24 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
 STRIPE_SECRET_KEY=your_stripe_secret_key
 STRIPE_PRO_PRICE_ID=your_stripe_price_id
 
-# Authentication Configuration
+# Authentication Configuration (Auth.js v5 / NextAuth.js)
+# AUTH_URL & AUTH_SECRET are inferred automatically (aliased for NEXTAUTH_URL & NEXTAUTH_SECRET)
+AUTH_URL=http://localhost:3000
 NEXTAUTH_URL=http://localhost:3000
+AUTH_SECRET=your_random_secret_key_here_min_32_chars
 NEXTAUTH_SECRET=your_random_secret_key_here_min_32_chars
+AUTH_TRUST_HOST=true
 
-# Google OAuth Configuration
+# Google OAuth Configuration (Inferred automatically as AUTH_GOOGLE_ID & AUTH_GOOGLE_SECRET)
+AUTH_GOOGLE_ID=your_google_client_id
+AUTH_GOOGLE_SECRET=your_google_client_secret
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 
-# Microsoft OAuth Configuration  
+# Microsoft OAuth Configuration (Inferred automatically as AUTH_MICROSOFT_ENTRA_ID_*)
+AUTH_MICROSOFT_ENTRA_ID_ID=your_azure_ad_client_id
+AUTH_MICROSOFT_ENTRA_ID_SECRET=your_azure_ad_client_secret
+AUTH_MICROSOFT_ENTRA_ID_ISSUER=https://login.microsoftonline.com/common/v2.0
 AZURE_AD_CLIENT_ID=your_azure_ad_client_id
 AZURE_AD_CLIENT_SECRET=your_azure_ad_client_secret
 AZURE_AD_TENANT_ID=your_azure_ad_tenant_id

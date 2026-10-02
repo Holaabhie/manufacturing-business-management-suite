@@ -1,8 +1,34 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
+import GitHub from "next-auth/providers/github";
 import { connectToDatabase } from "@/lib/mongodb";
 import { authLogger } from "@/infrastructure/logging/logger";
+
+// ── Environment Variable Inference Backward Compatibility ──────────
+// NextAuth.js v5 automatically infers AUTH_{PROVIDER}_{ID|SECRET} and AUTH_SECRET / AUTH_URL.
+// For backwards compatibility, map legacy variables if modern AUTH_ variables are not yet set.
+if (!process.env.AUTH_GOOGLE_ID && process.env.GOOGLE_CLIENT_ID) {
+  process.env.AUTH_GOOGLE_ID = process.env.GOOGLE_CLIENT_ID;
+}
+if (!process.env.AUTH_GOOGLE_SECRET && process.env.GOOGLE_CLIENT_SECRET) {
+  process.env.AUTH_GOOGLE_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+}
+if (!process.env.AUTH_MICROSOFT_ENTRA_ID_ID && process.env.AZURE_AD_CLIENT_ID) {
+  process.env.AUTH_MICROSOFT_ENTRA_ID_ID = process.env.AZURE_AD_CLIENT_ID;
+}
+if (!process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET && process.env.AZURE_AD_CLIENT_SECRET) {
+  process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET = process.env.AZURE_AD_CLIENT_SECRET;
+}
+if (!process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER && process.env.AZURE_AD_TENANT_ID) {
+  process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER = `https://login.microsoftonline.com/${process.env.AZURE_AD_TENANT_ID}/v2.0`;
+}
+if (!process.env.AUTH_URL && process.env.NEXTAUTH_URL) {
+  process.env.AUTH_URL = process.env.NEXTAUTH_URL;
+}
+if (!process.env.AUTH_SECRET && process.env.NEXTAUTH_SECRET) {
+  process.env.AUTH_SECRET = process.env.NEXTAUTH_SECRET;
+}
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   // NOTE: We intentionally do NOT use MongoDBAdapter here.
@@ -10,36 +36,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   // the JWT flow and cause silent sign-in failures. Instead, we handle
   // user creation/lookup manually in the signIn callback below.
   providers: [
+    // NextAuth.js v5 automatically infers AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET.
+    // Provider function is called only to configure custom authorization parameters.
     Google({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
       authorization: {
         params: {
           prompt: "select_account",
         },
       },
-      profile(profile) {
-        return {
-          id: profile.sub,
-          name: profile.name,
-          email: profile.email,
-          image: profile.picture,
-        };
-      },
     }),
-    MicrosoftEntraID({
-      clientId: process.env.AZURE_AD_CLIENT_ID,
-      clientSecret: process.env.AZURE_AD_CLIENT_SECRET,
-      tenantId: process.env.AZURE_AD_TENANT_ID,
-      profile(profile) {
-        return {
-          id: profile.sub,
-          name: profile.name,
-          email: profile.email,
-          image: profile.picture,
-        };
-      },
-    }),
+    // NextAuth.js v5 automatically infers AUTH_MICROSOFT_ENTRA_ID_ID, AUTH_MICROSOFT_ENTRA_ID_SECRET,
+    // and AUTH_MICROSOFT_ENTRA_ID_ISSUER.
+    MicrosoftEntraID,
+    // GitHub provider automatically infers AUTH_GITHUB_ID & AUTH_GITHUB_SECRET when configured.
+    ...(process.env.AUTH_GITHUB_ID ? [GitHub] : []),
   ],
   // Trust the host header (required for OAuth redirects in development)
   trustHost: true,
@@ -52,9 +62,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       const provider = account.provider;
 
-      if (provider === "google" || provider === "microsoft-entra-id") {
+      if (provider === "google" || provider === "microsoft-entra-id" || provider === "github") {
         const providerIdField =
-          provider === "google" ? "googleId" : "microsoftId";
+          provider === "google" ? "googleId" : provider === "github" ? "githubId" : "microsoftId";
 
         // Check if user already exists by email
         const existingUser = await User.findOne({ email: user.email });
@@ -146,7 +156,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     signIn: "/login",
     error: "/login?error=oauth",
   },
-  useSecureCookies: process.env.NODE_ENV === "production" && !process.env.NEXTAUTH_URL?.startsWith("http://localhost"),
+  useSecureCookies: process.env.NODE_ENV === "production" && !(process.env.AUTH_URL || process.env.NEXTAUTH_URL)?.startsWith("http://localhost"),
   secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
   session: {
     strategy: "jwt",

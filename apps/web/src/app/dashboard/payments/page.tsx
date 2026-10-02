@@ -72,6 +72,8 @@ import {
   useDeletePayment,
 } from "@/lib/hooks/use-orders";
 import { useRole } from "@/lib/hooks/use-role";
+import { MonthYearFilter, matchesMonthYear, type MonthYearFilterValue } from "@/components/ui/month-year-filter";
+import { useTenantCreationDate } from "@/hooks/useTenantCreationDate";
 
 // ─── Types ──────────────────────────────────────────────
 interface Client { id: string; name: string; }
@@ -231,6 +233,7 @@ function PaymentsSkeleton() {
 export default function PaymentsPage() {
   const t = useTranslations("payments");
   const tCommon = useTranslations("common");
+  const tReminders = useTranslations("reminders");
   const { locale } = useAppLocale();
   const dateLocale = locale === 'hi' ? 'hi-IN' : locale === 'gu' ? 'gu-IN' : locale === 'mr' ? 'mr-IN' : 'en-IN';
   // ─── React Query: cached data ────────────────────────
@@ -248,6 +251,11 @@ export default function PaymentsPage() {
   // ─── Local UI State ──────────────────────────────────
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { earliestDate } = useTenantCreationDate();
+  const [monthYear, setMonthYear] = useState<MonthYearFilterValue>({
+    year: new Date().getFullYear(),
+    month: "all",
+  });
   const [isDeleteDialogOpenConfirm, setIsDeleteDialogOpenConfirm] = useState(false);
   const [paymentToDeleteId, setPaymentToDeleteId] = useState<string | null>(null);
   const [viewType, setViewType] = useState<"receivables" | "history" | "clients">("receivables");
@@ -352,12 +360,16 @@ export default function PaymentsPage() {
 
   const filteredHistory = useMemo(
     () =>
-      payments.filter((p: any) =>
-        p.client?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.order?.productName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.referenceId?.toLowerCase().includes(searchTerm.toLowerCase()),
-      ),
-    [payments, searchTerm],
+      payments.filter((p: any) => {
+        const matchesSearch =
+          p.client?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.order?.productName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.referenceId?.toLowerCase().includes(searchTerm.toLowerCase());
+        const paymentDate = p.paymentDate || p.payment_date || p.createdAt;
+        const matchesDate = matchesMonthYear(paymentDate, monthYear);
+        return matchesSearch && matchesDate;
+      }),
+    [payments, searchTerm, monthYear],
   );
 
   const clientSummaries = useMemo(
@@ -1085,6 +1097,15 @@ export default function PaymentsPage() {
 
         {viewType === "history" && (
           <>
+          {/* Month/Year Filter for Payment History */}
+          <div className="w-full min-w-0 mb-3">
+            <MonthYearFilter
+              earliestDate={earliestDate}
+              value={monthYear}
+              onChange={setMonthYear}
+            />
+          </div>
+
           {/* Mobile Cards */}
           <div className="flex flex-col gap-3 md:hidden">
             {filteredHistory.length === 0 ? (
@@ -1237,9 +1258,31 @@ export default function PaymentsPage() {
 
             <button
               className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--muted)] active:bg-[var(--muted)] text-[var(--foreground)] text-left w-full"
-              onClick={() => {
+              onClick={async () => {
                 closePaymentSheet();
-                toast.info(t("toasts.reminderComingSoon"));
+                if (!selectedPayment?.orderId) {
+                  toast.info(tReminders("noOrderLinked"));
+                  return;
+                }
+                try {
+                  const res = await fetch(`/api/reminders/logs?order_id=${encodeURIComponent(selectedPayment.orderId)}&limit=1`);
+                  const data = await res.json();
+                  if (data?.logs && data.logs.length > 0) {
+                    const lastLog = data.logs[0];
+                    const date = lastLog.scheduled_date || (lastLog.created_at ? String(lastLog.created_at).slice(0, 10) : "");
+                    toast.info(
+                      tReminders("lastReminderSent", {
+                        date: date || "recent",
+                        channel: lastLog.channel,
+                        status: lastLog.status,
+                      })
+                    );
+                  } else {
+                    toast.info(tReminders("noReminderSent"));
+                  }
+                } catch {
+                  toast.info(tReminders("noReminderSent"));
+                }
               }}
             >
               <Send className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />

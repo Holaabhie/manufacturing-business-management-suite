@@ -272,6 +272,7 @@ export function StepClientProduct({
 // STEP 2: Financials
 // ═════════════════════════════════════════════════════════════
 export function StepFinancials({ form, setForm }: { form: any; setForm: (f: any) => void }) {
+  const t = useTranslations("orders.create");
   // ─── Derived from Step 1 ──────────────────────────────
   const productQuantity = parseFloat(form.quantity) || 0;
   const productUnit = (form.unit || 'unit').toUpperCase();
@@ -444,6 +445,7 @@ function getNextId(): string {
 export function StepProduction({
   form, setForm, machines, employees,
 }: { form: any; setForm: (f: any) => void; machines: any[]; employees: any[] }) {
+  const t = useTranslations("orders.create");
   const productionStaff = employees.filter((e) => e.department === "Production" || e.department === "General");
 
   const assignments: Array<{ id: string; machineId: string; machineName: string; operatorId: string; operatorName: string }> =
@@ -610,6 +612,7 @@ export function StepMaterials({
   inventoryItems: InventorySearchItem[];
   onSkip: () => void;
 }) {
+  const t = useTranslations("orders.create");
   const [searchQuery, setSearchQuery] = React.useState("");
   const [debouncedQuery, setDebouncedQuery] = React.useState("");
   const [showDropdown, setShowDropdown] = React.useState(false);
@@ -617,8 +620,8 @@ export function StepMaterials({
 
   // Debounce 300ms
   React.useEffect(() => {
-    const t = setTimeout(() => setDebouncedQuery(searchQuery), 300);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setDebouncedQuery(searchQuery), 300);
+    return () => clearTimeout(timer);
   }, [searchQuery]);
 
   // Close dropdown on outside click
@@ -811,6 +814,7 @@ export function StepMaterials({
 // STEP 5: Review & Confirm
 // ═════════════════════════════════════════════════════════════
 export function StepReview({ form, clients, machines }: { form: any; clients: any[]; machines: any[] }) {
+  const t = useTranslations("orders.create");
   const client = clients.find((c) => c.id === form.client_id);
   const orderVal = Number(form.order_value) || 0;
   const gstPct = form.gst_applicable ? (Number(form.gst_percent) || 0) : 0;
@@ -851,7 +855,7 @@ export function StepReview({ form, clients, machines }: { form: any; clients: an
       {/* Production (if set up) */}
       {form.setup_production && (
         <div className="rounded-[12px] border border-[var(--border)] bg-[var(--muted)] p-4">
-          <p className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider mb-2">{t("dialog.productionSetup")}</p>
+          <p className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider mb-2">{t("steps.production")}</p>
           {(form.productionAssignments || [])
             .filter((a: any) => a.machineId || a.operatorId)
             .map((a: any, idx: number) => (

@@ -1080,22 +1080,33 @@ export default function DashboardPage() {
       {/* ── Low Stock Alert ── */}
       {stats && stats.lowStockItems > 0 && (
         <motion.div variants={staggerItem}>
-          <IOSCard variant="glass" padding="lg" className="bg-white dark:bg-[#1C1C1E] !rounded-2xl shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] !border !border-black/[0.09] dark:!border-[var(--border)] dark:shadow-none">
-            <div className="flex items-center gap-3">
-              <div className="w-[44px] h-[44px] rounded-[12px] bg-[rgba(255,149,0,0.12)] flex items-center justify-center flex-shrink-0 pulse-glow">
-                <AlertTriangle className="h-[20px] w-[20px] text-[var(--erp-warning)]" />
+          <IOSCard variant="glass" padding="md" className="bg-white dark:bg-[#1C1C1E] !rounded-2xl shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] !border !border-black/[0.09] dark:!border-[var(--border)] dark:shadow-none sm:!p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3.5 sm:gap-4">
+              <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+                <div className="w-[40px] h-[40px] sm:w-[44px] sm:h-[44px] rounded-[12px] bg-[rgba(255,149,0,0.12)] flex items-center justify-center flex-shrink-0 pulse-glow">
+                  <AlertTriangle className="h-[20px] w-[20px] text-[var(--erp-warning)]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[14px] sm:text-[15px] font-semibold text-[var(--foreground)] leading-[20px]">
+                    {t("lowStockAlert", { count: stats.lowStockItems })}
+                  </p>
+                  <p className="text-[12px] sm:text-[13px] text-[var(--muted-foreground)] leading-[18px] mt-0.5">
+                    {t("lowStockDescription")}
+                  </p>
+                </div>
               </div>
-              <div className="flex-1">
-                <p className="text-[15px] font-semibold text-[var(--foreground)] leading-[20px]">
-                  {t("lowStockAlert", { count: stats.lowStockItems })}
-                </p>
-                <p className="text-[13px] text-[var(--muted-foreground)] leading-[18px]">
-                  {t("lowStockDescription")}
-                </p>
+              <div className="w-full sm:w-auto flex-shrink-0">
+                <Link href="/dashboard/inventory" className="block w-full sm:w-auto">
+                  <IOSButton
+                    variant="tinted"
+                    size="medium"
+                    fullWidth
+                    className="sm:w-auto text-[13px] font-semibold h-[36px] px-4 rounded-[10px]"
+                  >
+                    {t("viewInventory")}
+                  </IOSButton>
+                </Link>
               </div>
-              <Link href="/dashboard/inventory">
-                <IOSButton variant="tinted" size="small">{t("viewInventory")}</IOSButton>
-              </Link>
             </div>
           </IOSCard>
         </motion.div>

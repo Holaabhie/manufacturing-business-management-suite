@@ -82,4 +82,10 @@ export interface TallyVoucherPayload {
 
     // Company
     companyName: string;         // Tally company name
+
+    // Extended GST & Address Metadata
+    partyName?: string;          // Party display name (defaults to partyLedgerName)
+    partyState?: string;         // Destination state name
+    companyState?: string;       // Origin company state name
+    gstRegistrationType?: string;// "Regular" | "Unregistered" | "Unknown"
 }

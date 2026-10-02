@@ -1,20 +1,67 @@
 import { NextResponse } from "next/server";
 import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
+import { ObjectId } from "mongodb";
+
+const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+const MATERIAL_COLORS = [
+    "#3B82F6", // Blue
+    "#10B981", // Emerald
+    "#F59E0B", // Amber
+    "#8B5CF6", // Purple
+    "#EC4899", // Pink
+    "#06B6D4", // Cyan
+    "#F97316", // Orange
+    "#6366F1", // Indigo
+];
+
+function getMonthsSinceSignup(signupDate: Date, now: Date = new Date()) {
+    const months: Array<{ value: string; label: string; year: number; month: number; isCurrent: boolean; isPrevious: boolean }> = [];
+    const startYear = signupDate.getFullYear();
+    const startMonth = signupDate.getMonth();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+
+    const prevMonthDate = new Date(Date.UTC(currentYear, currentMonth - 1, 1));
+    const prevYear = prevMonthDate.getUTCFullYear();
+    const prevMonth = prevMonthDate.getUTCMonth();
+
+    let y = startYear;
+    let m = startMonth;
+
+    while (y < currentYear || (y === currentYear && m <= currentMonth)) {
+        const val = `${y}-${String(m + 1).padStart(2, "0")}`;
+        const label = `${monthNames[m]} ${y}`;
+        months.push({
+            value: val,
+            label,
+            year: y,
+            month: m + 1,
+            isCurrent: y === currentYear && m === currentMonth,
+            isPrevious: y === prevYear && m === prevMonth,
+        });
+        m++;
+        if (m > 11) {
+            m = 0;
+            y++;
+        }
+    }
+    return months;
+}
 
 /**
- * GET /api/dashboard/analytics?range=30d
+ * GET /api/dashboard/analytics?month=YYYY-MM&reportMonth=YYYY-MM
  *
- * Aggregated analytics endpoint returning:
- *  - Revenue trend (current vs last year, monthly)
- *  - Production efficiency (monthly average)
- *  - Order status distribution
- *  - Top products by revenue
- *  - Inventory breakdown (by unit type)
- *  - KPI summary cards (with current-vs-previous growth)
- *  - Order funnel (independent stage tallies)
- *  - Production quality (produced vs rejected, monthly)
- *  - Top clients by revenue
+ * Aggregated analytics endpoint with month-wise scoping since tenant signup:
+ *  - Month selector list (signup month up to current month)
+ *  - Previous month report card (orders placed, fulfilled, revenue, AOV)
+ *  - Material consumption donut/pie aggregation (% share per material)
+ *  - Revenue trend (daily progression vs last year)
+ *  - Production efficiency & quality
+ *  - Order status distribution & funnel
+ *  - Top products & top clients
+ *  - KPI summary cards (scoped to selected month)
  */
 export async function GET(request: Request) {
     try {
@@ -26,53 +73,94 @@ export async function GET(request: Request) {
         const db = await getDb();
         const userId = getDataOwnerId(user);
 
-        const { searchParams } = new URL(request.url);
-        const range = searchParams.get("range") || "30d";
+        // ── 1. Determine tenant signup date & available months ─────
+        let ownerDoc = await db.collection("users").findOne({ _id: userId });
+        if (!ownerDoc && ObjectId.isValid(userId)) {
+            ownerDoc = await db.collection("users").findOne({ _id: new ObjectId(userId) });
+        }
 
-        // Calculate date boundaries
+        const earliestOrder = await db.collection("orders").findOne(
+            { userId },
+            { sort: { createdAt: 1 }, projection: { createdAt: 1 } }
+        );
+
+        const signupDate = ownerDoc?.createdAt
+            ? new Date(ownerDoc.createdAt)
+            : (earliestOrder?.createdAt ? new Date(earliestOrder.createdAt) : new Date());
+
         const now = new Date();
-        const rangeDays = range === "7d" ? 7 : range === "90d" ? 90 : range === "1y" ? 365 : 30;
-        const rangeStart = new Date(now.getTime() - rangeDays * 24 * 60 * 60 * 1000);
-        const lastYearStart = new Date(rangeStart);
-        lastYearStart.setFullYear(lastYearStart.getFullYear() - 1);
-        const lastYearEnd = new Date(now);
-        lastYearEnd.setFullYear(lastYearEnd.getFullYear() - 1);
+        const availableMonths = getMonthsSinceSignup(signupDate, now);
+        const currentMonthVal = availableMonths[availableMonths.length - 1]?.value || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-        // Previous equal-length period for KPI growth comparison
-        const prevRangeEnd = new Date(rangeStart.getTime() - 1); // 1ms before current range
-        const prevRangeStart = new Date(prevRangeEnd.getTime() - rangeDays * 24 * 60 * 60 * 1000);
+        // Previous calendar month default
+        const prevMonthDate = new Date(Date.UTC(now.getFullYear(), now.getMonth() - 1, 1));
+        const defaultReportMonth = `${prevMonthDate.getUTCFullYear()}-${String(prevMonthDate.getUTCMonth() + 1).padStart(2, "0")}`;
 
-        // ─── All queries in parallel ───────────────────────────
+        const { searchParams } = new URL(request.url);
+        const selectedMonth = searchParams.get("month") || currentMonthVal;
+        const reportMonth = searchParams.get("reportMonth") || defaultReportMonth;
+
+        // Parse selected month
+        const [selYearStr, selMonthStr] = selectedMonth.split("-");
+        const selYear = parseInt(selYearStr, 10);
+        const selMonth = parseInt(selMonthStr, 10); // 1-indexed
+
+        if (isNaN(selYear) || isNaN(selMonth) || selMonth < 1 || selMonth > 12) {
+            return NextResponse.json({ error: "Invalid month format. Expected YYYY-MM." }, { status: 400 });
+        }
+
+        // Date boundaries for selected month
+        const rangeStart = new Date(Date.UTC(selYear, selMonth - 1, 1, 0, 0, 0, 0));
+        const rangeEnd = new Date(Date.UTC(selYear, selMonth, 0, 23, 59, 59, 999));
+        const daysInMonth = new Date(selYear, selMonth, 0).getDate();
+
+        // Previous calendar month comparison for KPI growth
+        const prevPeriodDate = new Date(Date.UTC(selYear, selMonth - 2, 1));
+        const prevCompYear = prevPeriodDate.getUTCFullYear();
+        const prevCompMonth = prevPeriodDate.getUTCMonth(); // 0-indexed
+        const prevRangeStart = new Date(Date.UTC(prevCompYear, prevCompMonth, 1, 0, 0, 0, 0));
+        const prevRangeEnd = new Date(Date.UTC(prevCompYear, prevCompMonth + 1, 0, 23, 59, 59, 999));
+
+        // Last year same month
+        const lastYearStart = new Date(Date.UTC(selYear - 1, selMonth - 1, 1, 0, 0, 0, 0));
+        const lastYearEnd = new Date(Date.UTC(selYear - 1, selMonth, 0, 23, 59, 59, 999));
+
+        // Date boundaries for Previous Month Report section
+        const [repYearStr, repMonthStr] = reportMonth.split("-");
+        const repYear = parseInt(repYearStr, 10);
+        const repMonth = parseInt(repMonthStr, 10);
+        const repStart = new Date(Date.UTC(repYear, repMonth - 1, 1, 0, 0, 0, 0));
+        const repEnd = new Date(Date.UTC(repYear, repMonth, 0, 23, 59, 59, 999));
+
+        // ── 2. Run all queries in parallel ────────────────────────
         const [
-            revenueByMonth,
-            lastYearRevenueByMonth,
-            productionEfficiency,
+            dailyRevenueAgg,
+            lastYearDailyAgg,
+            productionEfficiencyAgg,
             orderStatusCounts,
             topProductsAgg,
             inventoryBreakdown,
-            totalOrdersCount,
-            completedOrdersCount,
-            totalRevenueAgg,
+            totalOrdersInMonth,
+            completedOrdersInMonth,
+            monthRevenueAgg,
+            prevMonthRevenueAgg,
             totalInventoryCount,
-            ordersInRange,
-            inventoryMovement,
-            // ── New queries ──
             orderFunnelAgg,
             productionQualityAgg,
             topClientsAgg,
-            // KPI growth: current range revenue
-            currentRangeRevenueAgg,
-            // KPI growth: previous range revenue
-            prevRangeRevenueAgg,
+            materialsAggRaw,
+            repOrdersPlaced,
+            repOrdersCompleted,
+            repRevenueAgg,
         ] = await Promise.all([
-            // Current year revenue grouped by month
+            // Daily revenue in selected month
             db
                 .collection("orders")
                 .aggregate([
-                    { $match: { userId, createdAt: { $gte: rangeStart } } },
+                    { $match: { userId, createdAt: { $gte: rangeStart, $lte: rangeEnd } } },
                     {
                         $group: {
-                            _id: { $dateToString: { format: "%Y-%m", date: { $toDate: "$createdAt" } } },
+                            _id: { $dayOfMonth: { $toDate: "$createdAt" } },
                             revenue: { $sum: { $toDouble: "$total_amount" } },
                         },
                     },
@@ -80,14 +168,14 @@ export async function GET(request: Request) {
                 ])
                 .toArray(),
 
-            // Last year revenue grouped by month (same period, previous year)
+            // Last year same month daily revenue
             db
                 .collection("orders")
                 .aggregate([
                     { $match: { userId, createdAt: { $gte: lastYearStart, $lte: lastYearEnd } } },
                     {
                         $group: {
-                            _id: { $dateToString: { format: "%Y-%m", date: { $toDate: "$createdAt" } } },
+                            _id: { $dayOfMonth: { $toDate: "$createdAt" } },
                             revenue: { $sum: { $toDouble: "$total_amount" } },
                         },
                     },
@@ -95,14 +183,14 @@ export async function GET(request: Request) {
                 ])
                 .toArray(),
 
-            // Production efficiency by month
+            // Production efficiency in selected month
             db
                 .collection("productions")
                 .aggregate([
-                    { $match: { userId, createdAt: { $gte: rangeStart }, status: { $ne: "closed" } } },
+                    { $match: { userId, createdAt: { $gte: rangeStart, $lte: rangeEnd }, status: { $ne: "closed" } } },
                     {
                         $group: {
-                            _id: { $dateToString: { format: "%Y-%m", date: { $toDate: "$createdAt" } } },
+                            _id: { $dayOfMonth: { $toDate: "$createdAt" } },
                             avgEfficiency: { $avg: "$progressPercent" },
                         },
                     },
@@ -110,11 +198,11 @@ export async function GET(request: Request) {
                 ])
                 .toArray(),
 
-            // Order status distribution (derived from production_status + payment_status)
+            // Order status distribution
             db
                 .collection("orders")
                 .aggregate([
-                    { $match: { userId, createdAt: { $gte: rangeStart } } },
+                    { $match: { userId, createdAt: { $gte: rangeStart, $lte: rangeEnd } } },
                     {
                         $addFields: {
                             effective_status: {
@@ -137,11 +225,11 @@ export async function GET(request: Request) {
                 ])
                 .toArray(),
 
-            // Top 5 products by revenue
+            // Top 5 products by revenue in selected month
             db
                 .collection("orders")
                 .aggregate([
-                    { $match: { userId, createdAt: { $gte: rangeStart } } },
+                    { $match: { userId, createdAt: { $gte: rangeStart, $lte: rangeEnd } } },
                     {
                         $group: {
                             _id: "$product_name",
@@ -154,7 +242,7 @@ export async function GET(request: Request) {
                 ])
                 .toArray(),
 
-            // Inventory breakdown by unit type (FIX: was using non-existent $category)
+            // Inventory breakdown by unit type
             db
                 .collection("inventory")
                 .aggregate([
@@ -177,21 +265,34 @@ export async function GET(request: Request) {
                 ])
                 .toArray(),
 
-            // Total orders (all time)
-            db.collection("orders").countDocuments({ userId }),
+            // Orders in selected month
+            db.collection("orders").countDocuments({ userId, createdAt: { $gte: rangeStart, $lte: rangeEnd } }),
 
-            // Fully completed orders (production done AND payment done)
+            // Completed orders in selected month
             db.collection("orders").countDocuments({
                 userId,
-                production_status: "completed",
-                payment_status: "paid",
+                createdAt: { $gte: rangeStart, $lte: rangeEnd },
+                $or: [
+                    { production_status: "completed", payment_status: "paid" },
+                    { status: "completed" },
+                    { production_status: "completed" },
+                ],
             }),
 
-            // Total revenue (all time)
+            // Total revenue in selected month
             db
                 .collection("orders")
                 .aggregate([
-                    { $match: { userId } },
+                    { $match: { userId, createdAt: { $gte: rangeStart, $lte: rangeEnd } } },
+                    { $group: { _id: null, total: { $sum: { $toDouble: "$total_amount" } } } },
+                ])
+                .toArray(),
+
+            // Total revenue in previous comparison month
+            db
+                .collection("orders")
+                .aggregate([
+                    { $match: { userId, createdAt: { $gte: prevRangeStart, $lte: prevRangeEnd } } },
                     { $group: { _id: null, total: { $sum: { $toDouble: "$total_amount" } } } },
                 ])
                 .toArray(),
@@ -199,22 +300,11 @@ export async function GET(request: Request) {
             // Total inventory items
             db.collection("inventory").countDocuments({ userId }),
 
-            // Orders in range (for turnover calc)
-            db.collection("orders").countDocuments({ userId, createdAt: { $gte: rangeStart } }),
-
-            // Inventory items with recent movement
-            db.collection("inventory").countDocuments({
-                userId,
-                updatedAt: { $gte: rangeStart },
-            }),
-
-            // ═══════════════════════════════════════════════════
-            // NEW: Order Funnel — independent tallies per stage
-            // ═══════════════════════════════════════════════════
+            // Order funnel in selected month
             db
                 .collection("orders")
                 .aggregate([
-                    { $match: { userId, createdAt: { $gte: rangeStart } } },
+                    { $match: { userId, createdAt: { $gte: rangeStart, $lte: rangeEnd } } },
                     {
                         $group: {
                             _id: null,
@@ -248,17 +338,14 @@ export async function GET(request: Request) {
                 ])
                 .toArray(),
 
-            // ═══════════════════════════════════════════════════
-            // NEW: Production Quality — produced vs rejected, monthly
-            // Uses productions.createdAt for month bucketing
-            // ═══════════════════════════════════════════════════
+            // Production quality in selected month
             db
                 .collection("productions")
                 .aggregate([
-                    { $match: { userId, createdAt: { $gte: rangeStart } } },
+                    { $match: { userId, createdAt: { $gte: rangeStart, $lte: rangeEnd } } },
                     {
                         $group: {
-                            _id: { $dateToString: { format: "%Y-%m", date: { $toDate: "$createdAt" } } },
+                            _id: { $dayOfMonth: { $toDate: "$createdAt" } },
                             produced: { $sum: { $toDouble: { $ifNull: ["$producedQuantity", 0] } } },
                             rejected: { $sum: { $toDouble: { $ifNull: ["$rejectQuantity", 0] } } },
                         },
@@ -267,17 +354,14 @@ export async function GET(request: Request) {
                 ])
                 .toArray(),
 
-            // ═══════════════════════════════════════════════════
-            // NEW: Top 5 Clients by revenue
-            // Guards against null/empty client_id before $toObjectId
-            // ═══════════════════════════════════════════════════
+            // Top 5 clients by revenue in selected month
             db
                 .collection("orders")
                 .aggregate([
                     {
                         $match: {
                             userId,
-                            createdAt: { $gte: rangeStart },
+                            createdAt: { $gte: rangeStart, $lte: rangeEnd },
                             client_id: { $nin: [null, ""] },
                         },
                     },
@@ -291,7 +375,19 @@ export async function GET(request: Request) {
                                             { $ne: ["$client_id", ""] },
                                         ],
                                     },
-                                    then: { $toObjectId: "$client_id" },
+                                    then: {
+                                        $cond: {
+                                            if: { $eq: [{ $type: "$client_id" }, "objectId"] },
+                                            then: "$client_id",
+                                            else: {
+                                                $cond: {
+                                                    if: { $regexMatch: { input: "$client_id", regex: "^[0-9a-fA-F]{24}$" } },
+                                                    then: { $toObjectId: "$client_id" },
+                                                    else: null,
+                                                },
+                                            },
+                                        },
+                                    },
                                     else: null,
                                 },
                             },
@@ -330,60 +426,192 @@ export async function GET(request: Request) {
                 ])
                 .toArray(),
 
-            // ═══════════════════════════════════════════════════
-            // NEW: KPI Growth — current range revenue
-            // ═══════════════════════════════════════════════════
+            // Material consumption breakdown in selected month
             db
-                .collection("orders")
+                .collection("order_inventory_items")
                 .aggregate([
-                    { $match: { userId, createdAt: { $gte: rangeStart } } },
-                    { $group: { _id: null, total: { $sum: { $toDouble: "$total_amount" } } } },
+                    {
+                        $match: {
+                            userId,
+                            createdAt: { $gte: rangeStart, $lte: rangeEnd },
+                        },
+                    },
+                    {
+                        $addFields: {
+                            inv_oid: {
+                                $cond: {
+                                    if: {
+                                        $and: [
+                                            { $ne: ["$inventory_id", null] },
+                                            { $ne: ["$inventory_id", ""] },
+                                        ],
+                                    },
+                                    then: {
+                                        $cond: {
+                                            if: { $eq: [{ $type: "$inventory_id" }, "objectId"] },
+                                            then: "$inventory_id",
+                                            else: {
+                                                $cond: {
+                                                    if: { $regexMatch: { input: "$inventory_id", regex: "^[0-9a-fA-F]{24}$" } },
+                                                    then: { $toObjectId: "$inventory_id" },
+                                                    else: null,
+                                                },
+                                            },
+                                        },
+                                    },
+                                    else: null,
+                                },
+                            },
+                        },
+                    },
+                    {
+                        $lookup: {
+                            from: "inventory",
+                            localField: "inv_oid",
+                            foreignField: "_id",
+                            as: "invDoc",
+                        },
+                    },
+                    {
+                        $addFields: {
+                            materialName: {
+                                $ifNull: [
+                                    "$item_name",
+                                    { $arrayElemAt: ["$invDoc.name", 0] },
+                                    "Other Material",
+                                ],
+                            },
+                            materialUnit: {
+                                $ifNull: [
+                                    "$unit",
+                                    { $arrayElemAt: ["$invDoc.unit", 0] },
+                                    "units",
+                                ],
+                            },
+                        },
+                    },
+                    {
+                        $group: {
+                            _id: "$materialName",
+                            materialId: { $first: "$inventory_id" },
+                            quantity: { $sum: { $toDouble: { $ifNull: ["$quantity_deducted", 0] } } },
+                            unit: { $first: "$materialUnit" },
+                        },
+                    },
+                    { $sort: { quantity: -1 } },
                 ])
                 .toArray(),
 
-            // NEW: KPI Growth — previous equal range revenue
+            // Previous Month Report: orders placed
+            db.collection("orders").countDocuments({
+                userId,
+                createdAt: { $gte: repStart, $lte: repEnd },
+            }),
+
+            // Previous Month Report: orders completed
+            db.collection("orders").countDocuments({
+                userId,
+                createdAt: { $gte: repStart, $lte: repEnd },
+                $or: [
+                    { production_status: "completed" },
+                    { status: "completed" },
+                ],
+            }),
+
+            // Previous Month Report: total revenue
             db
                 .collection("orders")
                 .aggregate([
-                    { $match: { userId, createdAt: { $gte: prevRangeStart, $lte: prevRangeEnd } } },
+                    { $match: { userId, createdAt: { $gte: repStart, $lte: repEnd } } },
                     { $group: { _id: null, total: { $sum: { $toDouble: "$total_amount" } } } },
                 ])
                 .toArray(),
         ]);
 
-        // ─── Format revenue trend ────────────────────────────
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        const lastYearMap: Record<string, number> = {};
-        lastYearRevenueByMonth.forEach((item: any) => {
-            // Shift month key to current year for comparison
-            const parts = item._id.split("-");
-            const monthIdx = parseInt(parts[1], 10) - 1;
-            lastYearMap[monthNames[monthIdx]] = item.revenue || 0;
+        // ── 3. Fallback for material usage if order_inventory_items was empty ──
+        let materialsAgg = materialsAggRaw;
+        if (materialsAgg.length === 0) {
+            const orderMaterialsAgg = await db.collection("orders").aggregate([
+                {
+                    $match: {
+                        userId,
+                        createdAt: { $gte: rangeStart, $lte: rangeEnd },
+                        "materials.0": { $exists: true },
+                    },
+                },
+                { $unwind: "$materials" },
+                {
+                    $group: {
+                        _id: { $ifNull: ["$materials.itemName", "$materials.name", "Other Material"] },
+                        materialId: { $first: "$materials.inventoryItemId" },
+                        quantity: { $sum: { $toDouble: { $ifNull: ["$materials.quantityRequired", "$materials.quantity", 0] } } },
+                        unit: { $first: { $ifNull: ["$materials.unit", "units"] } },
+                    },
+                },
+                { $sort: { quantity: -1 } },
+            ]).toArray();
+
+            if (orderMaterialsAgg.length > 0) {
+                materialsAgg = orderMaterialsAgg;
+            }
+        }
+
+        // Format material usage (% share and harmonious colors)
+        const totalMatQuantity = materialsAgg.reduce((sum: number, m: any) => sum + (m.quantity || 0), 0);
+        const materialUsage = materialsAgg.map((m: any, idx: number) => ({
+            materialId: m.materialId ? String(m.materialId) : m._id,
+            name: m._id || "Other Material",
+            quantity: Math.round((m.quantity || 0) * 10) / 10,
+            unit: m.unit || "units",
+            percentage: totalMatQuantity > 0 ? Math.round(((m.quantity || 0) / totalMatQuantity) * 1000) / 10 : 0,
+            color: MATERIAL_COLORS[idx % MATERIAL_COLORS.length],
+        }));
+
+        // ── 4. Format previous month report ───────────────────────
+        const repTotalRevenue = Math.round(repRevenueAgg[0]?.total || 0);
+        const repAOV = repOrdersPlaced > 0 ? Math.round(repTotalRevenue / repOrdersPlaced) : 0;
+        const previousMonthReport = {
+            month: reportMonth,
+            monthLabel: `${monthNames[repMonth - 1]} ${repYear}`,
+            totalOrdersPlaced: repOrdersPlaced,
+            totalOrdersCompleted: repOrdersCompleted,
+            totalRevenue: repTotalRevenue,
+            averageOrderValue: repAOV,
+        };
+
+        // ── 5. Format revenue trend (days of the month) ───────────
+        const dailyRevMap: Record<number, number> = {};
+        dailyRevenueAgg.forEach((item: any) => {
+            dailyRevMap[item._id] = item.revenue || 0;
         });
 
-        const revenueData = revenueByMonth.map((item: any) => {
-            const parts = item._id.split("-");
-            const monthIdx = parseInt(parts[1], 10) - 1;
-            const month = monthNames[monthIdx] || item._id;
-            return {
-                month,
-                revenue: Math.round(item.revenue || 0),
-                lastYear: Math.round(lastYearMap[month] || 0),
-            };
+        const lastYearDailyMap: Record<number, number> = {};
+        lastYearDailyAgg.forEach((item: any) => {
+            lastYearDailyMap[item._id] = item.revenue || 0;
         });
 
-        // ─── Format production efficiency ────────────────────
-        const productionData = productionEfficiency.map((item: any) => {
-            const parts = item._id.split("-");
-            const monthIdx = parseInt(parts[1], 10) - 1;
-            return {
-                month: monthNames[monthIdx] || item._id,
-                efficiency: Math.round(item.avgEfficiency || 0),
-            };
+        const curMonthName = monthNames[selMonth - 1];
+        const revenueData = [];
+        for (let day = 1; day <= daysInMonth; day++) {
+            revenueData.push({
+                month: `${day} ${curMonthName}`,
+                revenue: Math.round(dailyRevMap[day] || 0),
+                lastYear: Math.round(lastYearDailyMap[day] || 0),
+            });
+        }
+
+        // ── 6. Format production efficiency ───────────────────────
+        const prodEffMap: Record<number, number> = {};
+        productionEfficiencyAgg.forEach((item: any) => {
+            prodEffMap[item._id] = item.avgEfficiency || 0;
         });
 
-        // ─── Format order status distribution ────────────────
-        const totalOrdersInRange = orderStatusCounts.reduce((sum: number, s: any) => sum + s.count, 0);
+        const productionData = productionEfficiencyAgg.map((item: any) => ({
+            month: `${item._id} ${curMonthName}`,
+            efficiency: Math.round(item.avgEfficiency || 0),
+        }));
+
+        // ── 7. Format order status distribution ───────────────────
         const statusColorMap: Record<string, string> = {
             completed: "#16A34A",
             in_progress: "#2563EB",
@@ -399,7 +627,6 @@ export async function GET(request: Request) {
             cancelled: "Cancelled",
         };
 
-        // Merge processing/in_progress into one bucket
         const mergedStatus: Record<string, { value: number; color: string; name: string }> = {};
         orderStatusCounts.forEach((s: any) => {
             const name = statusNameMap[s._id] || s._id || "Other";
@@ -413,25 +640,25 @@ export async function GET(request: Request) {
 
         const orderStatusData = Object.values(mergedStatus).map((s) => ({
             name: s.name,
-            value: totalOrdersInRange > 0 ? Math.round((s.value / totalOrdersInRange) * 100) : 0,
+            value: totalOrdersInMonth > 0 ? Math.round((s.value / totalOrdersInMonth) * 100) : 0,
             color: s.color,
         }));
 
-        // ─── Format top products ─────────────────────────────
+        // ── 8. Format top products ────────────────────────────────
         const topProducts = topProductsAgg.map((p: any) => ({
             name: p._id || "Unknown Product",
             units: p.units || 0,
             revenue: Math.round(p.revenue || 0),
         }));
 
-        // ─── Format inventory breakdown ──────────────────────
+        // ── 9. Format inventory breakdown ─────────────────────────
         const totalInventoryItems = inventoryBreakdown.reduce((sum: number, cat: any) => sum + cat.count, 0);
         const inventoryData = inventoryBreakdown.map((cat: any) => ({
             category: cat._id || "Other",
             value: totalInventoryItems > 0 ? Math.round((cat.count / totalInventoryItems) * 100) : 0,
         }));
 
-        // ─── Format order funnel ─────────────────────────────
+        // ── 10. Format order funnel ───────────────────────────────
         const funnelRaw = orderFunnelAgg[0] || { total: 0, inProduction: 0, productionComplete: 0, fullyPaid: 0 };
         const orderFunnel = [
             { stage: "Total Orders", count: funnelRaw.total },
@@ -440,45 +667,41 @@ export async function GET(request: Request) {
             { stage: "Fully Paid", count: funnelRaw.fullyPaid },
         ];
 
-        // ─── Format production quality ───────────────────────
-        const productionQuality = productionQualityAgg.map((item: any) => {
-            const parts = item._id.split("-");
-            const monthIdx = parseInt(parts[1], 10) - 1;
-            return {
-                month: monthNames[monthIdx] || item._id,
-                produced: Math.round(item.produced || 0),
-                rejected: Math.round(item.rejected || 0),
-            };
-        });
+        // ── 11. Format production quality ─────────────────────────
+        const productionQuality = productionQualityAgg.map((item: any) => ({
+            month: `${item._id} ${curMonthName}`,
+            produced: Math.round(item.produced || 0),
+            rejected: Math.round(item.rejected || 0),
+        }));
 
-        // ─── Format top clients ──────────────────────────────
+        // ── 12. Format top clients ────────────────────────────────
         const topClients = topClientsAgg.map((c: any) => ({
             name: c.name || "Unknown Client",
             totalRevenue: Math.round(c.totalRevenue || 0),
             orderCount: c.orderCount || 0,
         }));
 
-        // ─── Compute KPIs ────────────────────────────────────
-        const totalRevenue = totalRevenueAgg[0]?.total || 0;
-        const completionRate = totalOrdersCount > 0 ? Math.round((completedOrdersCount / totalOrdersCount) * 100) : 0;
+        // ── 13. Compute KPIs (scoped to selected month) ───────────
+        const totalRevenue = Math.round(monthRevenueAgg[0]?.total || 0);
+        const prevRevenue = Math.round(prevMonthRevenueAgg[0]?.total || 0);
+        const completionRate = totalOrdersInMonth > 0 ? Math.round((completedOrdersInMonth / totalOrdersInMonth) * 100) : 0;
         const avgEfficiency =
-            productionEfficiency.length > 0
-                ? Math.round(productionEfficiency.reduce((s: number, p: any) => s + (p.avgEfficiency || 0), 0) / productionEfficiency.length)
+            productionEfficiencyAgg.length > 0
+                ? Math.round(productionEfficiencyAgg.reduce((s: number, p: any) => s + (p.avgEfficiency || 0), 0) / productionEfficiencyAgg.length)
                 : 0;
 
-        // Inventory turnover = orders filled / avg inventory (simplified)
         const inventoryTurnover =
-            totalInventoryCount > 0 ? Math.round((ordersInRange / totalInventoryCount) * 10) / 10 : 0;
+            totalInventoryCount > 0 ? Math.round((totalOrdersInMonth / totalInventoryCount) * 10) / 10 : 0;
 
-        // Revenue growth: current range vs previous equal range
-        // (Behavior change: previously used first-half/second-half split within range)
-        const currentRevenue = currentRangeRevenueAgg[0]?.total || 0;
-        const prevRevenue = prevRangeRevenueAgg[0]?.total || 0;
         const revenueGrowth = prevRevenue > 0
-            ? Math.round(((currentRevenue - prevRevenue) / prevRevenue) * 1000) / 10
+            ? Math.round(((totalRevenue - prevRevenue) / prevRevenue) * 1000) / 10
             : 0;
 
         return NextResponse.json({
+            availableMonths,
+            selectedMonth,
+            previousMonthReport,
+            materialUsage,
             revenueData,
             productionData,
             orderStatusData,
@@ -491,7 +714,6 @@ export async function GET(request: Request) {
                 completionRate,
                 inventoryTurnover,
             },
-            // New data
             orderFunnel,
             productionQuality,
             topClients,

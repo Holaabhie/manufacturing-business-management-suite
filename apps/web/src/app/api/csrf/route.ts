@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { ensureCsrfToken } from "@/lib/csrf";
 
 /**
- * GET /api/auth/csrf
+ * GET /api/csrf
  *
- * Returns the current CSRF token (also sets it as a cookie if not present).
- * The frontend can call this to initialize the CSRF token on page load.
+ * Returns the current custom CSRF token (also sets it as a cookie if not present).
+ * Kept separate from /api/auth/csrf which is reserved for NextAuth.js.
  */
 export async function GET() {
     try {

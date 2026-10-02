@@ -238,7 +238,7 @@ export function CreateOrderDialog({
 
                 <div className="space-y-1.5">
                   <Label className="text-[12px] font-semibold text-gray-500 dark:text-[rgba(255,255,255,0.7)] uppercase tracking-wide">{t("orderedQuantity")}</Label>
-                  <div className="flex h-[44px] rounded-[10px] overflow-hidden border border-gray-200 dark:border-[rgba(255,255,255,0.08)] focus-within:ring-2 focus-within:ring-blue-500/30 dark:focus-within:ring-1 dark:focus-within:ring-[rgba(255,255,255,0.2)] transition-all">
+                  <div className="flex h-[44px] rounded-[10px] overflow-hidden border border-gray-200 dark:border-[rgba(255,255,255,0.08)] focus-within:ring-1 focus-within:ring-blue-500/30 dark:focus-within:ring-1 dark:focus-within:ring-[rgba(255,255,255,0.2)] transition-all">
                     <NumericInput
                       value={formData.quantity}
                       onValueChange={(v) => setFormData({ ...formData, quantity: v })}

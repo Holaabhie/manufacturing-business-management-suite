@@ -7,7 +7,8 @@
  */
 
 import { NextResponse, NextRequest } from "next/server";
-import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
+import { getDataOwnerId } from "@/lib/auth-session";
+import { requireRole } from "@/lib/require-role";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
@@ -16,10 +17,11 @@ export async function POST(
     { params }: { params: Promise<{ id: string }> },
 ) {
     try {
-        const user = await getSessionUser();
-        if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const authResult = await requireRole(["Owner", "Admin", "Manager", "Accountant"]);
+        if (authResult.error || !authResult.user) {
+            return NextResponse.json({ error: authResult.error || "Unauthorized" }, { status: authResult.status || 401 });
         }
+        const user = authResult.user;
 
         const { id } = await params;
         const userId = getDataOwnerId(user);
@@ -42,13 +44,33 @@ export async function POST(
             );
         }
 
-        const date = body.date;
-        if (!date) {
+        const rawDate = body.date || body.payment_date;
+        if (!rawDate) {
             return NextResponse.json(
                 { error: "Payment date is required" },
                 { status: 400 },
             );
         }
+
+        // Reject payment date in the future (compared in IST YYYY-MM-DD)
+        const parsedDate = new Date(rawDate);
+        if (isNaN(parsedDate.getTime())) {
+            return NextResponse.json(
+                { error: "Invalid payment date" },
+                { status: 400 },
+            );
+        }
+        const dateStr = typeof rawDate === "string" && /^\d{4}-\d{2}-\d{2}/.test(rawDate)
+            ? rawDate.slice(0, 10)
+            : new Date(parsedDate.getTime() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        const todayIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        if (dateStr > todayIST) {
+            return NextResponse.json(
+                { error: "Payment date cannot be in the future" },
+                { status: 400 },
+            );
+        }
+        const date = rawDate;
 
         // Fetch the PO — scoped to userId for security
         const db = await getDb();

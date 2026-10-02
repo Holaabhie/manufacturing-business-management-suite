@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 // ─── Types ───────────────────────────────────────────────────
 export interface Message {
@@ -48,6 +49,7 @@ Ask me anything about your business and I'll provide data-backed insights.`,
 
 // ─── Hook ────────────────────────────────────────────────────
 export function useAIChat() {
+  const t = useTranslations("assistant");
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
   const [isLoading, setIsLoading] = useState(false);
   const [businessContext, setBusinessContext] = useState<BusinessContext | null>(null);
@@ -206,7 +208,7 @@ export function useAIChat() {
         const data = await res.json();
 
         if (!res.ok || !data.success) {
-          const errMsg = data.error || "Failed to get response";
+          const errMsg = data.error || t("failedToGetResponse");
           if (errMsg.toLowerCase().includes("not configured") || errMsg.toLowerCase().includes("api key")) {
             setAiNotConfigured(true);
             setMessages((prev) => prev.filter((m) => m.id !== loadingId));
@@ -233,7 +235,7 @@ export function useAIChat() {
         });
         startTypingAnimation(responseId, data.response);
       } catch (error: unknown) {
-        const errorMsg = error instanceof Error ? error.message : "Something went wrong";
+        const errorMsg = error instanceof Error ? error.message : t("genericError");
         toast.error(errorMsg);
         setMessages((prev) => {
           const filtered = prev.filter((m) => m.id !== loadingId);
@@ -242,8 +244,8 @@ export function useAIChat() {
             {
               id: (Date.now() + 2).toString(),
               role: "assistant" as const,
-              content: `⚠️ **Error:** ${errorMsg}`,
-              displayedContent: `⚠️ **Error:** ${errorMsg}`,
+              content: `⚠️ **${t("errorPrefix")}:** ${errorMsg}`,
+              displayedContent: `⚠️ **${t("errorPrefix")}:** ${errorMsg}`,
               timestamp: new Date().toISOString(),
               isError: true,
               errorMessage: errorMsg,

@@ -6,8 +6,10 @@ import { useState, useEffect, useCallback, useRef } from "react";
 export interface StoredNotification {
   id: string;
   type: string;
-  title: string;
-  message: string;
+  templateKey?: string;
+  params?: Record<string, unknown>;
+  title?: string;
+  message?: string;
   url: string;
   createdAt: string;
   isRead: boolean;
@@ -16,8 +18,10 @@ export interface StoredNotification {
 interface RawGeneratedNotification {
   id: string;
   type: string;
-  title: string;
-  message: string;
+  templateKey: string;
+  params: Record<string, unknown>;
+  title?: string;
+  message?: string;
   url: string;
   created_at: string;
 }
@@ -25,14 +29,16 @@ interface RawGeneratedNotification {
 interface HistoryEntry {
   id: string;
   type: string;
-  title: string;
-  message: string;
+  templateKey?: string;
+  params?: Record<string, unknown>;
+  title?: string;
+  message?: string;
   url: string;
   createdAt: string;
 }
 
 // ─── Constants ──────────────────────────────────────────────────
-const HISTORY_KEY = "ind_notification_history";
+const HISTORY_KEY = "ind_notification_history_v2";
 const READ_IDS_KEY = "ind_notification_read_ids";
 const MAX_ENTRIES = 100;
 const TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -41,12 +47,28 @@ const TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 function loadHistory(): HistoryEntry[] {
   try {
     const raw = localStorage.getItem(HISTORY_KEY);
-    if (!raw) return [];
+    if (!raw) {
+      if (process.env.NODE_ENV === "development") {
+        const seed: HistoryEntry[] = [{
+          id: "demo-overdue-1",
+          type: "overdue",
+          templateKey: "overdue",
+          params: { order: "Order #1042", client: "Acme Corp", date: "22 Sep" },
+          url: "/dashboard/orders",
+          createdAt: new Date().toISOString(),
+        }];
+        try {
+          localStorage.setItem(HISTORY_KEY, JSON.stringify(seed));
+        } catch { /* ignore */ }
+        return seed;
+      }
+      return [];
+    }
     const entries: HistoryEntry[] = JSON.parse(raw);
-    // Remove entries older than 30 days
+    // Remove entries older than 30 days or entries missing structured templateKey/params
     const cutoff = Date.now() - TTL_MS;
     return entries.filter(
-      (e) => new Date(e.createdAt).getTime() > cutoff
+      (e) => Boolean(e.templateKey && e.params) && new Date(e.createdAt).getTime() > cutoff
     );
   } catch {
     return [];
@@ -123,13 +145,19 @@ function generateNotificationsFromData(
       prodStatus !== "delivered"
     ) {
       const clients = o.clients as Record<string, unknown> | undefined;
+      const clientName = clients?.name || o.client_name || "client";
+      const formattedDate = new Date(dueDate).toLocaleDateString("en-IN");
       generated.push({
         id: `overdue-${o.id}`,
         type: "overdue",
+        templateKey: "overdue",
+        params: {
+          order: orderLabel(o),
+          client: clientName,
+          date: formattedDate,
+        },
         title: `${orderLabel(o)} is overdue`,
-        message: `For ${
-          clients?.name || o.client_name || "client"
-        } — was due ${new Date(dueDate).toLocaleDateString("en-IN")}`,
+        message: `For ${clientName} — was due ${formattedDate}`,
         created_at: dueDate,
         url: `/dashboard/production/${o.id}`,
       });
@@ -145,13 +173,18 @@ function generateNotificationsFromData(
         );
         if (days > 3) {
           const clients = o.clients as Record<string, unknown> | undefined;
+          const clientName = clients?.name || o.client_name || "client";
           generated.push({
             id: `stuck-${o.id}`,
             type: "production_stuck",
+            templateKey: "productionStuck",
+            params: {
+              order: orderLabel(o),
+              days,
+              client: clientName,
+            },
             title: `${orderLabel(o)} stuck in production`,
-            message: `In production for ${days} days — ${
-              clients?.name || o.client_name || "client"
-            }`,
+            message: `In production for ${days} days — ${clientName}`,
             created_at: startDate,
             url: `/dashboard/production/${o.id}`,
           });
@@ -160,13 +193,21 @@ function generateNotificationsFromData(
     }
     if (prodStatus === "completed") {
       const clients = o.clients as Record<string, unknown> | undefined;
+      const clientName = clients?.name || o.client_name || "client";
+      const qty = o.quantity || 0;
+      const isAwaitingPayment = payStatus !== "paid";
       generated.push({
         id: `completed-${o.id}`,
         type: "completed",
+        templateKey: "productionCompleted",
+        params: {
+          order: orderLabel(o),
+          client: clientName,
+          quantity: qty,
+          awaitingPayment: isAwaitingPayment,
+        },
         title: `${orderLabel(o)} production completed`,
-        message: `Order for ${
-          clients?.name || o.client_name || "client"
-        } — ${o.quantity || 0} units${payStatus !== "paid" ? " (awaiting payment)" : ""}`,
+        message: `Order for ${clientName} — ${qty} units${isAwaitingPayment ? " (awaiting payment)" : ""}`,
         created_at:
           (o.updatedAt as string) ||
           (o.createdAt as string) ||
@@ -179,12 +220,20 @@ function generateNotificationsFromData(
   (inventory as Record<string, unknown>[]).forEach((item) => {
     const qty = item.quantity as number;
     const minStock = item.min_stock_level as number;
+    const unit = (item.unit as string) || "";
     if (qty <= minStock) {
       generated.push({
         id: `lowstock-${item.id}`,
         type: "low_stock",
+        templateKey: "lowStock",
+        params: {
+          item: item.name,
+          current: qty,
+          min: minStock,
+          unit,
+        },
         title: `${item.name} is running low`,
-        message: `Current: ${qty} ${item.unit} — Min: ${minStock} ${item.unit}`,
+        message: `Current: ${qty} ${unit} — Min: ${minStock} ${unit}`,
         created_at: (item.updatedAt as string) || now.toISOString(),
         url: "/dashboard/inventory",
       });
@@ -194,15 +243,20 @@ function generateNotificationsFromData(
   (payments as Record<string, unknown>[]).forEach((p) => {
     if (p.status === "pending" || p.status === "overdue") {
       const clients = p.clients as Record<string, unknown> | undefined;
+      const clientName = clients?.name || p.client_name || "client";
+      const amountStr = Number(p.amount || 0).toLocaleString("en-IN");
+      const methodStr = (p.payment_method as string) || "—";
       generated.push({
         id: `payment-${p.id}`,
         type: "payment_pending",
-        title: `Payment pending from ${
-          clients?.name || p.client_name || "client"
-        }`,
-        message: `\u20B9${Number(p.amount || 0).toLocaleString("en-IN")} — ${
-          p.payment_method || "—"
-        }`,
+        templateKey: "paymentPending",
+        params: {
+          client: clientName,
+          amount: amountStr,
+          method: methodStr,
+        },
+        title: `Payment pending from ${clientName}`,
+        message: `₹${amountStr} — ${methodStr}`,
         created_at:
           (p.due_date as string) ||
           (p.createdAt as string) ||
@@ -233,6 +287,8 @@ function mergeIntoHistory(
       historyMap.set(n.id, {
         id: n.id,
         type: n.type,
+        templateKey: n.templateKey,
+        params: n.params,
         title: n.title,
         message: n.message,
         url: n.url,

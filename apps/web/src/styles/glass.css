@@ -30,6 +30,10 @@
   --g-text-primary: #0F172A;
   --g-text-secondary: #475569;
   --g-text-label: #94A3B8;
+
+  /* ── Accent ─────────────────────────── */
+  --g-accent-blue: #2563EB;
+  --g-accent-blue-glow: rgba(37, 99, 235, 0.35);
 }
 
 .dark {
@@ -49,6 +53,10 @@
   --g-text-primary: #F1F5F9;
   --g-text-secondary: rgba(241, 245, 249, 0.6);
   --g-text-label: rgba(241, 245, 249, 0.35);
+
+  /* ── Accent (Dark) ──────────────────── */
+  --g-accent-blue: rgba(99, 210, 255, 0.8);
+  --g-accent-blue-glow: rgba(99, 210, 255, 0.35);
 }
 
 /* ============================================
@@ -236,7 +244,7 @@
 .glass-modal textarea:focus,
 .glass-modal select:focus {
   border-color: var(--g-accent-blue) !important;
-  box-shadow: 0 0 0 4px rgba(0, 102, 214, 0.12) !important;
+  box-shadow: 0 0 0 2px rgba(0, 102, 214, 0.12) !important;
   outline: none !important;
 }
 
@@ -255,8 +263,21 @@
 .dark .glass-modal input:focus,
 .dark .glass-modal textarea:focus,
 .dark .glass-modal select:focus {
-  border-color: rgba(99, 210, 255, 0.8) !important;
-  box-shadow: 0 0 0 4px rgba(99, 210, 255, 0.15) !important;
+  border-color: var(--g-accent-blue) !important;
+  box-shadow: 0 0 0 2px rgba(99, 210, 255, 0.15) !important;
+  outline: none !important;
+}
+
+/* Command Palette search input exemption: fully borderless and boxless */
+[data-slot="dialog-content"] input[data-slot="command-input"],
+[data-slot="dialog-content"] input[data-slot="command-input"]:focus,
+.dark [data-slot="dialog-content"] input[data-slot="command-input"],
+.dark [data-slot="dialog-content"] input[data-slot="command-input"]:focus,
+[data-slot="command-input"],
+[data-slot="command-input"]:focus {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
   outline: none !important;
 }
 

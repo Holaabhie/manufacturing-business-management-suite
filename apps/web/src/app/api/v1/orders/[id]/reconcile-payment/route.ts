@@ -19,6 +19,9 @@ type RouteContext = { params: Promise<{ id: string }> };
 export const POST = withRateLimit(
     withApiRoute(
         withAuth(async (_req: NextRequest, user: AuthenticatedUser, context?: RouteContext) => {
+            if (user.role === "Staff") {
+                return Response.json({ error: "Forbidden: Staff members cannot reconcile payments" }, { status: 403 });
+            }
             const { id: orderId } = await context!.params;
             const userId = getDataOwnerId(user);
             const db = await getDb();

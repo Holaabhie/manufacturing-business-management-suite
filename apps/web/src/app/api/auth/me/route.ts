@@ -20,6 +20,20 @@ export async function GET() {
 
     const effectiveTier = await getEffectiveTier(user);
 
+    let tenantCreatedAt = user.createdAt;
+    if (user.role !== "Admin" && user.adminId) {
+      try {
+        const { getDb } = await import("@/lib/mongodb");
+        const db = await getDb();
+        const adminUser = await db.collection("users").findOne({ _id: user.adminId });
+        if (adminUser?.createdAt) {
+          tenantCreatedAt = adminUser.createdAt;
+        }
+      } catch (err) {
+        console.error("[me] Error fetching admin tenant date:", err);
+      }
+    }
+
     return NextResponse.json({
       user: {
         id: user._id,
@@ -33,6 +47,7 @@ export async function GET() {
         notification_preferences: user.notification_preferences,
         company_details: user.company_details,
         createdAt: user.createdAt,
+        tenantCreatedAt: tenantCreatedAt || user.createdAt,
         // RBAC fields
         organizationId: user.organizationId,
         adminId: user.adminId, // Staff: the admin who owns data

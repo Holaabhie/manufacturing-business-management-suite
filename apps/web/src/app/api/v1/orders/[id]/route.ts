@@ -9,6 +9,7 @@ import { withRateLimit } from "@/shared/middleware/rate-limiter";
 import { envelope } from "@/shared/types/api";
 import { getOrderService } from "@/modules/orders";
 import { getDataOwnerId } from "@/lib/auth-session";
+import { sanitizeOrderForStaff } from "@/lib/sanitizeOrderForStaff";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -18,6 +19,12 @@ export const GET = withRateLimit(
             const { id } = await context!.params;
             const service = getOrderService();
             const item = await service.findById(id, getDataOwnerId(user));
+            if (!item) {
+                return envelope.notFound("Order not found");
+            }
+            if (user.role === "Staff") {
+                return envelope.ok(sanitizeOrderForStaff(item));
+            }
             return envelope.ok(item);
         }),
     ),
@@ -27,6 +34,9 @@ export const GET = withRateLimit(
 export const PUT = withRateLimit(
     withApiRoute(
         withAuth(async (request: NextRequest, user: AuthenticatedUser, context?: RouteContext) => {
+            if (user.role === "Staff") {
+                return envelope.error("Forbidden: Staff members cannot edit orders", 403, "FORBIDDEN");
+            }
             const { id } = await context!.params;
             const body = await request.json();
             const service = getOrderService();
@@ -40,6 +50,9 @@ export const PUT = withRateLimit(
 export const DELETE = withRateLimit(
     withApiRoute(
         withAuth(async (_req: NextRequest, user: AuthenticatedUser, context?: RouteContext) => {
+            if (user.role === "Staff") {
+                return envelope.error("Forbidden: Staff members cannot delete orders", 403, "FORBIDDEN");
+            }
             const { id } = await context!.params;
             const service = getOrderService();
             await service.delete(id, getDataOwnerId(user));

@@ -31,7 +31,7 @@ export class EmailAdapter implements ChannelAdapter {
   private port = parseInt(process.env.SMTP_PORT || "587", 10);
   private user = process.env.SMTP_USER || "";
   private pass = process.env.SMTP_PASS || "";
-  private from = process.env.SMTP_FROM || "IND Manager <noreply@indmanager.com>";
+  private from = process.env.SMTP_FROM || "IND Manager <noreply@indmanager.in>";
   private mockFallback = new MockAdapter("email");
 
   isConfigured(): boolean {

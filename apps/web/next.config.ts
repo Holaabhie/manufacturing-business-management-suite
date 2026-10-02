@@ -25,6 +25,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   compress: true,
   output: "standalone",
+  devIndicators: false,
 
   // ── Server External Packages ────────────────────────────
   serverExternalPackages: ["puppeteer", "puppeteer-core", "bcrypt", "mongoose"],

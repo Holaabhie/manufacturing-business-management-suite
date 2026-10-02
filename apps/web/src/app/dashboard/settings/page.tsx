@@ -42,6 +42,14 @@ export default function SettingsPage() {
           iconColor: "#00C7BE",
           href: "/dashboard/settings/tax",
         },
+        {
+          id: "reminders",
+          title: t("hub.remindersTitle"),
+          subtitle: t("hub.remindersSubtitle"),
+          icon: Bell,
+          iconColor: "#FF2D55",
+          href: "/dashboard/settings/reminders",
+        },
       ],
     },
     {

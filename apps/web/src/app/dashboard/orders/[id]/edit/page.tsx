@@ -38,6 +38,7 @@ import {
   Settings2,
 } from "lucide-react";
 import { useClients, useInventory, useUpdateOrder } from "@/lib/hooks/use-orders";
+import { useRole } from "@/lib/hooks/use-role";
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -261,6 +262,18 @@ export default function EditOrderPage() {
   const params = useParams();
   const router = useRouter();
   const orderId = params.id as string;
+  const { role, isStaff, loading: roleLoading } = useRole();
+
+  // ─── Staff Protection Guard ────────────────────────────
+  useEffect(() => {
+    if (!roleLoading && (isStaff || role === "Staff")) {
+      if (typeof window !== "undefined") {
+        window.location.replace("/dashboard/orders");
+      } else {
+        router.replace("/dashboard/orders");
+      }
+    }
+  }, [role, isStaff, roleLoading, router]);
 
   // ─── Data Fetching ──────────────────────────────────────
   const [order, setOrder] = useState<any>(null);
@@ -301,7 +314,7 @@ export default function EditOrderPage() {
 
   // ─── Fetch Order ────────────────────────────────────────
   useEffect(() => {
-    if (!orderId) return;
+    if (!orderId || roleLoading || isStaff || role === "Staff") return;
     let cancelled = false;
 
     async function loadOrder() {
@@ -328,7 +341,7 @@ export default function EditOrderPage() {
 
     loadOrder();
     return () => { cancelled = true; };
-  }, [orderId]);
+  }, [orderId, roleLoading, isStaff, role]);
 
   // ─── Enrich material costs from inventory data ──────────
   useEffect(() => {
@@ -554,6 +567,14 @@ export default function EditOrderPage() {
     n.toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
   // ═══════ RENDER STATES ═══════
+
+  if (roleLoading || isStaff || role === "Staff") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (pageState === "loading") {
     return (

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { NotificationIcon } from "@/components/notifications/NotificationIcon";
 import type { StoredNotification } from "@/lib/hooks/use-app-notifications";
+import { getNotificationDisplayText } from "@/components/NotificationDropdown";
 import { useTranslations } from "next-intl";
 import { useAppLocale } from "@/components/LocaleProvider";
 
@@ -88,26 +89,33 @@ export function NotificationFeedItem({
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <p
-          className={cn(
-            "text-[13px] leading-[1.4] tracking-[-0.01em]",
-            notification.isRead
-              ? "font-normal text-[#6B7280] dark:text-white/50"
-              : "font-medium text-[#111827] dark:text-[#F8FAFC]"
-          )}
-        >
-          {notification.title}
-        </p>
-        <p
-          className={cn(
-            "text-[12px] mt-[2px] overflow-hidden text-ellipsis whitespace-nowrap",
-            notification.isRead
-              ? "text-[#9CA3AF] dark:text-white/30"
-              : "text-[#6B7280] dark:text-white/40"
-          )}
-        >
-          {notification.message}
-        </p>
+        {(() => {
+          const { title, message } = getNotificationDisplayText(notification, t);
+          return (
+            <>
+              <p
+                className={cn(
+                  "text-[13px] leading-[1.4] tracking-[-0.01em]",
+                  notification.isRead
+                    ? "font-normal text-[#6B7280] dark:text-white/50"
+                    : "font-medium text-[#111827] dark:text-[#F8FAFC]"
+                )}
+              >
+                {title}
+              </p>
+              <p
+                className={cn(
+                  "text-[12px] mt-[2px] overflow-hidden text-ellipsis whitespace-nowrap",
+                  notification.isRead
+                    ? "text-[#9CA3AF] dark:text-white/30"
+                    : "text-[#6B7280] dark:text-white/40"
+                )}
+              >
+                {message}
+              </p>
+            </>
+          );
+        })()}
         <p className="text-[11px] mt-0.5 text-[#9CA3AF] dark:text-white/30 tracking-[0.02em]">
           {formatRelativeTime(notification.createdAt, t, dateLocale)}
         </p>

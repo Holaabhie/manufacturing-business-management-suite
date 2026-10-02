@@ -10,6 +10,7 @@ export interface IUser extends Document {
   // OAuth provider IDs
   googleId?: string;
   microsoftId?: string;
+  githubId?: string;
 
   // User information
   fullName?: string;
@@ -120,6 +121,11 @@ const UserSchema = new Schema<IUser>({
     sparse: true
   },
   microsoftId: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  githubId: {
     type: String,
     unique: true,
     sparse: true

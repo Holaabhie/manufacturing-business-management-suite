@@ -10,6 +10,13 @@ interface ClientDoc {
     phone: string;
     address: string;
     avatarUrl?: string;
+    gstin?: string;
+    state?: string;
+    tallySync?: {
+        status: "pending" | "synced" | "failed" | "not_configured";
+        lastSyncedAt?: Date;
+        lastError?: string;
+    };
     createdAt: Date;
     updatedAt: Date;
 }
@@ -23,6 +30,9 @@ function toEntity(doc: ClientDoc): Client {
         phone: doc.phone || "",
         address: doc.address || "",
         avatarUrl: doc.avatarUrl || "",
+        gstin: doc.gstin || undefined,
+        state: doc.state || undefined,
+        tallySync: doc.tallySync || undefined,
         createdAt: doc.createdAt,
         updatedAt: doc.updatedAt,
     };
@@ -57,6 +67,9 @@ export class MongoClientRepository implements IClientRepository {
             email: data.email || "",
             phone: data.phone || "",
             address: data.address || "",
+            gstin: data.gstin || undefined,
+            state: data.state || undefined,
+            tallySync: data.tallySync || undefined,
             createdAt: now,
             updatedAt: now,
         } as ClientDoc);
@@ -73,6 +86,9 @@ export class MongoClientRepository implements IClientRepository {
             if (data.phone !== undefined) fields.phone = data.phone;
             if (data.address !== undefined) fields.address = data.address;
             if (data.avatarUrl !== undefined) fields.avatarUrl = data.avatarUrl;
+            if (data.gstin !== undefined) fields.gstin = data.gstin;
+            if (data.state !== undefined) fields.state = data.state;
+            if (data.tallySync !== undefined) fields.tallySync = data.tallySync;
 
             const result = await c.findOneAndUpdate(
                 { _id: new ObjectId(id), userId },

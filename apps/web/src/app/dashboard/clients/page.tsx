@@ -20,13 +20,18 @@ import {
   MessageSquare,
   ChevronRight,
   User,
+  Building2,
   ExternalLink,
   ShoppingCart,
   Loader2,
   ChevronDown,
   ChevronUp,
-  IndianRupee
+  IndianRupee,
+  FileText
 } from "lucide-react";
+
+import { ClientStatement } from "@/components/reports/ClientStatement";
+import { StatementDialog } from "@/components/reports/StatementDialog";
 
 import {
   Dialog,
@@ -74,7 +79,11 @@ export default function ClientsPage() {
   const t = useTranslations("clients");
   const { locale } = useAppLocale();
   const dateLocale = locale === "hi" ? "hi-IN" : locale === "gu" ? "gu-IN" : locale === "mr" ? "mr-IN" : "en-IN";
-  const { isAdmin, isPro } = useRole();
+  const { role, isAdmin, isPro } = useRole();
+  const userRole = role as string | null;
+  const canViewStatement = userRole === "Owner" || userRole === "Admin" || userRole === "Accountant";
+  const [statementClient, setStatementClient] = useState<any>(null);
+  const [isStatementDialogOpen, setIsStatementDialogOpen] = useState(false);
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -600,6 +609,15 @@ export default function ClientsPage() {
                           <DropdownMenuItem onClick={() => handleSelectClient(client)}>
                             <Edit2 className="mr-2 h-4 w-4" /> {t("btnViewDetails")}
                           </DropdownMenuItem>
+                          {canViewStatement && (
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              setStatementClient(client);
+                              setIsStatementDialogOpen(true);
+                            }}>
+                              <FileText className="mr-2 h-4 w-4" /> {t("btnStatement")}
+                            </DropdownMenuItem>
+                          )}
                           {isAdmin && (
                             <DropdownMenuItem className="text-[var(--destructive)]" onClick={(e) => {
                               e.stopPropagation();
@@ -787,11 +805,17 @@ export default function ClientsPage() {
               <TabsTrigger value="profile" className="flex-1 rounded-[11px] text-[13px] font-semibold py-2 transition-all data-[state=active]:!bg-[#007AFF] data-[state=active]:!text-white data-[state=active]:!shadow-[0_2px_12px_rgba(0,122,255,0.35)] text-[var(--muted-foreground)]">{t("tabProfile")}</TabsTrigger>
               <TabsTrigger value="materials" className="flex-1 rounded-[11px] text-[13px] font-semibold py-2 transition-all data-[state=active]:!bg-[#007AFF] data-[state=active]:!text-white data-[state=active]:!shadow-[0_2px_12px_rgba(0,122,255,0.35)] text-[var(--muted-foreground)]">{t("tabMaterials")}</TabsTrigger>
               <TabsTrigger value="orders" className="flex-1 rounded-[11px] text-[13px] font-semibold py-2 transition-all data-[state=active]:!bg-[#007AFF] data-[state=active]:!text-white data-[state=active]:!shadow-[0_2px_12px_rgba(0,122,255,0.35)] text-[var(--muted-foreground)]">{t("tabOrders")}</TabsTrigger>
+              {canViewStatement && (
+                <TabsTrigger value="statement" className="flex-1 rounded-[11px] text-[13px] font-semibold py-2 transition-all data-[state=active]:!bg-[#007AFF] data-[state=active]:!text-white data-[state=active]:!shadow-[0_2px_12px_rgba(0,122,255,0.35)] text-[var(--muted-foreground)]">{t("tabStatement")}</TabsTrigger>
+              )}
             </TabsList>
 
             {/* --- PROFILE TAB --- */}
             <TabsContent value="profile" className="m-0 mt-5 space-y-5">
               {!isAdmin && <ReadOnlyBanner feature="client management" />}
+
+              {/* ── Local ProfileField component (modal-only, not exported) ── */}
+              {/* Inline as a function so it stays inside the JSX scope. */}
 
               {/* Contact Information Card */}
               <div className="bg-[var(--card)] border border-[var(--border)] rounded-[18px] overflow-hidden">
@@ -801,40 +825,186 @@ export default function ClientsPage() {
                   </div>
                   <span className="text-[16px] font-bold text-[var(--foreground)]">{t("secContactInfo")}</span>
                 </div>
-                <div className="p-4">
+                <div className="p-5">
                   <fieldset disabled={!isAdmin} style={{ border: 'none', padding: 0, margin: 0 }}>
-                    <div className="grid grid-cols-2 gap-3">
+                    {/* Row 1: Full Name / Company */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {/* Full Name */}
                       <div>
-                        <label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wide mb-1.5 block">{t("lblFullName")}</label>
-                        <div className="bg-[var(--muted)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-[14px] text-[var(--foreground)]">
-                          <input value={editData.name} onChange={(e) => setEditData({ ...editData, name: e.target.value })} className="bg-transparent border-none outline-none text-inherit text-[inherit] w-full" />
+                        <label
+                          className="block mb-1.5 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--foreground)] opacity-60"
+                        >
+                          {t("lblFullName")}
+                        </label>
+                        <div
+                          className="client-profile-field"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            height: 44,
+                            borderRadius: 12,
+                            padding: '0 14px',
+                            background: 'var(--muted)',
+                            border: '1px solid var(--border-input)',
+                            transition: 'border-color 150ms ease, box-shadow 150ms ease',
+                          }}
+                        >
+                          <User
+                            style={{ width: 16, height: 16, color: 'var(--muted-foreground)', flexShrink: 0 }}
+                            className="client-profile-field-icon"
+                          />
+                          <input
+                            value={editData.name}
+                            onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                            placeholder="Enter full name"
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              outline: 'none',
+                              color: 'var(--foreground)',
+                              fontSize: 14,
+                              width: '100%',
+                              minWidth: 0,
+                            }}
+                            className="client-profile-field-input"
+                          />
                         </div>
                       </div>
+
                       {/* Company */}
                       <div>
-                        <label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wide mb-1.5 block">{t("lblCompany")}</label>
-                        <div className="bg-[var(--muted)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-[14px] text-[var(--foreground)]">
-                          <input value={editData.company} onChange={(e) => setEditData({ ...editData, company: e.target.value })} className="bg-transparent border-none outline-none text-inherit text-[inherit] w-full" />
+                        <label
+                          className="block mb-1.5 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--foreground)] opacity-60"
+                        >
+                          {t("lblCompany")}
+                        </label>
+                        <div
+                          className="client-profile-field"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            height: 44,
+                            borderRadius: 12,
+                            padding: '0 14px',
+                            background: 'var(--muted)',
+                            border: '1px solid var(--border-input)',
+                            transition: 'border-color 150ms ease, box-shadow 150ms ease',
+                          }}
+                        >
+                          <Building2
+                            style={{ width: 16, height: 16, color: 'var(--muted-foreground)', flexShrink: 0 }}
+                            className="client-profile-field-icon"
+                          />
+                          <input
+                            value={editData.company}
+                            onChange={(e) => setEditData({ ...editData, company: e.target.value })}
+                            placeholder="Company name (optional)"
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              outline: 'none',
+                              color: 'var(--foreground)',
+                              fontSize: 14,
+                              width: '100%',
+                              minWidth: 0,
+                            }}
+                            className="client-profile-field-input"
+                          />
                         </div>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 mt-3">
+                    {/* Row 2: Email / Phone */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                       {/* Email */}
                       <div>
-                        <label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wide mb-1.5 block">{t("lblEmailAddress")}</label>
-                        <div className="bg-[var(--muted)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-[14px] text-[var(--foreground)] flex items-center gap-2">
-                          <Mail className="h-4 w-4 text-[var(--muted-foreground)] shrink-0" />
-                          <input value={editData.email} onChange={(e) => setEditData({ ...editData, email: e.target.value })} className="bg-transparent border-none outline-none text-inherit text-[inherit] w-full min-w-0" />
+                        <label
+                          className="block mb-1.5 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--foreground)] opacity-60"
+                        >
+                          {t("lblEmailAddress")}
+                        </label>
+                        <div
+                          className="client-profile-field"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            height: 44,
+                            borderRadius: 12,
+                            padding: '0 14px',
+                            background: 'var(--muted)',
+                            border: '1px solid var(--border-input)',
+                            transition: 'border-color 150ms ease, box-shadow 150ms ease',
+                          }}
+                        >
+                          <Mail
+                            style={{ width: 16, height: 16, color: 'var(--muted-foreground)', flexShrink: 0 }}
+                            className="client-profile-field-icon"
+                          />
+                          <input
+                            value={editData.email}
+                            onChange={(e) => setEditData({ ...editData, email: e.target.value })}
+                            placeholder="name@example.com"
+                            type="email"
+                            inputMode="email"
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              outline: 'none',
+                              color: 'var(--foreground)',
+                              fontSize: 14,
+                              width: '100%',
+                              minWidth: 0,
+                            }}
+                            className="client-profile-field-input"
+                          />
                         </div>
                       </div>
+
                       {/* Phone */}
                       <div>
-                        <label className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wide mb-1.5 block">{t("lblPhoneNumber")}</label>
-                        <div className="bg-[var(--muted)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-[14px] text-[var(--foreground)] flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-[var(--muted-foreground)] shrink-0" />
-                          <input value={editData.phone} onChange={(e) => setEditData({ ...editData, phone: e.target.value })} className="bg-transparent border-none outline-none text-inherit text-[inherit] w-full" />
+                        <label
+                          className="block mb-1.5 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--foreground)] opacity-60"
+                        >
+                          {t("lblPhoneNumber")}
+                        </label>
+                        <div
+                          className="client-profile-field"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            height: 44,
+                            borderRadius: 12,
+                            padding: '0 14px',
+                            background: 'var(--muted)',
+                            border: '1px solid var(--border-input)',
+                            transition: 'border-color 150ms ease, box-shadow 150ms ease',
+                          }}
+                        >
+                          <Phone
+                            style={{ width: 16, height: 16, color: 'var(--muted-foreground)', flexShrink: 0 }}
+                            className="client-profile-field-icon"
+                          />
+                          <input
+                            value={editData.phone}
+                            onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
+                            placeholder="10-digit mobile number"
+                            type="tel"
+                            inputMode="tel"
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              outline: 'none',
+                              color: 'var(--foreground)',
+                              fontSize: 14,
+                              width: '100%',
+                              minWidth: 0,
+                            }}
+                            className="client-profile-field-input"
+                          />
                         </div>
                       </div>
                     </div>
@@ -844,18 +1014,67 @@ export default function ClientsPage() {
 
               {/* Billing Address Card */}
               <div className="bg-[var(--card)] border border-[var(--border)] rounded-[18px] overflow-hidden">
-                <div className="px-4 py-3.5 border-b border-[var(--border)]">
-                  <span className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-wide">{t("lblBillingAddress")}</span>
+                <div className="px-4 py-3.5 border-b border-[var(--border)] flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-[var(--primary)]/10 flex items-center justify-center">
+                    <MapPin className="h-3.5 w-3.5 text-[var(--primary)]" />
+                  </div>
+                  <span className="text-[16px] font-bold text-[var(--foreground)]">{t("lblBillingAddress")}</span>
                 </div>
-                <div className="p-4">
-                  <div className="bg-[var(--muted)] border border-[var(--border)] rounded-xl px-3.5 py-3 flex items-start gap-2.5">
-                    <MapPin className="h-4 w-4 text-[var(--muted-foreground)] shrink-0 mt-0.5" />
+                <div className="p-5">
+                  <label
+                    className="block mb-1.5 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--foreground)] opacity-60"
+                  >
+                    {t("lblBillingAddress")}
+                  </label>
+                  <div
+                    className="client-profile-field"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 10,
+                      minHeight: 96,
+                      borderRadius: 12,
+                      padding: '10px 14px',
+                      background: 'var(--muted)',
+                      border: '1px solid var(--border-input)',
+                      transition: 'border-color 150ms ease, box-shadow 150ms ease',
+                    }}
+                  >
+                    <MapPin
+                      style={{ width: 16, height: 16, color: 'var(--muted-foreground)', flexShrink: 0, marginTop: 2 }}
+                      className="client-profile-field-icon"
+                    />
                     <textarea
                       value={editData.address}
                       onChange={(e) => setEditData({ ...editData, address: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') e.preventDefault();
+                      }}
+                      onPaste={(e) => {
+                        e.preventDefault();
+                        const text = e.clipboardData.getData('text').replace(/[\r\n]+/g, ' ');
+                        const el = e.currentTarget;
+                        const start = el.selectionStart ?? 0;
+                        const end = el.selectionEnd ?? 0;
+                        const next = editData.address.slice(0, start) + text + editData.address.slice(end);
+                        setEditData({ ...editData, address: next });
+                      }}
                       disabled={!isAdmin}
-                      rows={2}
-                      className="bg-transparent border-none outline-none text-[var(--foreground)] text-[14px] leading-5 w-full resize-none"
+                      rows={3}
+                      placeholder="House / Building, Street, Area, City, State, PIN"
+                      className="client-profile-field-input"
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        outline: 'none',
+                        color: 'var(--foreground)',
+                        fontSize: 14,
+                        lineHeight: '1.5',
+                        width: '100%',
+                        resize: 'none',
+                        minWidth: 0,
+                        fontFamily: 'inherit',
+                      }}
                     />
                   </div>
                 </div>
@@ -1053,6 +1272,17 @@ export default function ClientsPage() {
                   </div>
                 )}
               </TabsContent>
+
+              {canViewStatement && (
+                <TabsContent value="statement" className="m-0 mt-5 space-y-5">
+                  <ClientStatement
+                    clientId={selectedClient.id}
+                    clientName={selectedClient.name}
+                    clientPhone={selectedClient.phone}
+                    inModal={true}
+                  />
+                </TabsContent>
+              )}
                 </Tabs>
               </div>
             </div>
@@ -1078,6 +1308,19 @@ export default function ClientsPage() {
         confirmText={t("deleteConfirm")}
         cancelText={t("deleteCancel")}
       />
+
+      {statementClient && (
+        <StatementDialog
+          open={isStatementDialogOpen}
+          onOpenChange={(open) => {
+            setIsStatementDialogOpen(open);
+            if (!open) setStatementClient(null);
+          }}
+          clientId={statementClient.id}
+          clientName={statementClient.name}
+          clientPhone={statementClient.phone}
+        />
+      )}
     </motion.div>
   );
 }

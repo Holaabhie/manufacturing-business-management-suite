@@ -1,12 +1,15 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 
 interface AIThinkingLoaderProps {
   message?: string;
 }
 
-export function AIThinkingLoader({ message = "Analyzing your data..." }: AIThinkingLoaderProps) {
+export function AIThinkingLoader({ message }: AIThinkingLoaderProps) {
+  const t = useTranslations("assistant");
+  const displayMessage = message ?? t("loaderAnalyzing");
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -40,7 +43,7 @@ export function AIThinkingLoader({ message = "Analyzing your data..." }: AIThink
             <div className="ai-thinking__orb" />
             <div className="ai-thinking__orb" />
           </div>
-          <span className="ai-thinking__text">{message}</span>
+          <span className="ai-thinking__text">{displayMessage}</span>
         </div>
       </div>
     </motion.div>

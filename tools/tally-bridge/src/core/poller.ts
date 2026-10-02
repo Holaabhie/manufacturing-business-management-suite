@@ -23,7 +23,7 @@ import {
     ConnectionState,
 } from "./types";
 import { checkTallyHealth } from "./tally-health";
-import { executeJobWithTimeout, StubJobExecutor } from "./job-executor";
+import { executeJobWithTimeout, StubJobExecutor, TallyJobExecutor } from "./job-executor";
 import { ackJobClient } from "./ack";
 
 export interface PollerOptions {
@@ -86,7 +86,7 @@ export class PollManager {
         this.tokenStore = options.tokenStore;
         this.configStore = options.configStore;
         this.logger = options.logger;
-        this.executor = options.executor || new StubJobExecutor();
+        this.executor = options.executor || new TallyJobExecutor({ configStore: options.configStore, logger: options.logger });
         this.appVersion = options.appVersion || "0.1.0";
         this.backoffSchedule = options.backoffSchedule || [5, 10, 20, 40, 60];
         this.rateLimitDelaySec = options.rateLimitDelaySec ?? 30;

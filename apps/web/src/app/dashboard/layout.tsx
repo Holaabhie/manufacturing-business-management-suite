@@ -12,6 +12,7 @@ import {
   CreditCard,
   LogOut,
   Factory,
+  Bot,
   Menu,
   X,
   ChevronLeft,
@@ -23,6 +24,7 @@ import {
   User,
   Zap,
   Receipt,
+  ReceiptText,
   Sparkles,
   Search,
   Sun,
@@ -37,6 +39,8 @@ import {
   BookOpen,
   Plus,
   Archive,
+  FileText,
+  Clock,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -53,7 +57,6 @@ import {
 import { PageTransition } from "@/components/ui/PageTransition";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { NotificationDropdown } from "@/components/NotificationDropdown";
-import { AIAssistantIcon } from "@/components/ai/AIAssistantIcon";
 import { USER_UPDATED_EVENT } from "@/lib/events";
 import { useTheme } from "next-themes";
 import {
@@ -86,8 +89,11 @@ const NAV_MODULE_MAP: Record<string, keyof ModuleConfig> = {
   machines: "machines",
   inventory: "inventory",
   orders: "orders",
+  quotes: "quotes",
+  deliveryChallans: "deliveryChallans",
   billing: "billing",
   payments: "payments",
+  vendorBills: "vendorBills",
   clients: "clients",
   aiAssistant: "ai_assistant",
   ai: "ai_assistant",
@@ -101,6 +107,8 @@ const navigationGroups = [
     items: [
       { name: "Dashboard", nameKey: "dashboard", href: "/dashboard", icon: LayoutDashboard },
       { name: "Orders", nameKey: "orders", href: "/dashboard/orders", icon: ShoppingCart, badge: 0 },
+      { name: "Quotes", nameKey: "quotes", href: "/dashboard/quotes", icon: FileText, badge: 0 },
+      { name: "Delivery Challans", nameKey: "deliveryChallans", href: "/dashboard/delivery-challans", icon: Truck, badge: 0 },
       { name: "Production", nameKey: "production", href: "/dashboard/production", icon: Layers },
       { name: "Machines", nameKey: "machines", href: "/dashboard/machines", icon: Gauge },
       { name: "Inventory", nameKey: "inventory", href: "/dashboard/inventory", icon: Package },
@@ -113,6 +121,7 @@ const navigationGroups = [
     items: [
       { name: "Billing", nameKey: "billing", href: "/dashboard/billing", icon: Receipt },
       { name: "Payments", nameKey: "payments", href: "/dashboard/payments", icon: CreditCard },
+      { name: "Vendor Bills", nameKey: "vendorBills", href: "/dashboard/vendor-bills", icon: ReceiptText },
     ],
   },
   {
@@ -129,6 +138,8 @@ const navigationGroups = [
       { name: "AI Assistant", nameKey: "aiAssistant", href: "/dashboard/assistant", icon: Sparkles },
       { name: "Analytics", nameKey: "analytics", href: "/dashboard/analytics", icon: BarChart3 },
       { name: "Previous Years", nameKey: "previousYears", href: "/dashboard/reports/previous-years", icon: Archive },
+      { name: "Receivables", nameKey: "receivables", href: "/dashboard/reports/receivables", icon: Clock },
+      { name: "Payables", nameKey: "payables", href: "/dashboard/reports/payables", icon: Clock },
       { name: "Notifications", nameKey: "notifications", href: "/dashboard/notifications", icon: Bell },
     ],
   },
@@ -161,49 +172,58 @@ const mobileNavItems = [
 const moreSheetSections = [
   {
     label: "FINANCE",
+    labelKey: "sectionFinance",
     color: "#16A34A",
     items: [
-      { name: "Billing & Invoices", desc: "Create and manage invoices", icon: Receipt, emoji: "🧾", href: "/dashboard/billing" },
-      { name: "Payments", desc: "Track incoming payments", icon: CreditCard, emoji: "💳", href: "/dashboard/payments" },
-      { name: "Folio", desc: "Credit notes & ledger", icon: BookOpen, emoji: "📁", href: "/dashboard/folio" },
+      { name: "Quotes", nameKey: "quotes", desc: "Estimates & quotations", descKey: "quotesDesc", icon: FileText, emoji: "📄", href: "/dashboard/quotes" },
+      { name: "Delivery Challans", nameKey: "deliveryChallans", desc: "Dispatch & tracking notes", descKey: "deliveryChallansDesc", icon: Truck, emoji: "🚚", href: "/dashboard/delivery-challans" },
+      { name: "Billing & Invoices", nameKey: "billingInvoices", desc: "Create and manage invoices", descKey: "billingInvoicesDesc", icon: Receipt, emoji: "🧾", href: "/dashboard/billing" },
+      { name: "Payments", nameKey: "payments", desc: "Track incoming payments", descKey: "paymentsDesc", icon: CreditCard, emoji: "💳", href: "/dashboard/payments" },
+      { name: "Vendor Bills", nameKey: "vendorBills", desc: "Purchase invoices & payments", descKey: "vendorBillsDesc", icon: ReceiptText, emoji: "🧾", href: "/dashboard/vendor-bills" },
+      { name: "Folio", nameKey: "folio", desc: "Credit notes & ledger", descKey: "folioDesc", icon: BookOpen, emoji: "📁", href: "/dashboard/folio" },
     ],
   },
   {
     label: "PEOPLE",
+    labelKey: "sectionPeople",
     color: "#6366F1",
     items: [
-      { name: "Clients", desc: "Manage your customers", icon: Users, emoji: "👥", href: "/dashboard/clients" },
-      { name: "Team & Users", desc: "Staff roles & access", icon: UsersRound, emoji: "🧑‍💼", href: "/dashboard/users" },
-      { name: "Purchasing", desc: "Vendors & purchase orders", icon: Truck, emoji: "🚚", href: "/dashboard/purchasing" },
+      { name: "Clients", nameKey: "clients", desc: "Manage your customers", descKey: "clientsDesc", icon: Users, emoji: "👥", href: "/dashboard/clients" },
+      { name: "Team & Users", nameKey: "teamUsers", desc: "Staff roles & access", descKey: "teamUsersDesc", icon: UsersRound, emoji: "🧑‍💼", href: "/dashboard/users" },
+      { name: "Purchasing", nameKey: "purchasing", desc: "Vendors & purchase orders", descKey: "purchasingDesc", icon: Truck, emoji: "🚚", href: "/dashboard/purchasing" },
     ],
   },
   {
     label: "REPORTS",
+    labelKey: "sectionReports",
     color: "#F59E0B",
     items: [
-      { name: "Analytics", desc: "Revenue & performance", icon: BarChart3, emoji: "📊", href: "/dashboard/analytics" },
-      { name: "Machines", desc: "Equipment & maintenance", icon: Gauge, emoji: "⚙️", href: "/dashboard/machines" },
-      { name: "Previous Years", desc: "Archived FY data", icon: Archive, emoji: "📦", href: "/dashboard/reports/previous-years" },
+      { name: "Analytics", nameKey: "analytics", desc: "Revenue & performance", descKey: "analyticsDesc", icon: BarChart3, emoji: "📊", href: "/dashboard/analytics" },
+      { name: "Machines", nameKey: "machines", desc: "Equipment & maintenance", descKey: "machinesDesc", icon: Gauge, emoji: "⚙️", href: "/dashboard/machines" },
+      { name: "Previous Years", nameKey: "previousYears", desc: "Archived FY data", descKey: "previousYearsDesc", icon: Archive, emoji: "📦", href: "/dashboard/reports/previous-years" },
+      { name: "Receivables", nameKey: "receivables", desc: "Aging & receivables", descKey: "receivablesDesc", icon: Clock, emoji: "⏱️", href: "/dashboard/reports/receivables" },
+      { name: "Payables", nameKey: "payables", desc: "Aging & payables", descKey: "payablesDesc", icon: Clock, emoji: "⏱️", href: "/dashboard/reports/payables" },
     ],
   },
   {
     label: "TOOLS",
+    labelKey: "sectionTools",
     color: "#2563EB",
     items: [
-      { name: "AI Assistant", desc: "Smart business insights", icon: Sparkles, emoji: "🤖", href: "/dashboard/assistant" },
-      { name: "Notifications", desc: "Alerts & updates", icon: Bell, emoji: "🔔", href: "/dashboard/notifications" },
-      { name: "Settings", desc: "Company profile & config", icon: Settings, emoji: "⚙️", href: "/dashboard/settings" },
-      { name: "Upgrade", desc: "Unlock premium features", icon: Zap, emoji: "👑", href: "/dashboard/upgrade" },
+      { name: "AI Assistant", nameKey: "aiAssistant", desc: "Smart business insights", descKey: "aiAssistantDesc", icon: Sparkles, emoji: "🤖", href: "/dashboard/assistant" },
+      { name: "Notifications", nameKey: "notifications", desc: "Alerts & updates", descKey: "notificationsDesc", icon: Bell, emoji: "🔔", href: "/dashboard/notifications" },
+      { name: "Settings", nameKey: "settings", desc: "Company profile & config", descKey: "settingsDesc", icon: Settings, emoji: "⚙️", href: "/dashboard/settings" },
+      { name: "Upgrade", nameKey: "upgrade", desc: "Unlock premium features", descKey: "upgradeDesc", icon: Zap, emoji: "👑", href: "/dashboard/upgrade" },
     ],
   },
 ];
 
 const quickActions = [
-  { label: "New Order", href: "/dashboard/orders/create", icon: ShoppingCart },
-  { label: "New Production", href: "/dashboard/production/create", icon: Factory },
-  { label: "Add Client", href: "/dashboard/clients", icon: Users },
-  { label: "Record Payment", href: "/dashboard/payments", icon: CreditCard },
-  { label: "Add Inventory", href: "/dashboard/inventory", icon: Package },
+  { label: "New Order", labelKey: "actionNewOrder", href: "/dashboard/orders/create", icon: ShoppingCart },
+  { label: "New Production", labelKey: "actionNewProduction", href: "/dashboard/production/create", icon: Factory },
+  { label: "Add Client", labelKey: "actionAddClient", href: "/dashboard/clients", icon: Users },
+  { label: "Record Payment", labelKey: "actionRecordPayment", href: "/dashboard/payments", icon: CreditCard },
+  { label: "Add Inventory", labelKey: "actionAddInventory", href: "/dashboard/inventory", icon: Package },
 ];
 
 const SIDEBAR_STORAGE_KEY = "erp-sidebar-collapsed";
@@ -400,6 +420,9 @@ export default function DashboardLayout({
             {filterNavigationByRole(navigationGroups, role).map((group) => ({
               ...group,
               items: group.items.filter((item) => {
+                if (role === "Staff" && (item.nameKey === "quotes" || item.nameKey === "deliveryChallans")) {
+                  return false;
+                }
                 const moduleKey = NAV_MODULE_MAP[item.nameKey];
                 if (!moduleKey) return true; // Not module-gated
                 return enabledModules[moduleKey];
@@ -588,24 +611,9 @@ export default function DashboardLayout({
             <div className="flex items-center gap-3 min-w-0">
               {/* Mobile: Decorative logo mark / AI Assistant avatar */}
               <div className="md:hidden flex items-center">
-                <div
-                  className={cn(
-                    "w-[28px] h-[28px] flex items-center justify-center flex-shrink-0 transition-all",
-                    pathname === "/dashboard/assistant"
-                      ? "rounded-full"
-                      : "rounded-[7px] bg-primary"
-                  )}
-                  style={
-                    pathname === "/dashboard/assistant"
-                      ? {
-                          background: "linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%)",
-                          boxShadow: "0 2px 8px rgba(139, 92, 246, 0.35)",
-                        }
-                      : undefined
-                  }
-                >
+                <div className="w-[28px] h-[28px] rounded-[7px] bg-primary flex items-center justify-center flex-shrink-0">
                   {pathname === "/dashboard/assistant" ? (
-                    <AIAssistantIcon size={15} className="text-white" />
+                    <Bot className="h-4 w-4 text-white" />
                   ) : (
                     <Factory className="h-3.5 w-3.5 text-white" />
                   )}
@@ -629,14 +637,8 @@ export default function DashboardLayout({
                     <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
                     <span className="font-medium text-foreground flex items-center gap-1.5">
                       {pathname === "/dashboard/assistant" && (
-                        <div
-                          className="w-[20px] h-[20px] rounded-full flex items-center justify-center flex-shrink-0"
-                          style={{
-                            background: "linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%)",
-                            boxShadow: "0 2px 6px rgba(139, 92, 246, 0.25)",
-                          }}
-                        >
-                          <AIAssistantIcon size={12} className="text-white" />
+                        <div className="w-[20px] h-[20px] rounded-[5px] bg-primary flex items-center justify-center flex-shrink-0">
+                          <Bot className="h-3 w-3 text-white" />
                         </div>
                       )}
                       {getPageName()}
@@ -940,7 +942,7 @@ export default function DashboardLayout({
 
         {/* Floating nav items */}
         <nav
-          className="relative flex items-end justify-around px-2 pt-4 pb-2 pointer-events-auto rounded-[28px] bg-card/90 dark:bg-card/95 backdrop-blur-xl border border-border shadow-xl shadow-black/10 dark:shadow-black/40"
+          className="relative flex items-center justify-between w-full px-1 pt-2.5 pb-2 pointer-events-auto rounded-[28px] bg-card/90 dark:bg-card/95 backdrop-blur-xl border border-border shadow-xl shadow-black/10 dark:shadow-black/40 overflow-hidden"
         >
           {filterMobileNavByRole(mobileNavItems, role).filter((item) => {
             const moduleKey = NAV_MODULE_MAP[item.nameKey];
@@ -957,7 +959,7 @@ export default function DashboardLayout({
             const navContent = (
               <div
                 className={cn(
-                  "flex flex-col items-center justify-center gap-0.5 relative px-3 py-1.5 rounded-2xl transition-all duration-200 nav-tap-ripple",
+                  "flex flex-col items-center justify-center gap-0.5 relative w-full px-0.5 py-1 rounded-2xl transition-all duration-200 nav-tap-ripple",
                   isActive && "nav-item-active-pill"
                 )}
               >
@@ -969,12 +971,12 @@ export default function DashboardLayout({
                 {/* Icon */}
                 <div
                   className={cn(
-                    "transition-all duration-200",
+                    "transition-all duration-200 flex items-center justify-center",
                     isActive ? "scale-110 -translate-y-0.5" : "opacity-40"
                   )}
                 >
                   <IconComponent
-                    size={22}
+                    size={20}
                     strokeWidth={isActive ? 2.2 : 1.8}
                     className={cn(
                       isActive
@@ -987,7 +989,7 @@ export default function DashboardLayout({
                 {/* Label */}
                 <span
                   className={cn(
-                    "text-[10px] transition-all duration-200",
+                    "text-[10px] leading-tight truncate max-w-full text-center transition-all duration-200",
                     isActive
                       ? "text-primary font-semibold"
                       : "text-muted-foreground font-medium opacity-40"
@@ -998,12 +1000,14 @@ export default function DashboardLayout({
               </div>
             );
 
+            const itemClasses = "flex-1 min-w-0 flex flex-col items-center justify-center p-0 m-0 bg-transparent border-0 cursor-pointer select-none";
+
             if (item.isMore) {
               return (
                 <button
                   key={item.name}
                   onClick={() => setIsMoreSheetOpen((prev) => !prev)}
-                  className="cursor-pointer"
+                  className={itemClasses}
                   style={{ WebkitTapHighlightColor: "transparent" }}
                 >
                   {navContent}
@@ -1015,6 +1019,7 @@ export default function DashboardLayout({
               <Link
                 key={item.name}
                 href={item.href}
+                className={itemClasses}
                 style={{ WebkitTapHighlightColor: "transparent" }}
               >
                 {navContent}
@@ -1025,7 +1030,7 @@ export default function DashboardLayout({
       </div>
 
       {/* Command Palette */}
-      <CommandPalette open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen} />
+      <CommandPalette open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen} role={role} />
 
       {/* Toast Notification Container */}
       <IOSToastContainer />

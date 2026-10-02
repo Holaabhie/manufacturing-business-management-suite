@@ -6,7 +6,8 @@ import { SalesOrder } from "@/models/SalesOrder";
 import { AuditLog } from "@/models/AuditLog";
 import { z } from "zod";
 import { ObjectId } from "mongodb";
-import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
+import { getDataOwnerId } from "@/lib/auth-session";
+import { requireRole } from "@/lib/require-role";
 import { getFinancialYear } from "@/lib/utils/financial-year";
 
 // Zod Schema matching 2.4 - Payment Recording API
@@ -71,11 +72,12 @@ export async function POST(req: NextRequest) {
     try {
         await connectToDatabase();
 
-        // ─── Auth: get real user from session ────────────────
-        const sessionUser = await getSessionUser();
-        if (!sessionUser) {
-            return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+        // ─── Auth: require Owner or Admin (matching legacy /api/payments POST) ──
+        const authResult = await requireRole(["Owner", "Admin"]);
+        if (authResult.error || !authResult.user) {
+            return NextResponse.json({ success: false, error: authResult.error || "Unauthorized" }, { status: authResult.status || 401 });
         }
+        const sessionUser = authResult.user;
         const userId = sessionUser._id.toString();
         const organizationId = getDataOwnerId(sessionUser);
 

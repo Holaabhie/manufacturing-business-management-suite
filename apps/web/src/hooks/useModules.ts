@@ -8,8 +8,11 @@ export interface ModuleConfig {
   machines: boolean;
   inventory: boolean;
   orders: boolean;
+  quotes: boolean;
+  deliveryChallans: boolean;
   billing: boolean;
   payments: boolean;
+  vendorBills: boolean;
   clients: boolean;
   // Always-on modules
   dashboard: boolean;
@@ -22,8 +25,11 @@ export const DEFAULT_MODULES: ModuleConfig = {
   machines: true,
   inventory: true,
   orders: true,
+  quotes: true,
+  deliveryChallans: true,
   billing: false,
   payments: false,
+  vendorBills: true,
   clients: false,
   // Always true, not toggleable
   dashboard: true,
@@ -65,6 +71,18 @@ export const MODULE_META: Record<
     icon: "ShoppingCart",
     color: "#007AFF",
   },
+  quotes: {
+    label: "Quotes & Estimates",
+    description: "Create quotations, track estimates, and convert to orders",
+    icon: "FileText",
+    color: "#2563EB",
+  },
+  deliveryChallans: {
+    label: "Delivery Challans",
+    description: "Create delivery challans, track dispatches and shipments",
+    icon: "Truck",
+    color: "#3B82F6",
+  },
   billing: {
     label: "Billing & Invoices",
     description: "Create invoices, manage GST billing, and export to Tally",
@@ -76,6 +94,12 @@ export const MODULE_META: Record<
     description: "Track incoming and outgoing payments and dues",
     icon: "CreditCard",
     color: "#FF2D55",
+  },
+  vendorBills: {
+    label: "Vendor Bills",
+    description: "Manage purchase invoices, vendor payments, and tax tracking",
+    icon: "ReceiptText",
+    color: "#10B981",
   },
   clients: {
     label: "Clients Management",

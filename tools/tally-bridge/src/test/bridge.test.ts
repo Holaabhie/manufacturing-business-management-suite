@@ -10,7 +10,7 @@ import * as assert from "node:assert";
 import { validateAndNormalizeCloudUrl } from "../core/url";
 import { pairDeviceClient } from "../core/pairing";
 import { clampPollDelay, PollManager } from "../core/poller";
-import { StubJobExecutor } from "../core/job-executor";
+import { StubJobExecutor, TallyJobExecutor, buildJobXml, parseTallyResponseXml } from "../core/job-executor";
 import { ackJobClient } from "../core/ack";
 import { createFakeTallyServer } from "../scripts/fake-tally";
 import {
@@ -669,4 +669,163 @@ describe("Tally Bridge P3a Test Suite", () => {
         assert.strictEqual(pollCount, 1, "Only 1 poll executed while in progress");
         assert.strictEqual(maxSimultaneous, 1, "Max simultaneous polls was strictly 1");
     });
+
+    // ─── T12: Real Executor XML Generation for Each Job Type ───────
+    test("T12: job of each type builds expected XML shape", () => {
+        // 1. master.unit
+        const unitXml = buildJobXml({
+            id: "job_unit_1",
+            type: "master.unit",
+            requestXml: "",
+            attempts: 0,
+            leaseExpiresAt: "",
+            payload: { unitSymbol: "NOS", decimalPlaces: 0, companyName: "Ind Manager" },
+        } as any);
+        assert.match(unitXml, /<UNIT NAME="NOS" ACTION="Create or Alter">/);
+        assert.match(unitXml, /<ISSIMPLEUNIT>Yes<\/ISSIMPLEUNIT>/);
+        assert.match(unitXml, /<SVCURRENTCOMPANY>Ind Manager<\/SVCURRENTCOMPANY>/);
+
+        // 2. master.stock_item
+        const stockXml = buildJobXml({
+            id: "job_stock_1",
+            type: "master.stock_item",
+            requestXml: "",
+            attempts: 0,
+            leaseExpiresAt: "",
+            payload: {
+                name: "Widget Alpha",
+                unit: "NOS",
+                hsnCode: "8471",
+                gstRate: 18,
+                companyName: "Ind Manager",
+            },
+        } as any);
+        assert.match(stockXml, /<STOCKGROUP NAME="Primary" ACTION="Create or Alter">/);
+        assert.match(stockXml, /<UNIT NAME="NOS" ACTION="Create or Alter">/);
+        assert.match(stockXml, /<STOCKITEM NAME="Widget Alpha" ACTION="Create or Alter">/);
+        assert.match(stockXml, /<HSNCODE>8471<\/HSNCODE>/);
+        assert.match(stockXml, /<GSTRATE>18<\/GSTRATE>/);
+
+        // 3. master.ledger
+        const ledgerXml = buildJobXml({
+            id: "job_led_1",
+            type: "master.ledger",
+            requestXml: "",
+            attempts: 0,
+            leaseExpiresAt: "",
+            payload: {
+                clientName: "Spike Traders",
+                alias: "client_123",
+                gstin: "27AABCS1429B1ZV",
+                state: "Maharashtra",
+                companyName: "Ind Manager",
+            },
+        } as any);
+        assert.match(ledgerXml, /<LEDGER NAME="Spike Traders" ACTION="Create or Alter">/);
+        assert.match(ledgerXml, /<ALIAS>client_123<\/ALIAS>/);
+        assert.match(ledgerXml, /<PARENT>Sundry Debtors<\/PARENT>/);
+        assert.match(ledgerXml, /<LEDSTATENAME>Maharashtra<\/LEDSTATENAME>/);
+
+        // 4. voucher.sales
+        const salesXml = buildJobXml({
+            id: "job_vch_1",
+            type: "voucher.sales",
+            requestXml: "",
+            attempts: 0,
+            leaseExpiresAt: "",
+            payload: {
+                invoiceId: "inv_999",
+                invoiceNumber: "INV-2026-001",
+                partyLedgerName: "Spike Traders",
+                invoiceDate: "20260901",
+                state: "Maharashtra",
+                totalAmount: 118,
+                subtotal: 100,
+                cgstAmount: 9,
+                sgstAmount: 9,
+                companyName: "Ind Manager",
+            },
+        } as any);
+        assert.match(salesXml, /<VOUCHER VCHTYPE="Sales" ACTION="Create or Alter" OBJVIEW="Invoice Voucher View" REMOTEID="ind-manager-inv_999">/);
+        assert.match(salesXml, /<VOUCHERTYPENAME>Sales<\/VOUCHERTYPENAME>/);
+        assert.match(salesXml, /<STATENAME>Maharashtra<\/STATENAME>/);
+        assert.match(salesXml, /<PLACEOFSUPPLY>Maharashtra<\/PLACEOFSUPPLY>/);
+        assert.match(salesXml, /<LEDGERNAME>Spike Traders<\/LEDGERNAME>/);
+        assert.match(salesXml, /<ISPARTYLEDGER>Yes<\/ISPARTYLEDGER>/);
+        assert.match(salesXml, /<LEDGERNAME>CGST<\/LEDGERNAME>/);
+        assert.match(salesXml, /<ISPARTYLEDGER>No<\/ISPARTYLEDGER>/);
+        assert.match(salesXml, /<ACCOUNTINGALLOCATIONS.LIST>/);
+        assert.match(salesXml, /<LEDGERNAME>Sales Account<\/LEDGERNAME>/);
+    });
+
+    // ─── T13: Executor Success on CREATED:1 Response ──────────────
+    test("T13: executor CREATED:1 response acks success", async () => {
+        const executor = new TallyJobExecutor({
+            poster: async () => ({
+                status: 200,
+                body: "<RESPONSE><CREATED>1</CREATED><ALTERED>0</ALTERED><DELETED>0</DELETED><ERRORS>0</ERRORS><EXCEPTIONS>0</EXCEPTIONS></RESPONSE>",
+            }),
+        });
+
+        const result = await executor.execute({
+            id: "job_exec_1",
+            type: "master.unit",
+            requestXml: "",
+            attempts: 0,
+            leaseExpiresAt: "",
+            payload: { unitSymbol: "NOS" },
+        } as any);
+
+        assert.strictEqual(result.outcome, "success");
+        assert.strictEqual(result.created, 1);
+        assert.strictEqual(result.altered, 0);
+    });
+
+    // ─── T14: Executor Permanent Error on EXCEPTIONS:1 No Detail ──
+    test("T14: executor EXCEPTIONS:1 (no detail) acks permanent_error with TALLY_REJECTED_NO_DETAIL", async () => {
+        const executor = new TallyJobExecutor({
+            poster: async () => ({
+                status: 200,
+                body: "<RESPONSE><CREATED>0</CREATED><ALTERED>0</ALTERED><DELETED>0</DELETED><ERRORS>0</ERRORS><EXCEPTIONS>1</EXCEPTIONS></RESPONSE>",
+            }),
+        });
+
+        const result = await executor.execute({
+            id: "job_exec_2",
+            type: "voucher.sales",
+            requestXml: "",
+            attempts: 0,
+            leaseExpiresAt: "",
+            payload: { invoiceNumber: "INV-1" },
+        } as any);
+
+        assert.strictEqual(result.outcome, "permanent_error");
+        assert.strictEqual(result.errorCode, "TALLY_REJECTED_NO_DETAIL");
+        assert.match(result.errorMessage!, /Tally rejected the import with EXCEPTIONS but gave no detailed reason/);
+    });
+
+    // ─── T15: Executor Retryable Error on Network Timeout ──────────
+    test("T15: executor network timeout acks retryable_error", async () => {
+        const executor = new TallyJobExecutor({
+            poster: async () => {
+                const err = new Error("Request to Tally timed out after 15000ms");
+                (err as any).code = "ETIMEDOUT";
+                throw err;
+            },
+        });
+
+        const result = await executor.execute({
+            id: "job_exec_3",
+            type: "master.ledger",
+            requestXml: "",
+            attempts: 0,
+            leaseExpiresAt: "",
+            payload: { clientName: "Client A" },
+        } as any);
+
+        assert.strictEqual(result.outcome, "retryable_error");
+        assert.strictEqual(result.errorCode, "TALLY_TIMEOUT");
+        assert.match(result.errorMessage!, /timed out/);
+    });
 });
+

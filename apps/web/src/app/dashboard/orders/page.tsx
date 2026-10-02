@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import React, { useState, useMemo, useCallback, useRef, useEffect, Suspense } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { useCachedPage } from "@/hooks/useCachedPage";
 import { SearchBar } from "@/components/ui/SearchBar";
 import { TableEmptyState } from "@/components/ui/TableEmptyState";
@@ -101,6 +102,7 @@ import { useQuery } from "@tanstack/react-query";
 import { CollapsingTitle } from "@/components/ui/CollapsingTitle";
 import { useCollapseProgress } from "@/hooks/useCollapseProgress";
 import { ConfirmDeleteSheet } from "@/components/ui/ConfirmDeleteSheet";
+import { StaffOrderDetailSheet } from "@/components/staff/StaffOrderDetailSheet";
 
 // React Query Hooks 
 import {
@@ -213,6 +215,8 @@ function OrdersContent() {
   const [invoiceEditData, setInvoiceEditData] = useState<any>(null);
 
   // Long-press & Bottom Sheet state ---
+  const [staffSelectedOrder, setStaffSelectedOrder] = useState<any | null>(null);
+  const [isStaffDetailOpen, setIsStaffDetailOpen] = useState(false);
   const [longPressedOrder, setLongPressedOrder] = useState<any>(null);
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
   const [pressedCardId, setPressedCardId] = useState<string | null>(null);
@@ -979,8 +983,8 @@ function OrdersContent() {
                   "dark:text-[#E2E8F0] dark:placeholder:text-[rgba(148,163,184,0.50)]",
                   "dark:shadow-[0_2px_8px_rgba(0,0,0,0.15)]",
                   // Focus
-                  "focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[rgba(37,99,235,0.15)]",
-                  "dark:focus:border-[rgba(96,165,250,0.50)] dark:focus:ring-[rgba(96,165,250,0.15)]",
+                  "focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[rgba(37,99,235,0.30)]",
+                  "dark:focus:border-[rgba(96,165,250,0.50)] dark:focus:ring-1 dark:focus:ring-[rgba(96,165,250,0.25)]",
                   // Caret
                   "caret-primary",
                 )}
@@ -998,37 +1002,39 @@ function OrdersContent() {
             </div>
 
             {/* Action Buttons -- shrink-0 so they never wrap oddly */}
-            <div className="flex items-center gap-2 shrink-0">
-              {/* Add Order -- PRIMARY CTA */}
-              <button
-                type="button"
-                onClick={handleAddNewClick}
-                className="flex items-center gap-2 h-10 px-4 rounded-[12px] bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-[13px] font-semibold shadow-[0_2px_8px_rgba(37,99,235,0.25)] hover:shadow-[0_4px_16px_rgba(37,99,235,0.35)] transition-all duration-200 active:scale-[0.98] cursor-pointer"
-              >
-                <Plus size={15} />
-                <span className="hidden sm:inline">{t("addOrder")}</span>
-                <span className="sm:hidden">{t("add")}</span>
-              </button>
+            {!isStaff && (
+              <div className="flex items-center gap-2 shrink-0">
+                {/* Add Order -- PRIMARY CTA */}
+                <button
+                  type="button"
+                  onClick={handleAddNewClick}
+                  className="flex items-center gap-2 h-10 px-4 rounded-[12px] bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-[13px] font-semibold shadow-[0_2px_8px_rgba(37,99,235,0.25)] hover:shadow-[0_4px_16px_rgba(37,99,235,0.35)] transition-all duration-200 active:scale-[0.98] cursor-pointer"
+                >
+                  <Plus size={15} />
+                  <span className="hidden sm:inline">{t("addOrder")}</span>
+                  <span className="sm:hidden">{t("add")}</span>
+                </button>
 
-              {/* Export -- SECONDARY */}
-              <button
-                type="button"
-                onClick={exportToXLSX}
-                className={cn(
-                  "flex items-center gap-2 h-10 px-3.5 rounded-[12px] text-[13px] font-medium transition-all duration-200 active:scale-[0.98] cursor-pointer",
-                  // Light
-                  "bg-[rgba(255,255,255,0.72)] hover:bg-[rgba(255,255,255,0.95)] border border-[rgba(15,23,42,0.08)] hover:border-[rgba(15,23,42,0.14)]",
-                  "text-[#64748B] hover:text-[#0F172A] shadow-[0_2px_8px_rgba(15,23,42,0.04)]",
-                  // Dark -- deep navy glass surface
-                  "dark:bg-[rgba(15,23,42,0.50)] dark:hover:bg-[rgba(30,41,59,0.70)]",
-                  "dark:border-[rgba(148,163,184,0.12)] dark:hover:border-[rgba(148,163,184,0.20)]",
-                  "dark:text-[#94A3B8] dark:hover:text-[#E2E8F0] dark:shadow-[0_2px_8px_rgba(0,0,0,0.15)]",
-                )}
-              >
-                <Download size={14} />
-                <span className="hidden md:inline">{t("export")}</span>
-              </button>
-            </div>
+                {/* Export -- SECONDARY */}
+                <button
+                  type="button"
+                  onClick={exportToXLSX}
+                  className={cn(
+                    "flex items-center gap-2 h-10 px-3.5 rounded-[12px] text-[13px] font-medium transition-all duration-200 active:scale-[0.98] cursor-pointer",
+                    // Light
+                    "bg-[rgba(255,255,255,0.72)] hover:bg-[rgba(255,255,255,0.95)] border border-[rgba(15,23,42,0.08)] hover:border-[rgba(15,23,42,0.14)]",
+                    "text-[#64748B] hover:text-[#0F172A] shadow-[0_2px_8px_rgba(15,23,42,0.04)]",
+                    // Dark -- deep navy glass surface
+                    "dark:bg-[rgba(15,23,42,0.50)] dark:hover:bg-[rgba(30,41,59,0.70)]",
+                    "dark:border-[rgba(148,163,184,0.12)] dark:hover:border-[rgba(148,163,184,0.20)]",
+                    "dark:text-[#94A3B8] dark:hover:text-[#E2E8F0] dark:shadow-[0_2px_8px_rgba(0,0,0,0.15)]",
+                  )}
+                >
+                  <Download size={14} />
+                  <span className="hidden md:inline">{t("export")}</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* ROW 2 + ROW 3 -- Filters + Result Count */}
@@ -1171,22 +1177,31 @@ function OrdersContent() {
                         label: t("staff.pending"),
                         count: orderStats.pending,
                         color: "orange" as const,
+                        filter: "pending" as const,
                       },
                       {
                         icon: Timer,
                         label: t("staff.inProgress"),
                         count: orderStats.processing,
                         color: "blue" as const,
+                        filter: "processing" as const,
                       },
                       {
                         icon: CheckCircle2,
                         label: t("staff.done"),
                         count: orderStats.completed,
                         color: "green" as const,
+                        filter: "completed" as const,
                       },
                     ].map((item, i, arr) => (
                       <div key={item.label}>
-                        <div className="flex items-center gap-3 p-2.5 rounded-[12px] hover:bg-[var(--muted)] transition-all">
+                        <div
+                          onClick={() => setStatusShortcut(statusFilter === item.filter ? null : item.filter)}
+                          className={cn(
+                            "flex items-center gap-3 p-2.5 rounded-[12px] hover:bg-[var(--muted)] transition-all cursor-pointer",
+                            statusFilter === item.filter && "bg-[var(--muted)] ring-1 ring-[var(--primary)]/30"
+                          )}
+                        >
                           <div
                             className="w-[32px] h-[32px] rounded-[9px] flex items-center justify-center flex-shrink-0"
                             style={{
@@ -1260,54 +1275,64 @@ function OrdersContent() {
                           .slice(0, 5)
                           .map((order: any, idx: number) => {
                             const derived = deriveOrderStatusFromOrder(order);
+                            const orderId = order.id ?? order._id;
                             return (
-                              <div key={order.id ?? idx}>
-                                <motion.div
-                                  initial={{ opacity: 0, y: 4 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  transition={{
-                                    delay: 0.1 + idx * 0.04,
-                                    duration: 0.3,
+                              <div key={orderId ?? idx}>
+                                <div
+                                  onClick={() => {
+                                    setStaffSelectedOrder(order);
+                                    setIsStaffDetailOpen(true);
                                   }}
-                                  className="flex items-center gap-2.5 p-2.5 rounded-[10px] hover:bg-[var(--muted)] transition-colors cursor-pointer group"
+                                  className="cursor-pointer"
                                 >
-                                  {/* Priority dot */}
-                                  <div
-                                    className={cn(
-                                      "w-[5px] h-[5px] rounded-full flex-shrink-0",
-                                      derived === "completed"
-                                        ? "bg-[var(--erp-success)]"
-                                        : derived === "processing"
-                                          ? "bg-[var(--primary)]"
-                                          : derived === "active"
-                                            ? "bg-[var(--primary)]"
-                                            : "bg-[var(--erp-warning)]",
-                                    )}
-                                  />
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-[13px] font-medium text-[var(--foreground)] truncate">
-                                      {order.productName ?? order.product_name ?? "\u2014"}
-                                    </p>
-                                    <p className="text-[11px] text-[var(--muted-foreground)] truncate">
-                                      {order.client?.name ?? order.clients?.name ?? "\u2014"} \u00B7{" "}
-                                      {order.quantity ?? 0} {order.unit ?? "kg"}
-                                    </p>
-                                  </div>
-                                  <span
-                                    className={cn(
-                                      "text-[10px] font-medium px-1.5 py-0.5 rounded-full capitalize whitespace-nowrap",
-                                      derived === "completed"
-                                        ? "bg-[rgba(52,199,89,0.12)] text-[var(--erp-success)]"
-                                        : derived === "processing"
-                                          ? "bg-[rgba(0,122,255,0.12)] text-[var(--primary)]"
-                                          : derived === "active"
-                                            ? "bg-[rgba(0,122,255,0.12)] text-[var(--primary)]"
-                                            : "bg-[rgba(255,149,0,0.12)] text-[var(--erp-warning)]",
-                                    )}
+                                  <motion.div
+                                    initial={{ opacity: 0, y: 4 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{
+                                      delay: 0.1 + idx * 0.04,
+                                      duration: 0.3,
+                                    }}
+                                    className="flex items-center gap-2.5 p-2.5 rounded-[10px] hover:bg-[var(--muted)] transition-colors cursor-pointer group"
                                   >
-                                    {getStatusLabel(derived)}
-                                  </span>
-                                </motion.div>
+                                    {/* Priority dot */}
+                                    <div
+                                      className={cn(
+                                        "w-[5px] h-[5px] rounded-full flex-shrink-0",
+                                        derived === "completed"
+                                          ? "bg-[var(--erp-success)]"
+                                          : derived === "processing"
+                                            ? "bg-[var(--primary)]"
+                                            : derived === "active"
+                                              ? "bg-[var(--primary)]"
+                                              : "bg-[var(--erp-warning)]",
+                                      )}
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-[13px] font-medium text-[var(--foreground)] truncate">
+                                        {order.productName ?? order.product_name ?? "—"}
+                                      </p>
+                                      <p className="text-[11px] text-[var(--muted-foreground)] truncate">
+                                        {order.client?.name ?? order.clients?.name ?? "—"} ·{" "}
+                                        {order.quantity ?? 0} {order.unit ?? "kg"}
+                                      </p>
+                                    </div>
+                                    <span
+                                      className={cn(
+                                        "text-[10px] font-medium px-1.5 py-0.5 rounded-full capitalize whitespace-nowrap",
+                                        derived === "completed"
+                                          ? "bg-[rgba(52,199,89,0.12)] text-[var(--erp-success)]"
+                                          : derived === "processing"
+                                            ? "bg-[rgba(0,122,255,0.12)] text-[var(--primary)]"
+                                            : derived === "active"
+                                              ? "bg-[rgba(0,122,255,0.12)] text-[var(--primary)]"
+                                              : "bg-[rgba(255,149,0,0.12)] text-[var(--erp-warning)]",
+                                      )}
+                                    >
+                                      {getStatusLabel(derived)}
+                                    </span>
+                                    <ChevronRight className="h-3.5 w-3.5 text-[var(--muted-foreground)] group-hover:text-[var(--muted-foreground)] transition-colors flex-shrink-0" />
+                                  </motion.div>
+                                </div>
                                 {idx <
                                   Math.min(filteredOrders.length, 5) - 1 && (
                                     <div className="h-px bg-[var(--border-divider)] mx-3" />
@@ -1336,7 +1361,8 @@ function OrdersContent() {
                   duration: 0.4,
                   ease: [0.16, 1, 0.3, 1],
                 }}
-                className="group relative overflow-hidden rounded-[16px] p-5 w-full max-w-[240px] transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                onClick={() => setStatusShortcut(null)}
+                className="group relative overflow-hidden rounded-[16px] p-5 w-full max-w-[240px] transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                 style={{
                   background: "rgba(255,255,255,0.04)",
                   backdropFilter: "blur(20px)",
@@ -1380,7 +1406,8 @@ function OrdersContent() {
                   duration: 0.4,
                   ease: [0.16, 1, 0.3, 1],
                 }}
-                className="group relative overflow-hidden rounded-[16px] p-5 w-full max-w-[240px] transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                onClick={() => setStatusShortcut("completed")}
+                className="group relative overflow-hidden rounded-[16px] p-5 w-full max-w-[240px] transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                 style={{
                   background: "rgba(255,255,255,0.04)",
                   backdropFilter: "blur(20px)",
@@ -1438,44 +1465,74 @@ function OrdersContent() {
                         label: t("staff.productionQueue"),
                         count: orderStats.processing,
                         color: "blue" as const,
+                        href: "/dashboard/production",
                       },
                       {
                         icon: Activity,
                         label: t("staff.inProduction"),
                         count: orderStats.processing,
                         color: "orange" as const,
+                        href: "/dashboard/production?status=running",
                       },
                       {
                         icon: Clock,
                         label: t("staff.pendingStart"),
                         count: orderStats.pending,
                         color: "purple" as const,
+                        href: "/dashboard/production?status=pending",
                       },
                       {
                         icon: CheckCircle2,
                         label: t("staff.completed"),
                         count: orderStats.completed,
                         color: "green" as const,
+                        href: "/dashboard/production?status=completed",
                       },
                     ].map((item, i, arr) => (
                       <div key={item.label}>
-                        <div className="flex items-center gap-3 p-2.5 rounded-[12px] hover:bg-[var(--muted)] transition-all">
-                          <div
-                            className="w-[32px] h-[32px] rounded-[9px] flex items-center justify-center flex-shrink-0"
-                            style={{
-                              background:
-                                item.color === "blue"
-                                  ? "rgba(0,122,255,0.10)"
-                                  : item.color === "orange"
-                                    ? "rgba(255,149,0,0.10)"
-                                    : item.color === "purple"
-                                      ? "rgba(88,86,214,0.10)"
-                                      : "rgba(52,199,89,0.10)",
-                            }}
-                          >
-                            <item.icon
-                              className="h-[15px] w-[15px]"
+                        <Link href={item.href}>
+                          <div className="flex items-center gap-3 p-2.5 rounded-[12px] hover:bg-[var(--muted)] transition-all cursor-pointer group">
+                            <div
+                              className="w-[32px] h-[32px] rounded-[9px] flex items-center justify-center flex-shrink-0"
                               style={{
+                                background:
+                                  item.color === "blue"
+                                    ? "rgba(0,122,255,0.10)"
+                                    : item.color === "orange"
+                                      ? "rgba(255,149,0,0.10)"
+                                      : item.color === "purple"
+                                        ? "rgba(88,86,214,0.10)"
+                                        : "rgba(52,199,89,0.10)",
+                              }}
+                            >
+                              <item.icon
+                                className="h-[15px] w-[15px]"
+                                style={{
+                                  color:
+                                    item.color === "blue"
+                                      ? "var(--primary)"
+                                      : item.color === "orange"
+                                        ? "var(--erp-warning)"
+                                        : item.color === "purple"
+                                          ? "var(--chart-5)"
+                                          : "var(--erp-success)",
+                                }}
+                              />
+                            </div>
+                            <span className="text-[14px] font-medium text-[var(--foreground)] flex-1">
+                              {item.label}
+                            </span>
+                            <span
+                              className="text-[13px] font-semibold tabular-nums px-2 py-0.5 rounded-full"
+                              style={{
+                                background:
+                                  item.color === "blue"
+                                    ? "rgba(0,122,255,0.10)"
+                                    : item.color === "orange"
+                                      ? "rgba(255,149,0,0.10)"
+                                      : item.color === "purple"
+                                        ? "rgba(88,86,214,0.10)"
+                                        : "rgba(52,199,89,0.10)",
                                 color:
                                   item.color === "blue"
                                     ? "var(--primary)"
@@ -1485,35 +1542,12 @@ function OrdersContent() {
                                         ? "var(--chart-5)"
                                         : "var(--erp-success)",
                               }}
-                            />
+                            >
+                              {item.count}
+                            </span>
+                            <ChevronRight className="h-3.5 w-3.5 text-[var(--muted-foreground)] group-hover:text-[var(--muted-foreground)] transition-colors flex-shrink-0" />
                           </div>
-                          <span className="text-[14px] font-medium text-[var(--foreground)] flex-1">
-                            {item.label}
-                          </span>
-                          <span
-                            className="text-[13px] font-semibold tabular-nums px-2 py-0.5 rounded-full"
-                            style={{
-                              background:
-                                item.color === "blue"
-                                  ? "rgba(0,122,255,0.10)"
-                                  : item.color === "orange"
-                                    ? "rgba(255,149,0,0.10)"
-                                    : item.color === "purple"
-                                      ? "rgba(88,86,214,0.10)"
-                                      : "rgba(52,199,89,0.10)",
-                              color:
-                                item.color === "blue"
-                                  ? "var(--primary)"
-                                  : item.color === "orange"
-                                    ? "var(--erp-warning)"
-                                    : item.color === "purple"
-                                      ? "var(--chart-5)"
-                                      : "var(--erp-success)",
-                            }}
-                          >
-                            {item.count}
-                          </span>
-                        </div>
+                        </Link>
                         {i < arr.length - 1 && (
                           <div className="h-px bg-[var(--border-divider)] mx-3" />
                         )}
@@ -2440,6 +2474,16 @@ function OrdersContent() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Staff Read-Only Order Details Sheet */}
+      <StaffOrderDetailSheet
+        open={isStaffDetailOpen}
+        onClose={() => {
+          setIsStaffDetailOpen(false);
+          setStaffSelectedOrder(null);
+        }}
+        order={staffSelectedOrder}
+      />
     </motion.div>
   );
 }

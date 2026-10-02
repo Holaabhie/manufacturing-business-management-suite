@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
     TrendingUp,
@@ -17,6 +17,8 @@ import {
     AlertTriangle,
     Users,
     ArrowRight,
+    CheckCircle2,
+    Layers,
 } from "lucide-react";
 import {
     AreaChart,
@@ -62,6 +64,33 @@ function getAvatarColor(identifier: string): string {
 }
 
 // ─── Types ───────────────────────────────────────────────
+export interface AvailableMonth {
+    value: string;
+    label: string;
+    year: number;
+    month: number;
+    isCurrent: boolean;
+    isPrevious: boolean;
+}
+
+export interface PreviousMonthReport {
+    month: string;
+    monthLabel: string;
+    totalOrdersPlaced: number;
+    totalOrdersCompleted: number;
+    totalRevenue: number;
+    averageOrderValue: number;
+}
+
+export interface MaterialUsageItem {
+    materialId: string;
+    name: string;
+    quantity: number;
+    unit: string;
+    percentage: number;
+    color: string;
+}
+
 interface RevenuePoint {
     month: string;
     revenue: number;
@@ -116,6 +145,10 @@ interface AnalyticsKPIs {
 }
 
 interface AnalyticsData {
+    availableMonths?: AvailableMonth[];
+    selectedMonth?: string;
+    previousMonthReport?: PreviousMonthReport;
+    materialUsage?: MaterialUsageItem[];
     revenueData: RevenuePoint[];
     productionData: ProductionPoint[];
     orderStatusData: OrderStatusPoint[];
@@ -131,7 +164,7 @@ interface AnalyticsData {
 function CustomTooltip({ active, payload, label }: any) {
     if (!active || !payload?.length) return null;
     return (
-        <div className="bg-white dark:bg-[var(--card)] rounded-[12px] px-4 py-3 shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] dark:shadow-[var(--shadow-lg)] border border-black/[0.09] dark:border-[var(--border)]">
+        <div className="bg-white dark:bg-[#161B27] rounded-[12px] px-4 py-3 shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] border border-black/[0.09] dark:border-white/[0.08]">
             <p className="text-[13px] font-medium text-[var(--muted-foreground)] mb-1">{label}</p>
             {payload.map((p: any, i: number) => (
                 <p key={i} className="text-[15px] font-semibold text-[var(--foreground)]">
@@ -144,11 +177,29 @@ function CustomTooltip({ active, payload, label }: any) {
     );
 }
 
+// ─── Material Usage Tooltip ──────────────────────────────
+function MaterialTooltip({ active, payload }: any) {
+    if (!active || !payload?.length) return null;
+    const item = payload[0].payload;
+    return (
+        <div className="bg-white dark:bg-[#161B27] rounded-[12px] px-4 py-3 shadow-[0_4px_16px_rgba(0,0,0,0.12)] border border-black/[0.09] dark:border-white/[0.08]">
+            <div className="flex items-center gap-2 mb-1">
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                <p className="text-[14px] font-semibold text-[var(--foreground)]">{item.name}</p>
+            </div>
+            <p className="text-[13px] text-[var(--muted-foreground)] font-mono">
+                {typeof item.quantity === "number" ? item.quantity.toLocaleString() : item.quantity} {item.unit}
+                <span className="ml-1.5 font-bold text-[var(--foreground)]">({item.percentage}%)</span>
+            </p>
+        </div>
+    );
+}
+
 // ─── Funnel Tooltip ──────────────────────────────────────
 function FunnelTooltip({ active, payload, label }: any) {
     if (!active || !payload?.length) return null;
     return (
-        <div className="bg-white dark:bg-[var(--card)] rounded-[12px] px-4 py-3 shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] dark:shadow-[var(--shadow-lg)] border border-black/[0.09] dark:border-[var(--border)]">
+        <div className="bg-white dark:bg-[#161B27] rounded-[12px] px-4 py-3 shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] border border-black/[0.09] dark:border-white/[0.08]">
             <p className="text-[13px] font-medium text-[var(--muted-foreground)] mb-1">{label}</p>
             {payload.map((p: any, i: number) => (
                 <p key={i} className="text-[15px] font-semibold text-[var(--foreground)]">
@@ -163,7 +214,7 @@ function FunnelTooltip({ active, payload, label }: any) {
 function QualityTooltip({ active, payload, label }: any) {
     if (!active || !payload?.length) return null;
     return (
-        <div className="bg-white dark:bg-[var(--card)] rounded-[12px] px-4 py-3 shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] dark:shadow-[var(--shadow-lg)] border border-black/[0.09] dark:border-[var(--border)]">
+        <div className="bg-white dark:bg-[#161B27] rounded-[12px] px-4 py-3 shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] border border-black/[0.09] dark:border-white/[0.08]">
             <p className="text-[13px] font-medium text-[var(--muted-foreground)] mb-1">{label}</p>
             {payload.map((p: any, i: number) => (
                 <p key={i} className="text-[15px] font-semibold" style={{ color: p.color }}>
@@ -231,22 +282,22 @@ function KPICard({
     };
 
     return (
-        <motion.div variants={staggerItem}>
-            <IOSCard variant="elevated" padding="lg" interactive className="bg-white dark:bg-[var(--card)] !border !border-black/[0.09] dark:!border-[var(--border)] shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] hover:shadow-[0_4px_20px_rgba(15,23,42,0.10),0_2px_8px_rgba(15,23,42,0.06)] transition-shadow duration-200 dark:shadow-none dark:hover:shadow-none">
+        <motion.div variants={staggerItem} className="min-w-0 w-full overflow-hidden">
+            <IOSCard variant="elevated" padding="lg" interactive className="bg-white dark:bg-[#161B27] !border !border-black/[0.09] dark:!border-white/[0.08] shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] hover:shadow-[0_4px_20px_rgba(15,23,42,0.10),0_2px_8px_rgba(15,23,42,0.06)] transition-shadow duration-200 dark:shadow-none dark:hover:shadow-none">
                 <div className="flex items-center gap-3 mb-3">
-                    <div className={cn("w-[40px] h-[40px] rounded-[10px] flex items-center justify-center", bgMap[color])}>
+                    <div className={cn("w-[40px] h-[40px] rounded-[10px] flex items-center justify-center shrink-0", bgMap[color])}>
                         <Icon className={cn("h-[18px] w-[18px]", iconColorMap[color])} />
                     </div>
-                    <span className="text-[13px] text-[var(--muted-foreground)] leading-[18px]">{label}</span>
+                    <span className="text-[13px] text-[var(--muted-foreground)] leading-[18px] truncate">{label}</span>
                 </div>
-                <div className="flex items-end justify-between">
+                <div className="flex items-end justify-between min-w-0 gap-2">
                     <span className={cn(
-                        "text-[28px] font-bold tracking-[0.36px]",
+                        "text-[24px] sm:text-[28px] font-bold tracking-[0.36px] truncate font-mono",
                         isZero ? "text-[var(--muted-foreground)]" : "text-[var(--foreground)]"
                     )}>{displayValue}</span>
                     {hasComparison && (
                         <span className={cn(
-                            "flex items-center gap-0.5 text-[13px] font-semibold px-2 py-0.5 rounded-full",
+                            "flex items-center gap-0.5 text-[12px] sm:text-[13px] font-semibold px-2 py-0.5 rounded-full shrink-0",
                             isPositive ? "bg-[rgba(52,199,89,0.12)] text-[var(--erp-success)]" : "bg-[rgba(255,59,48,0.12)] text-[var(--destructive)]"
                         )}>
                             {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
@@ -260,13 +311,18 @@ function KPICard({
 }
 
 // ─── Shared card class ───────────────────────────────────
-const cardCls = "bg-white dark:bg-[var(--card)] !border !border-black/[0.09] dark:!border-[var(--border)] shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] hover:shadow-[0_4px_20px_rgba(15,23,42,0.10),0_2px_8px_rgba(15,23,42,0.06)] transition-shadow duration-200 dark:shadow-none dark:hover:shadow-none";
+const cardCls = "bg-white dark:bg-[#161B27] !border !border-black/[0.09] dark:!border-white/[0.08] shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] hover:shadow-[0_4px_20px_rgba(15,23,42,0.10),0_2px_8px_rgba(15,23,42,0.06)] transition-shadow duration-200 dark:shadow-none dark:hover:shadow-none min-w-0 overflow-hidden";
 
 export default function AnalyticsPage() {
     const { isStaff, loading: roleLoading } = useRole();
     const t = useTranslations("analytics");
     const { formatINR } = useFormatters();
-    const [dateRange, setDateRange] = useState<"7d" | "30d" | "90d" | "1y">("30d");
+
+    // ── Month-Wise & Filter State ──
+    const [selectedMonth, setSelectedMonth] = useState<string>("");
+    const [selectedReportMonth, setSelectedReportMonth] = useState<string>("");
+    const [showMonthDropdown, setShowMonthDropdown] = useState(false);
+    const [showReportDropdown, setShowReportDropdown] = useState(false);
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState<AnalyticsData | null>(null);
 
@@ -285,7 +341,6 @@ export default function AnalyticsPage() {
             const json = await res.json();
             if (json.success) {
                 setMarginData(json.data);
-                // Initialize extraCosts from fetched data
                 const costs: Record<string, { labour: number; machinery: number; other: number }> = {};
                 for (const o of json.data.orders) {
                     costs[o.id] = {
@@ -312,7 +367,6 @@ export default function AnalyticsPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ [fieldMap[field]]: value }),
             });
-            // Silently refetch to update totals
             fetchMargins();
         } catch {
             toast.error("Failed to save cost");
@@ -321,15 +375,23 @@ export default function AnalyticsPage() {
         }
     }, [fetchMargins]);
 
+    // ── Fetch Analytics Scoped to Month ──
     useEffect(() => {
         const fetchAnalytics = async () => {
             setLoading(true);
             try {
-                const res = await fetch(`/api/dashboard/analytics?range=${dateRange}`);
+                const params = new URLSearchParams();
+                if (selectedMonth) params.set("month", selectedMonth);
+                if (selectedReportMonth) params.set("reportMonth", selectedReportMonth);
+                const queryStr = params.toString() ? `?${params.toString()}` : "";
+                const res = await fetch(`/api/dashboard/analytics${queryStr}`);
                 if (!res.ok) throw new Error("Failed to fetch analytics");
                 const json = await res.json();
                 if (json.error) throw new Error(json.error);
                 setData(json);
+                if (!selectedMonth && json.selectedMonth) {
+                    setSelectedMonth(json.selectedMonth);
+                }
             } catch (error) {
                 console.error("Failed to fetch analytics:", error);
                 setData({
@@ -348,6 +410,7 @@ export default function AnalyticsPage() {
                     orderFunnel: [],
                     productionQuality: [],
                     topClients: [],
+                    materialUsage: [],
                 });
             } finally {
                 setLoading(false);
@@ -355,16 +418,17 @@ export default function AnalyticsPage() {
         };
 
         fetchAnalytics();
-    }, [dateRange]);
+    }, [selectedMonth, selectedReportMonth]);
 
     // ── Page State Persistence ────────────────────────────
     const { restoreState, persist, scrollYRef } = useCachedPage({ pageKey: "analytics", maxAgeMs: 5 * 60 * 1000 });
-    const persistRef = useRef({ dateRange, data });
-    useEffect(() => { persistRef.current = { dateRange, data }; });
+    const persistRef = useRef({ selectedMonth, selectedReportMonth, data });
+    useEffect(() => { persistRef.current = { selectedMonth, selectedReportMonth, data }; });
     useEffect(() => {
         const cached = restoreState();
         if (cached) {
-            if (cached.dateRange) setDateRange(cached.dateRange as "7d" | "30d" | "90d" | "1y");
+            if (cached.selectedMonth) setSelectedMonth(cached.selectedMonth);
+            if (cached.selectedReportMonth) setSelectedReportMonth(cached.selectedReportMonth);
             if (cached.data) {
                 setData(cached.data as AnalyticsData);
                 setLoading(false);
@@ -380,6 +444,18 @@ export default function AnalyticsPage() {
         fetchMargins();
     }, [fetchMargins]);
 
+    // Currently selected month object
+    const selectedMonthObj = useMemo(() => {
+        if (!data?.availableMonths) return null;
+        return data.availableMonths.find((m) => m.value === (selectedMonth || data.selectedMonth));
+    }, [data?.availableMonths, data?.selectedMonth, selectedMonth]);
+
+    // Total material quantity sum
+    const totalMaterialQty = useMemo(() => {
+        if (!data?.materialUsage) return 0;
+        return data.materialUsage.reduce((s, m) => s + (m.quantity || 0), 0);
+    }, [data?.materialUsage]);
+
     // Block Staff from analytics (revenue data)
     if (!roleLoading && isStaff) {
         return (
@@ -390,135 +466,217 @@ export default function AnalyticsPage() {
         );
     }
 
-    // ─── Loading State ─────────────────────────────────────
+    // ─── Loading Skeleton ──────────────────────────────────
     if (loading || !data) {
         return (
-            <div className="space-y-6">
+            <div className="space-y-6 w-full min-w-0 overflow-x-hidden p-6 -m-6">
                 <div className="space-y-2">
                     <div className="h-[34px] w-[200px] rounded-[10px] bg-[var(--muted)] shimmer" />
                     <div className="h-[20px] w-[320px] rounded-[8px] bg-[var(--muted)] shimmer" />
                 </div>
+                <div className="h-[52px] rounded-[12px] bg-[var(--muted)] shimmer" />
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {Array.from({ length: 4 }).map((_, i) => (
                         <div key={i} className="h-[120px] rounded-[16px] bg-[var(--muted)] shimmer" />
                     ))}
                 </div>
+                <div className="h-[140px] rounded-[16px] bg-[var(--muted)] shimmer" />
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                     <div className="lg:col-span-2 h-[340px] rounded-[16px] bg-[var(--muted)] shimmer" />
                     <div className="h-[340px] rounded-[16px] bg-[var(--muted)] shimmer" />
-                </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <div className="h-[300px] rounded-[16px] bg-[var(--muted)] shimmer" />
-                    <div className="h-[300px] rounded-[16px] bg-[var(--muted)] shimmer" />
                 </div>
             </div>
         );
     }
 
-    const { revenueData, productionData, orderStatusData, topProducts, inventoryData, kpis, orderFunnel, productionQuality, topClients } = data;
+    const {
+        availableMonths = [],
+        previousMonthReport,
+        materialUsage = [],
+        revenueData,
+        productionData,
+        orderStatusData,
+        topProducts,
+        inventoryData,
+        kpis,
+        orderFunnel,
+        productionQuality,
+        topClients,
+    } = data;
 
     // Funnel bar colors — gradient from blue to green
     const funnelColors = ["var(--primary)", "#2563EB", "#16A34A", "#059669"];
 
     return (
-        <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-6 bg-[#F1F4F9] dark:bg-transparent -m-6 p-6">
-            {/* Header */}
-            <motion.div variants={staggerItem} className="flex items-end justify-between">
-                <div>
-                    <h1 className="text-[34px] font-bold text-[var(--foreground)] leading-[41px] tracking-[0.37px]">
-                        {t("title")}
-                    </h1>
-                    <p className="text-[15px] text-[var(--muted-foreground)] mt-1 leading-[20px]">
-                        {t("subtitle")}
-                    </p>
-                </div>
-                <div className="hidden sm:flex items-center gap-2">
-                    {/* Date Range Picker */}
-                    <div className="flex bg-[var(--muted)] rounded-[10px] p-0.5">
-                        {(["7d", "30d", "90d", "1y"] as const).map((range) => (
-                            <button
-                                key={range}
-                                onClick={() => setDateRange(range)}
-                                className={cn(
-                                    "px-3 py-1.5 rounded-[8px] text-[13px] font-medium transition-all duration-200 cursor-pointer",
-                                    dateRange === range
-                                        ? "bg-[var(--card)] text-[var(--foreground)] shadow-sm"
-                                        : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                                )}
-                            >
-                                {range}
-                            </button>
-                        ))}
+        <motion.div
+            variants={staggerContainer}
+            initial="initial"
+            animate="animate"
+            className="space-y-6 bg-[#F1F4F9] dark:bg-[#0F1117] -m-6 p-4 sm:p-6 w-full min-w-0 overflow-x-hidden transition-colors"
+        >
+            {/* ═══════════════════════════════════════════════════
+                1. HEADER & MONTH SELECTOR SINCE SIGNUP
+               ═══════════════════════════════════════════════════ */}
+            <motion.div variants={staggerItem} className="w-full flex flex-col gap-4 min-w-0">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
+                    <div className="min-w-0 flex-1">
+                        <h1 className="text-[26px] sm:text-[34px] font-bold text-[var(--foreground)] leading-[32px] sm:leading-[41px] tracking-[0.37px] truncate">
+                            {t("title")}
+                        </h1>
+                        <p className="text-[14px] sm:text-[15px] text-[var(--muted-foreground)] mt-0.5 leading-[20px] truncate">
+                            {selectedMonthObj ? `Viewing factory metrics for ${selectedMonthObj.label}` : t("subtitle")}
+                        </p>
                     </div>
-                    
-                    <IOSButton variant="gray" size="medium" onClick={async () => {
-                        try {
-                            const res = await fetch("/api/v1/orders");
-                            const ordersData = await res.json();
-                            const ordersList = Array.isArray(ordersData.data) ? ordersData.data : [];
-                            
-                            // Map revenue data and enrich it with order counts and top client for that month
-                            const enrichedData = revenueData.map(rt => {
-                                const [monthStr, yearStr] = rt.month.split(" ");
-                                // Simple checking: Orders in this month
-                                const monthOrders = ordersList.filter(o => {
-                                    const d = new Date(o.createdAt);
-                                    // if rt.month is just "Jan" it relies on current year logic (like the graph)
-                                    // this is a simplified approach to match month names
-                                    return d.toLocaleString('default', { month: 'short' }) === rt.month || rt.month.includes(d.toLocaleString('default', { month: 'short' }));
-                                });
+
+                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0 self-start sm:self-auto">
+                        {/* Month Dropdown Selector */}
+                        {availableMonths.length > 0 && (
+                            <div className="relative">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowMonthDropdown(!showMonthDropdown)}
+                                    className="flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-white dark:bg-[#161B27] border border-black/[0.08] dark:border-white/[0.08] text-[13px] font-medium text-[var(--foreground)] hover:bg-slate-100 dark:hover:bg-[#1C2333] transition-colors shrink-0 cursor-pointer shadow-sm active:scale-[0.98]"
+                                >
+                                    <Calendar className="h-3.5 w-3.5 text-[var(--primary)]" />
+                                    <span>{selectedMonthObj?.label || selectedMonth}</span>
+                                    <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", showMonthDropdown && "rotate-180")} />
+                                </button>
+                                {showMonthDropdown && (
+                                    <>
+                                        <div className="fixed inset-0 z-40" onClick={() => setShowMonthDropdown(false)} />
+                                        <div className="absolute right-0 mt-1.5 w-52 max-h-64 overflow-y-auto rounded-[14px] bg-white dark:bg-[#161B27] border border-black/[0.09] dark:border-white/[0.1] shadow-2xl z-50 py-1.5 scrollbar-hide">
+                                            <div className="px-3 py-1.5 text-[11px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider border-b border-black/[0.05] dark:border-white/[0.05]">
+                                                Months Since Signup
+                                            </div>
+                                            {availableMonths.map((m) => {
+                                                const isSel = (selectedMonth || data.selectedMonth) === m.value;
+                                                return (
+                                                    <button
+                                                        key={m.value}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setSelectedMonth(m.value);
+                                                            setShowMonthDropdown(false);
+                                                        }}
+                                                        className={cn(
+                                                            "w-full text-left px-3.5 py-2 text-[13px] flex items-center justify-between transition-colors cursor-pointer",
+                                                            isSel
+                                                                ? "bg-[var(--primary)] text-white font-semibold"
+                                                                : "text-[var(--foreground)] hover:bg-slate-100 dark:hover:bg-[#1C2333]"
+                                                        )}
+                                                    >
+                                                        <span>{m.label}</span>
+                                                        {m.isCurrent && (
+                                                            <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded", isSel ? "bg-white/20 text-white" : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400")}>
+                                                                Current
+                                                            </span>
+                                                        )}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Excel Export */}
+                        <IOSButton variant="gray" size="medium" onClick={async () => {
+                            try {
+                                const res = await fetch("/api/v1/orders");
+                                const ordersData = await res.json();
+                                const ordersList = Array.isArray(ordersData.data) ? ordersData.data : [];
                                 
-                                // Group by client to find top client
-                                const clientCounts: Record<string, number> = {};
-                                monthOrders.forEach(o => {
-                                    const cName = o.client?.name || o.clients?.name || "Unknown";
-                                    clientCounts[cName] = (clientCounts[cName] || 0) + (o.total_amount || 0);
+                                const enrichedData = revenueData.map(rt => {
+                                    const monthOrders = ordersList.filter(o => {
+                                        const d = new Date(o.createdAt);
+                                        return d.toLocaleString('default', { month: 'short' }) === rt.month || rt.month.includes(d.toLocaleString('default', { month: 'short' }));
+                                    });
+                                    
+                                    const clientCounts: Record<string, number> = {};
+                                    monthOrders.forEach(o => {
+                                        const cName = o.client?.name || o.clients?.name || "Unknown";
+                                        clientCounts[cName] = (clientCounts[cName] || 0) + (o.total_amount || 0);
+                                    });
+                                    
+                                    let topClient = "—";
+                                    let maxSpend = 0;
+                                    Object.entries(clientCounts).forEach(([name, spend]) => {
+                                        if (spend > maxSpend) {
+                                            topClient = name;
+                                            maxSpend = spend;
+                                        }
+                                    });
+
+                                    return {
+                                        month: rt.month,
+                                        revenue: rt.revenue,
+                                        ordersCount: monthOrders.length,
+                                        topClient: topClient
+                                    };
                                 });
+
+                                const columns = [
+                                    { header: "Period", key: "month" },
+                                    { header: "Total revenue", key: "revenue" },
+                                    { header: "Orders count", key: "ordersCount" },
+                                    { header: "Top client", key: "topClient" },
+                                ];
                                 
-                                let topClient = "—";
-                                let maxSpend = 0;
-                                Object.entries(clientCounts).forEach(([name, spend]) => {
-                                    if(spend > maxSpend) {
-                                        topClient = name;
-                                        maxSpend = spend;
-                                    }
-                                });
-
-                                return {
-                                    month: rt.month,
-                                    revenue: rt.revenue,
-                                    ordersCount: monthOrders.length,
-                                    topClient: topClient
-                                };
-                            });
-
-                            const columns = [
-                                { header: "Month", key: "month" },
-                                { header: "Total revenue", key: "revenue" },
-                                { header: "Orders count", key: "ordersCount" },
-                                { header: "Top client", key: "topClient" },
-                            ];
-                            
-                            exportToExcel(
-                                `revenue_${new Date().toISOString().split("T")[0]}.xlsx`,
-                                "Revenue",
-                                enrichedData,
-                                columns
-                            );
-                            toast.success(t("revenueExcelDownloaded"));
-
-                        } catch(e) {
-                            toast.error(t("failedToExport"));
-                        }
-                    }}>
-                        <Download className="h-4 w-4 mr-1.5" />
-                        {t("excelExport")}
-                    </IOSButton>
+                                exportToExcel(
+                                    `analytics_${selectedMonth || "month"}_${new Date().toISOString().split("T")[0]}.xlsx`,
+                                    "Revenue",
+                                    enrichedData,
+                                    columns
+                                );
+                                toast.success(t("revenueExcelDownloaded"));
+                            } catch (e) {
+                                toast.error(t("failedToExport"));
+                            }
+                        }}>
+                            <Download className="h-4 w-4 mr-1.5" />
+                            {t("excelExport")}
+                        </IOSButton>
+                    </div>
                 </div>
+
+                {/* Horizontal Scroll of Month Chips */}
+                {availableMonths.length > 0 && (
+                    <div className="w-full min-w-0 overflow-hidden">
+                        <div className="flex items-center gap-1.5 p-1 rounded-[14px] bg-white/70 dark:bg-[#161B27]/80 backdrop-blur border border-black/[0.06] dark:border-white/[0.06] overflow-x-auto scrollbar-hide py-1.5 px-2 min-w-0">
+                            <span className="text-[11px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider px-2 shrink-0 hidden md:inline">
+                                Period:
+                            </span>
+                            {availableMonths.map((m) => {
+                                const isActive = (selectedMonth || data.selectedMonth) === m.value;
+                                return (
+                                    <button
+                                        key={m.value}
+                                        type="button"
+                                        onClick={() => setSelectedMonth(m.value)}
+                                        className={cn(
+                                            "px-3 py-1.5 rounded-[10px] text-[12px] sm:text-[13px] font-medium transition-all duration-200 shrink-0 cursor-pointer flex items-center gap-1.5 active:scale-[0.97]",
+                                            isActive
+                                                ? "bg-[var(--primary)] text-white shadow-sm font-semibold"
+                                                : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
+                                        )}
+                                    >
+                                        <span>{m.label}</span>
+                                        {m.isCurrent && (
+                                            <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", isActive ? "bg-white" : "bg-[var(--primary)]")} />
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
             </motion.div>
 
-            {/* KPIs */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* ═══════════════════════════════════════════════════
+                2. TOP KPIS (Scoped to Selected Month)
+               ═══════════════════════════════════════════════════ */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 min-w-0">
                 <KPICard
                     label={t("totalRevenue")}
                     value={formatCurrency(kpis.totalRevenue)}
@@ -552,16 +710,262 @@ export default function AnalyticsPage() {
                     color="orange"
                 />
             </div>
-            {revenueData.length < 2 && (
-                <p className="text-[13px] text-[var(--muted-foreground)] text-center italic">
-                    {t("moreDataNeeded")}
-                </p>
+
+            {/* ═══════════════════════════════════════════════════
+                3. PREVIOUS MONTH REPORT SECTION
+               ═══════════════════════════════════════════════════ */}
+            {previousMonthReport && (
+                <motion.div variants={staggerItem} id="last-month-report-section" className="min-w-0 w-full overflow-hidden">
+                    <IOSCard variant="elevated" padding="lg" className={cardCls}>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-black/[0.06] dark:border-white/[0.06]">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-[38px] h-[38px] rounded-[10px] bg-[rgba(0,122,255,0.1)] dark:bg-[rgba(10,132,255,0.15)] flex items-center justify-center shrink-0">
+                                    <Calendar className="h-[18px] w-[18px] text-[var(--primary)]" />
+                                </div>
+                                <div className="min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <h2 className="text-[17px] font-bold text-[var(--foreground)] tracking-[0.2px] truncate">
+                                            Last Month Report
+                                        </h2>
+                                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[rgba(52,199,89,0.12)] text-[var(--erp-success)] shrink-0">
+                                            {previousMonthReport.monthLabel}
+                                        </span>
+                                    </div>
+                                    <p className="text-[13px] text-[var(--muted-foreground)] truncate">
+                                        Performance summary for {previousMonthReport.monthLabel}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Optional month dropdown for report card */}
+                            {availableMonths.length > 1 && (
+                                <div className="relative self-start sm:self-auto shrink-0">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowReportDropdown(!showReportDropdown)}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-[#F8FAFC] dark:bg-[#1C2333] border border-black/[0.06] dark:border-white/[0.06] text-[12px] font-medium text-[var(--foreground)] hover:bg-slate-200 dark:hover:bg-[#252E42] transition-colors cursor-pointer"
+                                    >
+                                        <span>Report: <strong className="font-semibold">{previousMonthReport.monthLabel}</strong></span>
+                                        <ChevronDown className={cn("h-3 w-3 transition-transform", showReportDropdown && "rotate-180")} />
+                                    </button>
+                                    {showReportDropdown && (
+                                        <>
+                                            <div className="fixed inset-0 z-40" onClick={() => setShowReportDropdown(false)} />
+                                            <div className="absolute right-0 mt-1.5 w-48 max-h-56 overflow-y-auto rounded-[12px] bg-white dark:bg-[#161B27] border border-black/[0.09] dark:border-white/[0.1] shadow-xl z-50 py-1 scrollbar-hide">
+                                                {availableMonths.map((m) => (
+                                                    <button
+                                                        key={m.value}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setSelectedReportMonth(m.value);
+                                                            setShowReportDropdown(false);
+                                                        }}
+                                                        className={cn(
+                                                            "w-full text-left px-3 py-2 text-[13px] flex items-center justify-between transition-colors cursor-pointer",
+                                                            (selectedReportMonth || previousMonthReport.month) === m.value
+                                                                ? "bg-[var(--primary)] text-white font-semibold"
+                                                                : "text-[var(--foreground)] hover:bg-slate-100 dark:hover:bg-[#1C2333]"
+                                                        )}
+                                                    >
+                                                        <span>{m.label}</span>
+                                                        {m.isPrevious && <span className="text-[10px] opacity-80">(Last Month)</span>}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-4">
+                            {/* Metric 1: Total Orders Placed */}
+                            <div className="p-3.5 rounded-[14px] bg-[#F8FAFC] dark:bg-[#1C2333] border border-black/[0.05] dark:border-white/[0.05] transition-all hover:border-black/[0.1] dark:hover:border-white/[0.1] min-w-0">
+                                <div className="flex items-center gap-2 text-[var(--muted-foreground)] text-[12px] font-medium mb-1.5">
+                                    <ShoppingCart className="h-3.5 w-3.5 text-[var(--primary)] shrink-0" />
+                                    <span className="truncate">Orders Placed</span>
+                                </div>
+                                <div className="text-[20px] sm:text-[24px] font-bold text-[var(--foreground)] tracking-[0.3px] font-mono truncate">
+                                    {previousMonthReport.totalOrdersPlaced.toLocaleString()}
+                                </div>
+                                <span className="text-[11px] text-[var(--muted-foreground)] mt-0.5 block truncate">
+                                    Total bookings
+                                </span>
+                            </div>
+
+                            {/* Metric 2: Orders Completed */}
+                            <div className="p-3.5 rounded-[14px] bg-[#F8FAFC] dark:bg-[#1C2333] border border-black/[0.05] dark:border-white/[0.05] transition-all hover:border-black/[0.1] dark:hover:border-white/[0.1] min-w-0">
+                                <div className="flex items-center gap-2 text-[var(--muted-foreground)] text-[12px] font-medium mb-1.5">
+                                    <CheckCircle2 className="h-3.5 w-3.5 text-[var(--erp-success)] shrink-0" />
+                                    <span className="truncate">Orders Fulfilled</span>
+                                </div>
+                                <div className="text-[20px] sm:text-[24px] font-bold text-[var(--foreground)] tracking-[0.3px] font-mono truncate">
+                                    {previousMonthReport.totalOrdersCompleted.toLocaleString()}
+                                </div>
+                                <span className="text-[11px] text-[var(--erp-success)] mt-0.5 block truncate font-medium">
+                                    {previousMonthReport.totalOrdersPlaced > 0
+                                        ? `${Math.round((previousMonthReport.totalOrdersCompleted / previousMonthReport.totalOrdersPlaced) * 100)}% completion`
+                                        : "No orders"}
+                                </span>
+                            </div>
+
+                            {/* Metric 3: Total Revenue */}
+                            <div className="p-3.5 rounded-[14px] bg-[#F8FAFC] dark:bg-[#1C2333] border border-black/[0.05] dark:border-white/[0.05] transition-all hover:border-black/[0.1] dark:hover:border-white/[0.1] min-w-0">
+                                <div className="flex items-center gap-2 text-[var(--muted-foreground)] text-[12px] font-medium mb-1.5">
+                                    <IndianRupee className="h-3.5 w-3.5 text-[var(--chart-4)] shrink-0" />
+                                    <span className="truncate">Total Revenue</span>
+                                </div>
+                                <div className="text-[20px] sm:text-[24px] font-bold text-[var(--foreground)] tracking-[0.3px] font-mono truncate">
+                                    {formatCurrency(previousMonthReport.totalRevenue)}
+                                </div>
+                                <span className="text-[11px] text-[var(--muted-foreground)] mt-0.5 block truncate">
+                                    Revenue booked
+                                </span>
+                            </div>
+
+                            {/* Metric 4: Average Order Value */}
+                            <div className="p-3.5 rounded-[14px] bg-[#F8FAFC] dark:bg-[#1C2333] border border-black/[0.05] dark:border-white/[0.05] transition-all hover:border-black/[0.1] dark:hover:border-white/[0.1] min-w-0">
+                                <div className="flex items-center gap-2 text-[var(--muted-foreground)] text-[12px] font-medium mb-1.5">
+                                    <TrendingUp className="h-3.5 w-3.5 text-[var(--erp-warning)] shrink-0" />
+                                    <span className="truncate">Avg Order Value (AOV)</span>
+                                </div>
+                                <div className="text-[20px] sm:text-[24px] font-bold text-[var(--foreground)] tracking-[0.3px] font-mono truncate">
+                                    {formatCurrency(previousMonthReport.averageOrderValue)}
+                                </div>
+                                <span className="text-[11px] text-[var(--muted-foreground)] mt-0.5 block truncate">
+                                    Per placed order
+                                </span>
+                            </div>
+                        </div>
+                    </IOSCard>
+                </motion.div>
             )}
+
+            {/* ═══════════════════════════════════════════════════
+                4. MATERIAL USAGE DONUT/PIE CHART SECTION
+               ═══════════════════════════════════════════════════ */}
+            <motion.div variants={staggerItem} id="material-usage-section" className="min-w-0 w-full overflow-hidden">
+                <IOSCard variant="elevated" padding="lg" className={cardCls}>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 mb-2 border-b border-black/[0.06] dark:border-white/[0.06]">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-[38px] h-[38px] rounded-[10px] bg-[rgba(175,82,222,0.1)] dark:bg-[rgba(191,90,242,0.15)] flex items-center justify-center shrink-0">
+                                <PieChart className="h-[18px] w-[18px] text-[var(--chart-4)]" />
+                            </div>
+                            <div className="min-w-0">
+                                <h2 className="text-[17px] font-bold text-[var(--foreground)] tracking-[0.2px] truncate">
+                                    Material Consumption Breakdown
+                                </h2>
+                                <p className="text-[13px] text-[var(--muted-foreground)] truncate">
+                                    % share of materials consumed across orders in {selectedMonthObj?.label || selectedMonth || "selected period"}
+                                </p>
+                            </div>
+                        </div>
+                        {totalMaterialQty > 0 && (
+                            <div className="self-start sm:self-auto px-3 py-1 rounded-full bg-[#F8FAFC] dark:bg-[#1C2333] border border-black/[0.06] dark:border-white/[0.06] text-[12px] font-medium text-[var(--foreground)] shrink-0">
+                                Total: <span className="font-bold text-[var(--primary)] font-mono">{totalMaterialQty.toLocaleString()}</span> units consumed
+                            </div>
+                        )}
+                    </div>
+
+                    <IOSCardContent>
+                        {materialUsage && materialUsage.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                                {/* Donut Chart */}
+                                <div className="md:col-span-5 flex flex-col items-center justify-center relative min-w-0">
+                                    <div className="w-full h-[220px] min-w-0">
+                                        <ResponsiveContainer width="100%" height={220} minWidth={0} minHeight={220}>
+                                            <RechartsPie>
+                                                <Pie
+                                                    data={materialUsage}
+                                                    dataKey="quantity"
+                                                    nameKey="name"
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    innerRadius={55}
+                                                    outerRadius={85}
+                                                    paddingAngle={3}
+                                                    strokeWidth={0}
+                                                >
+                                                    {materialUsage.map((entry, index) => (
+                                                        <Cell key={`mat-cell-${index}`} fill={entry.color} />
+                                                    ))}
+                                                </Pie>
+                                                <Tooltip content={<MaterialTooltip />} />
+                                            </RechartsPie>
+                                        </ResponsiveContainer>
+                                    </div>
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                        <span className="text-[20px] font-bold text-[var(--foreground)] font-mono">
+                                            {materialUsage.length}
+                                        </span>
+                                        <span className="text-[11px] font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                                            Materials
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Materials Breakdown List */}
+                                <div className="md:col-span-7 min-w-0 space-y-3">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                        {materialUsage.map((mat, index) => (
+                                            <div
+                                                key={mat.materialId || mat.name}
+                                                className="p-3 rounded-[12px] bg-[#F8FAFC] dark:bg-[#1C2333] border border-black/[0.05] dark:border-white/[0.05] transition-all hover:border-black/[0.1] dark:hover:border-white/[0.1] min-w-0"
+                                            >
+                                                <div className="flex items-center justify-between gap-2 mb-1.5 min-w-0">
+                                                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                                                        <span
+                                                            className="w-2.5 h-2.5 rounded-full shrink-0"
+                                                            style={{ backgroundColor: mat.color }}
+                                                        />
+                                                        <span className="text-[13px] font-semibold text-[var(--foreground)] truncate">
+                                                            {mat.name}
+                                                        </span>
+                                                    </div>
+                                                    <span
+                                                        className="text-[11px] font-bold px-1.5 py-0.5 rounded shrink-0 font-mono"
+                                                        style={{
+                                                            backgroundColor: `${mat.color}20`,
+                                                            color: mat.color,
+                                                        }}
+                                                    >
+                                                        {mat.percentage}%
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center justify-between text-[12px] text-[var(--muted-foreground)] mb-1.5">
+                                                    <span>Consumed</span>
+                                                    <span className="font-semibold text-[var(--foreground)] font-mono">
+                                                        {mat.quantity.toLocaleString()} {mat.unit}
+                                                    </span>
+                                                </div>
+                                                <div className="h-[4px] bg-[var(--muted)] rounded-full overflow-hidden">
+                                                    <motion.div
+                                                        className="h-full rounded-full"
+                                                        style={{ backgroundColor: mat.color }}
+                                                        initial={{ width: 0 }}
+                                                        animate={{ width: `${Math.min(mat.percentage, 100)}%` }}
+                                                        transition={{ duration: 0.6, delay: index * 0.05 }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <EmptyCta
+                                message={`No material consumption recorded for ${selectedMonthObj?.label || selectedMonth || "this month"}`}
+                                href="/dashboard/inventory"
+                            />
+                        )}
+                    </IOSCardContent>
+                </IOSCard>
+            </motion.div>
 
             {/* ═══════════════════════════════════════════════════
                 ORDER FUNNEL — horizontal bar chart
                ═══════════════════════════════════════════════════ */}
-            <motion.div variants={staggerItem}>
+            <motion.div variants={staggerItem} className="min-w-0 w-full overflow-hidden">
                 <IOSCard variant="elevated" padding="lg" className={cardCls}>
                     <IOSCardHeader title={t("orderFunnel")} subtitle={t("funnelSubtitle")} />
                     <IOSCardContent>
@@ -569,7 +973,7 @@ export default function AnalyticsPage() {
                             <div className="h-[200px] -ml-4">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart
-                                        data={orderFunnel.map((f, i) => ({
+                                        data={orderFunnel.map((f) => ({
                                             ...f,
                                             stage: f.stage === "Total Orders" ? t("totalOrders")
                                                 : f.stage === "In Production" ? t("inProduction")
@@ -597,13 +1001,15 @@ export default function AnalyticsPage() {
                 </IOSCard>
             </motion.div>
 
-            {/* Revenue Trend + Order Status */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <motion.div variants={staggerItem} className="lg:col-span-2">
+            {/* ═══════════════════════════════════════════════════
+                Revenue Trend + Order Status
+               ═══════════════════════════════════════════════════ */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 min-w-0">
+                <motion.div variants={staggerItem} className="lg:col-span-2 min-w-0 w-full overflow-hidden">
                     <IOSCard variant="elevated" padding="lg" className={cardCls}>
-                        <IOSCardHeader title={t("revenueTrend")} subtitle={t("currentVsLastYear")} />
+                        <IOSCardHeader title={t("revenueTrend")} subtitle={selectedMonthObj ? `Daily timeline for ${selectedMonthObj.label} vs last year` : t("currentVsLastYear")} />
                         <IOSCardContent>
-                            {revenueData.length > 0 ? (
+                            {revenueData.length > 0 && revenueData.some(r => r.revenue > 0 || r.lastYear > 0) ? (
                                 <div className="h-[280px] -ml-4">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <AreaChart data={revenueData}>
@@ -630,7 +1036,7 @@ export default function AnalyticsPage() {
                 </motion.div>
 
                 {/* Order Status Donut */}
-                <motion.div variants={staggerItem}>
+                <motion.div variants={staggerItem} className="min-w-0 w-full overflow-hidden">
                     <IOSCard variant="elevated" padding="lg" className={cn("h-full", cardCls)}>
                         <IOSCardHeader title={t("orderStatus")} subtitle={t("distribution")} />
                         <IOSCardContent>
@@ -650,10 +1056,10 @@ export default function AnalyticsPage() {
                                     </div>
                                     <div className="grid grid-cols-2 gap-2 mt-3">
                                         {orderStatusData.map((item) => (
-                                            <div key={item.name} className="flex items-center gap-2">
-                                                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: item.color }} />
-                                                <span className="text-[13px] text-[var(--muted-foreground)]">{item.name}</span>
-                                                <span className="text-[13px] font-semibold text-[var(--foreground)] ml-auto">{item.value}%</span>
+                                            <div key={item.name} className="flex items-center gap-2 min-w-0">
+                                                <span className="w-2 h-2 rounded-full shrink-0" style={{ background: item.color }} />
+                                                <span className="text-[13px] text-[var(--muted-foreground)] truncate">{item.name}</span>
+                                                <span className="text-[13px] font-semibold text-[var(--foreground)] ml-auto font-mono shrink-0">{item.value}%</span>
                                             </div>
                                         ))}
                                     </div>
@@ -666,10 +1072,12 @@ export default function AnalyticsPage() {
                 </motion.div>
             </div>
 
-            {/* Production Efficiency + Production Quality */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* ═══════════════════════════════════════════════════
+                Production Efficiency + Production Quality
+               ═══════════════════════════════════════════════════ */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-w-0">
                 {/* Production Efficiency */}
-                <motion.div variants={staggerItem}>
+                <motion.div variants={staggerItem} className="min-w-0 w-full overflow-hidden">
                     <IOSCard variant="elevated" padding="lg" className={cardCls}>
                         <IOSCardHeader title={t("productionEfficiencyChart")} subtitle={t("monthlyTrend")} />
                         <IOSCardContent>
@@ -693,7 +1101,7 @@ export default function AnalyticsPage() {
                 </motion.div>
 
                 {/* Production Quality — Produced vs Rejected */}
-                <motion.div variants={staggerItem}>
+                <motion.div variants={staggerItem} className="min-w-0 w-full overflow-hidden">
                     <IOSCard variant="elevated" padding="lg" className={cardCls}>
                         <IOSCardHeader title={t("productionQuality")} subtitle={t("qualitySubtitle")} />
                         <IOSCardContent>
@@ -735,10 +1143,12 @@ export default function AnalyticsPage() {
                 </motion.div>
             </div>
 
-            {/* Top Products + Top Clients */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* ═══════════════════════════════════════════════════
+                Top Products + Top Clients
+               ═══════════════════════════════════════════════════ */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-w-0">
                 {/* Top Products */}
-                <motion.div variants={staggerItem}>
+                <motion.div variants={staggerItem} className="min-w-0 w-full overflow-hidden">
                     <IOSCard variant="elevated" padding="lg" className={cardCls}>
                         <IOSCardHeader title={t("topProducts")} subtitle={t("byRevenue")} />
                         <IOSCardContent>
@@ -748,17 +1158,17 @@ export default function AnalyticsPage() {
                                         const maxRevenue = topProducts[0].revenue;
                                         const percentage = maxRevenue > 0 ? (product.revenue / maxRevenue) * 100 : 0;
                                         return (
-                                            <div key={product.name} className="space-y-1.5">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-[13px] font-semibold text-[var(--muted-foreground)] w-[20px]">
+                                            <div key={product.name} className="space-y-1.5 min-w-0">
+                                                <div className="flex items-center justify-between min-w-0">
+                                                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                                                        <span className="text-[13px] font-semibold text-[var(--muted-foreground)] w-[20px] shrink-0 font-mono">
                                                             {index + 1}
                                                         </span>
-                                                        <span className="text-[15px] font-medium text-[var(--foreground)]">
+                                                        <span className="text-[15px] font-medium text-[var(--foreground)] truncate">
                                                             {product.name}
                                                         </span>
                                                     </div>
-                                                    <span className="text-[15px] font-semibold text-[var(--foreground)]">
+                                                    <span className="text-[15px] font-semibold text-[var(--foreground)] shrink-0 ml-3 font-mono">
                                                         {formatCurrency(product.revenue)}
                                                     </span>
                                                 </div>
@@ -783,7 +1193,7 @@ export default function AnalyticsPage() {
                 </motion.div>
 
                 {/* Top Clients */}
-                <motion.div variants={staggerItem}>
+                <motion.div variants={staggerItem} className="min-w-0 w-full overflow-hidden">
                     <IOSCard variant="elevated" padding="lg" className={cardCls}>
                         <IOSCardHeader title={t("topClientsTitle")} subtitle={t("topClientsSubtitle")} />
                         <IOSCardContent>
@@ -793,16 +1203,16 @@ export default function AnalyticsPage() {
                                         const maxRevenue = topClients[0].totalRevenue;
                                         const percentage = maxRevenue > 0 ? (client.totalRevenue / maxRevenue) * 100 : 0;
                                         return (
-                                            <div key={client.name} className="space-y-1.5">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-2.5">
+                                            <div key={client.name} className="space-y-1.5 min-w-0">
+                                                <div className="flex items-center justify-between min-w-0">
+                                                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                                         <div
-                                                            className="w-[32px] h-[32px] rounded-full flex items-center justify-center text-[14px] font-bold text-white flex-shrink-0"
+                                                            className="w-[32px] h-[32px] rounded-full flex items-center justify-center text-[14px] font-bold text-white shrink-0"
                                                             style={{ backgroundColor: getAvatarColor(client.name) }}
                                                         >
                                                             {client.name[0]?.toUpperCase() || "?"}
                                                         </div>
-                                                        <div className="min-w-0">
+                                                        <div className="min-w-0 flex-1">
                                                             <span className="text-[15px] font-medium text-[var(--foreground)] block truncate">
                                                                 {client.name}
                                                             </span>
@@ -811,7 +1221,7 @@ export default function AnalyticsPage() {
                                                             </span>
                                                         </div>
                                                     </div>
-                                                    <span className="text-[15px] font-semibold text-[var(--foreground)] flex-shrink-0 ml-3">
+                                                    <span className="text-[15px] font-semibold text-[var(--foreground)] shrink-0 ml-3 font-mono">
                                                         {formatCurrency(client.totalRevenue)}
                                                     </span>
                                                 </div>
@@ -836,8 +1246,10 @@ export default function AnalyticsPage() {
                 </motion.div>
             </div>
 
-            {/* Inventory Breakdown */}
-            <motion.div variants={staggerItem}>
+            {/* ═══════════════════════════════════════════════════
+                Inventory Breakdown
+               ═══════════════════════════════════════════════════ */}
+            <motion.div variants={staggerItem} className="min-w-0 w-full overflow-hidden">
                 <IOSCard variant="elevated" padding="lg" className={cardCls}>
                     <IOSCardHeader title={t("inventoryBreakdown")} subtitle={t("stockDistribution")} />
                     <IOSCardContent>
@@ -862,7 +1274,7 @@ export default function AnalyticsPage() {
             {/* ══════════════════════════════════════════════════════
                 PROFIT MARGINS — Per-Order Cost Breakdown
                ══════════════════════════════════════════════════════ */}
-            <motion.div variants={staggerItem} className="ind-page">
+            <motion.div variants={staggerItem} className="ind-page min-w-0 w-full overflow-hidden">
                 <IOSCard variant="elevated" padding="lg" className={cardCls}>
                     <IOSCardHeader title={t("profitMargins")} subtitle={t("profitMarginsSubtitle")} />
                     <IOSCardContent>

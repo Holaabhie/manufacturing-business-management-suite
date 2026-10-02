@@ -75,6 +75,8 @@ import { AddMaterialModal } from "@/components/inventory/AddMaterialModal";
 import { RecordPaymentModal } from "@/components/purchasing/RecordPaymentModal";
 import { VendorDetailDrawer } from "@/components/purchasing/VendorDetailDrawer";
 import { getPaymentStatus } from "@/modules/purchasing/domain/types";
+import { MonthYearFilter, matchesMonthYear, type MonthYearFilterValue } from "@/components/ui/month-year-filter";
+import { useTenantCreationDate } from "@/hooks/useTenantCreationDate";
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -200,6 +202,13 @@ export default function PurchasingPage() {
 
   // Vendor Detail Drawer state
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
+
+  // Tenant earliest date & Month/Year filter
+  const { earliestDate } = useTenantCreationDate();
+  const [monthYear, setMonthYear] = useState<MonthYearFilterValue>({
+    year: new Date().getFullYear(),
+    month: "all",
+  });
 
   // Vendor form
   const emptyVendorForm = {
@@ -544,11 +553,14 @@ export default function PurchasingPage() {
 
   // ─── Computed ─────────────────────────────────────────────────
 
-  const filteredOrders = orders.filter(
-    (o) =>
+  const filteredOrders = orders.filter((o) => {
+    const matchesSearch =
       o.poNumber.toLowerCase().includes(orderSearch.toLowerCase()) ||
-      o.vendorName.toLowerCase().includes(orderSearch.toLowerCase()),
-  );
+      o.vendorName.toLowerCase().includes(orderSearch.toLowerCase());
+    const orderDate = o.orderedAt || o.createdAt;
+    const matchesDate = matchesMonthYear(orderDate, monthYear);
+    return matchesSearch && matchesDate;
+  });
 
   const filteredVendors = vendors.filter(
     (v) =>
@@ -677,23 +689,35 @@ export default function PurchasingPage() {
         ))}
       </motion.div>
 
-      {/* ── Search Bar ── */}
-      <motion.div variants={staggerItem} className="flex items-center space-x-2">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-[10px] top-1/2 -translate-y-1/2 h-[17px] w-[17px] text-[var(--muted-foreground)]" />
-          <input
-            placeholder={activeTab === "orders" ? t("searchOrdersPlaceholder") : t("searchVendorsPlaceholder")}
-            className="w-full h-[36px] rounded-[10px] bg-[var(--muted)] pl-[34px] pr-4 text-[15px] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] outline-none border-none focus:ring-2 focus:ring-[var(--primary)] transition-shadow"
-            value={activeTab === "orders" ? orderSearch : vendorSearch}
-            onChange={(e) =>
-              activeTab === "orders" ? setOrderSearch(e.target.value) : setVendorSearch(e.target.value)
-            }
-          />
-        </div>
-        <span className="text-[13px] text-[var(--muted-foreground)]">
-          {activeTab === "orders" ? t("ordersCount", { count: filteredOrders.length }) : t("vendorsCount", { count: filteredVendors.length })}
-        </span>
-      </motion.div>
+      {/* ── Search Bar & Month/Year Filter ── */}
+<motion.div variants={staggerItem} className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 w-full min-w-0">
+  <div className="flex items-center space-x-2">
+    <div className="relative flex-1 sm:w-80">
+      <Search className="absolute left-[10px] top-1/2 -translate-y-1/2 h-[17px] w-[17px] text-[var(--muted-foreground)]" />
+      <input
+        placeholder={activeTab === "orders" ? t("searchOrdersPlaceholder") : t("searchVendorsPlaceholder")}
+        className="w-full h-[36px] rounded-[10px] bg-[var(--muted)] pl-[34px] pr-4 text-[15px] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] outline-none border-none focus:ring-1 focus:ring-[var(--primary)] transition-shadow"
+        value={activeTab === "orders" ? orderSearch : vendorSearch}
+        onChange={(e) =>
+          activeTab === "orders" ? setOrderSearch(e.target.value) : setVendorSearch(e.target.value)
+        }
+      />
+    </div>
+    <span className="text-[13px] text-[var(--muted-foreground)] shrink-0">
+      {activeTab === "orders" ? t("ordersCount", { count: filteredOrders.length }) : t("vendorsCount", { count: filteredVendors.length })}
+    </span>
+  </div>
+
+  {activeTab === "orders" && (
+    <div className="w-full md:w-auto min-w-0 md:max-w-xl">
+      <MonthYearFilter
+        earliestDate={earliestDate}
+        value={monthYear}
+        onChange={setMonthYear}
+      />
+    </div>
+  )}
+</motion.div>
 
       {/* ════════════ PURCHASE ORDERS TAB ════════════ */}
       <AnimatePresence mode="wait">

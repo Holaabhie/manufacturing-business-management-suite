@@ -14,6 +14,13 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    if (user.role === "Staff") {
+      return NextResponse.json(
+        { error: "Forbidden: Staff members cannot update payment status" },
+        { status: 403 }
+      );
+    }
+
     if (!ObjectId.isValid(id)) {
       return NextResponse.json({ error: "Invalid ID format" }, { status: 400 });
     }
