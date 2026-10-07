@@ -41,6 +41,7 @@ import {
   Archive,
   FileText,
   Clock,
+  Landmark,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -94,6 +95,7 @@ const NAV_MODULE_MAP: Record<string, keyof ModuleConfig> = {
   billing: "billing",
   payments: "payments",
   vendorBills: "vendorBills",
+  banking: "banking",
   clients: "clients",
   aiAssistant: "ai_assistant",
   ai: "ai_assistant",
@@ -122,6 +124,7 @@ const navigationGroups = [
       { name: "Billing", nameKey: "billing", href: "/dashboard/billing", icon: Receipt },
       { name: "Payments", nameKey: "payments", href: "/dashboard/payments", icon: CreditCard },
       { name: "Vendor Bills", nameKey: "vendorBills", href: "/dashboard/vendor-bills", icon: ReceiptText },
+      { name: "Banking", nameKey: "banking", href: "/dashboard/banking", icon: Landmark },
     ],
   },
   {
@@ -180,6 +183,7 @@ const moreSheetSections = [
       { name: "Billing & Invoices", nameKey: "billingInvoices", desc: "Create and manage invoices", descKey: "billingInvoicesDesc", icon: Receipt, emoji: "🧾", href: "/dashboard/billing" },
       { name: "Payments", nameKey: "payments", desc: "Track incoming payments", descKey: "paymentsDesc", icon: CreditCard, emoji: "💳", href: "/dashboard/payments" },
       { name: "Vendor Bills", nameKey: "vendorBills", desc: "Purchase invoices & payments", descKey: "vendorBillsDesc", icon: ReceiptText, emoji: "🧾", href: "/dashboard/vendor-bills" },
+      { name: "Banking", nameKey: "banking", desc: "Bank accounts & statements", descKey: "bankingDesc", icon: Landmark, emoji: "🏦", href: "/dashboard/banking" },
       { name: "Folio", nameKey: "folio", desc: "Credit notes & ledger", descKey: "folioDesc", icon: BookOpen, emoji: "📁", href: "/dashboard/folio" },
     ],
   },

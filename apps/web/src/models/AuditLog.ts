@@ -6,6 +6,7 @@ export interface IAuditLog extends Document {
     userId: string;
     userName: string;
     userRole: 'Admin' | 'Staff';
+    userRoleDetail?: string;
 
     // Action details
     action: string;           // Human-readable: "Created order", "Updated inventory"
@@ -53,6 +54,7 @@ const AuditLogSchema = new Schema<IAuditLog>({
         enum: ['Admin', 'Staff'],
         required: true,
     },
+    userRoleDetail: String,
 
     // Action details
     action: {
@@ -110,6 +112,10 @@ AuditLogSchema.index({ organizationId: 1, severity: 1, timestamp: -1 });
 
 // TTL index for automatic log cleanup (default: 365 days, configurable per org)
 AuditLogSchema.index({ timestamp: 1 }, { expireAfterSeconds: 365 * 24 * 60 * 60 });
+
+if (models.AuditLog && !models.AuditLog.schema?.paths?.userRoleDetail) {
+    delete (models as any).AuditLog;
+}
 
 export const AuditLog =
     models.AuditLog || model<IAuditLog>('AuditLog', AuditLogSchema);

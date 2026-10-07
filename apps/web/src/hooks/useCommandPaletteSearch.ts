@@ -16,6 +16,7 @@ import {
   Crown,
   Settings,
   Clock,
+  Landmark,
 } from "lucide-react";
 
 export interface SearchResultItem {
@@ -68,6 +69,7 @@ export const navigationItems: NavigationItem[] = [
   { name: "Billing", nameKey: "billing", href: "/dashboard/billing", icon: FileText, shortcut: "B" },
   { name: "Payments", nameKey: "payments", href: "/dashboard/payments", icon: CreditCard },
   { name: "Vendor Bills", nameKey: "vendorBills", href: "/dashboard/vendor-bills", icon: ReceiptText },
+  { name: "Banking", nameKey: "banking", href: "/dashboard/banking", icon: Landmark },
   { name: "Payables", nameKey: "payables", href: "/dashboard/reports/payables", icon: Clock },
   { name: "Payment Reminders", nameKey: "paymentReminders", href: "/dashboard/settings/reminders", icon: Clock },
   { name: "AI Assistant", nameKey: "aiAssistant", href: "/dashboard/assistant", icon: Bot, shortcut: "A" },
@@ -82,6 +84,7 @@ export const quickActions: QuickActionItem[] = [
   { name: "New Challan", labelKey: "actionNewChallan", icon: Truck, href: "/dashboard/delivery-challans?new=true" },
   { name: "New Client", labelKey: "actionNewClient", icon: Users, href: "/dashboard/clients?new=true" },
   { name: "New Vendor Bill", labelKey: "actionNewVendorBill", icon: ReceiptText, href: "/dashboard/vendor-bills?action=new" },
+  { name: "Import Bank Statement", labelKey: "actionImportBankStatement", icon: Landmark, href: "/dashboard/banking?action=import" },
   { name: "Add Inventory Item", labelKey: "actionAddInventoryItem", icon: Package, href: "/dashboard/inventory?new=true" },
   { name: "Generate Report", labelKey: "actionGenerateReport", icon: FileText, href: "/dashboard/assistant" },
 ];

@@ -33,6 +33,7 @@ interface AuditLog {
     userId: string;
     userName: string;
     userRole: 'Admin' | 'Staff';
+    userRoleDetail?: string;
     action: string;
     actionType: string;
     module: string;
@@ -407,7 +408,7 @@ export default function AuditTrailPanel() {
                                                 </p>
                                                 <p className="truncate" style={{ fontSize: '13px', color: 'var(--muted-foreground)' }}>
                                                     <User size={11} className="inline mr-1" style={{ verticalAlign: '-1px' }} />
-                                                    {log.userName} · {log.userRole}
+                                                    {log.userName} · {log.userRoleDetail || log.userRole}
                                                 </p>
                                             </div>
                                         </div>

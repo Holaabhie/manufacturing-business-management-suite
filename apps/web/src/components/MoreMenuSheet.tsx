@@ -102,6 +102,7 @@ const STAFF_HIDDEN = [
   "Delivery Challans",
   "Payments",
   "Vendor Bills",
+  "Banking",
   "Upgrade",
 ];
 

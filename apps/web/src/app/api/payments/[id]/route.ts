@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
+import { requireAdmin } from "@/lib/require-role";
+import { getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
@@ -8,11 +9,12 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
-    const user = await getSessionUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAdmin();
+    if (authResult.error || !authResult.user) {
+      return NextResponse.json({ error: authResult.error || "Unauthorized" }, { status: authResult.status || 401 });
     }
+    const user = authResult.user;
+    const { id } = await params;
 
     if (!ObjectId.isValid(id)) {
       return NextResponse.json({ error: "Invalid ID format" }, { status: 400 });

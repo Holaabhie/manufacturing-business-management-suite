@@ -784,7 +784,7 @@ export function CreateBillModal({
                                         onChange={(e) =>
                                             setVendorSnapshot((prev) => ({ ...prev, address: e.target.value }))
                                         }
-                                        placeholder="Vendor business address"
+                                        placeholder={t("vendorAddressPlaceholder")}
                                         className={inputClasses}
                                     />
                                 </div>

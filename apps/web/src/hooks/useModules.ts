@@ -13,6 +13,7 @@ export interface ModuleConfig {
   billing: boolean;
   payments: boolean;
   vendorBills: boolean;
+  banking: boolean;
   clients: boolean;
   // Always-on modules
   dashboard: boolean;
@@ -30,6 +31,7 @@ export const DEFAULT_MODULES: ModuleConfig = {
   billing: false,
   payments: false,
   vendorBills: true,
+  banking: true,
   clients: false,
   // Always true, not toggleable
   dashboard: true,
@@ -100,6 +102,12 @@ export const MODULE_META: Record<
     description: "Manage purchase invoices, vendor payments, and tax tracking",
     icon: "ReceiptText",
     color: "#10B981",
+  },
+  banking: {
+    label: "Banking",
+    description: "Bank accounts, statement imports, and transactions",
+    icon: "Landmark",
+    color: "#0284C7",
   },
   clients: {
     label: "Clients Management",

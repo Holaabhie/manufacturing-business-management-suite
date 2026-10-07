@@ -10,8 +10,8 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // Only Admins can view audit logs
-        if (user.role !== 'Admin') {
+        // Only Admins and Owners can view audit logs
+        if (user.role !== 'Admin' && user.role !== 'Owner') {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 

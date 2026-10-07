@@ -90,6 +90,7 @@ export const ROLE_PERMISSIONS: Record<string, {
             "/dashboard/billing",
             "/dashboard/payments",
             "/dashboard/vendor-bills",
+            "/dashboard/banking",
             "/dashboard/analytics",
             "/dashboard/reports/previous-years",
             "/dashboard/reports/receivables",

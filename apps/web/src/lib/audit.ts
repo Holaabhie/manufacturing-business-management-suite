@@ -13,6 +13,7 @@ export interface AuditEntry {
     userId: string;
     userName: string;
     userRole: 'Admin' | 'Staff';
+    userRoleDetail?: string;
     action: string;
     actionType: 'create' | 'read' | 'update' | 'delete' | 'login' | 'logout' | 'export' | 'permission_change' | 'system' | 'security';
     module: string;
@@ -58,6 +59,7 @@ export async function logAuthEvent(
         userId: string;
         userName: string;
         userRole: 'Admin' | 'Staff';
+        userRoleDetail?: string;
         action: string;
         actionType: 'login' | 'logout' | 'security';
         ipAddress?: string;
@@ -81,6 +83,7 @@ export async function logDataOperation(
         userId: string;
         userName: string;
         userRole: 'Admin' | 'Staff';
+        userRoleDetail?: string;
         action: string;
         actionType: 'create' | 'read' | 'update' | 'delete' | 'export';
         module: string;

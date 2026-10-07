@@ -72,8 +72,8 @@ export async function POST(req: NextRequest) {
     try {
         await connectToDatabase();
 
-        // ─── Auth: require Owner or Admin (matching legacy /api/payments POST) ──
-        const authResult = await requireRole(["Owner", "Admin"]);
+        // ─── Auth: require Owner, Admin, or Accountant ──
+        const authResult = await requireRole(["Owner", "Admin", "Accountant"]);
         if (authResult.error || !authResult.user) {
             return NextResponse.json({ success: false, error: authResult.error || "Unauthorized" }, { status: authResult.status || 401 });
         }

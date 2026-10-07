@@ -123,6 +123,7 @@ function OrdersContent() {
   const { progress: collapseProgress } = useCollapseProgress();
   const router = useRouter();
   const { role, isAdmin, isStaff, isPro, loading: roleLoading } = useRole();
+  const canRecordPayment = (role as string) === "Owner" || (role as string) === "Admin" || (role as string) === "Accountant" || isAdmin;
   const { formatINR } = useFormatters();
   const { locale } = useAppLocale();
   const dateLocale = locale === "hi" ? "hi-IN" : locale === "gu" ? "gu-IN" : locale === "mr" ? "mr-IN" : "en-IN";
@@ -1941,8 +1942,8 @@ function OrdersContent() {
                                             <Edit2 className="mr-2 h-4 w-4" /> {t("table.editOrder")}
                                           </DropdownMenuItem>
                                         )}
-                                        {/* Record Payment Owner only */}
-                                        {!isStaff && (
+                                        {/* Record Payment (Owner, Admin, Accountant only) */}
+                                        {canRecordPayment && (
                                           <DropdownMenuItem
                                             onClick={() => openPaymentDialog(order)}
                                             className="rounded-[8px]"

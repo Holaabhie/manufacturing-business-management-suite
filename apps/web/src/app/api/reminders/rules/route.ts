@@ -58,6 +58,7 @@ export async function POST(request: NextRequest) {
             userId: String(auth.user._id),
             userName: auth.user.fullName || auth.user.full_name || auth.user.email || "User",
             userRole: auth.user.role === "Admin" ? "Admin" : "Staff",
+            userRoleDetail: auth.user.role,
             action: `Created payment reminder rule "${rule.name}"`,
             actionType: "create",
             module: "reminders",

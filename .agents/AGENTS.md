@@ -1117,7 +1117,7 @@ When building a full-screen mobile sheet that acts as a page:
   - Excludes `Draft`, `Void`, and bills fully paid as of `asOf`.
   - Buckets by days past `due_date`: `Not due`, `1–30`, `31–60`, `61–90`, `90+`.
   - Returns per-vendor rows with bucket breakdown, overall totals row, and bill-level drilldown items.
-  - Known limitation: historical asOf does not include bills/payments voided later.
+  - Known limitation: historical asOf excludes bills/payments voided later.
 - **Vendor Statement Report (`GET /api/reports/vendor-statement`)**:
   - Query parameters: `vendor_id`, `from`, `to` (IST dates).
   - Chronological transaction rows: bills (credit = `payable_amount`, includes `vendor_invoice_number`, `bill_number`, TDS note) and non-voided payments (debit).
@@ -1207,9 +1207,117 @@ When building a full-screen mobile sheet that acts as a page:
   - Standard Roman terms preserved: `GST`, `GSTIN`, `UPI`, `PDF`.
   - Zero hardcoded UI strings.
 
+## Security Ticket: Role checks on money-writing routes
+
+- **Recon & Baseline Assessment**:
+  - Audited all routes under `/api/purchasing`, `/api/vendors`, `/api/payments`, `/api/v1/payments` (incl. `/record`), and `/api/expenses`.
+  - Directory `/api/vendors` does not exist; vendor routes live under `/api/purchasing/vendors`.
+  - All purchasing and PO write routes (`POST /api/purchasing`, `PATCH /api/purchasing/[id]`, `DELETE /api/purchasing/[id]`, `POST /api/purchasing/vendors`, `PUT /api/purchasing/vendors/[id]`, `DELETE /api/purchasing/vendors/[id]`, `POST /api/v1/purchase-orders/[id]/record-payment`) enforced with `requireRole(["Owner", "Admin", "Manager", "Accountant"])`. Staff attempts strictly return HTTP 403 Forbidden.
+  - `/api/v1/payments/record` aligns with legacy `/api/payments` POST gating: enforced with `requireRole(["Owner", "Admin"])`. Staff, Manager, and Accountant attempts return HTTP 403 Forbidden.
+  - `POST /api/v1/purchase-orders/[id]/record-payment` enforces validation rejecting payment dates in the future (compared in IST `YYYY-MM-DD`), returning HTTP 400 with `"Payment date cannot be in the future"`.
+  - Read routes (`GET /api/purchasing`, `GET /api/purchasing/vendors`, `GET /api/purchasing/stats`) mirror what the UI allows (Owner, Admin, Manager, Accountant, and Staff read access).
+- **Out of Scope (Reported Only)**:
+  - PO numbering `countDocuments + 1` concurrency collision risk under simultaneous PO creations.
+  - PO payments have no dedicated ledger collection, idempotency guard, or void capability (stored as cumulative `paidAmount` on PO doc).
+  - `/api/v1/payments/record` currently lacks `withIdempotency` wrapper.
+- **Verification & Zero Side-Effects**:
+  - 32 / 32 integration checks passed with live HTTP requests across all 5 user roles (`scratch/output/verify-security-routes-*.txt`).
+  - Strict fixture cleanup by exact ObjectIds; 0 lingering test documents.
+  - SHA256 checksums verified identical pre- and post-test across all 5 relevant collections (`purchase_orders`, `vendors`, `payments`, `paymenttransactions`, `orders`).
+  - TypeScript error count maintained at baseline 82 (`npx tsc --noEmit`).
+
+### Follow-Up: Remaining Money-Writing Routes & Orders UI Button Hide
+
+- **Routes Gated**:
+  - `DELETE /api/payments/[id]`: Protected with `requireAdmin()` (matches legacy `POST /api/payments`). Blocked: Staff (403), Manager (403), Accountant (403). Allowed: Owner (200), Admin (200).
+  - `/api/expenses` POST, PUT, DELETE (`/api/expenses` and `/api/expenses/[id]`): Gated with `requireRole(["Owner", "Admin", "Staff"])` matching `allowedRoutes` in `role-permissions.ts`. Staff remains allowed by design for field/petty cash logging. Blocked: Manager (403), Accountant (403). Allowed: Staff (200/201), Admin (200), Owner (200).
+  - `POST /api/v1/payments/record`: Expanded allowed roles to `requireRole(["Owner", "Admin", "Accountant"])`. Blocked: Staff (403), Manager (403). Allowed: Accountant (200), Admin (200), Owner (200).
+- **Frontend Button Guard**:
+  - `apps/web/src/app/dashboard/orders/page.tsx`: Row actions dropdown "Record Payment" button guarded by `canRecordPayment = ((role as string) === "Owner" || (role as string) === "Admin" || (role as string) === "Accountant") || isAdmin;`, cleanly hiding it for Manager and Staff while keeping it visible for Admin, Owner, and Accountant.
+- **Verification & Parity**:
+  - 26 / 26 live HTTP integration checks passed (`scratch/output/verify-security-followup-*.txt`).
+  - Strict fixture cleanup by exact ObjectIds (orders, expenses, payment transactions, payments, sessions, users).
+  - SHA256 content hashes verified identical pre- and post-test across all 4 target collections (`payments`, `paymenttransactions`, `orders`, `expenses`).
+  - Regression screenshots captured for Admin, Accountant, and Manager in `scratch/output/screenshots/`.
+  - TypeScript raw error count verified at baseline 82 (`npx tsc --noEmit`).
+  - Production build verified with `npx next build` in `apps/web`.
+
 ## Build & Type Safety Baseline
 
 - **tsc baseline**: `82 errors / 42 files, ignoreBuildErrors is ON — no prompt may increase the count`. Zero errors permitted in touched files. Always verify with `npx tsc --noEmit`.
+
+## Banking import (Phase 7a)
+
+### 1. Integer Paise Rules (No Floats)
+- All monetary amounts across the banking module (`opening_balance_paise`, `debit_paise`, `credit_paise`, `balance_after_paise`, `total_credit_paise`, `total_debit_paise`) are stored as non-negative integer paise.
+- Parsing strips all grouping commas (handles Indian numbering format like `4,87,500.00` as well as Western format `487,500.00`).
+- Validates decimal precision: maximum 2 decimal places. A 3+ decimal string (e.g. `125.456`) triggers a row-level error and rejects that row.
+- Zero amounts are parsed to `0`. A valid row must have either `debit_paise > 0` or `credit_paise > 0`, never both > 0 and never neither > 0.
+- Running balance continuity check compares successive transaction delta against parsed `balance_after_paise`. If mismatches exceed 20%, a non-blocking warning ("sign convention may be wrong") is flagged.
+
+### 2. row_hash and Ordinal Deduplication Rule
+- Each transaction computes a cryptographic SHA-256 fingerprint:
+  `row_hash = sha256("${value_date}|${debit_paise}|${credit_paise}|${balance_after_paise}|${normalized_narration}|${ordinal}")`
+- `ordinal` represents the zero-based occurrence index of identical rows within the same imported statement file. Two identical same-day transactions in a single file (e.g. two separate ₹5,000 cash withdrawals) receive ordinals `0` and `1`, yielding distinct `row_hash` values, and are both legitimately inserted.
+- Overlapping statements re-uploading previously imported transactions will produce identical `row_hash`es and are skipped during commit (`rows_skipped_duplicate` incremented).
+- Upon statement revert (`POST /api/banking/imports/[id]/revert`), transactions are marked `reverted: true` and their `row_hash` field is removed via `$unset`. This immediately frees the unique index constraint, allowing the exact same statement file to be re-imported cleanly if needed.
+
+### 3. No-XLSX-Parsing Rule & Security Rationale
+- Under untrusted user input, arbitrary spreadsheet formats (`.xlsx`, `.xls`, `.xlsm`, `.xlsb`) MUST NOT be parsed using `xlsx` (SheetJS 0.18.5) on the server. Older SheetJS versions contain known prototype pollution, memory exhaustion, and command injection vulnerabilities.
+- Banking statement imports strictly enforce CSV format only via a custom, RFC-4180 compliant streaming parser (`parseRFC4180Csv`) handling quoted fields, commas inside quotes, embedded newlines, UTF-8 BOM, and UTF-16LE BOM.
+- Server-side payload limits: strictly enforces 5 MB file size limit and 20,000 max row count with HTTP 400 Bad Request responses before database execution.
+- Excel exports (`exportWorkbook` using `xlsx`) are permitted strictly for client-side generation and download of structured data.
+
+### 4. Partial Index Rule (Compound-Sparse Gotcha Avoidance)
+- MongoDB compound sparse indexes do NOT index documents if ANY field in the index key pattern is missing. Therefore, sparse indexes must never be used for deduplication when any index field can be null or conditionally present.
+- `bank_statement_imports`: Unique index `{ userId: 1, bank_account_id: 1, file_hash: 1 }` uses a partial filter:
+  `partialFilterExpression: { status: "Committed", file_hash: { $type: "string" } }`
+  This allows reverted imports to retain historical file hashes while preventing duplicate active files per account.
+- `bank_transactions`: Unique index `{ userId: 1, bank_account_id: 1, row_hash: 1 }` uses a partial filter:
+  `partialFilterExpression: { row_hash: { $type: "string" } }`
+  Unsetting `row_hash` on revert immediately excludes the row from the uniqueness constraint.
+
+### 5. Banking Matching Architecture & Rules (Phase 7b)
+
+- **Linking Only (Zero Side-Effects)**:
+  - Phase 7b implements bidirectional transaction-to-payment matching strictly via `bank_match_links`.
+  - Zero writes are performed on existing financial collections (`payments`, `paymenttransactions`, `vendor_bill_payments`, `vendor_bills`, `purchase_orders`, `orders`, `bills`, `expenses`, `vendors`, `clients`).
+  - Money-in (Credit transactions) links to customer payments in the legacy `payments` collection (`amount_paise = Math.round(payment.amount * 100)`).
+  - Money-out (Debit transactions) links to vendor payments in `vendor_bill_payments` (`amount_paise = payment.amount_paise`, requiring `voided = false`).
+  - Direction mismatch returns HTTP 400 Bad Request immediately.
+
+- **Atomic Allocation Guard & Concurrency Control**:
+  - `bank_transactions.allocated_paise` tracks the sum of active links.
+  - When linking, `atomicAllocateAndCreateLinks` executes an atomic conditional update:
+    `$inc: { allocated_paise: totalAllocatingPaise }` where `allocated_paise + totalAllocatingPaise <= totalTxPaise`.
+  - If the transaction is concurrently matched or over-allocated, the update returns null, and the service throws HTTP 409 Conflict with remaining allowable paise.
+  - Links are inserted with status `"Active"`. If inserting any link fails, the atomic allocation is rolled back via `$inc: { allocated_paise: -totalAllocatingPaise }`.
+  - A partial unique index on `bank_match_links` (`{ userId: 1, entity_type: 1, entity_id: 1 }` with `partialFilterExpression: { status: "Active" }`) guarantees that no payment can ever be actively linked to two bank transactions simultaneously.
+  - Concurrent linking races result in exactly one HTTP 201 Created and one HTTP 409 Conflict.
+
+- **Revert Import Guard**:
+  - Reverting a statement import (`POST /api/banking/imports/[id]/revert`) is strictly blocked (HTTP 409 Conflict) if any transaction in the import has active match links (`allocated_paise > 0` or active documents in `bank_match_links`).
+  - All links must be explicitly unlinked before an import can be reverted.
+
+- **Read-Time Stale Link Derivation (Needs Review)**:
+  - Links never write back status or void state to original payment collections.
+  - If a vendor payment is subsequently voided (`voided: true` in `vendor_bill_payments`) or a legacy client payment is deleted, the link's stale state is derived dynamically at read time:
+    `needs_review: true` with a clear explanation (`"Payment voided or deleted. Needs review."`).
+  - Transactions with any stale active link display an amber/red warning pill (`Needs review`) and allow one-click Unlink.
+
+- **Suggestions Ranking & Cash Rules**:
+  - Automated suggestions (`GET /api/banking/transactions/[id]/suggestions`) rank candidate payments within ±3 days:
+    1. Exact amount match + UTR/Cheque/Reference present in narration (Score 100).
+    2. Exact amount match without reference (Score 80).
+    3. Candidates differing by even 1 paise are excluded from automatic suggestions.
+  - Cash payments (`payment_method: "Cash"` or `payment_mode: "Cash"`) are excluded from automatic suggestions to prevent false positives, but can be manually searched and linked via the Manual Search tab.
+
+- **What Phase 7c Will Add**:
+  - Payment creation directly from unmatched bank transaction rows with dual-write to `bank_match_links` and `payments` / `vendor_bill_payments`.
+  - Bank Reconciliation Statement (BRS) report with unpresented cheques, uncleared deposits, and balance reconciliation.
+  - Tally XML voucher generation for bank receipts and bank payments.
+
+
 
 
 
