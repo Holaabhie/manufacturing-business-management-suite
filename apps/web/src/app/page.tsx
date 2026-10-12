@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { PLANS, formatPrice, getYearlySavings } from "@/lib/razorpay/plans";
 import Link from "next/link";
-import Image from "next/image";
+import { BrandLogo } from "@/components/BrandLogo";
 import {
   ArrowRight,
   ChevronRight,
@@ -18,8 +18,8 @@ import {
 import { LandingNavbar } from "@/components/landing/LandingNavbar";
 import { LandingHero } from "@/components/landing/LandingHero";
 import { LandingDemo } from "@/components/landing/LandingDemo";
-import { LandingPricing } from "@/components/landing/LandingPricing";
 import { SectionReveal } from "@/components/landing/SectionReveal";
+import { MODULES } from "@/content/modules";
 
 /* ─────────────────────────────────────────────────────────────
    IND Manager — Marketing Landing Page (Server Component)
@@ -105,9 +105,10 @@ export default async function HomePage() {
           {/* 4-card grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {FEATURES.map((f) => (
-              <div
+              <Link
                 key={f.title}
-                className="group relative p-7 rounded-2xl bg-card border border-border hover:border-primary/20 hover:shadow-[0_8px_30px_rgba(37,99,235,0.07)] transition-all duration-300 overflow-hidden"
+                href={f.href}
+                className="group relative block p-7 rounded-2xl bg-card border border-border hover:border-primary/20 hover:shadow-[0_8px_30px_rgba(37,99,235,0.07)] transition-all duration-300 overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary/40"
               >
                 {/* Subtle glow on hover */}
                 <div
@@ -124,27 +125,27 @@ export default async function HomePage() {
                   <f.icon className="h-6 w-6" style={{ color: f.iconColor }} />
                 </div>
                 {/* Content */}
-                <h3 className="relative font-bold text-lg mb-2 text-foreground">
+                <h3 className="relative font-bold text-lg mb-2 text-foreground group-hover:text-primary transition-colors duration-200">
                   {f.title}
                 </h3>
                 <p className="relative text-sm text-muted-foreground leading-relaxed mb-6">
                   {f.description}
                 </p>
-                {/* Arrow button → links to real route */}
-                <Link
-                  href={f.href}
-                  className="relative inline-flex items-center justify-center w-9 h-9 rounded-full border border-border bg-background hover:bg-primary hover:border-primary hover:text-primary-foreground transition-all duration-200 group/btn"
+                {/* Arrow button → decorative element inside single Link (no nested anchors) */}
+                <span
+                  aria-hidden="true"
+                  className="relative inline-flex items-center justify-center w-9 h-9 rounded-full border border-border bg-background group-hover:bg-primary group-hover:border-primary group-hover:text-primary-foreground transition-all duration-200"
                 >
-                  <ArrowRight className="h-4 w-4 group-hover/btn:translate-x-0.5 transition-transform" />
-                </Link>
-              </div>
+                  <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+                </span>
+              </Link>
             ))}
           </div>
 
           {/* See all modules link */}
           <div className="text-center mt-10">
             <Link
-              href="/login"
+              href="/modules"
               className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
             >
               See all 15+ modules <ChevronRight className="h-4 w-4" />
@@ -177,15 +178,12 @@ export default async function HomePage() {
       >
         <div className="mx-auto max-w-3xl text-center space-y-6">
           <div className="flex justify-center">
-            <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-md">
-              <Image
-                src="/icons/icon-512.png"
-                alt="IND Manager"
-                width={64}
-                height={64}
-                className="w-full h-full object-cover"
-              />
-            </div>
+            <BrandLogo
+              variant="icon"
+              width={64}
+              height={64}
+              className="w-16 h-16 object-contain"
+            />
           </div>
           <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
             About IND Manager
@@ -235,22 +233,13 @@ export default async function HomePage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 sm:gap-12">
             {/* Brand */}
             <div className="col-span-2 sm:col-span-1 space-y-4">
-              <Link href="/" className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-[8px] overflow-hidden flex-shrink-0">
-                  <Image
-                    src="/icons/icon-512.png"
-                    alt="IND Manager"
-                    width={32}
-                    height={32}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="flex flex-col leading-none">
-                  <span className="font-bold text-[15px]">
-                    <span className="text-foreground">Ind</span>{" "}
-                    <span className="text-primary">Manager</span>
-                  </span>
-                </div>
+              <Link href="/" className="inline-block">
+                <BrandLogo
+                  variant="full"
+                  width={130}
+                  height={32}
+                  className="h-7 w-auto object-contain"
+                />
               </Link>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 Manufacturing &amp; business management for Indian SMEs.
@@ -366,45 +355,59 @@ const STATS = [
   { value: "24/7", label: "Access Anywhere, Anytime", icon: Clock },
 ] as const;
 
+const getCardBlurb = (slug: string, fallback: string): string => {
+  const mod = MODULES.find((m) => m.slug === slug);
+  return mod?.cardBlurb || fallback;
+};
+
 const FEATURES = [
   {
     icon: ClipboardList,
     title: "Orders",
-    description:
-      "Create, track, and manage customer orders from quotation to delivery. Real-time status updates keep everyone aligned.",
+    description: getCardBlurb(
+      "orders",
+      "Create, track, and manage customer orders from quotation to delivery. Status updates keep everyone aligned."
+    ),
     iconBg: "rgba(37, 99, 235, 0.1)",
     iconColor: "var(--primary)",
     glowColor: "rgba(37,99,235,0.04)",
-    href: "/dashboard/orders",
+    href: "/modules/orders",
   },
   {
     icon: Package,
     title: "Inventory",
-    description:
-      "Track raw materials and finished goods with automatic stock deductions during production. Never run out of critical supplies.",
+    description: getCardBlurb(
+      "inventory",
+      "Track raw materials and finished goods with automatic stock deductions during production. Low stock alerts help you stay ahead of shortages."
+    ),
     iconBg: "rgba(22, 163, 74, 0.1)",
     iconColor: "#16A34A",
     glowColor: "rgba(22,163,74,0.04)",
-    href: "/dashboard/inventory",
+    href: "/modules/inventory",
   },
   {
     icon: Factory,
     title: "Production",
-    description:
-      "Assign staff to production runs, track machine usage, and monitor completion status. Full batch traceability built in.",
+    description: getCardBlurb(
+      "production",
+      "Assign staff and machines to production runs, and monitor completion status."
+    ),
     iconBg: "rgba(139, 92, 246, 0.1)",
     iconColor: "#8B5CF6",
     glowColor: "rgba(139,92,246,0.04)",
-    href: "/dashboard/production",
+    href: "/modules/production",
   },
   {
     icon: Wallet,
     title: "Payments & Accounts",
-    description:
-      "Manage client payments, expenses, and generate reports. Keep your finances organized and transparent.",
+    description: getCardBlurb(
+      "payments-accounts",
+      "Record client payments with TDS details, track receivables, and generate reports. Keep your finances organized and transparent."
+    ),
     iconBg: "rgba(37, 99, 235, 0.1)",
     iconColor: "var(--primary)",
     glowColor: "rgba(37,99,235,0.04)",
-    href: "/dashboard/payments",
+    href: "/modules/payments-accounts",
   },
-] as const;
+];
+
