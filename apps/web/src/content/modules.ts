@@ -136,7 +136,7 @@ export const MODULES: readonly ModuleContent[] = [
       },
       {
         title: "Track delivery and prompt invoicing",
-        body: "Update physical delivery progress and choose to auto-generate a GST invoice when marking the order Completed.",
+        body: "Update physical delivery progress and choose Complete & Invoice to auto-generate a tax invoice, or Complete Only when finishing the order.",
       },
       {
         title: "Reconcile customer balance",
@@ -147,7 +147,7 @@ export const MODULES: readonly ModuleContent[] = [
       "Order lifecycle tracking: Draft, Confirmed, In Progress, Completed, Cancelled, and On Hold",
       "Separate physical delivery status: Not Shipped, Partial, Shipped, Delivered, and Returned",
       "Priority classification: Low, Normal, High, and Urgent",
-      "Option to auto-generate GST tax invoices upon order completion",
+      "Choose Complete & Invoice or Complete Only upon marking orders Completed",
       "Full registry export to PDF and Excel formats",
     ],
     connectsWith: [
@@ -168,7 +168,7 @@ export const MODULES: readonly ModuleContent[] = [
         },
         {
           heading: "Completion & Invoicing Linkage",
-          body: "When marking an order Completed, you are prompted to auto-generate a GST invoice pre-filled with the order items, rates, and client details, eliminating duplicate billing entries.",
+          body: "When marking an order Completed, you can choose Complete & Invoice to generate a tax invoice pre-filled with order items and rates, or Complete Only to close the order without invoicing.",
         },
       ],
       faqs: [
@@ -195,7 +195,7 @@ export const MODULES: readonly ModuleContent[] = [
       glowColor: "rgba(245, 158, 11, 0.04)",
     },
     title: "Quotations",
-    tagline: "Create professional GST-compliant estimates and track customer approvals.",
+    tagline: "Create professional itemized estimates and track customer approvals.",
     summary:
       "Send formal price quotations with HSN codes, discounts, and GST breakdowns in minutes. Monitor customer acceptance, follow up on pending deals, and convert approved quote items into active orders.",
     uses: [
@@ -268,24 +268,24 @@ export const MODULES: readonly ModuleContent[] = [
       glowColor: "rgba(13, 148, 136, 0.04)",
     },
     title: "Delivery Challans",
-    tagline: "Issue GST-compliant transport challans and track physical goods movement.",
+    tagline: "Issue standardized transport challans and track physical goods movement.",
     summary:
-      "Create official delivery documents for goods leaving your factory for job work, client delivery, or supply on approval. Track dispatch status, vehicle numbers, and transporter details to maintain complete transit compliance.",
+      "Create delivery documents for goods leaving your factory for sale, job work, sample, or other transit purposes. Track dispatch status, vehicle numbers, transporter name, and e-way bill details to maintain complete dispatch oversight.",
     uses: [
       "Create delivery challans for outgoing consignments with vehicle and transporter LR numbers",
       "Track goods movement across Draft, Dispatched, Delivered, Returned, and Cancelled stages",
-      "Issue challans for job-work processing without raising premature tax invoices",
+      "Issue challans for job work, samples, or sales without raising premature tax invoices",
       "Print official transport copies for drivers and logistics partners to accompany vehicle transit",
-      "Link challans to customer sales orders to ensure dispatch quantities match ordered amounts",
+      "Link challans to customer sales orders to pre-fill item descriptions and remaining dispatch quantities",
     ],
     howItWorks: [
       {
         title: "Generate challan",
-        body: "Select consignee details, linked sales order, dispatch items, transport mode, vehicle registration, and transporter LR number.",
+        body: "Select consignee details, linked sales order, dispatch items, transport mode, vehicle number, transporter name, LR number, and e-way bill.",
       },
       {
         title: "Print transport copy",
-        body: "Download the formatted delivery challan PDF containing regulatory transit disclosures.",
+        body: "Download the formatted delivery challan PDF containing transport details and dispatch notes.",
       },
       {
         title: "Dispatch and update status",
@@ -299,14 +299,14 @@ export const MODULES: readonly ModuleContent[] = [
     keyFeatures: [
       "Transit documentation with vehicle registration and LR numbers",
       "Full dispatch lifecycle: Draft, Dispatched, Delivered, Returned, and Cancelled",
-      "Job work and supply-on-approval challan workflows",
+      "Designated transit purposes: Sale, Job Work, Sample, and Other",
       "Direct linkage to sales orders and customer accounts",
-      "PDF download formatted for transport checkpoints",
+      "PDF download formatted with vehicle number, LR number, and e-way bill",
     ],
     connectsWith: ["orders", "clients", "billing-invoices"],
     docs: {
       overview:
-        "Delivery Challans provide legal transport documentation when physical materials move between your factory, processing units, or customer facilities without immediate invoice generation.",
+        "Delivery Challans provide official transit documentation when physical materials move between your factory, processing units, or customer facilities without immediate invoice generation.",
       sections: [
         {
           heading: "Dispatch Status Tracking",
@@ -314,7 +314,7 @@ export const MODULES: readonly ModuleContent[] = [
         },
         {
           heading: "Logistics & Transport Records",
-          body: "Record vehicle registration numbers, transporter details, LR numbers, and consignee addresses to satisfy transport inspections and customer gate receipts.",
+          body: "Record vehicle numbers, transporter names, LR numbers, e-way bill numbers, and consignee addresses to verify dispatch details at customer gate receipts.",
         },
       ],
       faqs: [
@@ -345,59 +345,59 @@ export const MODULES: readonly ModuleContent[] = [
     cardBlurb:
       "Assign staff and machines to production runs, and monitor completion status.",
     summary:
-      "Coordinate workshop manufacturing runs from work order creation to finished goods handover. Assign operators and machines to jobs, monitor live stage progression, and deduct raw materials upon completion.",
+      "Coordinate workshop manufacturing runs from work order creation to finished goods handover. Assign operators and machines to jobs, monitor live stage progression, and deduct raw materials automatically upon run launch.",
     uses: [
       "Schedule manufacturing work orders directly from confirmed customer orders",
-      "Assign workshop machines and operators to each manufacturing run",
+      "Assign active workshop machines and multiple shop-floor operators to each manufacturing run",
       "Track job progression across Pending, Running, Paused, and Completed states",
-      "Provide shop floor operators with a dedicated My Productions view for progress updates",
+      "Provide shop floor operators with a dedicated dashboard work panel showing assigned orders and tasks",
       "Apply raw material templates to speed up bill of materials setup",
-      "Deduct consumed raw materials from inventory automatically upon job completion",
+      "Deduct required raw materials from inventory automatically upon launching each production run",
     ],
     howItWorks: [
       {
         title: "Schedule production run",
-        body: "Create a work order for the required product and quantity linked to an open customer order.",
+        body: "Create a work order for the required product and quantity linked to an open customer order, deducting bill of materials from inventory upon launch.",
       },
       {
         title: "Assign operators and machines",
-        body: "Allocate available workshop machines by name and assign operators responsible for the job run.",
+        body: "Allocate active workshop machines (excluding maintenance units) and assign operators responsible for the job run.",
       },
       {
         title: "Monitor floor progression",
         body: "Supervisors and operators track work in Pending, Running, Paused, and Completed stages.",
       },
       {
-        title: "Complete and deduct stock",
-        body: "Marking the run Completed finishes the job, logs output figures, and decrements allocated raw materials.",
+        title: "Complete production run",
+        body: "Marking the run Completed finishes the job, logs output figures in the activity log, and updates order fulfillment without double-deducting stock.",
       },
     ],
     keyFeatures: [
       "Status lifecycle matching shop floor flow: Pending, Running, Paused, and Completed",
-      "Machine and operator assignment per manufacturing run",
-      "Dedicated My Productions view for shop floor operators",
+      "Multiple operator and active machine assignment with maintenance exclusion",
+      "Dedicated staff dashboard work panel showing assigned orders and tasks",
       "Material templates to streamline bill of materials setup",
-      "Automatic inventory deduction of raw materials on job completion",
+      "Automatic inventory deduction of raw materials upon production run launch",
       "Integrated activity feed logging job updates and state changes",
     ],
     connectsWith: ["orders", "machines", "inventory", "staff-roles"],
     docs: {
       overview:
-        "The Production module organizes your factory floor into defined work orders, allocating staff and equipment while updating material balances automatically upon job completion.",
+        "The Production module organizes your factory floor into defined work orders, allocating staff and equipment while updating material balances automatically upon launching each job.",
       sections: [
         {
           heading: "Shop Floor Status Lifecycle",
           body: "Jobs move through four clear stages: Pending, Running, Paused, and Completed. Operators can pause jobs for tooling adjustments and resume them when ready.",
         },
         {
-          heading: "My Productions Staff Portal",
-          body: "Shop floor workers access a focused My Productions view showing only their assigned tasks, where they can log produced output and report reject quantities.",
+          heading: "Staff Dashboard Work Panel",
+          body: "Shop floor workers access a focused work panel on the dashboard showing their assigned orders, pending work, and today's tasks.",
         },
       ],
       faqs: [
         {
-          q: "Does completing a production run update inventory?",
-          a: "Yes. When a work order is marked Completed, raw materials allocated to that run are automatically deducted from stock.",
+          q: "When are raw materials deducted for a production run?",
+          a: "Raw materials are deducted from inventory when launching the production run, preventing double deduction when marking the run completed.",
         },
         {
           q: "Can supervisors view an activity log of job changes?",
@@ -420,61 +420,61 @@ export const MODULES: readonly ModuleContent[] = [
     title: "Machines",
     tagline: "Maintain an equipment register and track machinery operational status.",
     summary:
-      "Maintain a centralized register of workshop equipment, machine classifications, and operational states. Ensure production jobs are assigned only to available and active machines.",
+      "Maintain a centralized register of workshop equipment with machine name, type, and capacity. Track machinery status across Active, Maintenance, and Inactive states to coordinate shop floor operations.",
     uses: [
-      "Maintain a register of workshop machinery with names, types, and rated capacities",
-      "Track equipment operational status across Active, Running, Idle, Maintenance, and Disabled",
-      "Review equipment availability counts before launching urgent production runs",
+      "Maintain a workshop equipment register with machine name, type, and capacity",
+      "Track equipment status across Active, Maintenance, and Inactive states",
+      "Review equipment availability counts before launching new production jobs",
       "Assign active machines by name to new production work orders",
-      "Flag equipment under maintenance to prevent accidental job scheduling",
+      "Set equipment to Maintenance during servicing to prevent job scheduling",
     ],
     howItWorks: [
       {
         title: "Register machinery",
-        body: "Add machine names, equipment classifications (such as CNC, Lathe, or Milling), and nominal rated capacities.",
+        body: "Add equipment entries specifying machine name, equipment type, and rated capacity.",
       },
       {
         title: "Monitor equipment counts",
-        body: "View the workshop summary to check counts of active, running, idle, and maintenance units.",
+        body: "Check workshop summary totals across Active, Maintenance, and Inactive machines.",
       },
       {
         title: "Assign to production runs",
-        body: "Select active machines when configuring manufacturing jobs in the production creator.",
+        body: "Select active machines when setting up manufacturing jobs in the production creator.",
       },
       {
-        title: "Update servicing status",
-        body: "Switch equipment to Maintenance or Disabled during servicing to keep workshop records accurate.",
+        title: "Update maintenance status",
+        body: "Switch machine status to Maintenance or Inactive during servicing to keep workshop records accurate.",
       },
     ],
     keyFeatures: [
-      "Machinery master directory with equipment name, type, and capacity text",
-      "Status categorization: Active, Running, Idle, Maintenance, and Disabled",
+      "Machinery directory recording machine name, machine type, and capacity",
+      "Clear status categorization: Active, Maintenance, and Inactive",
       "Active machine filtering during production run assignment",
-      "Summary counts of available and servicing equipment",
-      "Quick status editing to reflect workshop servicing schedules",
+      "Summary counts of active and servicing equipment",
+      "Status editing to reflect workshop maintenance and repairs",
     ],
     connectsWith: ["production", "dashboard"],
     docs: {
       overview:
-        "The Machines module maintains an active equipment master for your workshop, giving managers clear visibility into equipment classifications and operational readiness.",
+        "The Machines module maintains an active equipment master for your workshop, recording machine name, type, and capacity across Active, Maintenance, and Inactive statuses.",
       sections: [
         {
           heading: "Equipment Master Register",
-          body: "Record machine names, equipment types (such as CNC, VMC, Lathe, or Press), and rated output capacities for clear workshop identification.",
+          body: "Record machine name, machine type (such as CNC, Lathe, or Milling), and rated capacity for every piece of workshop equipment.",
         },
         {
-          heading: "Operational Readiness Tracking",
-          body: "Track machinery states (Active, Running, Idle, Maintenance, or Disabled) so supervisors can verify operational units before scheduling high-priority jobs.",
+          heading: "Machine Status Tracking",
+          body: "Track equipment across Active, Maintenance, and Inactive statuses so production supervisors can assign work only to ready machinery.",
         },
       ],
       faqs: [
         {
-          q: "What details can I store for each machine?",
-          a: "You can specify the machine name, equipment classification type, rated production capacity text, and current operational status.",
+          q: "What fields can I store for each machine?",
+          a: "You can specify machine name, machine type, rated capacity, and operational status.",
         },
         {
-          q: "How does this connect to production?",
-          a: "When scheduling a production run, supervisors select from active machines, ensuring work orders reference operational units.",
+          q: "What status values are available for machines?",
+          a: "Machines can be set to Active, Maintenance, or Inactive status.",
         },
       ],
     },
@@ -493,14 +493,14 @@ export const MODULES: readonly ModuleContent[] = [
     title: "Inventory",
     tagline: "Track raw materials and finished goods with automated stock deductions.",
     cardBlurb:
-      "Track raw materials and finished goods with automatic stock deductions during production. Low stock alerts help you stay ahead of shortages.",
+      "Track raw materials and finished goods with automatic stock deductions when jobs are launched. Low stock alerts help you stay ahead of shortages.",
     summary:
       "Stay in control of stock levels across warehouse bins and shop floor storage. Receive automated alerts when items drop below safety thresholds, helping you identify low stock and place timely purchase orders before shortages occur.",
     uses: [
       "Track current on-hand stock for raw materials, hardware components, and finished goods",
       "Filter inventory by Low Stock, Critical, Out of Stock, or Recently Updated items",
       "Set minimum reorder points to trigger timely low stock notifications",
-      "Deduct raw materials automatically when production work orders are completed",
+      "Deduct raw materials automatically when orders are confirmed or production runs are launched",
       "Add received supplies into stock automatically from verified purchase orders",
       "Store HSN codes, default units of measure, and purchase costs for accurate GST costing",
     ],
@@ -515,7 +515,7 @@ export const MODULES: readonly ModuleContent[] = [
       },
       {
         title: "Deduct outward stock",
-        body: "As factory production runs complete, consumed materials are deducted from on-hand inventory.",
+        body: "When sales orders or production runs are created, required raw materials are deducted atomically from on-hand inventory.",
       },
       {
         title: "Review low stock filters and alerts",
@@ -526,7 +526,7 @@ export const MODULES: readonly ModuleContent[] = [
       "Multi-item inventory catalog supporting raw materials and finished goods",
       "Dedicated Low Stock, Critical, and Out of Stock tab filters",
       "Low Stock Items KPI widget on the executive dashboard",
-      "Automatic stock updates from purchasing inward receipts and production runs",
+      "Automatic stock updates from purchasing receipts, order confirmations, and production job launches",
       "HSN code and tax rate mapping for GST billing accuracy",
       "Purchase cost recording for margin and valuation calculations",
     ],
@@ -537,7 +537,7 @@ export const MODULES: readonly ModuleContent[] = [
       sections: [
         {
           heading: "Inward & Outward Stock Flow",
-          body: "Stock quantities increment automatically when purchase orders are marked Received, and decrement when manufacturing jobs finish, eliminating manual stock tallying.",
+          body: "Stock quantities increment automatically when purchase orders are marked Received, and decrement when orders or production jobs are launched, eliminating manual stock tallying.",
         },
         {
           heading: "Low Stock Filters & Dashboard Monitoring",
@@ -570,61 +570,61 @@ export const MODULES: readonly ModuleContent[] = [
     title: "Purchasing & Vendors",
     tagline: "Streamline raw material procurement, purchase orders, and supplier receipts.",
     summary:
-      "Manage vendor directories, issue formal purchase orders, and record incoming material receipts. Ensure inventory balances update immediately upon receiving goods while maintaining clean supplier audit trails.",
+      "Manage vendor directories, issue purchase orders, and record receipts through a streamlined Pending to Received workflow. Update inventory upon receiving goods while maintaining clean supplier records.",
     uses: [
-      "Maintain vendor profiles with GSTIN, PAN, payment terms, and contact information",
-      "Create formal purchase orders with itemized rates, quantities, and expected delivery dates",
-      "Record inward goods delivery and automatically add received quantities into inventory",
-      "Track procurement status across Pending, Ordered, and Received stages",
-      "Link purchase orders in the Vendor Bills module to verify billed amounts against procurement terms",
+      "Maintain vendor profiles with contact persons, phone numbers, addresses, and 15-character GSTIN details",
+      "Create formal purchase orders with itemized rates, quantities, and delivery dates",
+      "Track purchase orders through a streamlined workflow: Pending to Received",
+      "Record inward goods receipt to automatically add received quantities into inventory",
+      "Link purchase orders in Vendor Bills to verify billed amounts against procurement terms",
     ],
     howItWorks: [
       {
         title: "Select vendor and items",
-        body: "Choose a registered supplier and specify the raw materials, quantities, and agreed prices needed.",
+        body: "Choose a supplier and enter the raw materials, quantities, and agreed prices required.",
       },
       {
-        title: "Issue purchase order",
-        body: "Send the formal purchase order document to the vendor to confirm the procurement terms.",
+        title: "Create pending order",
+        body: "Generate the purchase order in Pending status with complete item and pricing details.",
       },
       {
-        title: "Receive shipments",
-        body: "When goods arrive at the factory, mark the PO as Received to automatically update inventory stock.",
+        title: "Receive inward goods",
+        body: "When goods arrive, mark the purchase order as Received to update inventory stock.",
       },
       {
         title: "Link to vendor bill",
-        body: "Select the purchase order when creating a vendor bill to populate billed items and verify rates.",
+        body: "Select the purchase order when logging a vendor bill to match billed items against received goods.",
       },
     ],
     keyFeatures: [
-      "Vendor master directory with GSTIN and contact management",
-      "Formal PO creation with itemized pricing and delivery schedules",
+      "Vendor master directory with GSTIN and contact details",
+      "Itemized purchase order generation with PO-level tax percentage calculation",
+      "Streamlined purchasing workflow moving from Pending directly to Received",
       "Automatic inventory stock addition upon marking purchase orders Received",
       "Purchase order linking in Vendor Bills for accounts payable reconciliation",
-      "Complete procurement history to assist supplier price negotiations",
     ],
     connectsWith: ["inventory", "vendor-bills", "payments-accounts"],
     docs: {
       overview:
-        "The Purchasing module controls procurement from supplier quotation to warehouse delivery, ensuring raw material purchases are structured, verified, and linked to inventory.",
+        "The Purchasing module controls procurement from supplier ordering to goods receipt, following a clear Pending to Received workflow.",
       sections: [
         {
-          heading: "Inward Goods & Stock Integration",
-          body: "When you mark a purchase order as Received, the system atomically updates inventory stock quantities, preventing double-entry and maintaining exact warehouse counts.",
+          heading: "Streamlined Procurement Lifecycle",
+          body: "Purchase orders move from Pending directly to Received. Marking a PO Received confirms receipt at the factory gate and adds items to inventory.",
         },
         {
-          heading: "PO to Vendor Bill Reconciliations",
-          body: "Incoming supplier bills can be linked directly to your original purchase order, helping accounts verify billed rates and quantities against authorized procurement terms.",
+          heading: "PO to Vendor Bill Verification",
+          body: "Link purchase orders to incoming vendor bills to check that supplier invoices match agreed rates and received quantities.",
         },
       ],
       faqs: [
         {
-          q: "Does marking a purchase order Received add stock to inventory?",
-          a: "Yes. When a purchase order transitions to Received, the on-hand quantity for each item is automatically updated in inventory.",
+          q: "What is the purchasing order workflow?",
+          a: "Purchase orders start as Pending and transition directly to Received when inward goods are verified.",
         },
         {
-          q: "Does receiving a purchase order automatically create a vendor bill?",
-          a: "No. You record vendor bills in the Vendor Bills module, where you can select the purchase order to pre-fill line items and verify billed amounts.",
+          q: "Does marking a PO Received add stock to inventory?",
+          a: "Yes. When a purchase order transitions to Received, on-hand inventory quantities are automatically incremented.",
         },
       ],
     },
@@ -641,20 +641,20 @@ export const MODULES: readonly ModuleContent[] = [
       glowColor: "rgba(37, 99, 235, 0.04)",
     },
     title: "GST Invoicing & Billing",
-    tagline: "Generate GST-compliant tax invoices with automated tax calculations.",
+    tagline: "Generate professional tax invoices with automated tax calculations.",
     summary:
       "Create professional GST tax invoices with automatic CGST, SGST, and IGST calculations based on client state codes. Generate PDF invoices, share via WhatsApp, and track payment collection status effortlessly.",
     uses: [
       "Issue GST tax invoices with automatic split between CGST/SGST or IGST based on location",
       "Include HSN codes, terms of sale, transport details, and bank account information",
-      "Auto-generate invoices directly from completed orders or delivery challans",
+      "Choose Complete & Invoice when completing an order to generate a tax invoice automatically",
       "Download clean PDF tax invoices or share payment links via WhatsApp",
       "Track invoice status from Unpaid and Partially Paid to Paid",
     ],
     howItWorks: [
       {
         title: "Create invoice",
-        body: "Select a client and add line items with HSN codes, or auto-generate directly from an open sales order.",
+        body: "Select a client and add line items with HSN codes, or choose Complete & Invoice when completing a sales order.",
       },
       {
         title: "Compute GST automatically",
@@ -672,7 +672,7 @@ export const MODULES: readonly ModuleContent[] = [
     keyFeatures: [
       "Automated CGST, SGST, and IGST calculation based on state codes",
       "HSN code line-item breakdown with itemized tax summaries",
-      "Prompt to auto-generate invoices upon sales order completion",
+      "Option to choose Complete & Invoice upon marking a sales order Completed",
       "Professional PDF invoice generation formatted to Indian tax standards",
       "WhatsApp sharing and payment status tracking",
     ],
@@ -685,7 +685,7 @@ export const MODULES: readonly ModuleContent[] = [
     ],
     docs: {
       overview:
-        "The Billing module generates compliant Indian GST tax invoices, handling state tax rules, HSN codes, and payment status updates seamlessly.",
+        "The Billing module generates standardized Indian GST tax invoices, handling state tax rules, HSN codes, and payment status updates seamlessly.",
       sections: [
         {
           heading: "State-Aware GST Engine",
@@ -807,61 +807,61 @@ export const MODULES: readonly ModuleContent[] = [
     title: "Vendor Bills",
     tagline: "Manage supplier invoices, purchase expenses, and outgoing payables.",
     summary:
-      "Track all incoming bills from raw material suppliers, machine service providers, and factory vendors. Match bills against issued purchase orders to prevent overpayment and maintain timely payment schedules.",
+      "Track incoming supplier invoices with bill status (Draft, Open, Void) and payment status (Unpaid, Partially Paid, Paid). Link bills to purchase orders and filter overdue payables based on due dates.",
     uses: [
-      "Log incoming supplier invoices with bill numbers, due dates, and GST breakdowns",
-      "Link bills directly to purchase orders to verify billed quantities and prices",
-      "Track outstanding liabilities and upcoming payment due dates to avoid supplier friction",
-      "Record payments made to vendors across bank transfer, cheque, or cash modes",
-      "Maintain a clear audit trail of paid and pending vendor payables",
+      "Record supplier invoices with bill statuses Draft, Open, and Void",
+      "Track payment status across Unpaid, Partially Paid, and Paid stages",
+      "Use the computed Overdue filter to identify unpaid bills past their due date",
+      "Link bills to purchase orders to verify items, quantities, and agreed prices",
+      "Record vendor bill disbursements across Cash, Bank, UPI, Cheque, and Other modes",
     ],
     howItWorks: [
       {
-        title: "Enter vendor bill",
-        body: "Input the supplier invoice number, billing date, payment due date, and line item amounts.",
+        title: "Create vendor bill",
+        body: "Input the supplier invoice number, bill date, due date, and line items in Draft or Open status.",
       },
       {
         title: "Link purchase order",
-        body: "Select the corresponding PO to auto-populate items and verify prices against agreed terms.",
+        body: "Select the corresponding purchase order to pull in line items and verify quoted rates.",
       },
       {
-        title: "Track payment schedule",
-        body: "Monitor payment due dates to prioritize upcoming supplier disbursements.",
+        title: "Check computed overdue filter",
+        body: "Use the Overdue filter tab to view unpaid or partially paid bills whose due date has passed.",
       },
       {
-        title: "Record outgoing payment",
-        body: "Log payments made from company bank accounts to mark bills Paid or Partially Paid.",
+        title: "Record disbursements",
+        body: "Log payments against the bill to advance payment status from Unpaid to Partially Paid or Paid.",
       },
     ],
     keyFeatures: [
-      "Itemized supplier invoice entry with GST and HSN breakdown",
-      "Direct purchase order linking to prevent invoice discrepancies",
+      "Bill status lifecycle: Draft, Open, and Void",
       "Payment status tracking: Unpaid, Partially Paid, and Paid",
-      "Payables scheduling to maintain strong vendor relationships",
-      "Seamless integration with Banking accounts and Payables Aging reports",
+      "Computed Overdue filter for unpaid bills past their scheduled due date",
+      "Direct purchase order linking to prevent invoice discrepancies",
+      "Payment disbursement logging across Cash, Bank, UPI, Cheque, and Other modes",
     ],
     connectsWith: ["purchasing", "banking", "reports", "payments-accounts"],
     docs: {
       overview:
-        "The Vendor Bills module handles accounts payable, matching supplier demands against procurement records and scheduling payments responsibly.",
+        "The Vendor Bills module handles accounts payable, tracking supplier invoices with clear bill and payment statuses while identifying overdue obligations via computed date filters.",
       sections: [
         {
-          heading: "Purchase Order Verification",
-          body: "When recording a vendor bill, select the linked purchase order to auto-populate line items and ensure billed amounts match agreed quotation rates.",
+          heading: "Bill Status & Payment Status",
+          body: "Vendor bills have a bill status (Draft, Open, Void) and an independent payment status (Unpaid, Partially Paid, Paid). In addition, an Overdue view serves as a computed filter for bills past their due date.",
         },
         {
-          heading: "Cash Flow Protection",
-          body: "Track due dates systematically to prioritize vendor disbursements, take advantage of early-payment terms, and protect factory creditworthiness.",
+          heading: "Purchase Order Matching",
+          body: "When recording a vendor bill, link the purchase order to auto-populate items and verify that supplier invoices match agreed rates.",
         },
       ],
       faqs: [
         {
-          q: "Can a vendor bill be linked to an existing PO?",
-          a: "Yes. When creating a bill, you can choose from your purchase orders to pull in line items and supplier details automatically.",
+          q: "Is Overdue a separate bill status?",
+          a: "No. Overdue is a computed filter showing open bills whose due date has passed without full payment.",
         },
         {
-          q: "How do bill payments affect financial reports?",
-          a: "Settling a vendor bill updates your Payables Aging report and deducts the funds from your chosen bank account balance.",
+          q: "What bill and payment statuses are supported?",
+          a: "Bills support Draft, Open, and Void statuses, while payments are tracked as Unpaid, Partially Paid, or Paid.",
         },
       ],
     },
@@ -884,9 +884,9 @@ export const MODULES: readonly ModuleContent[] = [
     uses: [
       "Register multiple business bank accounts with account numbers and IFSC details",
       "Monitor current balances across operational bank accounts and petty cash",
-      "Record incoming customer collections and outgoing vendor disbursements",
+      "Record incoming customer collections and outgoing vendor bill disbursements",
       "Track internal transfers between different company bank accounts",
-      "Import CSV bank statements to verify and reconcile account balances",
+      "Import CSV statements and match bank entries to recorded payments with atomic paise allocation",
     ],
     howItWorks: [
       {
@@ -895,7 +895,7 @@ export const MODULES: readonly ModuleContent[] = [
       },
       {
         title: "Record transactions",
-        body: "Link customer payments and vendor disbursements directly to the designated bank account.",
+        body: "Match imported bank transaction lines against recorded client payments and vendor bill payments.",
       },
       {
         title: "Monitor balances",
@@ -909,7 +909,7 @@ export const MODULES: readonly ModuleContent[] = [
     keyFeatures: [
       "Support for multiple current accounts, savings accounts, and cash balances",
       "Bank master setup with IFSC and branch details",
-      "Direct linkage to client payments and supplier bill settlements",
+      "Match statement transactions to recorded client payments and vendor bill payments",
       "Internal fund transfer tracking between company accounts",
       "CSV bank statement upload and transaction preview",
     ],
@@ -923,8 +923,8 @@ export const MODULES: readonly ModuleContent[] = [
           body: "Maintain bank account numbers, IFSC codes, branch addresses, and account classifications for seamless printing on customer invoices.",
         },
         {
-          heading: "Cash Flow & Settlement Integrity",
-          body: "Direct ties to incoming customer payments and outgoing supplier disbursements ensure book balances reflect actual factory banking activities.",
+          heading: "Statement Matching & Allocation",
+          body: "Link imported statement lines directly to recorded client payments or vendor bill payments with atomic paise allocation, preventing duplicate matches and balance discrepancies.",
         },
       ],
       faqs: [
@@ -1050,8 +1050,8 @@ export const MODULES: readonly ModuleContent[] = [
         body: "Interactive dashboards display monthly revenue curves, customer shares, and order metrics.",
       },
       {
-        title: "Filter by timeframe",
-        body: "Switch between monthly, quarterly, and annual views to assess seasonal trends.",
+        title: "Filter by calendar month",
+        body: "Select any month since account creation from the period dropdown to recalculate revenue, order flow, production rates, and inventory movements for that exact billing month.",
       },
       {
         title: "Take strategic action",
@@ -1188,63 +1188,63 @@ export const MODULES: readonly ModuleContent[] = [
       glowColor: "rgba(124, 58, 237, 0.04)",
     },
     title: "AI Assistant",
-    tagline: "Ask questions in plain English or Hinglish to query your sales order records.",
+    tagline: "Ask in plain language about pending orders, order status and order details.",
     summary:
-      "Get conversational answers about active customer orders, pending production stages, and outstanding payment amounts. The AI assistant queries your active order records directly using read-only Google GenAI tools.",
+      "Ask in plain language about pending orders, order status and order details. The AI assistant uses read-only tools to retrieve exact sales order records directly from your database.",
     uses: [
-      "Ask for summaries like 'Show me pending orders that are not fully completed'",
-      "Query orders filtered by order status, payment status, or production stage",
-      "Search active orders by product name to inspect customer commitments",
-      "Look up complete details for a specific order by ID including client, items, and status",
-      "Ask business questions in English or everyday Hinglish (Hindi-English mix)",
+      "Ask in plain language about pending orders, order status and order details",
+      "Query active pending orders that are not fully completed",
+      "Filter orders by status: pending, processing, completed, or cancelled",
+      "Search orders by product name to inspect customer commitments",
+      "Look up complete details of a specific order by its order ID",
     ],
     howItWorks: [
       {
         title: "Open AI Assistant",
-        body: "Click the AI Assistant icon from your dashboard or top navigation bar.",
+        body: "Launch the conversational assistant from your dashboard or navigation bar.",
       },
       {
         title: "Type your query",
-        body: "Ask natural language questions about active or pending orders in English or Hinglish.",
+        body: "Ask in plain language about pending orders, order status and order details in English or Hinglish.",
       },
       {
         title: "Assistant executes tools",
-        body: "The assistant calls read-only tools to retrieve exact matching order documents from the database.",
+        body: "The assistant invokes read-only database tools (get_pending_orders, get_orders, get_order_details).",
       },
       {
         title: "Receive formatted reply",
-        body: "Review formatted responses with bullet points, markdown tables, and Indian rupee (₹) currency figures.",
+        body: "Review structured answers with markdown tables, bullet points, and Indian Rupee (₹) amounts.",
       },
     ],
     keyFeatures: [
-      "Natural language order query engine tailored for Indian manufacturing",
-      "Multilingual conversational understanding supporting English and Hinglish",
-      "Read-only database tools: get_pending_orders, get_orders, and get_order_details",
-      "Concise formatted responses with Indian Rupee (₹) currency figures",
+      "Orders-only natural language query assistant supporting English and Hinglish",
+      "Dedicated order lookup tools for pending orders, order search, and order details",
+      "Search filters for order status, payment status, production status, and product name",
+      "Clear responses formatted with bullet points and Indian Rupee (₹) figures",
       "Strict read-only safety ensuring records cannot be created, modified, or deleted via chat",
     ],
-    connectsWith: ["orders", "dashboard"],
+    connectsWith: ["orders"],
     docs: {
       overview:
-        "The AI Assistant provides read-only conversational lookups for business owners and managers, turning sales order and production queries into clear conversations.",
+        "The AI Assistant provides read-only lookups for sales orders, allowing operators and managers to query pending orders, order status and order details in plain language.",
       sections: [
         {
-          heading: "Read-Only Business Queries",
-          body: "The assistant uses structured tools (get_pending_orders, get_orders, get_order_details) to fetch live order data. It is strictly read-only and cannot alter records.",
+          heading: "Read-Only Order Queries",
+          body: "The assistant queries live order records using dedicated tools for active orders, order queries, and detailed order items. It operates in read-only mode and cannot create, modify, or delete data.",
         },
         {
-          heading: "English and Hinglish Support",
-          body: "Ask questions in English or everyday Hinglish. The assistant responds naturally in the same language with clear tables and bullet points.",
+          heading: "Bilingual Order Lookups",
+          body: "Submit queries in English or everyday Hinglish. The assistant responds in the same language with clear summaries and tables based strictly on order data.",
         },
       ],
       faqs: [
         {
-          q: "Can the AI assistant modify or delete my data?",
-          a: "No. The AI assistant is strictly read-only and cannot create, update, or delete records.",
+          q: "What can I ask the AI assistant?",
+          a: "You can ask in plain language about pending orders, order status and order details.",
         },
         {
-          q: "What data can the assistant look up?",
-          a: "It queries open and completed orders, pending balances, production status, and specific order item details.",
+          q: "Can the AI assistant modify or delete orders?",
+          a: "No. The assistant is strictly read-only and cannot alter, update, or delete any records.",
         },
       ],
     },
@@ -1261,40 +1261,40 @@ export const MODULES: readonly ModuleContent[] = [
       glowColor: "rgba(217, 119, 6, 0.04)",
     },
     title: "Alerts & Notifications",
-    tagline: "Stay informed on low stock levels, order status updates, and payment alerts.",
+    tagline: "Track factory alerts in-app and share updates via communication deep links.",
     summary:
-      "Keep track of critical operational events with automated in-app notifications and dispatch alerts. Receive warnings when stock drops below safety thresholds or when client orders are completed on the shop floor.",
+      "Monitor operational milestones with an in-app notification feed and share updates via WhatsApp, Email, or SMS deep links. External dispatch routes via Twilio and SMTP when configured.",
     uses: [
-      "Receive alerts when inventory items reach or drop below minimum stock levels",
-      "Get notified as soon as a factory production run is marked completed",
-      "Monitor customer payment updates and outstanding collection alerts",
-      "Configure automated notifications across in-app activity feeds and WhatsApp channels",
-      "Keep workshop supervisors and owners synchronized without manual follow-up calls",
+      "Review operational alerts in the centralized in-app notification feed",
+      "Share document links and updates directly via WhatsApp, Email, or SMS deep links",
+      "Receive in-app alerts when stock items reach low reorder thresholds",
+      "Get notified in-app when factory production runs are marked completed",
+      "Dispatch external alerts via Twilio (WhatsApp/SMS) and SMTP (Email) when configured",
     ],
     howItWorks: [
       {
-        title: "System monitors events",
-        body: "Background triggers watch for critical operational milestones such as inventory deductions and order completions.",
+        title: "System logs notification",
+        body: "Operational events like low inventory or production completion generate notification records.",
       },
       {
-        title: "Generate notifications",
-        body: "The system records alert items with clear descriptions, timestamps, and priority levels.",
+        title: "Review in-app feed",
+        body: "Open the notification page or navbar popover to inspect unread alerts and timestamps.",
       },
       {
-        title: "Review in dashboard",
-        body: "Click the notification bell icon to review unread alerts and dismiss completed items.",
+        title: "Share via deep links",
+        body: "Click share buttons on notification cards to open pre-filled WhatsApp, Email, or SMS deep links.",
       },
       {
-        title: "Act on warnings",
-        body: "Tap directly on alert cards to open the affected purchase order, inventory item, or sales order.",
+        title: "External dispatch when configured",
+        body: "When Twilio or SMTP credentials are configured, the notification worker dispatches messages externally.",
       },
     ],
     keyFeatures: [
-      "Automated low stock warnings to help prevent line stoppages",
-      "Order and production completion alerts for supervisors and owners",
-      "Centralized in-app notification center with read/unread tracking",
-      "Configurable notification channels including in-app and WhatsApp messaging",
-      "Quick navigation from alert cards to underlying business records",
+      "Centralized in-app notification feed with read and unread tracking",
+      "Direct sharing via WhatsApp, Email, and SMS deep links from alert cards",
+      "External message dispatch via Twilio (SMS/WhatsApp) and SMTP (Email) when configured",
+      "Fallback logging with not_configured status when external providers are unconfigured",
+      "Quick navigation from alert cards to linked production orders and stock records",
     ],
     connectsWith: [
       "inventory",
@@ -1305,25 +1305,25 @@ export const MODULES: readonly ModuleContent[] = [
     ],
     docs: {
       overview:
-        "The Notifications module keeps managers proactive by highlighting important factory milestones and material shortages as they happen.",
+        "The Notifications module provides an in-app alert center and communication sharing shortcuts, with external delivery available when providers are configured.",
       sections: [
         {
-          heading: "Shortage & Supply Alerts",
-          body: "When an inventory item drops beneath its configured safety threshold, the system triggers an alert so procurement can place timely purchase orders.",
+          heading: "In-App Notification Feed",
+          body: "Stay updated on critical events like low inventory warnings and completed manufacturing runs through the dedicated in-app notification feed.",
         },
         {
-          heading: "Production & Delivery Triggers",
-          body: "Supervisors receive alerts when orders enter production, complete manufacturing, or dispatch, ensuring smooth handoffs across teams.",
+          heading: "Communication Deep Links & Dispatch",
+          body: "Share alerts with customers and staff using WhatsApp, Email, or SMS deep links. External dispatch via Twilio and SMTP operates when configured.",
         },
       ],
       faqs: [
         {
-          q: "What types of events trigger notifications?",
-          a: "Common triggers include low stock threshold crossings, production completion, new order placements, and payment receipts.",
+          q: "Can I share alerts directly with team members or clients?",
+          a: "Yes. Notification cards include deep links to share updates directly via WhatsApp, Email, or SMS.",
         },
         {
-          q: "Can I dismiss or mark notifications as read?",
-          a: "Yes. You can mark individual notifications as read or clear them from your notification center.",
+          q: "What happens if external SMS or email gateways are not configured?",
+          a: "Alerts remain fully visible in your in-app notification feed, while unconfigured external channels are logged with a not_configured status.",
         },
       ],
     },
@@ -1413,63 +1413,63 @@ export const MODULES: readonly ModuleContent[] = [
       glowColor: "rgba(30, 64, 175, 0.04)",
     },
     title: "Staff & Role Management",
-    tagline: "Control team permissions, assign role-based access, and secure company data.",
+    tagline: "Assign team members to defined roles and manage employee account access.",
     summary:
-      "Empower your team while keeping sensitive financials secure. Assign defined roles to owners, admins, managers, accountants, and floor staff so each employee accesses only the modules required for their daily duties.",
+      "Manage employee accounts and assign access across defined roles—Owner, Admin, Manager, Accountant, and Staff. Ensure each team member has the appropriate login access for their daily responsibilities.",
     uses: [
-      "Add employee accounts with individual login credentials and secure passwords",
-      "Assign role-based access across Owner, Admin, Manager, Accountant, and Staff",
-      "Restrict access to sensitive financial reports and billing settings for floor staff",
-      "Allow production operators to update manufacturing runs without seeing client prices",
-      "Deactivate former employee credentials to protect factory data",
+      "Add employee accounts with individual login credentials and email addresses",
+      "Assign user roles and permission templates across Full Access, Operations, Sales, and View Only",
+      "Provide floor staff with access to update production jobs",
+      "Equip accountants with access to billing registers and vendor bills",
+      "Deactivate employee accounts with immediate session termination to keep workshop access secure",
     ],
     howItWorks: [
       {
-        title: "Add team member",
-        body: "Create a user account by entering employee name, email address, and temporary login credentials.",
+        title: "Provision employee login",
+        body: "Enter employee name, phone, department, designation, and direct login credentials.",
       },
       {
-        title: "Assign appropriate role",
-        body: "Select the employee role—such as Manager, Accountant, or Staff—based on job responsibilities.",
+        title: "Assign permission template",
+        body: "Select Full Access, Operations, Sales, or View Only to provision module access.",
       },
       {
-        title: "Enforce permissions",
-        body: "The system automatically adjusts accessible dashboard menus and restrictions per user role.",
+        title: "Work with role-focused views",
+        body: "Staff see assigned production runs on their dashboard panel while financial records stay restricted.",
       },
       {
-        title: "Manage credentials",
-        body: "Reset employee passwords or deactivate departing staff accounts whenever needed.",
+        title: "Fast status deactivation",
+        body: "Toggle employee status to inactive to terminate active sessions immediately.",
       },
     ],
     keyFeatures: [
-      "Granular role tiers: Owner, Admin, Manager, Accountant, and Staff",
-      "Automatic menu and module filtering based on assigned employee roles",
-      "Protection of sensitive pricing, profit margins, and banking ledgers",
-      "Fast staff onboarding with temporary credential creation",
-      "Prompt access revocation through user deactivation",
+      "Role presets for Owner, Manager, Staff, and Accountant with customizable permissions",
+      "Individual employee login accounts with secure credentials",
+      "Focused workspace views suited for staff, managers, and accountants",
+      "Direct credential provisioning with individual employee logins",
+      "Fast account deactivation with immediate session termination",
     ],
     connectsWith: ["production", "settings", "dashboard"],
     docs: {
       overview:
-        "The Staff & Roles module safeguards proprietary financial data while allowing workshop operators and office clerks to do their daily work efficiently.",
+        "The Staff & Role Management module allows businesses to set up individual employee accounts and assign team members to defined operational roles.",
       sections: [
         {
-          heading: "Tiered Access Control",
-          body: "Choose from defined roles—Owner, Admin, Manager, Accountant, or Staff. Floor workers can update production jobs without viewing client profit margins or company banking.",
+          heading: "Factory Role Separation",
+          body: "Separate shop-floor execution from financial ledgers: Owner has full system control; Manager oversees orders, production, clients, and inventory; Staff handles assigned shop-floor jobs; Accountant manages invoices and reports.",
         },
         {
-          heading: "Credential Security",
-          body: "Manage employee credentials safely. Set up new joiners and deactivate departing staff immediately to maintain security.",
+          heading: "Direct Provisioning & Fast Deactivation",
+          body: "Provision employee accounts directly with username and password. When employees depart, toggle status to inactive to destroy all active sessions immediately.",
         },
       ],
       faqs: [
         {
-          q: "Can factory workers see company bank balances?",
-          a: "No. Staff roles are restricted from viewing financial reports, bank accounts, and sensitive margins.",
+          q: "Which roles can be assigned to team members?",
+          a: "You can assign team members to Owner, Admin, Manager, Accountant, or Staff roles.",
         },
         {
-          q: "How many roles are available?",
-          a: "The system supports Owner, Admin, Manager, Accountant, and Staff roles.",
+          q: "Can an administrator reset employee passwords?",
+          a: "Yes. Administrators and owners can update employee credentials or deactivate accounts from the staff directory.",
         },
       ],
     },
@@ -1486,63 +1486,63 @@ export const MODULES: readonly ModuleContent[] = [
       glowColor: "rgba(234, 88, 12, 0.04)",
     },
     title: "Tally Prime Integration",
-    tagline: "Export GST invoices and ledgers to Tally Prime via XML and desktop bridge.",
+    tagline: "Generate Tally Prime XML for party ledgers and evaluate voucher import.",
     summary:
-      "Eliminate double data entry by exporting sales invoices, party ledgers, and tax details directly into Tally Prime as standard XML vouchers. Connect our on-premise desktop bridge to push accounting vouchers into your local Tally setup.",
+      "Export customer party ledgers and invoice voucher XML for Tally Prime. Party ledgers have verified import, while voucher import is currently undergoing testing and validation in beta.",
     uses: [
-      "Export finalized GST sales invoices into Tally Prime XML voucher format",
-      "Generate Sundry Debtors party ledgers with client GSTIN, state, and address details",
-      "Create automated GST ledgers for CGST, SGST, and IGST tax heads",
-      "Pair a desktop bridge connector running on your office accounting PC",
-      "Push vouchers directly into open Tally Prime companies without manual re-typing",
+      "Export customer party ledgers under Sundry Debtors formatted for Tally Prime",
+      "Generate party ledger definitions with client state code and address details",
+      "Create standard GST ledger heads for CGST, SGST, and IGST tax entries",
+      "Generate invoice voucher XML for testing and import validation in Tally Prime",
+      "Configure company name mapping to match your target Tally Prime company file",
     ],
     howItWorks: [
       {
-        title: "Configure Tally company",
-        body: "Enter your exact Tally Prime company name in settings to match your accounting master.",
+        title: "Configure company name",
+        body: "Set your exact Tally Prime company name in settings so exported XML maps to your accounting company.",
+      },
+      {
+        title: "Select sales invoice",
+        body: "Choose any finalized GST sales invoice from the billing register.",
       },
       {
         title: "Generate XML export",
-        body: "Export individual sales invoices or ranges as structured Tally XML vouchers.",
+        body: "Download structured Tally Prime XML containing customer party ledgers and invoice voucher definitions.",
       },
       {
-        title: "Pair desktop bridge",
-        body: "Use a secure pairing code to connect our desktop agent on the computer running Tally Prime.",
-      },
-      {
-        title: "Import vouchers into Tally",
-        body: "Import the XML payload into Tally Prime to populate sales and debtor registers.",
+        title: "Test import in Tally Prime",
+        body: "Review exported XML and test import into your Tally Prime test environment while voucher import is being validated.",
       },
     ],
     keyFeatures: [
-      "Standard Tally Prime XML generation for sales vouchers and party ledgers",
-      "Automated mapping of CGST, SGST, IGST, and round-off tax heads",
-      "Desktop bridge pairing for streamlined on-premise accounting integration",
-      "Eliminates double-entry accounting between factory floor billing and Tally registers",
-      "Preservation of voucher dates, invoice numbers, and client tax identifiers",
+      "Export customer party ledgers with verified Tally Prime import",
+      "Automated ledger XML for Sundry Debtors, sales accounts, and GST tax heads",
+      "Tally Prime company name mapping configuration in settings",
+      "Voucher XML generation currently undergoing validation in beta",
+      "Direct XML export available while automated bridge synchronization is in development",
     ],
     connectsWith: ["billing-invoices", "clients", "settings"],
     docs: {
       overview:
-        "The Tally Prime Integration bridges factory billing and desktop accounting, generating standard XML vouchers and supporting desktop agent pairing to push sales entries directly into Tally.",
+        "The Tally Prime Integration exports customer party ledgers and sales voucher XML for Tally Prime. Party ledger import has been verified with Tally Prime, while sales voucher import is currently in beta validation.",
       sections: [
         {
-          heading: "Standard Tally XML Generation",
-          body: "The system formats sales vouchers, customer party masters under Sundry Debtors, and GST tax ledgers into standard Tally XML, ready for import via Tally Prime Gateway.",
+          heading: "Party Ledger Export",
+          body: "The system generates standard Tally XML for party ledgers under Sundry Debtors, sales accounts, and tax heads with verified Tally Prime compatibility.",
         },
         {
-          heading: "Desktop Bridge Connector",
-          body: "Our desktop bridge pairs with your local accounting PC using a secure pairing code, communicating directly with Tally Prime's local XML port for direct voucher pushing.",
+          heading: "Voucher Import Beta Testing",
+          body: "Sales invoice voucher XML export is in beta. Manual testing and validation are underway to ensure full voucher acceptance in Tally Prime.",
         },
       ],
       faqs: [
         {
-          q: "Does this require changing our Tally Prime chart of accounts?",
-          a: "No. The XML generator maps sales, party ledgers, and standard CGST, SGST, and IGST tax heads to match standard Tally conventions.",
+          q: "Are ledgers verified to import into Tally Prime?",
+          a: "Yes, party ledgers under Sundry Debtors have been tested and verified to import successfully into Tally Prime.",
         },
         {
-          q: "Is two-way sync supported?",
-          a: "Currently, the integration supports outward export from the suite into Tally Prime. Two-way data synchronization is not active.",
+          q: "What is the status of voucher import and automatic sync?",
+          a: "Voucher import is currently in beta validation, and automatic bridge synchronization is in development.",
         },
       ],
     },
@@ -1561,9 +1561,9 @@ export const MODULES: readonly ModuleContent[] = [
     title: "Company Settings & Preferences",
     tagline: "Configure company profiles, GSTIN registrations, and factory branding.",
     summary:
-      "Customize your enterprise profile, tax identifiers, banking defaults, and communication preferences. Ensure printed quotations, tax invoices, and delivery challans feature your verified company name, logo, and legal terms.",
+      "Customize your enterprise profile, tax identifiers, banking defaults, and communication preferences. Ensure printed quotations, tax invoices, and delivery challans feature your verified company name, logo, and business terms.",
     uses: [
-      "Configure business legal name, factory address, GSTIN, and PAN details",
+      "Configure registered business name, factory address, GSTIN, and PAN details",
       "Upload company branding and logos for printed invoices and quotation headers",
       "Define standard terms of sale, delivery conditions, and bank payment instructions",
       "Manage language preferences across English, Hindi, Gujarati, and Marathi",
@@ -1605,8 +1605,8 @@ export const MODULES: readonly ModuleContent[] = [
         "The Settings module defines your enterprise identity across all documents, establishing tax parameters, banking defaults, and operational configurations.",
       sections: [
         {
-          heading: "Legal Identity & Tax Setup",
-          body: "Maintain verified corporate names, manufacturing plant addresses, GSTIN numbers, and PAN identifiers to support compliance across customer-facing documents.",
+          heading: "Corporate Identity & Tax Setup",
+          body: "Maintain verified corporate names, manufacturing plant addresses, GSTIN numbers, and PAN identifiers across customer-facing documents.",
         },
         {
           heading: "Payment Terms & Bank Defaults",

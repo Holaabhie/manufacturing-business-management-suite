@@ -378,7 +378,7 @@ const FEATURES = [
     title: "Inventory",
     description: getCardBlurb(
       "inventory",
-      "Track raw materials and finished goods with automatic stock deductions during production. Low stock alerts help you stay ahead of shortages."
+      "Track raw materials and finished goods with automatic stock deductions when jobs are launched. Low stock alerts help you stay ahead of shortages."
     ),
     iconBg: "rgba(22, 163, 74, 0.1)",
     iconColor: "#16A34A",
