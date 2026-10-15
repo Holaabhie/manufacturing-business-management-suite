@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
+import { BrandLogo } from "@/components/BrandLogo";
 import { usePathname, useRouter } from "next/navigation";
 import usePageStateCache from "@/infrastructure/state/pageStateCache";
 import { clearAllDrafts } from "@/hooks/useDraftPersistence";
@@ -12,7 +14,6 @@ import {
   CreditCard,
   LogOut,
   Factory,
-  Bot,
   Menu,
   X,
   ChevronLeft,
@@ -42,6 +43,7 @@ import {
   FileText,
   Clock,
   Landmark,
+  ShoppingBag,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -114,7 +116,7 @@ const navigationGroups = [
       { name: "Production", nameKey: "production", href: "/dashboard/production", icon: Layers },
       { name: "Machines", nameKey: "machines", href: "/dashboard/machines", icon: Gauge },
       { name: "Inventory", nameKey: "inventory", href: "/dashboard/inventory", icon: Package },
-      { name: "Purchasing", nameKey: "purchasing", href: "/dashboard/purchasing", icon: Truck },
+      { name: "Purchasing", nameKey: "purchasing", href: "/dashboard/purchasing", icon: ShoppingBag },
     ],
   },
   {
@@ -178,11 +180,11 @@ const moreSheetSections = [
     labelKey: "sectionFinance",
     color: "#16A34A",
     items: [
-      { name: "Quotes", nameKey: "quotes", desc: "Estimates & quotations", descKey: "quotesDesc", icon: FileText, emoji: "📄", href: "/dashboard/quotes" },
-      { name: "Delivery Challans", nameKey: "deliveryChallans", desc: "Dispatch & tracking notes", descKey: "deliveryChallansDesc", icon: Truck, emoji: "🚚", href: "/dashboard/delivery-challans" },
+      { name: "Quotes", nameKey: "quotes", desc: "Create and send quotes", descKey: "quotesDesc", icon: FileText, emoji: "📄", href: "/dashboard/quotes" },
+      { name: "Delivery Challans", nameKey: "deliveryChallans", desc: "Track goods dispatched", descKey: "deliveryChallansDesc", icon: Truck, emoji: "🚚", href: "/dashboard/delivery-challans" },
       { name: "Billing & Invoices", nameKey: "billingInvoices", desc: "Create and manage invoices", descKey: "billingInvoicesDesc", icon: Receipt, emoji: "🧾", href: "/dashboard/billing" },
       { name: "Payments", nameKey: "payments", desc: "Track incoming payments", descKey: "paymentsDesc", icon: CreditCard, emoji: "💳", href: "/dashboard/payments" },
-      { name: "Vendor Bills", nameKey: "vendorBills", desc: "Purchase invoices & payments", descKey: "vendorBillsDesc", icon: ReceiptText, emoji: "🧾", href: "/dashboard/vendor-bills" },
+      { name: "Vendor Bills", nameKey: "vendorBills", desc: "Manage bills from vendors", descKey: "vendorBillsDesc", icon: ReceiptText, emoji: "🧾", href: "/dashboard/vendor-bills" },
       { name: "Banking", nameKey: "banking", desc: "Bank accounts & statements", descKey: "bankingDesc", icon: Landmark, emoji: "🏦", href: "/dashboard/banking" },
       { name: "Folio", nameKey: "folio", desc: "Credit notes & ledger", descKey: "folioDesc", icon: BookOpen, emoji: "📁", href: "/dashboard/folio" },
     ],
@@ -194,7 +196,7 @@ const moreSheetSections = [
     items: [
       { name: "Clients", nameKey: "clients", desc: "Manage your customers", descKey: "clientsDesc", icon: Users, emoji: "👥", href: "/dashboard/clients" },
       { name: "Team & Users", nameKey: "teamUsers", desc: "Staff roles & access", descKey: "teamUsersDesc", icon: UsersRound, emoji: "🧑‍💼", href: "/dashboard/users" },
-      { name: "Purchasing", nameKey: "purchasing", desc: "Vendors & purchase orders", descKey: "purchasingDesc", icon: Truck, emoji: "🚚", href: "/dashboard/purchasing" },
+      { name: "Purchasing", nameKey: "purchasing", desc: "Vendors & purchase orders", descKey: "purchasingDesc", icon: ShoppingBag, emoji: "🛍️", href: "/dashboard/purchasing" },
     ],
   },
   {
@@ -280,17 +282,24 @@ export default function DashboardLayout({
 
   useEffect(() => {
     const fetchUser = async () => {
-      const res = await fetch("/api/auth/me");
-      const json = await res.json().catch(() => ({}));
-      setUser(json?.user ?? null);
-      setRole(json?.user?.role ?? null);
+      try {
+        const res = await fetch("/api/auth/me");
+        const json = await res.json().catch(() => ({}));
+        setUser(json?.user ?? null);
+        setRole(json?.user?.role ?? null);
 
-      // Redirect to setup if company setup is explicitly not complete (new users only)
-      if (
-        json?.user?.role === "Admin" &&
-        json?.user?.company_setup_complete === false
-      ) {
-        router.push("/setup");
+        // Redirect to setup if company setup is explicitly not complete (new users only)
+        if (
+          json?.user?.role === "Admin" &&
+          json?.user?.company_setup_complete === false
+        ) {
+          router.replace("/setup");
+        }
+      } finally {
+        if (typeof window !== "undefined") {
+          (window as any).__imAuthSettled = true;
+          window.dispatchEvent(new Event("im-auth-settled"));
+        }
       }
     };
     fetchUser();
@@ -356,24 +365,7 @@ export default function DashboardLayout({
 
   // ─── Loading Splash ────────────────────────────────────
   if (!mounted) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div
-            className="w-10 h-10 rounded-lg flex items-center justify-center bg-primary"
-          >
-            <Factory className="h-5 w-5 text-white" />
-          </div>
-          <div className="h-1 w-32 bg-muted rounded-full overflow-hidden">
-            <motion.div
-              className="h-full rounded-full bg-primary"
-              animate={{ x: ["-100%", "200%"] }}
-              transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
-            />
-          </div>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -392,10 +384,14 @@ export default function DashboardLayout({
           {/* ── Logo ── */}
           <div className="h-[56px] flex items-center px-4">
             <Link href="/dashboard" className="flex items-center gap-3">
-              <div
-                className="flex-shrink-0 w-[34px] h-[34px] rounded-lg flex items-center justify-center bg-primary"
-              >
-                <Factory className="h-[17px] w-[17px] text-white" />
+              <div className="flex-shrink-0 w-[34px] h-[34px] flex items-center justify-center">
+                <BrandLogo
+                  variant="icon"
+                  width={34}
+                  height={34}
+                  className="w-full h-full object-contain"
+                  priority
+                />
               </div>
               <AnimatePresence mode="wait">
                 {!isCollapsed && (
@@ -613,14 +609,15 @@ export default function DashboardLayout({
           >
             {/* Left zone */}
             <div className="flex items-center gap-3 min-w-0">
-              {/* Mobile: Decorative logo mark / AI Assistant avatar */}
+              {/* Mobile: Decorative logo mark */}
               <div className="md:hidden flex items-center">
-                <div className="w-[28px] h-[28px] rounded-[7px] bg-primary flex items-center justify-center flex-shrink-0">
-                  {pathname === "/dashboard/assistant" ? (
-                    <Bot className="h-4 w-4 text-white" />
-                  ) : (
-                    <Factory className="h-3.5 w-3.5 text-white" />
-                  )}
+                <div className="w-[28px] h-[28px] flex items-center justify-center flex-shrink-0">
+                  <BrandLogo
+                    variant="icon"
+                    width={28}
+                    height={28}
+                    className="w-full h-full object-contain"
+                  />
                 </div>
               </div>
 
@@ -639,12 +636,7 @@ export default function DashboardLayout({
                       {tNav("dashboard")}
                     </Link>
                     <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
-                    <span className="font-medium text-foreground flex items-center gap-1.5">
-                      {pathname === "/dashboard/assistant" && (
-                        <div className="w-[20px] h-[20px] rounded-[5px] bg-primary flex items-center justify-center flex-shrink-0">
-                          <Bot className="h-3 w-3 text-white" />
-                        </div>
-                      )}
+                    <span className="font-medium text-foreground">
                       {getPageName()}
                     </span>
                   </>

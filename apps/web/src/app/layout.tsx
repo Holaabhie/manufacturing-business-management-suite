@@ -11,7 +11,7 @@ import { AuthProvider } from "@/components/AuthProvider";
 import { QueryProvider } from "@/components/QueryProvider";
 import { FeatureGateProvider } from "@/components/FeatureGateProvider";
 import { LocaleProvider } from "@/components/LocaleProvider";
-import { AppBootGate } from "@/components/AppBootGate";
+import { AppLoader } from "@/components/AppLoader";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -30,8 +30,38 @@ export const metadata: Metadata = {
     title: "IND Manager",
   },
   icons: {
-    icon: "/icons/icon-192.png",
-    apple: "/icons/icon-192.png",
+    icon: [
+      {
+        url: "/brand/favicons/favicon-light-32.png",
+        sizes: "32x32",
+        type: "image/png",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        url: "/brand/favicons/favicon-light-16.png",
+        sizes: "16x16",
+        type: "image/png",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        url: "/brand/favicons/favicon-dark-32.png",
+        sizes: "32x32",
+        type: "image/png",
+        media: "(prefers-color-scheme: dark)",
+      },
+      {
+        url: "/brand/favicons/favicon-dark-16.png",
+        sizes: "16x16",
+        type: "image/png",
+        media: "(prefers-color-scheme: dark)",
+      },
+      {
+        url: "/brand/favicons/favicon.ico",
+      },
+    ],
+    apple: [
+      { url: "/brand/icon-180.png", sizes: "180x180", type: "image/png" },
+    ],
   },
 };
 
@@ -54,8 +84,11 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Noto+Sans+Gujarati:wght@400;500;600;700&display=swap" rel="stylesheet" />
+        <link rel="preload" href="/loading/logo.png" as="image" />
+        <link rel="preload" href="/loading/gear-mask.png" as="image" />
       </head>
       <body className="antialiased">
+        <AppLoader />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -67,9 +100,7 @@ export default function RootLayout({
             <AuthProvider>
               <QueryProvider>
                 <FeatureGateProvider>
-                  <AppBootGate>
-                    {children}
-                  </AppBootGate>
+                  {children}
                 </FeatureGateProvider>
               </QueryProvider>
             </AuthProvider>

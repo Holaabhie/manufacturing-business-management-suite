@@ -1,0 +1,98 @@
+/* iM Animated Logo Loader Styles */
+.imload-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgb(38, 29, 32) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  opacity: 1;
+  transition: opacity 250ms ease;
+}
+
+.imload-overlay.imload-fading {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.imload-stage {
+  position: relative;
+  width: min(40vw, 180px);
+  aspect-ratio: 737 / 624;
+}
+
+.imload-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.imload-gear-window {
+  position: absolute;
+  inset: 0;
+  -webkit-mask: url(/loading/gear-mask.png) center / 100% 100% no-repeat;
+  mask: url(/loading/gear-mask.png) center / 100% 100% no-repeat;
+}
+
+.imload-gear-window svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.imload-gear {
+  transform-box: view-box;
+  transform-origin: 391px 251px;
+  animation: imload-spin 8s linear infinite;
+}
+
+.imload-swoosh {
+  animation: imload-swoosh 9s infinite;
+}
+
+/* gear stays fixed above the "M" and turns continuously */
+@keyframes imload-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* arrow: fades in while sweeping left to right, holds, then fades out */
+@keyframes imload-swoosh {
+  0%, 16% {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+    animation-timing-function: cubic-bezier(.45, 0, .2, 1);
+  }
+  38% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+  76% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+    animation-timing-function: ease-in;
+  }
+  88%, 100% {
+    opacity: 0;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .imload-gear,
+  .imload-swoosh {
+    animation: none;
+  }
+}
