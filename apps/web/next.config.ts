@@ -18,7 +18,7 @@ const withPWA = withPWAInit({
 const nextConfig: NextConfig = {
   // ── Turbopack Workspace Root ─────────────────────────────
   turbopack: {
-    root: path.resolve(process.cwd(), "../.."),
+    root: path.resolve(__dirname, "../.."),
   },
 
   // ── Core ────────────────────────────────────────────────
@@ -52,6 +52,16 @@ const nextConfig: NextConfig = {
 
   // ── Experimental Speed Features ────────────────────────
   experimental: {
+    // Local memory/worker guard for constrained systems (<=8GB RAM) - leaves Vercel untouched
+    ...(process.env.VERCEL
+      ? {}
+      : {
+          cpus: 1,
+          webpackBuildWorker: false,
+          workerThreads: false,
+          staticGenerationMaxConcurrency: 1,
+          staticGenerationMinPagesPerWorker: 1000,
+        }),
     // Tree-shake these packages automatically
     optimizePackageImports: [
       "lucide-react",
@@ -97,12 +107,13 @@ const nextConfig: NextConfig = {
   webpack: (config, { dev }) => {
     if (dev) {
       config.watchOptions = {
-        poll: 1000,           // Poll every 1s (needed for OneDrive/network paths)
-        aggregateTimeout: 300, // Batch changes within 300ms
+        poll: 600000,        // Effectively disabled during capture (10-min interval)
+        aggregateTimeout: 2000,
         ignored: [
           "**/node_modules/**",
           "**/.git/**",
           "**/.next/**",
+          "**/demo-assets/**",
         ],
       };
     }
@@ -113,8 +124,8 @@ const nextConfig: NextConfig = {
   async headers() {
     // Build the CSP connect-src based on environment
     const connectSrc = isDev
-      ? "connect-src 'self' https://api.stripe.com https://vitals.vercel-insights.com ws://localhost:* wss://localhost:* http://localhost:*"
-      : "connect-src 'self' https://api.stripe.com https://vitals.vercel-insights.com";
+      ? "connect-src 'self' https://api.stripe.com https://vitals.vercel-insights.com https://api.razorpay.com https://*.razorpay.com ws://localhost:* wss://localhost:* http://localhost:*"
+      : "connect-src 'self' https://api.stripe.com https://vitals.vercel-insights.com https://api.razorpay.com https://*.razorpay.com";
 
     return [
       // ── Security Headers (all routes) ──────────────────
@@ -150,15 +161,15 @@ const nextConfig: NextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://accounts.google.com",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://accounts.google.com https://checkout.razorpay.com https://*.razorpay.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com",
-              "font-src 'self' https://fonts.gstatic.com",
+              "font-src 'self' https://fonts.gstatic.com data: https://*.razorpay.com",
               "img-src 'self' data: blob: https:",
               connectSrc + " https://accounts.google.com",
-              "frame-src https://js.stripe.com https://accounts.google.com",
+              "frame-src https://js.stripe.com https://accounts.google.com https://api.razorpay.com https://checkout.razorpay.com https://*.razorpay.com",
               "object-src 'none'",
               "base-uri 'self'",
-              "form-action 'self' https://accounts.google.com",
+              "form-action 'self' https://accounts.google.com https://api.razorpay.com",
               "frame-ancestors 'none'",
             ].join("; "),
           },

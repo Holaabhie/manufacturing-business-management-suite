@@ -7,7 +7,7 @@
     "dev:webpack": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint . --cache",
     "analyze": "set ANALYZE=true && next build"
   },
   "dependencies": {
@@ -98,7 +98,7 @@
     "lucide-react": "^0.552.0",
     "magic-string": "^0.30.21",
     "mini-svg-data-uri": "^1.4.4",
-    "mongodb": "^6.19.0",
+    "mongodb": "^7.5.0",
     "mongoose": "^9.1.5",
     "motion": "^12.23.24",
     "motion-dom": "^12.23.23",
@@ -140,6 +140,7 @@
   "devDependencies": {
     "@alloc/quick-lru": "^5.2.0",
     "@eslint/eslintrc": "^3.3.1",
+    "@playwright/test": "^1.64.0",
     "@tailwindcss/postcss": "^4",
     "@types/bcrypt": "^6.0.0",
     "@types/node": "^20",
