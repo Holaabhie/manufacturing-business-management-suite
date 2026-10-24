@@ -4,86 +4,138 @@ import crypto from "crypto";
 import { getDb, isDbUnavailableError } from "@/lib/mongodb";
 import { createSession, type UserDoc } from "@/lib/auth-session";
 import { logAuthEvent, getClientIp } from "@/lib/audit";
-import { checkRateLimit, getRateLimitKey, rateLimitResponse } from "@/lib/rate-limit";
+import {
+  checkRateLimitMongo,
+  getHashedRateLimitKey,
+  rateLimitResponse,
+} from "@/lib/rate-limit";
 import { checkPasswordOrError } from "@/lib/password-policy";
+import {
+  RegisterSchema,
+  normalizeIndianPhone,
+} from "@/lib/auth-schemas";
 
 export async function POST(req: Request) {
   try {
-    // ─── Rate Limiting ──────────────────────────────────────────
-    const rateLimitKey = getRateLimitKey(req, "register");
-    const rateCheck = checkRateLimit(rateLimitKey, "register");
+    const ipAddress = getClientIp(req);
+    const rateLimitKey = getHashedRateLimitKey("register", ipAddress);
+    const rateCheck = await checkRateLimitMongo(rateLimitKey, "register");
     if (rateCheck.limited) {
       return rateLimitResponse(rateCheck.retryAfterMs);
     }
 
-    const body = await req.json().catch(() => null);
-    const email = String(body?.email ?? "").trim().toLowerCase();
-    const password = String(body?.password ?? "");
-    const fullName = String(body?.fullName ?? "").trim();
-    const phone = String(body?.phone ?? "").trim();
-
-    // ─── Input Validation ───────────────────────────────────────
-    if (!email || !password) {
+    const rawBody = await req.json().catch(() => null);
+    const parseResult = RegisterSchema.safeParse(rawBody);
+    if (!parseResult.success) {
+      const firstErr = parseResult.error.issues[0];
+      const field = firstErr?.path[0] as string;
       return NextResponse.json(
-        { error: "Email and password are required" },
+        {
+          success: false,
+          error: firstErr?.message || "Invalid registration data",
+          fieldErrors: field ? { [field]: firstErr.message } : undefined,
+        },
         { status: 400 }
       );
     }
 
-    // Email format validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    const { email, password, fullName, phone } = parseResult.data;
+
+    // Normalize phone to E.164
+    const phoneNorm = normalizeIndianPhone(phone);
+    if (!phoneNorm) {
       return NextResponse.json(
-        { error: "Please enter a valid email address" },
+        {
+          success: false,
+          error: "Please enter a valid 10-digit Indian phone number",
+          fieldErrors: { phone: "INVALID_PHONE" },
+        },
         { status: 400 }
       );
     }
 
-    // ─── Password Policy Enforcement ────────────────────────────
+    // Rate limit per phone & per email identifier
+    const phoneRateKey = getHashedRateLimitKey("register-phone", phoneNorm.e164);
+    const phoneRateCheck = await checkRateLimitMongo(phoneRateKey, "register");
+    if (phoneRateCheck.limited) {
+      return rateLimitResponse(phoneRateCheck.retryAfterMs);
+    }
+
+    const emailRateKey = getHashedRateLimitKey("register-email", email.toLowerCase());
+    const emailRateCheck = await checkRateLimitMongo(emailRateKey, "register");
+    if (emailRateCheck.limited) {
+      return rateLimitResponse(emailRateCheck.retryAfterMs);
+    }
+
+    // Check password policy
     const passwordError = checkPasswordOrError(password, {
       email,
       fullName: fullName || undefined,
     });
     if (passwordError) {
       return NextResponse.json(
-        { error: passwordError },
+        {
+          success: false,
+          error: passwordError,
+          fieldErrors: { password: "WEAK_PASSWORD" },
+        },
         { status: 400 }
       );
     }
 
-    const ipAddress = getClientIp(req);
     const userAgent = req.headers.get("user-agent") || undefined;
-
     const db = await getDb();
 
-    // ─── Check Existing User ────────────────────────────────────
-    const existing = await db
+    // Check email uniqueness (case-insensitive)
+    const existingEmail = await db
       .collection<UserDoc>("users")
-      .findOne({ email });
-    if (existing) {
+      .findOne({ email: email.toLowerCase() });
+    if (existingEmail) {
       return NextResponse.json(
-        { error: "Email already registered" },
+        {
+          success: false,
+          error: "Email already registered",
+          fieldErrors: { email: "EMAIL_TAKEN" },
+        },
         { status: 409 }
       );
     }
 
-    // ─── Create User ────────────────────────────────────────────
+    // Check phone uniqueness across candidate variations
+    const existingPhone = await db
+      .collection<UserDoc>("users")
+      .findOne({
+        $or: [
+          { phone: { $in: phoneNorm.candidates } },
+          { phone_number: { $in: phoneNorm.candidates } },
+        ],
+      });
+    if (existingPhone) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Phone number already registered with another account",
+          fieldErrors: { phone: "PHONE_TAKEN" },
+        },
+        { status: 409 }
+      );
+    }
+
+    // Create User with normalized E.164 phone
     const now = new Date();
     const userId = crypto.randomUUID();
-    const passwordHash = await bcrypt.hash(password, 12); // 12 rounds for stronger hash
+    const passwordHash = await bcrypt.hash(password, 12);
 
     await db.collection<UserDoc>("users").insertOne({
       _id: userId,
-      email,
+      email: email.toLowerCase(),
       passwordHash,
       role: "Admin",
       subscription_tier: "starter",
       subscription_status: "active",
       fullName: fullName || undefined,
-      phone: phone || undefined,
-      // Company setup tracking
+      phone: phoneNorm.e164,
       company_setup_complete: false,
-      // RBAC defaults
       status: "active",
       firstLoginCompleted: true,
       failedLoginAttempts: 0,
@@ -100,15 +152,16 @@ export async function POST(req: Request) {
       updatedAt: now,
     } as any);
 
-    // ─── Create Session ─────────────────────────────────────────
+    // Create session (persistent for registration auto-login)
     await createSession(userId, {
       role: "Admin",
       ipAddress,
       userAgent,
       provider: "credentials",
+      rememberMe: true,
     });
 
-    // ─── Audit Log ──────────────────────────────────────────────
+    // Audit log
     logAuthEvent({
       organizationId: "",
       userId,
@@ -121,7 +174,7 @@ export async function POST(req: Request) {
       severity: "info",
     });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, success: true, company_setup_complete: false });
   } catch (e: any) {
     console.error("[register] Error:", e);
     if (isDbUnavailableError(e)) {
@@ -131,7 +184,7 @@ export async function POST(req: Request) {
       );
     }
     return NextResponse.json(
-      { error: e?.message ?? "Registration failed" },
+      { error: e?.message ?? "Registration failed", success: false },
       { status: 500 }
     );
   }

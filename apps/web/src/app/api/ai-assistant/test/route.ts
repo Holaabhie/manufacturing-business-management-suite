@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/require-role";
 import type { WebhookTestResult } from "@/lib/ai/types";
 
 export const runtime = "nodejs";
@@ -8,6 +9,16 @@ const TEST_TIMEOUT_MS = 10_000;
 
 // ─── POST Handler ────────────────────────────────────────────
 export async function POST(): Promise<NextResponse<WebhookTestResult>> {
+  const authResult = await requireAdmin();
+  if (authResult.error) {
+    return NextResponse.json({
+      ok: false,
+      status: authResult.status,
+      latencyMs: 0,
+      error: authResult.error,
+    }, { status: authResult.status });
+  }
+
   const webhookUrl = process.env.AI_WEBHOOK_URL;
 
   if (!webhookUrl) {

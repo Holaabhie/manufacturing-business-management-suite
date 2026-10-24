@@ -48,6 +48,9 @@ export const RATE_LIMITS = {
     /** Password reset: 5 per 30 minutes */
     passwordReset: { windowMs: 30 * 60 * 1000, maxRequests: 5 },
 
+    /** OTP resend cooldown: 1 request per 60 seconds per phone */
+    otpCooldown: { windowMs: 60 * 1000, maxRequests: 1 },
+
     /** General API: 200 requests per 2 minutes */
     api: { windowMs: 2 * 60 * 1000, maxRequests: 200 },
 } as const;
@@ -135,4 +138,119 @@ export function rateLimitResponse(retryAfterMs: number) {
             },
         }
     );
+}
+
+// ─── MongoDB-Backed Distributed Rate Limiter ────────────────────
+let rateLimitIndexEnsured = false;
+
+/**
+ * Extract client IP from a Request (first entry of x-forwarded-for or x-real-ip)
+ */
+export function getClientIpFromRequest(req: Request): string {
+    const forwarded = req.headers.get("x-forwarded-for");
+    if (forwarded) {
+        const first = forwarded.split(",")[0]?.trim();
+        if (first) return first;
+    }
+    return req.headers.get("x-real-ip") || "unknown";
+}
+
+/**
+ * Generate a privacy-preserving rate limit key using SHA-256 hash.
+ */
+export function getHashedRateLimitKey(action: string, identifier: string): string {
+    const crypto = require("crypto");
+    const hash = crypto
+        .createHash("sha256")
+        .update(identifier.trim().toLowerCase())
+        .digest("hex")
+        .slice(0, 32);
+    return `${action}:${hash}`;
+}
+
+/**
+ * Check rate limit backed by MongoDB with atomic findOneAndUpdate and TTL index.
+ * Falls back to in-memory checkRateLimit if database is unreachable.
+ */
+export async function checkRateLimitMongo(
+    key: string,
+    type: RateLimitType
+): Promise<{
+    limited: boolean;
+    remaining: number;
+    retryAfterMs: number;
+}> {
+    try {
+        const { getDb } = await import("@/lib/mongodb");
+        const db = await getDb();
+
+        if (!rateLimitIndexEnsured) {
+            db.collection("rate_limits")
+                .createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 })
+                .catch(() => {});
+            rateLimitIndexEnsured = true;
+        }
+
+        const config = RATE_LIMITS[type];
+        const now = new Date();
+        const expiresAt = new Date(now.getTime() + config.windowMs);
+
+        // Try to increment existing active window
+        const updated = await db.collection("rate_limits").findOneAndUpdate(
+            { _id: key as any, expiresAt: { $gt: now } },
+            { $inc: { count: 1 } },
+            { returnDocument: "after" }
+        );
+
+        let doc: any = updated;
+
+        if (!doc) {
+            // Window expired or first request — upsert a new window
+            try {
+                await db.collection("rate_limits").updateOne(
+                    { _id: key as any },
+                    {
+                        $set: { count: 1, expiresAt, updatedAt: now },
+                        $setOnInsert: { createdAt: now },
+                    },
+                    { upsert: true }
+                );
+                return {
+                    limited: false,
+                    remaining: config.maxRequests - 1,
+                    retryAfterMs: 0,
+                };
+            } catch {
+                doc = await db.collection("rate_limits").findOneAndUpdate(
+                    { _id: key as any },
+                    { $inc: { count: 1 } },
+                    { returnDocument: "after" }
+                );
+            }
+        }
+
+        if (!doc) {
+            return checkRateLimit(key, type);
+        }
+
+        const count = doc.count || 1;
+        if (count > config.maxRequests) {
+            const docExpires = doc.expiresAt instanceof Date ? doc.expiresAt : new Date(doc.expiresAt);
+            const retryAfterMs = Math.max(0, docExpires.getTime() - now.getTime());
+            return {
+                limited: true,
+                remaining: 0,
+                retryAfterMs,
+            };
+        }
+
+        return {
+            limited: false,
+            remaining: Math.max(0, config.maxRequests - count),
+            retryAfterMs: 0,
+        };
+    } catch {
+        // Fall back gracefully to in-memory store
+        return checkRateLimit(key, type);
+    }
 }

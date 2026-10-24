@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireStaffOrAdmin } from "@/lib/require-role";
 import type {
   ChatRequest,
   WebhookPayload,
@@ -48,6 +49,12 @@ function extractReply(body: unknown): string | null {
 export async function POST(
   request: NextRequest
 ): Promise<NextResponse<ChatResponse | ChatErrorResponse>> {
+  // 0. Verify authentication
+  const authResult = await requireStaffOrAdmin();
+  if (authResult.error) {
+    return errorJson(authResult.error, "UNAUTHORIZED" as ChatErrorCode, authResult.status);
+  }
+
   // 1. Check webhook URL is configured
   const webhookUrl = process.env.AI_WEBHOOK_URL;
   if (!webhookUrl) {

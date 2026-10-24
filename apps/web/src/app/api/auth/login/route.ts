@@ -3,47 +3,48 @@ import bcrypt from "bcrypt";
 import { getDb, isDbUnavailableError } from "@/lib/mongodb";
 import { createSession, type UserDoc } from "@/lib/auth-session";
 import { logAuthEvent, getClientIp } from "@/lib/audit";
-import { checkRateLimit, getRateLimitKey, rateLimitResponse } from "@/lib/rate-limit";
+import {
+  checkRateLimitMongo,
+  getHashedRateLimitKey,
+  getClientIpFromRequest,
+  rateLimitResponse,
+} from "@/lib/rate-limit";
+import { LoginSchema } from "@/lib/auth-schemas";
 import { checkPasswordOrError } from "@/lib/password-policy";
 import { detectSuspiciousLogin } from "@/lib/suspicious-login";
 
 export async function POST(req: Request) {
   try {
-    // ─── Rate Limiting ──────────────────────────────────────────
-    const rateLimitKey = getRateLimitKey(req, "login");
-    const rateCheck = checkRateLimit(rateLimitKey, "login");
+    const ipAddress = getClientIp(req);
+    const userAgent = req.headers.get("user-agent") || undefined;
+
+    // ─── IP Rate Limiting ───────────────────────────────────────
+    const ipRateLimitKey = getHashedRateLimitKey("login-ip", ipAddress);
+    const rateCheck = await checkRateLimitMongo(ipRateLimitKey, "login");
     if (rateCheck.limited) {
       return rateLimitResponse(rateCheck.retryAfterMs);
     }
 
-    const body = await req.json().catch(() => null);
-    const email = String(body?.email ?? "").trim().toLowerCase();
-    const password = String(body?.password ?? "");
-    const loginType = String(body?.loginType ?? "admin"); // "admin" or "staff"
-    const employeeId = String(body?.employeeId ?? "").trim();
-    const masterKey = String(body?.masterKey ?? "").trim();
+    const rawBody = await req.json().catch(() => null);
+    const parseResult = LoginSchema.safeParse(rawBody);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: parseResult.error.issues[0]?.message || "Invalid login credentials",
+        },
+        { status: 400 }
+      );
+    }
 
-    const ipAddress = getClientIp(req);
-    const userAgent = req.headers.get("user-agent") || undefined;
+    const { email = "", password, loginType, employeeId = "", masterKey = "", rememberMe = false } = parseResult.data;
 
-    // ─── Validation ─────────────────────────────────────────────
-    if (loginType === "staff") {
-      // Staff login: identifier (employeeId or email) + password
-      const identifier = (body?.employeeId || body?.email || "").toString().trim();
-      if (!identifier || !password) {
-        return NextResponse.json(
-          { success: false, message: "Employee ID or email and password are required" },
-          { status: 400 }
-        );
-      }
-    } else {
-      // Admin login: email + password
-      if (!email || !password) {
-        return NextResponse.json(
-          { success: false, message: "Email and password are required" },
-          { status: 400 }
-        );
-      }
+    // ─── Account / Identifier Rate Limiting ──────────────────────
+    const identifier = (loginType === "staff" ? (employeeId || email) : email).trim().toLowerCase();
+    const idRateLimitKey = getHashedRateLimitKey("login-id", identifier);
+    const idRateCheck = await checkRateLimitMongo(idRateLimitKey, "login");
+    if (idRateCheck.limited) {
+      return rateLimitResponse(idRateCheck.retryAfterMs);
     }
 
     const db = await getDb();
@@ -52,7 +53,6 @@ export async function POST(req: Request) {
     // ─── Find User ──────────────────────────────────────────────
     if (loginType === "staff") {
       // Staff identifier dual-lookup: accept email or employeeId
-      const identifier = (body?.employeeId || body?.email || "").toString().trim();
       user = (await db.collection<UserDoc>("users").findOne({
         $or: [
           { email: identifier.toLowerCase() },
@@ -330,6 +330,7 @@ export async function POST(req: Request) {
       ipAddress,
       userAgent,
       provider: "credentials",
+      rememberMe: Boolean(rememberMe),
     });
 
     // Log successful login
@@ -350,6 +351,7 @@ export async function POST(req: Request) {
       // Return setup status for Staff first-time login redirect
       firstLoginCompleted: user.firstLoginCompleted ?? true,
       role: user.role,
+      company_setup_complete: user.company_setup_complete,
     });
   } catch (e: any) {
     console.error("[login] Error:", e);

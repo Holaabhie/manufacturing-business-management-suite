@@ -92,7 +92,12 @@ export function WebhookModal({ status, onClose }: WebhookModalProps) {
                 id="webhook-url-display"
                 type="text"
                 readOnly
-                value={status.url ?? "Not set — add AI_WEBHOOK_URL to .env"}
+                value={
+                  status.url ??
+                  (status.configured
+                    ? "Configured in environment (Hidden for security)"
+                    : "Not set — add AI_WEBHOOK_URL to .env")
+                }
                 className="flex-1 h-9 rounded-lg px-3 text-[13px] bg-[#F3F5F9] dark:bg-[#0F1117] border border-black/[0.06] dark:border-white/[0.06] text-slate-600 dark:text-slate-400 outline-none cursor-default"
               />
               {status.url && (

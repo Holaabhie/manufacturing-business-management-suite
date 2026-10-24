@@ -9,6 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { buildInvoiceHTMLHandlebars } from "@/lib/invoice/handlebars-template";
 import { buildInvoiceHTML } from "@/lib/invoice/template";
 import { MOCK_INVOICE } from "@/lib/invoice/mock-data";
@@ -19,6 +20,15 @@ export const dynamic = "force-dynamic";
 /** GET — Preview with mock data */
 export async function GET() {
     try {
+        const user = await getSessionUser();
+        if (!user) {
+            return NextResponse.json({ error: "Unauthorized - Please log in" }, { status: 401 });
+        }
+        const tenantId = getDataOwnerId(user);
+        if (!tenantId) {
+            return NextResponse.json({ error: "Tenant context not found" }, { status: 403 });
+        }
+
         const html = buildInvoiceHTMLHandlebars(MOCK_INVOICE);
         return new NextResponse(html, {
             status: 200,
@@ -37,6 +47,15 @@ export async function GET() {
 /** POST — Preview with custom data */
 export async function POST(request: NextRequest) {
     try {
+        const user = await getSessionUser();
+        if (!user) {
+            return NextResponse.json({ error: "Unauthorized - Please log in" }, { status: 401 });
+        }
+        const tenantId = getDataOwnerId(user);
+        if (!tenantId) {
+            return NextResponse.json({ error: "Tenant context not found" }, { status: 403 });
+        }
+
         const body = await request.json();
         const invoiceData = body as InvoicePayload;
 
@@ -65,3 +84,4 @@ export async function POST(request: NextRequest) {
         );
     }
 }
+

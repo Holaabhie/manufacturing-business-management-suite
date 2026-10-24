@@ -660,7 +660,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `completeAndInvoice`
   - **Citation**: Order completion triggers prompt to auto-generate a pre-filled tax invoice.
 - **[use-4]** *"Download clean PDF tax invoices or share payment links via WhatsApp"*
-  - **Proof**: [`apps/web/src/app/dashboard/billing/page.tsx#L543-L553`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/billing/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/billing/page.tsx#L548-L558`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/billing/page.tsx)
   - **Anchor**: `wa.me`
   - **Citation**: WhatsApp button generates pre-filled wa.me share link with invoice summary.
 - **[use-5]** *"Track invoice status from Unpaid and Partially Paid to Paid"*
@@ -704,7 +704,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `completeAndInvoice`
   - **Citation**: Order completion triggers prompt to auto-generate a pre-filled tax invoice.
 - **[feature-5]** *"WhatsApp sharing and payment status tracking"*
-  - **Proof**: [`apps/web/src/app/dashboard/billing/page.tsx#L543-L553`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/billing/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/billing/page.tsx#L548-L558`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/billing/page.tsx)
   - **Anchor**: `wa.me`
   - **Citation**: Direct document sharing via pre-formatted WhatsApp messages.
 
@@ -724,7 +724,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `onCompleteAndInvoice`
   - **Citation**: Order completion prompts user to generate a linked tax invoice.
 - **[faq-2]** **Q: Can invoices be exported to Tally Prime?**
-  - **Proof**: [`apps/web/src/app/dashboard/billing/page.tsx#L543-L553`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/billing/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/billing/page.tsx#L548-L558`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/billing/page.tsx)
   - **Anchor**: `wa.me`
   - **Citation**: Share buttons open WhatsApp Web or native app with pre-composed bill text.
 
@@ -1294,7 +1294,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `AIAssistantPage`
   - **Citation**: Launch the conversational assistant from dashboard.
 - **[step-2]** **Type your query**: *"Ask in plain language about pending orders, order status and order details in English or Hinglish."*
-  - **Proof**: [`apps/web/src/app/api/assistant/chat/route.ts#L18-L19`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/assistant/chat/route.ts)
+  - **Proof**: [`apps/web/src/app/api/assistant/chat/route.ts#L18-L22`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/assistant/chat/route.ts)
   - **Anchor**: `Hinglish`
   - **Citation**: Submit queries in plain English or Hinglish.
 - **[step-3]** **Assistant executes tools**: *"The assistant invokes read-only database tools (get_pending_orders, get_orders, get_order_details)."*
@@ -1302,7 +1302,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `orderToolDeclarations`
   - **Citation**: Assistant executes orderToolDeclarations: get_pending_orders, get_orders, get_order_details.
 - **[step-4]** **Receive formatted reply**: *"Review structured answers with markdown tables, bullet points, and Indian Rupee (₹) amounts."*
-  - **Proof**: [`apps/web/src/app/api/assistant/chat/route.ts#L22-L24`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/assistant/chat/route.ts)
+  - **Proof**: [`apps/web/src/app/api/assistant/chat/route.ts#L22-L26`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/assistant/chat/route.ts)
   - **Anchor**: `Indian numbering`
   - **Citation**: Responses formatted with markdown bullet points, tables, and INR (₹) figures.
 
@@ -1320,11 +1320,11 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `production_status`
   - **Citation**: Filters for order status, payment status, production status, product name.
 - **[feature-4]** *"Clear responses formatted with bullet points and Indian Rupee (₹) figures"*
-  - **Proof**: [`apps/web/src/app/api/assistant/chat/route.ts#L22-L24`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/assistant/chat/route.ts)
+  - **Proof**: [`apps/web/src/app/api/assistant/chat/route.ts#L22-L26`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/assistant/chat/route.ts)
   - **Anchor**: `Indian numbering`
   - **Citation**: Clear responses formatted with bullet points and INR figures.
 - **[feature-5]** *"Strict read-only safety ensuring records cannot be created, modified, or deleted via chat"*
-  - **Proof**: [`apps/web/src/app/api/assistant/chat/route.ts#L26-L28`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/assistant/chat/route.ts)
+  - **Proof**: [`apps/web/src/app/api/assistant/chat/route.ts#L26-L30`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/assistant/chat/route.ts)
   - **Anchor**: `READ-ONLY`
   - **Citation**: Strict read-only safety: assistant cannot create, update, or delete data.
 
@@ -1334,7 +1334,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `READ-ONLY`
   - **Citation**: Read-only order queries with dedicated tools, no write permissions.
 - **[section-2]** **Bilingual Order Lookups**: *"Submit queries in English or everyday Hinglish. The assistant responds in the sa..."*
-  - **Proof**: [`apps/web/src/app/api/assistant/chat/route.ts#L18-L19`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/assistant/chat/route.ts)
+  - **Proof**: [`apps/web/src/app/api/assistant/chat/route.ts#L18-L22`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/assistant/chat/route.ts)
   - **Anchor**: `Hinglish`
   - **Citation**: Bilingual assistance supporting English and natural Hinglish.
 
@@ -1344,7 +1344,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `orderToolDeclarations`
   - **Citation**: Capabilities limited strictly to order status, pending orders, and details.
 - **[faq-2]** **Q: Can the AI assistant modify or delete orders?**
-  - **Proof**: [`apps/web/src/app/api/assistant/chat/route.ts#L26-L28`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/assistant/chat/route.ts)
+  - **Proof**: [`apps/web/src/app/api/assistant/chat/route.ts#L26-L30`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/assistant/chat/route.ts)
   - **Anchor**: `READ-ONLY`
   - **Citation**: Assistant cannot modify or delete data.
 
@@ -1536,7 +1536,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `email`
   - **Citation**: Add employee accounts with login credentials and email.
 - **[use-2]** *"Assign user roles across Owner, Admin, Manager, Accountant, and Staff"*
-  - **Proof**: [`apps/web/src/models/User.ts#L140-L143`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/models/User.ts)
+  - **Proof**: [`apps/web/src/models/User.ts#L137-L141`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/models/User.ts)
   - **Anchor**: `enum: ['Admin', 'Owner', 'Manager', 'Staff', 'Accountant']`
   - **Citation**: Assign user roles: Owner, Admin, Manager, Accountant, Staff.
 - **[use-3]** *"Provide floor staff with access to update production jobs"*
@@ -1558,7 +1558,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `email`
   - **Citation**: Add employee account with name, email, and temporary password.
 - **[step-2]** **Select role**: *"Assign the appropriate role—Owner, Admin, Manager, Accountant, or Staff—based on duties."*
-  - **Proof**: [`apps/web/src/models/User.ts#L140-L143`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/models/User.ts)
+  - **Proof**: [`apps/web/src/models/User.ts#L137-L141`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/models/User.ts)
   - **Anchor**: `Manager`
   - **Citation**: Select role: Owner, Admin, Manager, Accountant, or Staff.
 - **[step-3]** **Role-based access applies**: *"The team member signs in and accesses modules suited to their assigned role."*
@@ -1572,7 +1572,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
 
 ### 3. Key Features Evidence (5 items)
 - **[feature-1]** *"Standard role options: Owner, Admin, Manager, Accountant, and Staff"*
-  - **Proof**: [`apps/web/src/models/User.ts#L140-L143`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/models/User.ts)
+  - **Proof**: [`apps/web/src/models/User.ts#L137-L141`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/models/User.ts)
   - **Anchor**: `Accountant`
   - **Citation**: Standard role options: Owner, Admin, Manager, Accountant, Staff.
 - **[feature-2]** *"Individual employee login accounts with secure credentials"*
@@ -1594,7 +1594,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
 
 ### 4. Documentation Sections Evidence (2 items)
 - **[section-1]** **Assigned User Roles**: *"Assign team members to defined roles: Owner, Admin, Manager, Accountant, or Staf..."*
-  - **Proof**: [`apps/web/src/models/User.ts#L140-L143`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/models/User.ts)
+  - **Proof**: [`apps/web/src/models/User.ts#L137-L141`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/models/User.ts)
   - **Anchor**: `Owner`
   - **Citation**: Assigned user roles: Owner, Admin, Manager, Accountant, Staff.
 - **[section-2]** **User Credential Management**: *"Create new user credentials quickly and deactivate former staff members whenever..."*
@@ -1604,7 +1604,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
 
 ### 5. FAQs Evidence (2 items)
 - **[faq-1]** **Q: Which roles can be assigned to team members?**
-  - **Proof**: [`apps/web/src/models/User.ts#L140-L143`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/models/User.ts)
+  - **Proof**: [`apps/web/src/models/User.ts#L137-L141`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/models/User.ts)
   - **Anchor**: `enum: ['Admin', 'Owner', 'Manager', 'Staff', 'Accountant']`
   - **Citation**: Available roles: Owner, Admin, Manager, Accountant, Staff.
 - **[faq-2]** **Q: Can an administrator reset employee passwords?**

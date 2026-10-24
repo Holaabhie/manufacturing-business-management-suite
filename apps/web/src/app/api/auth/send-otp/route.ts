@@ -1,41 +1,81 @@
 import { NextResponse } from "next/server";
-import { TwilioService } from "@/services/twilio.service";
-import { User } from "@/models/User";
-import { connectToDatabase } from "@/lib/mongodb";
-import { checkRateLimit, getRateLimitKey, rateLimitResponse } from "@/lib/rate-limit";
+import { getDb } from "@/lib/mongodb";
+import {
+  checkRateLimitMongo,
+  getHashedRateLimitKey,
+  getClientIpFromRequest,
+  rateLimitResponse,
+} from "@/lib/rate-limit";
+import {
+  SendOtpSchema,
+  normalizeIndianPhone,
+} from "@/lib/auth-schemas";
+import { getVerificationService } from "@/services/verification.service";
 
 export async function POST(req: Request) {
   try {
-    // Rate limiting — prevent OTP spam
-    const rateLimitKey = getRateLimitKey(req, "send-otp");
-    const rateCheck = checkRateLimit(rateLimitKey, "otpSend");
-    if (rateCheck.limited) {
-      return rateLimitResponse(rateCheck.retryAfterMs);
+    const ip = getClientIpFromRequest(req);
+
+    // 1. IP Rate Limiting (5 sends per 10 min)
+    const ipRateLimitKey = getHashedRateLimitKey("send-otp-ip", ip);
+    const ipCheck = await checkRateLimitMongo(ipRateLimitKey, "otpSend");
+    if (ipCheck.limited) {
+      return rateLimitResponse(ipCheck.retryAfterMs);
     }
 
-    const body = await req.json().catch(() => null);
-    const phone = String(body?.phone ?? "").trim();
-    const purpose = String(body?.purpose ?? "login");
-
-    if (!phone) {
+    // 2. Validate JSON & Schema
+    const rawBody = await req.json().catch(() => null);
+    const parseResult = SendOtpSchema.safeParse(rawBody);
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: "Phone number is required" },
+        { error: parseResult.error.issues[0]?.message || "Invalid phone number or request format" },
         { status: 400 }
       );
     }
 
-    if (!["login", "forgot-password"].includes(purpose)) {
+    const { phone, purpose } = parseResult.data;
+
+    // 3. Indian Phone Normalization
+    const phoneNorm = normalizeIndianPhone(phone);
+    if (!phoneNorm) {
       return NextResponse.json(
-        { error: "Invalid purpose" },
+        { error: "Please enter a valid 10-digit Indian phone number" },
         { status: 400 }
       );
     }
 
-    await connectToDatabase();
+    // 4. Phone Rate Limiting (5 sends per 10 min per phone number)
+    const phoneRateLimitKey = getHashedRateLimitKey("send-otp-phone", phoneNorm.e164);
+    const phoneCheck = await checkRateLimitMongo(phoneRateLimitKey, "otpSend");
+    if (phoneCheck.limited) {
+      return rateLimitResponse(phoneCheck.retryAfterMs);
+    }
 
-    // For login, check if user exists
+    // 5. 60-Second Resend Cooldown (SMS Bombing defense)
+    const cooldownKey = getHashedRateLimitKey("otp-cooldown", phoneNorm.e164);
+    const cooldownCheck = await checkRateLimitMongo(cooldownKey, "otpCooldown");
+    if (cooldownCheck.limited) {
+      const retryAfterSec = Math.ceil(cooldownCheck.retryAfterMs / 1000);
+      return NextResponse.json(
+        {
+          error: `Please wait ${retryAfterSec} seconds before requesting another OTP`,
+          retryAfter: retryAfterSec,
+        },
+        { status: 429 }
+      );
+    }
+
+    const db = await getDb();
+
+    // 6. User Status Verification
     if (purpose === "login") {
-      const user = await User.findOne({ phone });
+      const user = await db.collection("users").findOne({
+        $or: [
+          { phone: { $in: phoneNorm.candidates } },
+          { phone_number: { $in: phoneNorm.candidates } },
+        ],
+      });
+
       if (!user) {
         return NextResponse.json(
           { error: "No account found with this phone number" },
@@ -43,11 +83,7 @@ export async function POST(req: Request) {
         );
       }
 
-      // Check if user is active
-      if (
-        user.status === "inactive" ||
-        user.status === "suspended"
-      ) {
+      if (user.status === "inactive" || user.status === "suspended") {
         return NextResponse.json(
           { error: "Your account has been deactivated. Contact your administrator." },
           { status: 403 }
@@ -55,12 +91,16 @@ export async function POST(req: Request) {
       }
     }
 
-    // For forgot-password, also check user exists
     if (purpose === "forgot-password") {
-      const user = await User.findOne({ phone });
+      const user = await db.collection("users").findOne({
+        $or: [
+          { phone: { $in: phoneNorm.candidates } },
+          { phone_number: { $in: phoneNorm.candidates } },
+        ],
+      });
+
       if (!user) {
-        // Don't reveal if user exists — return generic success
-        // This prevents user enumeration attacks
+        // Timing-safe user enumeration defense
         return NextResponse.json({
           success: true,
           message: "If an account exists with this number, an OTP has been sent.",
@@ -68,11 +108,15 @@ export async function POST(req: Request) {
       }
     }
 
-    // Send OTP
-    await TwilioService.sendOtp(
-      phone,
-      purpose as "login" | "forgot-password"
-    );
+    // 7. Dispatch OTP via unified verification service (Twilio Verify / Local HMAC)
+    const verifier = getVerificationService();
+    const verifResult = await verifier.startVerification(phoneNorm.e164, "sms");
+
+    if (verifResult.providerError) {
+      console.error(
+        `[send-otp] SMS Provider failure for phone ${phoneNorm.e164}: ${verifResult.error}`
+      );
+    }
 
     return NextResponse.json({
       success: true,
@@ -87,4 +131,4 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-}
+}
