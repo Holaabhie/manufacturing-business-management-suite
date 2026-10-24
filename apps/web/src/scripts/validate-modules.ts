@@ -18,7 +18,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { MODULES, FEATURED_SLUGS } from "../content/modules.ts";
+import { MODULES, FEATURED_SLUGS } from "../content/modules";
 
 export interface EvidenceAuditResult {
   slug: string;

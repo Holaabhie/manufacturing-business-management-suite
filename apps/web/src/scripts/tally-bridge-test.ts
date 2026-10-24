@@ -220,7 +220,7 @@ async function main() {
         status: "active",
     };
 
-    await db.collection("users").insertMany([userA, userB]);
+    await db.collection("users").insertMany([userA, userB] as any[]);
     createdIds.users.push(tenantAId, tenantBId);
 
     // Create sessions directly (same pattern as createSession in auth-session.ts)
@@ -229,7 +229,7 @@ async function main() {
 
     await db.collection("sessions").insertMany([
         {
-            _id: sessionA,
+            _id: sessionA as any,
             userId: tenantAId,
             createdAt: new Date(),
             expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
@@ -238,7 +238,7 @@ async function main() {
             role: "Admin",
         },
         {
-            _id: sessionB,
+            _id: sessionB as any,
             userId: tenantBId,
             createdAt: new Date(),
             expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
@@ -1090,7 +1090,7 @@ async function cleanup() {
         if (createdIds.jobs.length > 0) {
             const jobOids = createdIds.jobs.map((id) => {
                 try { return new ObjectId(id); } catch { return null; }
-            }).filter(Boolean);
+            }).filter((id): id is ObjectId => id !== null);
             const jobDel = await db.collection("tallysyncjobs").deleteMany({ _id: { $in: jobOids } });
             console.log(`  Deleted ${jobDel.deletedCount} jobs`);
         }
@@ -1098,7 +1098,7 @@ async function cleanup() {
         if (createdIds.devices.length > 0) {
             const devOids = createdIds.devices.map((id) => {
                 try { return new ObjectId(id); } catch { return null; }
-            }).filter(Boolean);
+            }).filter((id): id is ObjectId => id !== null);
             const devDel = await db.collection("tallybridgedevices").deleteMany({ _id: { $in: devOids } });
             console.log(`  Deleted ${devDel.deletedCount} devices`);
         }
@@ -1106,7 +1106,7 @@ async function cleanup() {
         if (createdIds.pairingCodes.length > 0) {
             const pcOids = createdIds.pairingCodes.map((id) => {
                 try { return new ObjectId(id); } catch { return null; }
-            }).filter(Boolean);
+            }).filter((id): id is ObjectId => id !== null);
             const pcDel = await db.collection("tallypairingcodes").deleteMany({ _id: { $in: pcOids } });
             console.log(`  Deleted ${pcDel.deletedCount} pairing codes`);
         }
@@ -1119,7 +1119,7 @@ async function cleanup() {
         // Get org IDs from the users we created
         const allUserIds = [
             ...createdIds.users,
-            ...createdIds.users.map((id) => { try { return new ObjectId(id); } catch { return null; } }).filter(Boolean),
+            ...createdIds.users.map((id) => { try { return new ObjectId(id); } catch { return null; } }).filter((id): id is ObjectId => id !== null),
         ];
         const testUsers = await db.collection("users").find({
             _id: { $in: allUserIds as any[] }
@@ -1136,7 +1136,7 @@ async function cleanup() {
         }
 
         if (createdIds.sessions.length > 0) {
-            const sessDel = await db.collection("sessions").deleteMany({ _id: { $in: createdIds.sessions } });
+            const sessDel = await db.collection("sessions").deleteMany({ _id: { $in: createdIds.sessions as any[] } });
             console.log(`  Deleted ${sessDel.deletedCount} sessions`);
         }
 

@@ -465,7 +465,7 @@ async function cleanup() {
                 .map((id) => {
                     try { return new ObjectId(id); } catch { return null; }
                 })
-                .filter(Boolean);
+                .filter((id): id is ObjectId => id !== null);
             const del = await db.collection("tallysyncjobs").deleteMany({ _id: { $in: jobOids } });
             console.log(`  Deleted ${del.deletedCount} jobs`);
         }
@@ -475,7 +475,7 @@ async function cleanup() {
                 .map((id) => {
                     try { return new ObjectId(id); } catch { return null; }
                 })
-                .filter(Boolean);
+                .filter((id): id is ObjectId => id !== null);
             const del = await db.collection("tallybridgedevices").deleteMany({ _id: { $in: devOids } });
             console.log(`  Deleted ${del.deletedCount} devices`);
         }
@@ -485,7 +485,7 @@ async function cleanup() {
                 .map((id) => {
                     try { return new ObjectId(id); } catch { return null; }
                 })
-                .filter(Boolean);
+                .filter((id): id is ObjectId => id !== null);
             const del = await db.collection("tallypairingcodes").deleteMany({ _id: { $in: pcOids } });
             console.log(`  Deleted ${del.deletedCount} pairing codes`);
         }

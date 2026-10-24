@@ -1,7 +1,7 @@
 import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { MODULES as CURRENT_MODULES } from "../content/modules.ts";
+import { MODULES as CURRENT_MODULES } from "../content/modules";
 
 // Write baseline modules to a temp file
 const baselineCode = execSync("git show 5680b54:apps/web/src/content/modules.ts", {
@@ -12,7 +12,7 @@ const tempBaselinePath = path.resolve(process.cwd(), "src/scripts/temp_baseline_
 fs.writeFileSync(tempBaselinePath, baselineCode);
 
 async function main() {
-  const { MODULES: BASELINE_MODULES } = await import("./temp_baseline_modules.ts");
+  const { MODULES: BASELINE_MODULES } = await import(tempBaselinePath as any);
 
   interface ClaimDiff {
     slug: string;
