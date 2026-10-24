@@ -17,9 +17,10 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (user.role === "Staff") {
+    const perms = resolvePermissions(user.role, (user as any).customPermissions);
+    if (!hasPermission(perms, "orders.edit", isOwnerRole(user.role))) {
       return NextResponse.json(
-        { error: "Forbidden: Staff members cannot edit orders" },
+        { error: "Forbidden: You do not have permission to edit orders" },
         { status: 403 }
       );
     }

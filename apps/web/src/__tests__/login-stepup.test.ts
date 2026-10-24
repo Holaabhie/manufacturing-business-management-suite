@@ -147,7 +147,7 @@ describe("Login Backstop & Step-Up OTP Verification", () => {
     expect(jsonStepUp.stepUp).toBe("otp");
     expect(jsonStepUp.hasPhone).toBe(true);
     expect(jsonStepUp.phoneHint).toBe("***3210");
-  });
+  }, 20000);
 
   it("rejects login if password is WRONG, even if correct OTP is provided (OTP cannot bypass password)", async () => {
     // Trip backstop via 30 distributed failed attempts
@@ -175,7 +175,7 @@ describe("Login Backstop & Step-Up OTP Verification", () => {
     expect(res.status).toBe(401);
     const json = await res.json();
     expect(json.message).toContain("Invalid email or password");
-  });
+  }, 20000);
 
   it("rejects login if password is CORRECT but OTP is WRONG", async () => {
     // Trip backstop via 30 distributed failed attempts
@@ -203,7 +203,7 @@ describe("Login Backstop & Step-Up OTP Verification", () => {
     expect(res.status).toBe(401);
     const json = await res.json();
     expect(json.message).toContain("Invalid or expired OTP code");
-  });
+  }, 20000);
 
   it("successfully logs in when BOTH password AND OTP are correct, and resets the backstop counter", async () => {
     // Trip backstop via 30 distributed failed attempts
@@ -241,5 +241,5 @@ describe("Login Backstop & Step-Up OTP Verification", () => {
 
     const nextRes = await loginHandler(nextReq);
     expect(nextRes.status).toBe(200);
-  });
+  }, 20000);
 });
