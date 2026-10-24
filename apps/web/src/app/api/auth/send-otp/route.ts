@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { getDb } from "@/lib/mongodb";
 import {
   checkRateLimitMongo,
@@ -88,17 +88,30 @@ export async function POST(req: Request) {
       }
     }
 
-    // 7. Dispatch OTP via unified verification service
-    // Both existing and non-existing accounts execute through the same cryptographic / DB path
-    // eliminating timing side-channels without relying on artificial delays
+    // 7. Dispatch OTP via unified verification service in background (after response)
+    // Both existing and non-existing accounts return immediately with uniform latency,
+    // eliminating external SMS provider latency side-channels
     const verifier = getVerificationService();
 
     if (userExists) {
-      const verifResult = await verifier.startVerification(phoneNorm.e164, "sms");
-      if (verifResult.providerError) {
-        console.error(
-          `[send-otp] SMS Provider failure for phone ${phoneNorm.e164}: ${verifResult.error}`
-        );
+      const dispatchTask = async () => {
+        try {
+          const verifResult = await verifier.startVerification(phoneNorm.e164, "sms");
+          if (verifResult.providerError) {
+            console.error(
+              `[send-otp] SMS Provider failure for phone ${phoneNorm.e164}: ${verifResult.error}`
+            );
+          }
+        } catch (err) {
+          console.error(`[send-otp] Background dispatch error for phone ${phoneNorm.e164}:`, err);
+        }
+      };
+
+      try {
+        after(dispatchTask);
+      } catch {
+        // Fallback for contexts without Next.js request scope (e.g. unit tests): run non-blocking promise
+        dispatchTask().catch(() => {});
       }
     } else {
       // Uniform code execution: execute equivalent cryptographic hashing and lookup
