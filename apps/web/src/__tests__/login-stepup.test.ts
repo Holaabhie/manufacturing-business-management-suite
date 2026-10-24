@@ -96,7 +96,7 @@ const VALID_OTP = "123456";
 vi.mock("@/services/verification.service", () => ({
   getVerificationService: vi.fn(() => ({
     async checkVerification(phone: string, code: string) {
-      return { valid: code === VALID_OTP };
+      return { success: code === VALID_OTP };
     },
   })),
 }));
@@ -241,5 +241,46 @@ describe("Login Backstop & Step-Up OTP Verification", () => {
 
     const nextRes = await loginHandler(nextReq);
     expect(nextRes.status).toBe(200);
+  }, 20000);
+
+  it("returns hasPhone: false ONLY AFTER password is correct, never on wrong password", async () => {
+    // 1. Temporarily remove phone from account
+    mockUser.phone = undefined;
+
+    // 2. Trip backstop via 30 distributed failed attempts
+    for (let i = 0; i < 30; i++) {
+      await loginHandler(new Request("http://localhost:3000/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-real-ip": `10.0.4.${i + 1}` },
+        body: JSON.stringify({ email: ADMIN_EMAIL, password: "WrongPassword!", loginType: "admin" }),
+      }));
+    }
+
+    // 3. Attempt with WRONG password when backstop is triggered on account without phone:
+    // MUST return 401 Unauthorized — MUST NOT leak hasPhone: false or 429
+    const reqWrong = new Request("http://localhost:3000/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-real-ip": "192.168.1.104" },
+      body: JSON.stringify({ email: ADMIN_EMAIL, password: "WrongPasswordAgain!", loginType: "admin" }),
+    });
+    const resWrong = await loginHandler(reqWrong);
+    expect(resWrong.status).toBe(401);
+    const jsonWrong = await resWrong.json();
+    expect(jsonWrong.hasPhone).toBeUndefined();
+    expect(jsonWrong.stepUp).toBeUndefined();
+
+    // 4. Attempt with CORRECT password on account without phone:
+    // Returns 429 stepUp: "otp" with hasPhone: false (only AFTER password is verified)
+    const reqCorrect = new Request("http://localhost:3000/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-real-ip": "192.168.1.104" },
+      body: JSON.stringify({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD, loginType: "admin" }),
+    });
+    const resCorrect = await loginHandler(reqCorrect);
+    expect(resCorrect.status).toBe(429);
+    const jsonCorrect = await resCorrect.json();
+    expect(jsonCorrect.stepUp).toBe("otp");
+    expect(jsonCorrect.hasPhone).toBe(false);
+    expect(jsonCorrect.phoneHint).toBeNull();
   }, 20000);
 });

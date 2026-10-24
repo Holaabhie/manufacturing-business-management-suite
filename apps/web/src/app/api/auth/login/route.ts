@@ -338,7 +338,7 @@ export async function POST(req: Request) {
 
       const verifier = getVerificationService();
       const checkResult = await verifier.checkVerification(userPhone, otpCode);
-      if (!checkResult.valid) {
+      if (!checkResult.success) {
         return NextResponse.json(
           {
             success: false,

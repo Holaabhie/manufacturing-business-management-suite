@@ -17,7 +17,7 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const perms = resolvePermissions(user.role, (user as any).customPermissions);
+    const perms = resolvePermissions(user.role, user.customPermissions);
     if (!hasPermission(perms, "orders.edit", isOwnerRole(user.role))) {
       return NextResponse.json(
         { error: "Forbidden: You do not have permission to edit orders" },
@@ -134,7 +134,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const perms = resolvePermissions(user.role, (user as any).customPermissions);
+    const perms = resolvePermissions(user.role, user.customPermissions);
     if (!hasPermission(perms, "orders.delete", isOwnerRole(user.role))) {
       return NextResponse.json(
         { error: "Forbidden: You do not have permission to delete orders" },

@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { getDb } from "@/lib/mongodb";
-import type { WithId } from "mongodb";
+import { ObjectId, type WithId } from "mongodb";
 import type { FlatPermissionMap } from "@/lib/permissions";
 
 // Backward compat alias
@@ -15,7 +15,10 @@ export const REFRESH_COOKIE_NAME = "refresh_token";
 
 // ─── Session Configuration ──────────────────────────────────────
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24; // 24 hours (access session)
-const REFRESH_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 days (refresh token)
+const REMEMBER_ME_DAYS = parseInt(process.env.REMEMBER_ME_DAYS || "30", 10);
+const SESSION_ONLY_DAYS = parseInt(process.env.SESSION_ONLY_DAYS || "1", 10);
+const REFRESH_REMEMBER_TTL_MS = 1000 * 60 * 60 * 24 * REMEMBER_ME_DAYS; // default 30 days
+const REFRESH_SESSION_TTL_MS = 1000 * 60 * 60 * 24 * SESSION_ONLY_DAYS; // default 1 day absolute
 const SLIDING_WINDOW_MS = 1000 * 60 * 60 * 4; // Renew if >4 hours old
 
 export type SessionDoc = {
@@ -26,9 +29,10 @@ export type SessionDoc = {
   // Refresh token
   refreshToken?: string;
   refreshExpiresAt?: Date;
+  rememberMe?: boolean;
   // Session tracking fields
   organizationId?: string;
-  role?: "Admin" | "Staff";
+  role?: "Admin" | "Staff" | string;
   ipAddress?: string;
   userAgent?: string;
   deviceType?: string;
@@ -99,6 +103,8 @@ export type UserDoc = {
   invitationId?: string;
 };
 
+export type SessionUser = WithId<UserDoc>;
+
 /**
  * Returns the correct data-scoping ID for the current user.
  * - Admin users → their own _id (they own the data)
@@ -125,22 +131,28 @@ export async function createSession(
     ipAddress?: string;
     userAgent?: string;
     provider?: string;
+    rememberMe?: boolean;
   }
 ) {
   const db = await getDb();
   const sessionId = globalThis.crypto.randomUUID();
   const refreshToken = globalThis.crypto.randomUUID();
   const now = new Date();
+  const isRememberMe = metadata?.rememberMe !== false; // Default true for backward compatibility
+
   const expiresAt = new Date(now.getTime() + SESSION_TTL_MS);
-  const refreshExpiresAt = new Date(now.getTime() + REFRESH_TTL_MS);
+  const refreshExpiresAt = new Date(
+    now.getTime() + (isRememberMe ? REFRESH_REMEMBER_TTL_MS : REFRESH_SESSION_TTL_MS)
+  );
 
   await db.collection<SessionDoc>("sessions").insertOne({
     _id: sessionId,
-    userId,
+    userId: String(userId),
     createdAt: now,
     expiresAt,
     refreshToken,
     refreshExpiresAt,
+    rememberMe: isRememberMe,
     organizationId: metadata?.organizationId,
     role: metadata?.role,
     ipAddress: metadata?.ipAddress,
@@ -151,24 +163,43 @@ export async function createSession(
   });
 
   const jar = await cookies();
+  const isProd = process.env.NODE_ENV === "production";
 
-  // Set session cookie (shorter-lived)
-  jar.set(SESSION_COOKIE_NAME, sessionId, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    expires: expiresAt,
-  });
+  if (isRememberMe) {
+    // Persistent cookies with explicit expires & maxAge
+    jar.set(SESSION_COOKIE_NAME, sessionId, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: isProd,
+      path: "/",
+      expires: expiresAt,
+      maxAge: Math.floor(SESSION_TTL_MS / 1000),
+    });
 
-  // Set refresh token cookie (longer-lived)
-  jar.set(REFRESH_COOKIE_NAME, refreshToken, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    expires: refreshExpiresAt,
-  });
+    jar.set(REFRESH_COOKIE_NAME, refreshToken, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: isProd,
+      path: "/",
+      expires: refreshExpiresAt,
+      maxAge: Math.floor(REFRESH_REMEMBER_TTL_MS / 1000),
+    });
+  } else {
+    // Session cookies (cleared on browser exit; no expires or maxAge)
+    jar.set(SESSION_COOKIE_NAME, sessionId, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: isProd,
+      path: "/",
+    });
+
+    jar.set(REFRESH_COOKIE_NAME, refreshToken, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: isProd,
+      path: "/",
+    });
+  }
 
   return sessionId;
 }
@@ -188,13 +219,14 @@ export async function rotateSession(
   // Delete old session
   await db.collection<SessionDoc>("sessions").deleteOne({ _id: oldSessionId });
 
-  // Create new session inheriting metadata
+  // Create new session inheriting metadata including rememberMe persistence class
   return createSession(oldSession.userId, {
     organizationId: oldSession.organizationId,
     role: oldSession.role,
     ipAddress: oldSession.ipAddress,
     userAgent: oldSession.userAgent,
     provider: oldSession.provider,
+    rememberMe: oldSession.rememberMe !== false,
   });
 }
 
@@ -235,9 +267,13 @@ export async function refreshSession(): Promise<{
   }
 
   // Check if user still active
+  const strUserId = String(session.userId);
+  const userQuery = ObjectId.isValid(strUserId)
+    ? { $or: [{ _id: new ObjectId(strUserId) }, { _id: strUserId }] }
+    : { _id: strUserId };
   const user = await db
     .collection<UserDoc>("users")
-    .findOne({ _id: session.userId });
+    .findOne(userQuery as any);
   if (!user || user.status === "inactive" || user.status === "suspended") {
     await db
       .collection<SessionDoc>("sessions")
@@ -261,8 +297,23 @@ export async function destroySession() {
     const db = await getDb();
     await db.collection<SessionDoc>("sessions").deleteOne({ _id: sessionId });
   }
-  jar.delete(SESSION_COOKIE_NAME);
-  jar.delete(REFRESH_COOKIE_NAME);
+  const isProd = process.env.NODE_ENV === "production";
+  jar.set(SESSION_COOKIE_NAME, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: isProd,
+    path: "/",
+    maxAge: 0,
+    expires: new Date(0),
+  });
+  jar.set(REFRESH_COOKIE_NAME, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: isProd,
+    path: "/",
+    maxAge: 0,
+    expires: new Date(0),
+  });
 }
 
 /**
@@ -354,24 +405,26 @@ async function tryNextAuthBridge(): Promise<WithId<UserDoc> | null> {
   }
 
   // 2. DEV_MODE auto-login — find first Admin user and auto-authenticate
-  //    SECURITY: The dev-mode module already crashes the app at startup
-  //    if DEV_MODE=true in production, so this is safe.
+  //    STRICT SECURITY GUARD: Never active in production, on Vercel, or via client-facing env vars
   try {
-    const { isDevMode } = await import("@/lib/features/dev-mode");
-    if (isDevMode()) {
-      const db = await getDb();
-      const adminUser = await db
-        .collection<UserDoc>("users")
-        .findOne({ role: "Admin" }, { sort: { createdAt: -1 } });
+    const isProd = process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL);
+    if (!isProd && process.env.DEV_MODE === "true") {
+      const { isDevMode } = await import("@/lib/features/dev-mode");
+      if (isDevMode()) {
+        const db = await getDb();
+        const adminUser = await db
+          .collection<UserDoc>("users")
+          .findOne({ role: "Admin" }, { sort: { createdAt: -1 } });
 
-      if (adminUser) {
-        console.warn("⚠️ DEV_MODE: Auto-authenticating as", adminUser.email);
-        await createSession(String(adminUser._id), {
-          role: adminUser.role,
-          organizationId: adminUser.organizationId,
-          provider: "dev-mode-auto",
-        });
-        return adminUser as WithId<UserDoc>;
+        if (adminUser) {
+          console.warn("⚠️ DEV_MODE: Auto-authenticating as", adminUser.email);
+          await createSession(String(adminUser._id), {
+            role: adminUser.role,
+            organizationId: adminUser.organizationId,
+            provider: "dev-mode-auto",
+          });
+          return adminUser as WithId<UserDoc>;
+        }
       }
     }
   } catch (e) {
@@ -437,9 +490,13 @@ async function getSessionUserById(
       .catch(() => { });
   }
 
+  const strUserId = String(session.userId);
+  const userQuery = ObjectId.isValid(strUserId)
+    ? { $or: [{ _id: new ObjectId(strUserId) }, { _id: strUserId }] }
+    : { _id: strUserId };
   const user = await db
     .collection<UserDoc>("users")
-    .findOne({ _id: session.userId });
+    .findOne(userQuery as any);
 
   // Check if user is deactivated/suspended
   if (

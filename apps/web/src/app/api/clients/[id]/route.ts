@@ -20,7 +20,7 @@ export async function PUT(
       return NextResponse.json({ error: "Invalid ID format" }, { status: 400 });
     }
 
-    const perms = resolvePermissions(user.role, (user as any).customPermissions);
+    const perms = resolvePermissions(user.role, user.customPermissions);
     if (!hasPermission(perms, "clients.edit", isOwnerRole(user.role))) {
       return NextResponse.json(
         { error: "Forbidden: You do not have permission to edit clients" },
