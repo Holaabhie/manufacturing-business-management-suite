@@ -120,6 +120,7 @@ export const LoginSchema = z.object({
   employeeId: z.string().trim().optional(),
   masterKey: z.string().trim().optional(),
   rememberMe: z.boolean().optional(),
+  otp: z.string().trim().optional(),
 }).refine((data) => {
   if (data.loginType === "staff") {
     return Boolean(data.employeeId || data.email);
@@ -135,7 +136,13 @@ export const SendOtpSchema = z.object({
     .string()
     .trim()
     .min(10, "Phone number is required")
-    .max(25, "Phone number is invalid"),
-  purpose: z.enum(["login", "forgot-password"]).default("login"),
+    .max(25, "Phone number is invalid")
+    .optional(),
+  email: z.string().trim().email().optional(),
+  userId: z.string().trim().optional(),
+  purpose: z.enum(["login", "forgot-password", "step-up"]).default("login"),
+}).refine((data) => Boolean(data.phone || data.email || data.userId), {
+  message: "Phone number, email, or userId is required",
+  path: ["phone"],
 });
 

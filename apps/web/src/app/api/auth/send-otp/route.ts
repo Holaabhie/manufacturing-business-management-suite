@@ -33,10 +33,29 @@ export async function POST(req: Request) {
       );
     }
 
-    const { phone, purpose } = parseResult.data;
+    let rawPhone = parseResult.data.phone;
+    const { purpose, email, userId } = parseResult.data;
+    const db = await getDb();
+
+    // If phone not provided directly, lookup user by email or userId
+    if (!rawPhone && (email || userId)) {
+      const query: any = {};
+      if (email) query.email = email.toLowerCase();
+      if (userId) query._id = userId;
+
+      const userDoc = await db.collection("users").findOne(query);
+      if (userDoc && (userDoc.phone || userDoc.phone_number)) {
+        rawPhone = userDoc.phone || userDoc.phone_number;
+      } else {
+        return NextResponse.json(
+          { error: "No registered phone number found on this account for OTP verification" },
+          { status: 400 }
+        );
+      }
+    }
 
     // 3. Indian Phone Normalization
-    const phoneNorm = normalizeIndianPhone(phone);
+    const phoneNorm = normalizeIndianPhone(rawPhone);
     if (!phoneNorm) {
       return NextResponse.json(
         { error: "Please enter a valid 10-digit Indian phone number" },
@@ -65,12 +84,10 @@ export async function POST(req: Request) {
       );
     }
 
-    const db = await getDb();
-
     // 6. User Status Verification
     let userExists = true;
 
-    if (purpose === "login" || purpose === "forgot-password") {
+    if (purpose === "login" || purpose === "forgot-password" || purpose === "step-up") {
       const user = await db.collection("users").findOne({
         $or: [
           { phone: { $in: phoneNorm.candidates } },
@@ -98,12 +115,26 @@ export async function POST(req: Request) {
         try {
           const verifResult = await verifier.startVerification(phoneNorm.e164, "sms");
           if (verifResult.providerError) {
+            const maskedPhone = `***${phoneNorm.e164.slice(-4)}`;
             console.error(
-              `[send-otp] SMS Provider failure for phone ${phoneNorm.e164}: ${verifResult.error}`
+              `[send-otp] SMS Provider failure for phone ${maskedPhone}: ${verifResult.error}`
             );
+            // Record failure in metrics
+            if (db) {
+              await db.collection("metrics").updateOne(
+                { _id: "sms_dispatch" as any },
+                {
+                  $inc: { failures: 1 },
+                  $set: { lastFailureAt: new Date(), lastError: verifResult.error, updatedAt: new Date() },
+                  $setOnInsert: { createdAt: new Date() },
+                },
+                { upsert: true }
+              );
+            }
           }
-        } catch (err) {
-          console.error(`[send-otp] Background dispatch error for phone ${phoneNorm.e164}:`, err);
+        } catch (err: any) {
+          const maskedPhone = `***${phoneNorm.e164.slice(-4)}`;
+          console.error(`[send-otp] Background dispatch error for phone ${maskedPhone}:`, err.message);
         }
       };
 

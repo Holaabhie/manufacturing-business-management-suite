@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import Image from "next/image";
+import { BrandLogo } from "@/components/BrandLogo";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn as nextAuthSignIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
@@ -30,10 +32,59 @@ import { motion, AnimatePresence } from "framer-motion";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { cn } from "@/lib/utils";
 import { GoogleOneTap } from "@/components/auth/GoogleOneTap";
+import { AuthField, PhoneField, PasswordField } from "@/components/auth";
+import { User as UserIcon, Mail } from "lucide-react";
+import { fetchWithAuthTimeout } from "@/lib/auth-timeout";
+import { getStoredLocale, type Locale } from "@/lib/i18n";
 
 type AuthMode = "login" | "register";
 type Portal = "admin" | "staff";
 type LoginStep = "credentials" | "otp";
+
+const OAUTH_ERROR_MESSAGES: Record<string, Record<Locale, string>> = {
+  AccessDenied: {
+    en: "Access was denied. Please sign in again.",
+    hi: "प्रवेश अस्वीकार कर दिया गया। कृपया पुनः साइन इन करें।",
+    gu: "પ્રવેશ નકારવામાં આવ્યો હતો. કૃપા કરીને ફરીથી સાઇન ઇન કરો.",
+    mr: "प्रवेश नाकारला गेला. कृपया पुन्हा साइन इन करा.",
+  },
+  OAuthCallback: {
+    en: "Could not complete sign-in with provider. Please try again.",
+    hi: "प्रदाता के साथ साइन-इन पूरा नहीं हो सका। कृपया पुनः प्रयास करें।",
+    gu: "પ્રદાતા સાથે સાઇન-ઇન પૂર્ણ થઈ શક્યું નથી. કૃપા કરીને ફરી પ્રયાસ કરો.",
+    mr: "प्रदात्यासह साइन-इन पूर्ण होऊ शकले नाही. कृपया पुन्हा प्रयत्न करा.",
+  },
+  Configuration: {
+    en: "Authentication service configuration issue. Please contact support.",
+    hi: "प्रमाणीकरण सेवा में समस्या है। कृपया सहायता से संपर्क करें।",
+    gu: "પ્રમાણીકરણ સેવામાં સમસ્યા છે. કૃપા કરીને સપોર્ટનો સંપર્ક કરો.",
+    mr: "प्रमाणीकरण सेवेत समस्या आहे. कृपया समर्थनाशी संपर्क साधा.",
+  },
+  OAuthAccountNotLinked: {
+    en: "This email is already registered with a different sign-in method.",
+    hi: "यह ईमेल पहले से किसी अन्य विधि से पंजीकृत है।",
+    gu: "આ ઇમેઇલ પહેલાથી અન્ય સાઇન-ઇન પદ્ધતિ સાથે નોંધાયેલ છે.",
+    mr: "हा ईमेल आधीच दुसऱ्या साइन-इन पद्धतीसह नोंदणीकृत आहे.",
+  },
+  MissingCSRF: {
+    en: "Session expired or invalid. Please try signing in again.",
+    hi: "सत्र समाप्त हो गया है। कृपया पुनः साइन इन करें।",
+    gu: "સત્ર સમાપ્ત થઈ ગયું છે. કૃપા કરીને ફરી સાઇન ઇન કરો.",
+    mr: "सत्र समाप्त झाले आहे. कृपया पुन्हा साइन इन करा.",
+  },
+  oauth: {
+    en: "Google sign-in failed. Please try again.",
+    hi: "Google साइन-इन विफल रहा। कृपया पुनः प्रयास करें।",
+    gu: "Google સાઇન-ઇન નિષ્ફળ રહ્યું. કૃપા કરીને ફરી પ્રયાસ કરો.",
+    mr: "Google साइन-इन अयशस्वी झाले. कृपया पुन्हा प्रयत्न करा.",
+  },
+  default: {
+    en: "Authentication failed. Please try signing in again.",
+    hi: "प्रमाणीकरण विफल रहा। कृपया पुनः साइन इन करें।",
+    gu: "પ્રમાણીકરણ નિષ્ફળ રહ્યું. કૃપા કરીને ફરી સાઇન ઇન કરો.",
+    mr: "प्रमाणीकरण अयशस्वी झाले. कृपया पुन्हा साइन इन करा.",
+  },
+};
 
 export default function LoginPage() {
   // ─── Core State ───────────────────────────────────────────────
@@ -42,6 +93,28 @@ export default function LoginPage() {
   const [step, setStep] = useState<LoginStep>("credentials");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  // ─── Remember Me & Native Detection ───────────────────────────
+  const [rememberMe, setRememberMe] = useState(false);
+  const [isNative, setIsNative] = useState(false);
+  const [regFieldErrors, setRegFieldErrors] = useState<{
+    name?: string;
+    phone?: string;
+    email?: string;
+    password?: string;
+  }>({});
+
+  useEffect(() => {
+    try {
+      const { Capacitor } = require("@capacitor/core");
+      if (Capacitor?.isNativePlatform?.()) {
+        setIsNative(true);
+        setRememberMe(true);
+      }
+    } catch {
+      // Non-native environment
+    }
+  }, []);
 
   // ─── Admin Fields ─────────────────────────────────────────────
   const [email, setEmail] = useState("");
@@ -84,15 +157,11 @@ export default function LoginPage() {
   // Show OAuth errors
   useEffect(() => {
     if (oauthError) {
-      if (oauthError === "oauth") {
-        toast.error("Google sign-in failed. Please try again.");
-      } else if (oauthError === "OAuthAccountNotLinked") {
-        toast.error("This email is already registered with a different method.");
-      } else if (oauthError === "MissingCSRF") {
-        toast.error("Session expired. Please try signing in again.");
-      } else {
-        toast.error(`Authentication error: ${oauthError}`);
-      }
+      const locale = getStoredLocale();
+      const messages = OAUTH_ERROR_MESSAGES[oauthError] || OAUTH_ERROR_MESSAGES.default;
+      const friendlyMessage = messages[locale] || messages.en;
+      toast.error(friendlyMessage);
+
       // Clean up the error param from URL to prevent re-showing on refresh
       const url = new URL(window.location.href);
       url.searchParams.delete("error");
@@ -145,16 +214,27 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await fetchWithAuthTimeout("/api/auth/login", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email, password, loginType: "admin" }),
+        body: JSON.stringify({ email, password, loginType: "admin", rememberMe }),
       });
       const json = await res.json().catch(() => ({}));
 
       if (json.locked) {
         setLockedMinutes(json.remainingMinutes || 15);
         toast.error(json.error || "Account temporarily locked");
+        return;
+      }
+      if (res.status === 429 && json.stepUp === "otp") {
+        setStep("otp");
+        setOtpMethod("sms");
+        toast.info(json.error || "High activity detected. Please enter your verification code.");
+        if (json.hasPhone !== false) {
+          await sendAdminStepUpOtp();
+        } else {
+          toast.warning("No registered phone found on account. Please use forgot password.");
+        }
         return;
       }
       if (res.status === 503) {
@@ -167,7 +247,19 @@ export default function LoginPage() {
 
       setAttemptsRemaining(null);
       setLockedMinutes(null);
+
+      // Incomplete admin company setup
+      if (json.role === "Admin" && json.company_setup_complete === false) {
+        toast.success("Welcome back! Please complete your company setup.");
+        router.replace("/setup");
+        return;
+      }
+
       toast.success("Welcome back, Admin!");
+      try {
+        sessionStorage.setItem("imLoginRedirect", "true");
+        sessionStorage.removeItem("imLoaderShown");
+      } catch {}
       router.push("/dashboard");
     } catch (error: any) {
       toast.error(error.message || "Authentication failed");
@@ -185,10 +277,16 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await fetchWithAuthTimeout("/api/auth/login", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ employeeId, email: employeeId, password: staffPassword, loginType: "staff" }),
+        body: JSON.stringify({
+          employeeId,
+          email: employeeId,
+          password: staffPassword,
+          loginType: "staff",
+          rememberMe,
+        }),
       });
       const json = await res.json().catch(() => ({}));
 
@@ -221,7 +319,18 @@ export default function LoginPage() {
         return;
       }
 
+      // Incomplete admin company setup
+      if (json.role === "Admin" && json.company_setup_complete === false) {
+        toast.success("Welcome back! Please complete your company setup.");
+        router.replace("/setup");
+        return;
+      }
+
       toast.success("Welcome back!");
+      try {
+        sessionStorage.setItem("imLoginRedirect", "true");
+        sessionStorage.removeItem("imLoaderShown");
+      } catch {}
       router.push("/dashboard");
     } catch (error: any) {
       toast.error(error.message || "Authentication failed");
@@ -230,9 +339,55 @@ export default function LoginPage() {
     }
   };
 
+  const sendAdminStepUpOtp = async () => {
+    try {
+      const res = await fetchWithAuthTimeout("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, purpose: "step-up" }),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json?.error || "Failed to send OTP");
+      }
+      setCountdown(60);
+      toast.success("Verification code sent to your registered phone");
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleVerifyAdminStepUpOtp = async () => {
+    if (otp.length !== 6) { toast.error("Enter the 6-digit code"); return; }
+    setLoading(true);
+    try {
+      const res = await fetchWithAuthTimeout("/api/auth/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, password, otp, loginType: "admin", rememberMe }),
+      });
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(json?.message || json?.error || "OTP Verification failed");
+      }
+
+      toast.success("Identity verified! Welcome back, Admin!");
+      try {
+        sessionStorage.setItem("imLoginRedirect", "true");
+        sessionStorage.removeItem("imLoaderShown");
+      } catch {}
+      router.push("/dashboard");
+    } catch (error: any) {
+      toast.error(error.message || "Verification failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const sendStaffOtp = async (uid?: string) => {
     try {
-      const res = await fetch("/api/auth/send-otp", {
+      const res = await fetchWithAuthTimeout("/api/auth/send-otp", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ userId: uid || userId, purpose: "login" }),
@@ -252,7 +407,7 @@ export default function LoginPage() {
     if (otp.length !== 6) { toast.error("Enter the 6-digit code"); return; }
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/verify-otp", {
+      const res = await fetchWithAuthTimeout("/api/auth/verify-otp", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ userId, otp, purpose: "login" }),
@@ -262,6 +417,10 @@ export default function LoginPage() {
         throw new Error(json?.error || "Invalid OTP");
       }
       toast.success("Verification successful!");
+      try {
+        sessionStorage.setItem("imLoginRedirect", "true");
+        sessionStorage.removeItem("imLoaderShown");
+      } catch {}
       router.push("/dashboard");
     } catch (error: any) {
       toast.error(error.message);
@@ -275,31 +434,46 @@ export default function LoginPage() {
   // ═══════════════════════════════════════════════════════════════
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!registerEmail || !registerPassword || !registerPhone) { toast.error("All fields are required"); return; }
-    if (registerPassword.length < 8) { toast.error("Password must be at least 8 characters"); return; }
-    if (!/[A-Z]/.test(registerPassword)) { toast.error("Password must contain an uppercase letter"); return; }
-    if (!/[a-z]/.test(registerPassword)) { toast.error("Password must contain a lowercase letter"); return; }
-    if (!/[0-9]/.test(registerPassword)) { toast.error("Password must contain a number"); return; }
-    if (!registerPhone.match(/^\+91\d{10}$/)) { toast.error("Enter a valid Indian phone number (+91...)"); return; }
+    setRegFieldErrors({});
+
+    const formattedPhone = registerPhone.startsWith("+91")
+      ? registerPhone
+      : `+91${registerPhone.replace(/\D/g, "")}`;
+
+    if (!registerEmail || !registerPassword || !registerPhone) {
+      toast.error("All fields are required");
+      return;
+    }
 
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/register", {
+      const res = await fetchWithAuthTimeout("/api/auth/register", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           email: registerEmail,
           password: registerPassword,
           fullName: registerName,
-          phone: registerPhone
+          phone: formattedPhone,
         }),
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error || "Registration failed");
+      if (!res.ok) {
+        if (json.fieldErrors) {
+          setRegFieldErrors({
+            email: json.fieldErrors.email === "EMAIL_TAKEN" ? "This email is already registered." : json.fieldErrors.email,
+            phone: json.fieldErrors.phone === "PHONE_TAKEN" ? "This phone number is already registered." : json.fieldErrors.phone,
+            password: json.fieldErrors.password === "WEAK_PASSWORD" ? json.error : json.fieldErrors.password,
+          });
+        }
+        throw new Error(json?.error || "Registration failed");
+      }
       toast.success("Account created! Welcome to IND Manager.");
-      // Small delay to ensure session cookie is set before navigating
-      await new Promise((r) => setTimeout(r, 300));
-      router.replace("/dashboard");
+      if (json.company_setup_complete === false) {
+        router.replace("/setup");
+      } else {
+        router.replace("/dashboard");
+      }
     } catch (error: any) {
       if (error.name === "TypeError" && error.message === "Failed to fetch") {
         toast.error("Network error. Please check your internet connection and try again.");
@@ -354,11 +528,14 @@ export default function LoginPage() {
 
         <div className="relative z-10 px-12 max-w-xl">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-            <div className="flex items-center gap-3 mb-8">
-              <div className="p-3 rounded-2xl shadow-lg" style={{ background: 'var(--primary)', boxShadow: '0 4px 12px rgba(74, 58, 255, 0.3)' }}>
-                <Factory className="h-8 w-8 text-white" />
-              </div>
-              <h1 className="text-3xl font-extrabold tracking-tight">IND Manager</h1>
+            <div className="mb-8">
+              <BrandLogo
+                variant="full"
+                width={160}
+                height={40}
+                className="h-9 w-auto object-contain"
+                priority
+              />
             </div>
             <h2 className="text-5xl font-bold leading-tight mb-6">
               Intelligent Business <br />
@@ -403,12 +580,13 @@ export default function LoginPage() {
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4 }}>
             {/* Mobile Logo */}
             <div className="lg:hidden flex justify-center mb-8">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg" style={{ background: 'var(--primary)' }}>
-                  <Factory className="h-5 w-5 text-white" />
-                </div>
-                <span className="font-bold text-xl tracking-tight">IND Manager</span>
-              </div>
+              <BrandLogo
+                variant="full"
+                width={150}
+                height={38}
+                className="h-8 w-auto object-contain"
+                priority
+              />
             </div>
 
             {/* ─── Portal Switcher ───────────────────────────────── */}
@@ -507,10 +685,21 @@ export default function LoginPage() {
                   </div>
 
                   {/* Remember Me */}
-                  <div className="flex items-center gap-2 pt-1">
-                    <input type="checkbox" id="remember" className="w-4 h-4 rounded border-border bg-muted/50 dark:bg-white/5 focus:ring-[#4A3AFF] cursor-pointer" style={{ accentColor: '#4A3AFF' }} />
-                    <label htmlFor="remember" className="text-sm text-muted-foreground cursor-pointer select-none">Remember me for 30 days</label>
-                  </div>
+                  {!isNative && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <input
+                        type="checkbox"
+                        id="admin-remember"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        className="w-4 h-4 rounded border-border bg-muted/50 dark:bg-white/5 focus:ring-[#4A3AFF] cursor-pointer"
+                        style={{ accentColor: '#4A3AFF' }}
+                      />
+                      <label htmlFor="admin-remember" className="text-sm text-muted-foreground cursor-pointer select-none">
+                        Remember me
+                      </label>
+                    </div>
+                  )}
 
                   {attemptsRemaining !== null && attemptsRemaining <= 3 && (
                     <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs text-amber-400 flex items-center gap-1.5">
@@ -566,6 +755,23 @@ export default function LoginPage() {
                     </div>
                   </div>
 
+                  {/* Remember Me */}
+                  {!isNative && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <input
+                        type="checkbox"
+                        id="staff-remember"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        className="w-4 h-4 rounded border-border bg-muted/50 dark:bg-white/5 focus:ring-[#22C55E] cursor-pointer"
+                        style={{ accentColor: '#22C55E' }}
+                      />
+                      <label htmlFor="staff-remember" className="text-sm text-muted-foreground cursor-pointer select-none">
+                        Remember me
+                      </label>
+                    </div>
+                  )}
+
                   {attemptsRemaining !== null && attemptsRemaining <= 3 && (
                     <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs text-amber-400 flex items-center gap-1.5">
                       <AlertTriangle className="h-3.5 w-3.5" />
@@ -614,11 +820,24 @@ export default function LoginPage() {
                     {countdown > 0 ? (
                       <p className="text-sm text-muted-foreground">Resend OTP in <span className="font-bold text-foreground">{countdown}s</span></p>
                     ) : (
-                      <Button type="button" variant="link" className="p-0 h-auto hover:text-[#16A34A]" style={{ color: 'var(--accent-green)' }} onClick={() => sendStaffOtp()} disabled={loading}>Resend OTP</Button>
+                      <Button
+                        type="button"
+                        variant="link"
+                        className="p-0 h-auto hover:text-[#16A34A]"
+                        style={{ color: 'var(--accent-green)' }}
+                        onClick={() => portal === "admin" ? sendAdminStepUpOtp() : sendStaffOtp()}
+                        disabled={loading}
+                      >
+                        Resend OTP
+                      </Button>
                     )}
                   </div>
 
-                  <Button className={`w-full h-12 bg-[#22C55E] hover:bg-[#16A34A] text-white font-bold rounded-xl shadow-lg shadow-[#22C55E]/20`} onClick={handleVerifyStaffOtp} disabled={loading || otp.length !== 6}>
+                  <Button
+                    className={`w-full h-12 bg-[#22C55E] hover:bg-[#16A34A] text-white font-bold rounded-xl shadow-lg shadow-[#22C55E]/20`}
+                    onClick={portal === "admin" ? handleVerifyAdminStepUpOtp : handleVerifyStaffOtp}
+                    disabled={loading || otp.length !== 6}
+                  >
                     {loading ? <div className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /><span>Verifying...</span></div> : "Verify & Sign In"}
                   </Button>
 
@@ -639,65 +858,55 @@ export default function LoginPage() {
                   onSubmit={handleRegister}
                   className="space-y-5"
                 >
-                  <div className="space-y-2">
-                    <Label htmlFor="reg-name" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Full Name</Label>
-                    <Input id="reg-name" type="text" placeholder="Your full name" value={registerName} onChange={(e) => setRegisterName(e.target.value)} className="h-12 bg-muted/50 dark:bg-white/5 border-border rounded-xl" />
-                  </div>
+                  <AuthField
+                    id="reg-name"
+                    label="Full Name"
+                    placeholder="Your full name"
+                    value={registerName}
+                    onChange={(e) => {
+                      setRegisterName(e.target.value);
+                      if (regFieldErrors.name) setRegFieldErrors((prev) => ({ ...prev, name: undefined }));
+                    }}
+                    error={regFieldErrors.name}
+                    leadingIcon={<UserIcon className="h-4 w-4" />}
+                  />
 
-                  <div className="space-y-2">
-                    <Label htmlFor="reg-phone" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Phone Number</Label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input id="reg-phone" type="tel" placeholder="+91XXXXXXXXXX" value={registerPhone} onChange={(e) => setRegisterPhone(formatPhone(e.target.value))} required className="h-12 bg-muted/50 dark:bg-white/5 border-border rounded-xl pl-10" />
-                    </div>
-                  </div>
+                  <PhoneField
+                    id="reg-phone"
+                    label="Phone Number"
+                    value={registerPhone}
+                    onChange={(val) => {
+                      setRegisterPhone(val);
+                      if (regFieldErrors.phone) setRegFieldErrors((prev) => ({ ...prev, phone: undefined }));
+                    }}
+                    error={regFieldErrors.phone}
+                  />
 
-                  <div className="space-y-2">
-                    <Label htmlFor="reg-email" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Email</Label>
-                    <Input id="reg-email" type="email" placeholder="admin@company.com" value={registerEmail} onChange={(e) => setRegisterEmail(e.target.value)} required className="h-12 bg-muted/50 dark:bg-white/5 border-border rounded-xl" />
-                  </div>
+                  <AuthField
+                    id="reg-email"
+                    label="Email Address"
+                    type="email"
+                    placeholder="admin@company.com"
+                    value={registerEmail}
+                    onChange={(e) => {
+                      setRegisterEmail(e.target.value);
+                      if (regFieldErrors.email) setRegFieldErrors((prev) => ({ ...prev, email: undefined }));
+                    }}
+                    error={regFieldErrors.email}
+                    leadingIcon={<Mail className="h-4 w-4" />}
+                  />
 
-                  <div className="space-y-2">
-                    <Label htmlFor="reg-password" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Password</Label>
-                    <div className="relative">
-                      <Input id="reg-password" type={showRegisterPassword ? "text" : "password"} value={registerPassword} onChange={(e) => setRegisterPassword(e.target.value)} required className="h-12 bg-muted/50 dark:bg-white/5 border-border rounded-xl pr-12" />
-                      <button type="button" onClick={() => setShowRegisterPassword(!showRegisterPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-md">
-                        {showRegisterPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                      </button>
-                    </div>
-                    {/* Password Strength Indicator */}
-                    {registerPassword && (
-                      <div className="space-y-1.5 pt-1">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                            <motion.div
-                              initial={{ width: 0 }}
-                              animate={{ width: `${passwordStrength.score}%` }}
-                              className={`h-full rounded-full transition-colors ${passwordStrength.color}`}
-                            />
-                          </div>
-                          <span className={`text-xs font-semibold ${passwordStrength.score < 30 ? 'text-red-500' :
-                            passwordStrength.score < 55 ? 'text-amber-500' :
-                              passwordStrength.score < 80 ? 'text-blue-500' : 'text-emerald-500'
-                            }`}>{passwordStrength.label}</span>
-                        </div>
-                        <div className="flex flex-wrap gap-x-3 gap-y-1">
-                          <span className={`text-[10px] flex items-center gap-1 ${registerPassword.length >= 8 ? 'text-emerald-500' : 'text-muted-foreground'}`}>
-                            {registerPassword.length >= 8 ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />} 8+ chars
-                          </span>
-                          <span className={`text-[10px] flex items-center gap-1 ${/[A-Z]/.test(registerPassword) ? 'text-emerald-500' : 'text-muted-foreground'}`}>
-                            {/[A-Z]/.test(registerPassword) ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />} Uppercase
-                          </span>
-                          <span className={`text-[10px] flex items-center gap-1 ${/[a-z]/.test(registerPassword) ? 'text-emerald-500' : 'text-muted-foreground'}`}>
-                            {/[a-z]/.test(registerPassword) ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />} Lowercase
-                          </span>
-                          <span className={`text-[10px] flex items-center gap-1 ${/[0-9]/.test(registerPassword) ? 'text-emerald-500' : 'text-muted-foreground'}`}>
-                            {/[0-9]/.test(registerPassword) ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />} Number
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <PasswordField
+                    id="reg-password"
+                    label="Password"
+                    value={registerPassword}
+                    onChange={(e) => {
+                      setRegisterPassword(e.target.value);
+                      if (regFieldErrors.password) setRegFieldErrors((prev) => ({ ...prev, password: undefined }));
+                    }}
+                    error={regFieldErrors.password}
+                    showStrength={true}
+                  />
 
                   <Button type="submit" className="w-full h-12 bg-[#4A3AFF] hover:bg-[#3D2FD9] text-white font-bold rounded-xl transition-all shadow-lg shadow-[#4A3AFF]/20 group" disabled={loading}>
                     {loading ? (

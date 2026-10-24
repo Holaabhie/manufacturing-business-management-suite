@@ -5,6 +5,9 @@ import { createSession, type UserDoc } from "@/lib/auth-session";
 import { logAuthEvent, getClientIp } from "@/lib/audit";
 import {
   checkRateLimitMongo,
+  isRateLimitedMongo,
+  incrementRateLimitMongo,
+  resetRateLimitMongo,
   getHashedRateLimitKey,
   getClientIpFromRequest,
   rateLimitResponse,
@@ -12,6 +15,7 @@ import {
 import { LoginSchema } from "@/lib/auth-schemas";
 import { checkPasswordOrError } from "@/lib/password-policy";
 import { detectSuspiciousLogin } from "@/lib/suspicious-login";
+import { getVerificationService } from "@/services/verification.service";
 
 export async function POST(req: Request) {
   try {
@@ -47,26 +51,10 @@ export async function POST(req: Request) {
       return rateLimitResponse(idRateCheck.retryAfterMs);
     }
 
-    // ─── Per-Identifier Backstop Rate Limit (30 attempts/hr across all IPs) ───
-    // Does NOT hard lock the account, but requires OTP step-up to prevent brute-force attacks
+    // ─── Per-Identifier Backstop Rate Limit (30 failed attempts/hr across all IPs) ───
+    // Does NOT hard lock the account, but checks if OTP step-up is required
     const backstopKey = getHashedRateLimitKey("login-backstop", identifier);
-    const backstopCheck = await checkRateLimitMongo(backstopKey, "loginBackstop");
-    if (backstopCheck.limited) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "High volume of failed login attempts detected on this account. Please use OTP login or wait before trying password login again.",
-          stepUp: "otp",
-          retryAfter: Math.ceil(backstopCheck.retryAfterMs / 1000),
-        },
-        {
-          status: 429,
-          headers: {
-            "Retry-After": String(Math.ceil(backstopCheck.retryAfterMs / 1000)),
-          },
-        }
-      );
-    }
+    const backstopCheck = await isRateLimitedMongo(backstopKey, "loginBackstop");
 
     const db = await getDb();
     let user: UserDoc | null = null;
@@ -177,20 +165,14 @@ export async function POST(req: Request) {
     // ─── Password Verification ──────────────────────────────────
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) {
-      // Increment failed attempts
+      // Increment failed attempts for backstop (tracks distributed failed attempts)
+      await incrementRateLimitMongo(backstopKey, "loginBackstop");
+
       const failedAttempts = (user.failedLoginAttempts || 0) + 1;
-      const maxAttempts = 5;
-      const lockoutMinutes = user.role === "Admin" ? 15 : 30;
 
       const updateFields: Record<string, any> = {
         failedLoginAttempts: failedAttempts,
       };
-
-      if (failedAttempts >= maxAttempts) {
-        updateFields.lockedUntil = new Date(
-          Date.now() + lockoutMinutes * 60 * 1000
-        );
-      }
 
       await db.collection<UserDoc>("users").updateOne(
         { _id: user._id },
@@ -203,27 +185,12 @@ export async function POST(req: Request) {
         userId: user._id,
         userName: user.fullName || user.full_name || user.email,
         userRole: user.role as any,
-        action: `Failed login attempt (${failedAttempts}/${maxAttempts})`,
+        action: `Failed login attempt (${failedAttempts})`,
         actionType: "security",
         ipAddress,
         userAgent,
-        severity: failedAttempts >= maxAttempts ? "critical" : "warning",
-        details:
-          failedAttempts >= maxAttempts
-            ? `Account locked for ${lockoutMinutes} minutes`
-            : undefined,
+        severity: "warning",
       });
-
-      if (failedAttempts >= maxAttempts) {
-        return NextResponse.json(
-          {
-            success: false,
-            message: `Too many failed attempts. Account locked for ${lockoutMinutes} minutes.`,
-            locked: true,
-          },
-          { status: 423 }
-        );
-      }
 
       return NextResponse.json(
         {
@@ -232,7 +199,6 @@ export async function POST(req: Request) {
             loginType === "staff"
               ? "Invalid employee ID or password"
               : "Invalid email or password",
-          attemptsRemaining: maxAttempts - failedAttempts,
         },
         { status: 401 }
       );
@@ -330,6 +296,66 @@ export async function POST(req: Request) {
       );
     }
 
+    // ─── Step-Up OTP Verification (triggered when backstop limit reached) ───
+    if (backstopCheck.limited) {
+      const otpCode = parseResult.data.otp || (rawBody as any)?.otp;
+
+      if (!otpCode) {
+        // Step-up challenge: Password is correct, but OTP is required
+        const userPhone = user.phone || (user as any).phone_number;
+        const phoneHint = userPhone ? `***${userPhone.slice(-4)}` : null;
+
+        return NextResponse.json(
+          {
+            success: false,
+            error: "High volume of failed login attempts detected. Password verified, but OTP verification is required to complete login.",
+            stepUp: "otp",
+            hasPhone: Boolean(userPhone),
+            phoneHint,
+            userId: user._id,
+            retryAfter: Math.ceil(backstopCheck.retryAfterMs / 1000),
+          },
+          {
+            status: 429,
+            headers: {
+              "Retry-After": String(Math.ceil(backstopCheck.retryAfterMs / 1000)),
+            },
+          }
+        );
+      }
+
+      // User supplied OTP: verify it
+      const userPhone = user.phone || (user as any).phone_number;
+      if (!userPhone) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "No registered phone number found on this account for OTP verification. Please use forgot password.",
+          },
+          { status: 400 }
+        );
+      }
+
+      const verifier = getVerificationService();
+      const checkResult = await verifier.checkVerification(userPhone, otpCode);
+      if (!checkResult.valid) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Invalid or expired OTP code",
+            stepUp: "otp",
+          },
+          { status: 401 }
+        );
+      }
+
+      // Password AND OTP both verified! Reset backstop counter
+      await resetRateLimitMongo(backstopKey);
+    } else {
+      // Normal login succeeded: clear any previous failed attempt counts
+      await resetRateLimitMongo(backstopKey);
+    }
+
     // ─── Successful Login ───────────────────────────────────────
     // Reset failed attempts
     await db.collection<UserDoc>("users").updateOne(
@@ -369,6 +395,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       ok: true,
+      success: true,
       // Return setup status for Staff first-time login redirect
       firstLoginCompleted: user.firstLoginCompleted ?? true,
       role: user.role,

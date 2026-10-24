@@ -274,3 +274,97 @@ export async function checkRateLimitMongo(
         return checkRateLimit(key, type);
     }
 }
+
+/**
+ * Check if a rate limit key has exceeded its limit WITHOUT incrementing the counter.
+ * Used for backstop checks before verifying credentials.
+ */
+export async function isRateLimitedMongo(
+    key: string,
+    type: RateLimitType
+): Promise<{
+    limited: boolean;
+    retryAfterMs: number;
+}> {
+    const config = RATE_LIMITS[type];
+    const now = new Date();
+
+    try {
+        const { getDb } = await import("@/lib/mongodb");
+        const db = await getDb();
+        const doc = await db.collection("rate_limits").findOne({
+            _id: key as any,
+            expiresAt: { $gt: now },
+        });
+
+        if (doc && (doc.count || 0) >= config.maxRequests) {
+            const docExpires = doc.expiresAt instanceof Date ? doc.expiresAt : new Date(doc.expiresAt);
+            const retryAfterMs = Math.max(0, docExpires.getTime() - now.getTime());
+            return { limited: true, retryAfterMs };
+        }
+    } catch {
+        // Fall back to in-memory check
+        const entry = store.get(key);
+        if (entry && Date.now() - entry.windowStart <= config.windowMs) {
+            if (entry.count >= config.maxRequests) {
+                const retryAfterMs = config.windowMs - (Date.now() - entry.windowStart);
+                return { limited: true, retryAfterMs: Math.max(0, retryAfterMs) };
+            }
+        }
+    }
+
+    return { limited: false, retryAfterMs: 0 };
+}
+
+/**
+ * Increment the rate limit counter for failed attempts.
+ */
+export async function incrementRateLimitMongo(
+    key: string,
+    type: RateLimitType
+): Promise<void> {
+    const config = RATE_LIMITS[type];
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + config.windowMs);
+
+    try {
+        const { getDb } = await import("@/lib/mongodb");
+        const db = await getDb();
+        const updated = await db.collection("rate_limits").findOneAndUpdate(
+            { _id: key as any, expiresAt: { $gt: now } },
+            { $inc: { count: 1 } }
+        );
+
+        if (!updated) {
+            await db.collection("rate_limits").updateOne(
+                { _id: key as any },
+                {
+                    $set: { count: 1, expiresAt, updatedAt: now },
+                    $setOnInsert: { createdAt: now },
+                },
+                { upsert: true }
+            );
+        }
+    } catch {
+        // In-memory fallback
+        const entry = store.get(key);
+        if (!entry || Date.now() - entry.windowStart > config.windowMs) {
+            store.set(key, { count: 1, windowStart: Date.now() });
+        } else {
+            entry.count++;
+        }
+    }
+}
+
+/**
+ * Reset a rate limit key (e.g. on successful login).
+ */
+export async function resetRateLimitMongo(key: string): Promise<void> {
+    try {
+        const { getDb } = await import("@/lib/mongodb");
+        const db = await getDb();
+        await db.collection("rate_limits").deleteOne({ _id: key as any });
+    } catch {}
+    store.delete(key);
+}
+
