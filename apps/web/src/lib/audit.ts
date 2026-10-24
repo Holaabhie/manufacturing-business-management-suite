@@ -156,14 +156,23 @@ function parseUserAgent(ua?: string): { deviceType: string; browser: string } {
 }
 
 /**
- * Extract IP address from request headers.
+ * Extract IP address from request headers using trusted proxy headers.
  */
 export function getClientIp(request: Request): string {
-    const forwarded = request.headers.get('x-forwarded-for');
-    if (forwarded) return forwarded.split(',')[0]?.trim() || 'unknown';
+    const vercelIp = request.headers.get('x-vercel-forwarded-for');
+    if (vercelIp) {
+        const first = vercelIp.split(',')[0]?.trim();
+        if (first) return first;
+    }
 
     const realIp = request.headers.get('x-real-ip');
-    if (realIp) return realIp;
+    if (realIp) return realIp.trim();
+
+    const forwarded = request.headers.get('x-forwarded-for');
+    if (forwarded) {
+        const parts = forwarded.split(',').map((s) => s.trim()).filter(Boolean);
+        if (parts.length > 0) return parts[parts.length - 1];
+    }
 
     return 'unknown';
 }

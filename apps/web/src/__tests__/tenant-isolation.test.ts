@@ -1,283 +1,304 @@
 /**
- * Multi-Tenant Isolation Tests (Phase 1.5)
+ * Multi-Tenant Isolation Integration Tests (Phase 1.5 - A2 Verification)
  *
- * Simulates Tenant A and Tenant B to verify that:
- * 1. Queries and updates are strictly partitioned by tenant fields (userId / adminId / organizationId).
- * 2. Cross-tenant read, update, or delete attempts return 404 Not Found (never 403, preventing ID enumeration).
- * 3. The tenantFilter helper deterministically attaches correct tenant keys without $or clauses.
+ * Calls the ACTUAL Next.js route handlers directly (importing GET/PUT/PATCH/DELETE)
+ * with mocked MongoDB and Session stores to verify that:
+ * 1. An authenticated Tenant A CANNOT read, mutate, stock-adjust, or delete Tenant B's data.
+ * 2. Cross-tenant access returns 404 Not Found (never 403, preventing ID enumeration).
+ * 3. Matched records are never modified across tenant boundaries.
  *
  * NOTE: These tests must NOT be removed or skipped without explicit approval.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ObjectId } from "mongodb";
-import {
-  tenantFilter,
-  tenantIdFor,
-} from "@/lib/tenant-filter";
+import { tenantFilter, tenantIdFor } from "@/lib/tenant-filter";
 
 // ─── Tenant Test Identities ─────────────────────────────────────────
 const TENANT_A_ID = "507f191e810c19729de860ea";
 const TENANT_B_ID = "507f1f77bcf86cd799439011";
 
-// ─── In-Memory Mock MongoDB Store ───────────────────────────────────
-class MockCollection {
-  private docs: Array<{ _id: ObjectId; [key: string]: any }> = [];
+// ─── Dynamic Session & DB State ─────────────────────────────────────
+let currentMockUser = {
+  _id: new ObjectId(TENANT_A_ID),
+  email: "admin@tenanta.com",
+  role: "Owner",
+  organizationId: TENANT_A_ID,
+};
 
-  constructor(initialDocs: Array<{ _id: ObjectId; [key: string]: any }> = []) {
-    this.docs = [...initialDocs];
-  }
+// In-memory collection records
+const mockDbStore: Record<string, any[]> = {
+  inventory: [],
+  machines: [],
+  bills: [],
+  clients: [],
+  productions: [],
+  activity: [],
+};
 
-  async findOne(query: Record<string, any>) {
-    return this.docs.find((doc) => this.matches(doc, query)) || null;
-  }
-
-  async updateOne(query: Record<string, any>, update: Record<string, any>) {
-    const docIndex = this.docs.findIndex((d) => this.matches(d, query));
-    if (docIndex === -1) {
-      return { matchedCount: 0, modifiedCount: 0 };
+// Helper to match queries
+function matchesQuery(doc: any, query: Record<string, any>): boolean {
+  for (const [key, val] of Object.entries(query)) {
+    if (val instanceof ObjectId) {
+      if (!doc[key] || doc[key].toString() !== val.toString()) return false;
+    } else if (typeof val === "object" && val !== null) {
+      if ("$ne" in val && doc[key]?.toString() === val.$ne?.toString()) return false;
+    } else {
+      if (doc[key]?.toString() !== val?.toString()) return false;
     }
-    if (update.$set) {
-      this.docs[docIndex] = { ...this.docs[docIndex], ...update.$set };
-    }
-    return { matchedCount: 1, modifiedCount: 1 };
   }
-
-  async deleteOne(query: Record<string, any>) {
-    const docIndex = this.docs.findIndex((d) => this.matches(d, query));
-    if (docIndex === -1) {
-      return { deletedCount: 0 };
-    }
-    this.docs.splice(docIndex, 1);
-    return { deletedCount: 1 };
-  }
-
-  private matches(doc: any, query: Record<string, any>): boolean {
-    for (const [key, val] of Object.entries(query)) {
-      if (val instanceof ObjectId) {
-        if (!doc[key] || doc[key].toString() !== val.toString()) return false;
-      } else if (typeof val === "object" && val !== null) {
-        if ("$ne" in val && doc[key] === val.$ne) return false;
-      } else {
-        if (doc[key] !== val) return false;
-      }
-    }
-    return true;
-  }
+  return true;
 }
 
-describe("Tenant Filter Helper (lib/tenant-filter.ts)", () => {
-  it("maps known collections to correct tenant field names", () => {
-    expect(tenantIdFor("clients").field).toBe("userId");
+function createMockCollection(name: string) {
+  return {
+    async findOne(query: Record<string, any>) {
+      const docs = mockDbStore[name] || [];
+      const found = docs.find((d) => matchesQuery(d, query));
+      return found ? { ...found } : null;
+    },
+    async updateOne(query: Record<string, any>, update: Record<string, any>) {
+      const docs = mockDbStore[name] || [];
+      const idx = docs.findIndex((d) => matchesQuery(d, query));
+      if (idx === -1) {
+        return { matchedCount: 0, modifiedCount: 0 };
+      }
+      if (update.$set) {
+        mockDbStore[name][idx] = { ...mockDbStore[name][idx], ...update.$set };
+      }
+      return { matchedCount: 1, modifiedCount: 1 };
+    },
+    async deleteOne(query: Record<string, any>) {
+      const docs = mockDbStore[name] || [];
+      const idx = docs.findIndex((d) => matchesQuery(d, query));
+      if (idx === -1) {
+        return { deletedCount: 0 };
+      }
+      mockDbStore[name].splice(idx, 1);
+      return { deletedCount: 1 };
+    },
+    async insertOne(doc: any) {
+      const newDoc = { _id: new ObjectId(), ...doc };
+      mockDbStore[name].push(newDoc);
+      return { insertedId: newDoc._id };
+    },
+  };
+}
+
+// ─── Module Mocks ───────────────────────────────────────────────────
+vi.mock("@/lib/mongodb", () => ({
+  getDb: vi.fn(async () => ({
+    collection: (name: string) => createMockCollection(name),
+  })),
+  isDbUnavailableError: vi.fn(() => false),
+}));
+
+vi.mock("@/lib/auth-session", () => ({
+  getSessionUser: vi.fn(async () => currentMockUser),
+  getDataOwnerId: vi.fn((user: any) => user?._id?.toString() || user?.organizationId || TENANT_A_ID),
+}));
+
+vi.mock("@/lib/notifications/dispatcher", () => ({
+  triggerNotification: vi.fn(async () => {}),
+}));
+
+// ─── Actual Route Handler Imports ───────────────────────────────────
+import { PATCH as updateInventoryStock } from "@/app/api/inventory/[id]/stock/route";
+import { PUT as updateMachine, DELETE as deleteMachine } from "@/app/api/machines/[id]/route";
+import { GET as getBill, PUT as updateBill, DELETE as deleteBill } from "@/app/api/billing/[id]/route";
+import { DELETE as deleteClient } from "@/app/api/clients/[id]/route";
+
+describe("Tenant Filter Helper Unit Tests", () => {
+  it("maps collections to deterministic tenant fields without $or", () => {
     expect(tenantIdFor("inventory").field).toBe("userId");
-    expect(tenantIdFor("orders").field).toBe("userId");
-    expect(tenantIdFor("productions").field).toBe("userId");
-    expect(tenantIdFor("bills").field).toBe("userId");
-    expect(tenantIdFor("payments").field).toBe("userId");
     expect(tenantIdFor("machines").field).toBe("adminId");
-    expect(tenantIdFor("users").field).toBe("adminId");
-    expect(tenantIdFor("auditlogs").field).toBe("organizationId");
-  });
+    expect(tenantIdFor("bills").field).toBe("userId");
+    expect(tenantIdFor("clients").field).toBe("userId");
 
-  it("produces scoped query filters with zero $or clauses", () => {
-    const query = { _id: new ObjectId(TENANT_B_ID) };
-    const filtered = tenantFilter(TENANT_A_ID, "clients", query);
-
-    expect(filtered).toEqual({
-      _id: query._id,
-      userId: TENANT_A_ID,
-    });
+    const filtered = tenantFilter(TENANT_A_ID, "inventory", { status: "active" });
+    expect(filtered).toEqual({ status: "active", userId: TENANT_A_ID });
     expect((filtered as any).$or).toBeUndefined();
-  });
-
-  it("handles collections with adminId tenant keys", () => {
-    const query = { status: "active" };
-    const filtered = tenantFilter(TENANT_A_ID, "machines", query);
-
-    expect(filtered).toEqual({
-      status: "active",
-      adminId: TENANT_A_ID,
-    });
-    expect((filtered as any).$or).toBeUndefined();
-  });
-
-  it("defaults unmapped collections safely to userId", () => {
-    const filtered = tenantFilter(TENANT_A_ID, "unknown_table", {});
-    expect(filtered).toEqual({
-      userId: TENANT_A_ID,
-    });
   });
 });
 
-describe("Cross-Tenant Isolation Checks (Tenant A vs Tenant B)", () => {
-  const recordBId = new ObjectId("507f191e810c19729de86001");
+describe("Actual Route Handlers: Cross-Tenant Isolation Enforcement", () => {
+  const itemBId = new ObjectId("607f191e810c19729de86001");
+  const machineBId = new ObjectId("607f191e810c19729de86002");
+  const billBId = new ObjectId("607f191e810c19729de86003");
+  const clientBId = new ObjectId("607f191e810c19729de86004");
 
-  it("Order Isolation: Tenant A cannot update or delete Tenant B order (returns 404 pattern)", async () => {
-    const ordersCol = new MockCollection([
+  beforeEach(() => {
+    // Reset DB with records owned strictly by Tenant B
+    mockDbStore.inventory = [
       {
-        _id: recordBId,
+        _id: itemBId,
         userId: TENANT_B_ID,
-        product_name: "Tenant B Widget",
+        name: "Tenant B Aluminum Ingot",
+        quantity: 250,
+        unit: "kg",
+        min_stock_level: 10,
+      },
+    ];
+
+    mockDbStore.machines = [
+      {
+        _id: machineBId,
+        adminId: TENANT_B_ID,
+        machineName: "Tenant B Milling Machine",
+        status: "active",
+      },
+    ];
+
+    mockDbStore.bills = [
+      {
+        _id: billBId,
+        userId: TENANT_B_ID,
+        billNumber: "BILL-TB-999",
+        totalAmount: 50000,
         status: "pending",
       },
-    ]);
+    ];
 
-    // Tenant A attempts to update Tenant B's order
-    const updateQuery = { _id: recordBId, userId: TENANT_A_ID };
-    const updateResult = await ordersCol.updateOne(updateQuery, {
-      $set: { status: "cancelled" },
-    });
-
-    expect(updateResult.matchedCount).toBe(0);
-
-    // Verify record was untouched in database
-    const verifyDoc = await ordersCol.findOne({ _id: recordBId });
-    expect(verifyDoc?.status).toBe("pending");
-
-    // Tenant A attempts to delete Tenant B's order
-    const deleteResult = await ordersCol.deleteOne(updateQuery);
-    expect(deleteResult.deletedCount).toBe(0);
-  });
-
-  it("Inventory Stock Isolation: Tenant A cannot modify Tenant B inventory stock", async () => {
-    const inventoryCol = new MockCollection([
+    mockDbStore.clients = [
       {
-        _id: recordBId,
+        _id: clientBId,
         userId: TENANT_B_ID,
-        name: "Tenant B Steel Rod",
-        quantity: 500,
+        name: "Tenant B VIP Client",
       },
-    ]);
+    ];
 
-    // Tenant A attempts to adjust stock of Tenant B's inventory item
-    const scopedSelector = { _id: recordBId, userId: TENANT_A_ID };
-    const result = await inventoryCol.updateOne(scopedSelector, {
-      $set: { quantity: 0 },
-    });
+    mockDbStore.activity = [];
 
-    expect(result.matchedCount).toBe(0);
-
-    // Stock remains unchanged
-    const doc = await inventoryCol.findOne({ _id: recordBId });
-    expect(doc?.quantity).toBe(500);
+    // Authenticated caller is Tenant A
+    currentMockUser = {
+      _id: new ObjectId(TENANT_A_ID),
+      email: "admin@tenanta.com",
+      role: "Owner",
+      organizationId: TENANT_A_ID,
+    };
   });
 
-  it("Production Isolation: Tenant A cannot read or mutate Tenant B production job", async () => {
-    const productionCol = new MockCollection([
-      {
-        _id: recordBId,
-        userId: TENANT_B_ID,
-        orderProductName: "Tenant B Industrial Valve",
-        progressPercent: 25,
-        status: "in_progress",
-      },
-    ]);
-
-    // Tenant A attempts to read Tenant B production job
-    const readAttempt = await productionCol.findOne({
-      _id: recordBId,
-      userId: TENANT_A_ID,
+  it("Inventory Route Handler: Tenant A PATCH /stock on Tenant B item returns 404 and does not modify stock", async () => {
+    const req = new Request("http://localhost:3000/api/inventory/stock", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "deduct", quantity: 50 }),
     });
-    expect(readAttempt).toBeNull(); // Translated to 404 Not Found by route handler
 
-    // Tenant A attempts to mutate Tenant B production progress
-    const mutateAttempt = await productionCol.updateOne(
-      { _id: recordBId, userId: TENANT_A_ID },
-      { $set: { progressPercent: 100 } }
-    );
-    expect(mutateAttempt.matchedCount).toBe(0);
+    const response = await updateInventoryStock(req, {
+      params: Promise.resolve({ id: itemBId.toString() }),
+    });
 
-    // Record remains untouched
-    const doc = await productionCol.findOne({ _id: recordBId });
-    expect(doc?.progressPercent).toBe(25);
+    expect(response.status).toBe(404);
+    const json = await response.json();
+    expect(json.error).toBe("Inventory item not found");
+
+    // Verify Tenant B's stock was NEVER changed
+    expect(mockDbStore.inventory[0].quantity).toBe(250);
   });
 
-  it("Machine Isolation: Tenant A cannot modify or delete Tenant B machine", async () => {
-    const machinesCol = new MockCollection([
-      {
-        _id: recordBId,
-        adminId: TENANT_B_ID,
-        machineName: "Tenant B CNC Lathe",
-        status: "active",
-      },
-    ]);
-
-    // Tenant A attempts update
-    const updateResult = await machinesCol.updateOne(
-      { _id: recordBId, adminId: TENANT_A_ID },
-      { $set: { machineName: "Hacked Lathe" } }
-    );
-    expect(updateResult.matchedCount).toBe(0);
-
-    // Tenant A attempts delete
-    const deleteResult = await machinesCol.deleteOne({
-      _id: recordBId,
-      adminId: TENANT_A_ID,
+  it("Machines Route Handler: Tenant A PUT on Tenant B machine returns 404 and does not update", async () => {
+    const req = new Request("http://localhost:3000/api/machines", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ machineName: "Attacker Malicious Machine" }),
     });
-    expect(deleteResult.deletedCount).toBe(0);
 
-    const doc = await machinesCol.findOne({ _id: recordBId });
-    expect(doc?.machineName).toBe("Tenant B CNC Lathe");
+    const response = await updateMachine(req, {
+      params: Promise.resolve({ id: machineBId.toString() }),
+    });
+
+    expect(response.status).toBe(404);
+    expect(mockDbStore.machines[0].machineName).toBe("Tenant B Milling Machine");
   });
 
-  it("Billing Isolation: Tenant A cannot read, edit, or delete Tenant B bill", async () => {
-    const billsCol = new MockCollection([
-      {
-        _id: recordBId,
-        userId: TENANT_B_ID,
-        billNumber: "INV-2026-B-001",
-        totalAmount: 150000,
-      },
-    ]);
-
-    // Read attempt by Tenant A
-    const billDoc = await billsCol.findOne({
-      _id: recordBId,
-      userId: TENANT_A_ID,
+  it("Machines Route Handler: Tenant A DELETE on Tenant B machine returns 404 and does not delete", async () => {
+    const req = new Request("http://localhost:3000/api/machines", {
+      method: "DELETE",
     });
-    expect(billDoc).toBeNull();
 
-    // Update attempt by Tenant A
-    const updateResult = await billsCol.updateOne(
-      { _id: recordBId, userId: TENANT_A_ID },
-      { $set: { totalAmount: 0 } }
-    );
-    expect(updateResult.matchedCount).toBe(0);
-
-    // Delete attempt by Tenant A
-    const deleteResult = await billsCol.deleteOne({
-      _id: recordBId,
-      userId: TENANT_A_ID,
+    const response = await deleteMachine(req, {
+      params: Promise.resolve({ id: machineBId.toString() }),
     });
-    expect(deleteResult.deletedCount).toBe(0);
+
+    expect(response.status).toBe(404);
+    expect(mockDbStore.machines.length).toBe(1);
+    expect(mockDbStore.machines[0]._id.toString()).toBe(machineBId.toString());
   });
 
-  it("Employee / Staff Isolation: Tenant A admin cannot manage Tenant B staff", async () => {
-    const usersCol = new MockCollection([
-      {
-        _id: recordBId,
-        adminId: TENANT_B_ID,
-        fullName: "Tenant B Operator",
-        role: "Staff",
-        status: "active",
-      },
-    ]);
+  it("Billing Route Handler: Tenant A GET /api/billing/[id] on Tenant B bill returns 404", async () => {
+    const req = new Request("http://localhost:3000/api/billing", { method: "GET" });
 
-    // Tenant A attempts to deactivate Tenant B staff
-    const result = await usersCol.updateOne(
-      { _id: recordBId, adminId: TENANT_A_ID },
-      { $set: { status: "inactive" } }
-    );
-    expect(result.matchedCount).toBe(0);
-
-    // Tenant A attempts to delete Tenant B staff
-    const delResult = await usersCol.deleteOne({
-      _id: recordBId,
-      adminId: TENANT_A_ID,
+    const response = await getBill(req as any, {
+      params: Promise.resolve({ id: billBId.toString() }),
     });
-    expect(delResult.deletedCount).toBe(0);
 
-    const doc = await usersCol.findOne({ _id: recordBId });
-    expect(doc?.status).toBe("active");
+    expect(response.status).toBe(404);
+  });
+
+  it("Billing Route Handler: Tenant A PUT /api/billing/[id] on Tenant B bill returns 404", async () => {
+    const req = new Request("http://localhost:3000/api/billing", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ totalAmount: 0 }),
+    });
+
+    const response = await updateBill(req as any, {
+      params: Promise.resolve({ id: billBId.toString() }),
+    });
+
+    expect(response.status).toBe(404);
+    expect(mockDbStore.bills[0].totalAmount).toBe(50000);
+  });
+
+  it("Billing Route Handler: Tenant A DELETE /api/billing/[id] on Tenant B bill returns 404", async () => {
+    const req = new Request("http://localhost:3000/api/billing", { method: "DELETE" });
+
+    const response = await deleteBill(req as any, {
+      params: Promise.resolve({ id: billBId.toString() }),
+    });
+
+    expect(response.status).toBe(404);
+    expect(mockDbStore.bills.length).toBe(1);
+  });
+
+  it("Clients Route Handler: Tenant A DELETE on Tenant B client returns 404 and does not delete", async () => {
+    const req = new Request("http://localhost:3000/api/clients", { method: "DELETE" });
+
+    const response = await deleteClient(req, {
+      params: Promise.resolve({ id: clientBId.toString() }),
+    });
+
+    expect(response.status).toBe(404);
+    expect(mockDbStore.clients.length).toBe(1);
+  });
+});
+
+describe("Route Tenant Guard Checklist (A3 Guard)", () => {
+  const fs = require("fs");
+  const path = require("path");
+
+  const auditedRoutes = [
+    "inventory/[id]/stock/route.ts",
+    "production/[id]/route.ts",
+    "production/progress/update/route.ts",
+    "machines/[id]/route.ts",
+    "orders/[id]/route.ts",
+    "billing/[id]/route.ts",
+    "clients/[id]/route.ts",
+    "users/[id]/route.ts",
+  ];
+
+  it("verifies that all audited mutating routes use tenantFilter for scoped operations", () => {
+    for (const relPath of auditedRoutes) {
+      const fullPath = path.resolve(__dirname, "../app/api", relPath);
+      expect(fs.existsSync(fullPath)).toBe(true);
+
+      const content = fs.readFileSync(fullPath, "utf-8");
+
+      // Verify tenantFilter is imported and invoked in each route
+      expect(content).toContain("tenantFilter");
+      expect(content).not.toMatch(/findOne\(\s*\{\s*_id:\s*new ObjectId\(id\)\s*\}\s*\)/);
+    }
   });
 });

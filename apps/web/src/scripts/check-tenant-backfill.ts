@@ -7,14 +7,16 @@
 import { getDb } from "@/lib/mongodb";
 import { COLLECTION_TENANT_MAP } from "@/lib/tenant-filter";
 
-interface InspectionResult {
+export interface InspectionResult {
   collection: string;
   expectedField: string;
-  expectedType: string;
+  expectedType: "string" | "objectId";
   totalDocuments: number;
   missingTenantField: number;
   nullTenantField: number;
-  validTenantField: number;
+  stringTypeCount: number;
+  objectIdTypeCount: number;
+  mismatchedTypeCount: number;
 }
 
 export async function checkTenantBackfillDryRun(): Promise<InspectionResult[]> {
@@ -39,9 +41,16 @@ export async function checkTenantBackfillDryRun(): Promise<InspectionResult[]> {
         [meta.field]: null,
       });
 
-      const validTenantField = await col.countDocuments({
-        [meta.field]: { $exists: true, $ne: null },
+      const stringTypeCount = await col.countDocuments({
+        [meta.field]: { $type: "string" },
       });
+
+      const objectIdTypeCount = await col.countDocuments({
+        [meta.field]: { $type: "objectId" },
+      });
+
+      const mismatchedTypeCount =
+        meta.type === "string" ? objectIdTypeCount : stringTypeCount;
 
       results.push({
         collection: colName,
@@ -50,7 +59,9 @@ export async function checkTenantBackfillDryRun(): Promise<InspectionResult[]> {
         totalDocuments,
         missingTenantField,
         nullTenantField,
-        validTenantField,
+        stringTypeCount,
+        objectIdTypeCount,
+        mismatchedTypeCount,
       });
     } catch (err: any) {
       console.warn(`Could not inspect collection ${colName}:`, err.message);
@@ -61,15 +72,15 @@ export async function checkTenantBackfillDryRun(): Promise<InspectionResult[]> {
 }
 
 // Self-invoking when run from CLI
-if (require.main === module) {
+if (require.main === module || process.argv.includes("--dry-run")) {
   console.log("Running Tenant Backfill Check (DRY-RUN ONLY - NO WRITES)...");
   checkTenantBackfillDryRun()
     .then((results) => {
-      console.log("\n| Collection | Tenant Field | Type | Total Docs | Missing | Null | Valid |");
-      console.log("| :--- | :--- | :--- | :--- | :--- | :--- | :--- |");
+      console.log("\n| Collection | Tenant Field | Expected Type | Total Docs | Missing | Null | Stored as String | Stored as ObjectId | Mismatched Type |");
+      console.log("| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |");
       for (const r of results) {
         console.log(
-          `| ${r.collection} | \`${r.expectedField}\` | ${r.expectedType} | ${r.totalDocuments} | ${r.missingTenantField} | ${r.nullTenantField} | ${r.validTenantField} |`
+          `| ${r.collection} | \`${r.expectedField}\` | ${r.expectedType} | ${r.totalDocuments} | ${r.missingTenantField} | ${r.nullTenantField} | ${r.stringTypeCount} | ${r.objectIdTypeCount} | ${r.mismatchedTypeCount} |`
         );
       }
       console.log("\n[DRY RUN COMPLETE] Zero documents were modified.");

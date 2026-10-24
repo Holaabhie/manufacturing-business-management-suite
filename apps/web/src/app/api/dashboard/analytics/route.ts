@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { resolvePermissions, hasPermission, isOwnerRole } from "@/lib/permissions";
 
 const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -70,8 +71,9 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        if (user.role !== "Admin" && user.role !== "Owner") {
-            return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+        const perms = resolvePermissions(user.role, (user as any).customPermissions);
+        if (!hasPermission(perms, "reports.view", isOwnerRole(user.role))) {
+            return NextResponse.json({ error: "Forbidden: reports.view permission required" }, { status: 403 });
         }
 
         const db = await getDb();

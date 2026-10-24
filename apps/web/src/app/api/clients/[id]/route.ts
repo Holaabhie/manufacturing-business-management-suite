@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { resolvePermissions, hasPermission, isOwnerRole } from "@/lib/permissions";
+import { tenantFilter } from "@/lib/tenant-filter";
 
 export async function PUT(
   request: Request,
@@ -16,6 +18,14 @@ export async function PUT(
 
     if (!ObjectId.isValid(id)) {
       return NextResponse.json({ error: "Invalid ID format" }, { status: 400 });
+    }
+
+    const perms = resolvePermissions(user.role, (user as any).customPermissions);
+    if (!hasPermission(perms, "clients.edit", isOwnerRole(user.role))) {
+      return NextResponse.json(
+        { error: "Forbidden: You do not have permission to edit clients" },
+        { status: 403 }
+      );
     }
 
     const body = await request.json();
@@ -35,7 +45,7 @@ export async function PUT(
         }
 
     const result = await db.collection("clients").updateOne(
-      { _id: new ObjectId(id), userId: getDataOwnerId(user) },
+      tenantFilter(getDataOwnerId(user), "clients", { _id: new ObjectId(id) }),
       { $set: updateFields }
     );
 
@@ -61,9 +71,10 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (user.role === "Staff") {
+    const perms = resolvePermissions(user.role, (user as any).customPermissions);
+    if (!hasPermission(perms, "clients.delete", isOwnerRole(user.role))) {
       return NextResponse.json(
-        { error: "Forbidden: Staff members cannot delete clients" },
+        { error: "Forbidden: You do not have permission to delete clients" },
         { status: 403 }
       );
     }
@@ -73,10 +84,9 @@ export async function DELETE(
     }
 
     const db = await getDb();
-    const result = await db.collection("clients").deleteOne({
-      _id: new ObjectId(id),
-      userId: getDataOwnerId(user),
-    });
+    const result = await db.collection("clients").deleteOne(
+      tenantFilter(getDataOwnerId(user), "clients", { _id: new ObjectId(id) })
+    );
 
     if (result.deletedCount === 0) {
       return NextResponse.json({ error: "Client not found or already deleted" }, { status: 404 });

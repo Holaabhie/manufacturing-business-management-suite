@@ -3,6 +3,7 @@ import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { triggerNotification } from "@/lib/notifications/dispatcher";
+import { tenantFilter } from "@/lib/tenant-filter";
 
 /**
  * PATCH /api/inventory/[id]/stock
@@ -43,10 +44,10 @@ export async function PATCH(
         }
 
         const db = await getDb();
-        const item = await db.collection("inventory").findOne({
-            _id: new ObjectId(id),
-            userId: getDataOwnerId(user),
-        });
+        const ownerId = getDataOwnerId(user);
+        const item = await db.collection("inventory").findOne(
+            tenantFilter(ownerId, "inventory", { _id: new ObjectId(id) })
+        );
 
         if (!item) {
             return NextResponse.json({ error: "Inventory item not found" }, { status: 404 });
@@ -73,9 +74,8 @@ export async function PATCH(
             newQty = currentQty + quantity;
         }
 
-        const ownerId = getDataOwnerId(user);
         const updateResult = await db.collection("inventory").updateOne(
-            { _id: new ObjectId(id), userId: ownerId },
+            tenantFilter(ownerId, "inventory", { _id: new ObjectId(id) }),
             { $set: { quantity: newQty, updatedAt: new Date() } }
         );
 

@@ -51,6 +51,9 @@ export const RATE_LIMITS = {
     /** OTP resend cooldown: 1 request per 60 seconds per phone */
     otpCooldown: { windowMs: 60 * 1000, maxRequests: 1 },
 
+    /** Per-identifier backstop: 30 attempts per hour across all IPs (triggers step-up, prevents lockout DoS) */
+    loginBackstop: { windowMs: 60 * 60 * 1000, maxRequests: 30 },
+
     /** General API: 200 requests per 2 minutes */
     api: { windowMs: 2 * 60 * 1000, maxRequests: 200 },
 } as const;
@@ -144,15 +147,32 @@ export function rateLimitResponse(retryAfterMs: number) {
 let rateLimitIndexEnsured = false;
 
 /**
- * Extract client IP from a Request (first entry of x-forwarded-for or x-real-ip)
+ * Extract client IP from a Request using trusted hosting proxy headers.
+ * Prioritizes non-spoofable edge headers (x-vercel-forwarded-for, x-real-ip),
+ * and uses the rightmost hop of x-forwarded-for to prevent client header spoofing.
  */
 export function getClientIpFromRequest(req: Request): string {
-    const forwarded = req.headers.get("x-forwarded-for");
-    if (forwarded) {
-        const first = forwarded.split(",")[0]?.trim();
+    // 1. Trusted Vercel Edge proxy header (set by Vercel edge, client cannot spoof)
+    const vercelIp = req.headers.get("x-vercel-forwarded-for");
+    if (vercelIp) {
+        const first = vercelIp.split(",")[0]?.trim();
         if (first) return first;
     }
-    return req.headers.get("x-real-ip") || "unknown";
+
+    // 2. Direct reverse proxy header (set by upstream nginx / reverse proxy)
+    const realIp = req.headers.get("x-real-ip");
+    if (realIp) return realIp.trim();
+
+    // 3. Fallback: Rightmost entry of x-forwarded-for (added by nearest trusted proxy)
+    const forwarded = req.headers.get("x-forwarded-for");
+    if (forwarded) {
+        const parts = forwarded.split(",").map((s) => s.trim()).filter(Boolean);
+        if (parts.length > 0) {
+            return parts[parts.length - 1];
+        }
+    }
+
+    return "unknown";
 }
 
 /**

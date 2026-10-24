@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/require-role";
 import { getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { tenantFilter } from "@/lib/tenant-filter";
 
 // PUT - Update user role (Admin only)
 export async function PUT(
@@ -39,17 +40,16 @@ export async function PUT(
         const dataOwnerId = getDataOwnerId(user);
 
         // Fetch target user — scoped to this admin's organization
-        const targetUser = await db.collection("users").findOne({
-            _id: new ObjectId(id),
-            adminId: dataOwnerId,
-        });
+        const targetUser = await db.collection("users").findOne(
+            tenantFilter(dataOwnerId, "users", { _id: new ObjectId(id) })
+        );
 
         if (!targetUser) {
             return NextResponse.json({ error: "User not found" }, { status: 404 });
         }
 
         const updateResult = await db.collection("users").updateOne(
-            { _id: new ObjectId(id), adminId: dataOwnerId },
+            tenantFilter(dataOwnerId, "users", { _id: new ObjectId(id) }),
             {
                 $set: {
                     role: newRole,

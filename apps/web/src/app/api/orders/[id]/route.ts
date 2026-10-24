@@ -3,6 +3,8 @@ import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { triggerNotification } from "@/lib/notifications/dispatcher";
+import { tenantFilter } from "@/lib/tenant-filter";
+import { resolvePermissions, hasPermission, isOwnerRole } from "@/lib/permissions";
 
 export async function PUT(
   request: Request,
@@ -57,7 +59,7 @@ export async function PUT(
     }
 
     const result = await db.collection("orders").updateOne(
-      { _id: new ObjectId(id), userId: getDataOwnerId(user) },
+      tenantFilter(getDataOwnerId(user), "orders", { _id: new ObjectId(id) }),
       {
         $set: {
           client_id: body.client_id,
@@ -84,12 +86,16 @@ export async function PUT(
     // ── Trigger notification for order status update ──
     if (body.status) {
       const ownerId = getDataOwnerId(user);
-      const updatedOrder = await db.collection("orders").findOne({ _id: new ObjectId(id), userId: ownerId });
+      const updatedOrder = await db.collection("orders").findOne(
+        tenantFilter(ownerId, "orders", { _id: new ObjectId(id) })
+      );
       let clientName = "Unknown Client";
       let clientPhone = "";
       if (updatedOrder?.client_id) {
         try {
-          const client = await db.collection("clients").findOne({ _id: new ObjectId(updatedOrder.client_id), userId: ownerId });
+          const client = await db.collection("clients").findOne(
+            tenantFilter(ownerId, "clients", { _id: new ObjectId(updatedOrder.client_id) })
+          );
           if (client) {
             clientName = client.name || clientName;
             clientPhone = client.phone || "";
@@ -127,9 +133,10 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (user.role === "Staff") {
+    const perms = resolvePermissions(user.role, (user as any).customPermissions);
+    if (!hasPermission(perms, "orders.delete", isOwnerRole(user.role))) {
       return NextResponse.json(
-        { error: "Forbidden: Staff members cannot delete orders" },
+        { error: "Forbidden: You do not have permission to delete orders" },
         { status: 403 }
       );
     }
@@ -139,10 +146,9 @@ export async function DELETE(
     }
 
     const db = await getDb();
-    const result = await db.collection("orders").deleteOne({
-      _id: new ObjectId(id),
-      userId: getDataOwnerId(user),
-    });
+    const result = await db.collection("orders").deleteOne(
+      tenantFilter(getDataOwnerId(user), "orders", { _id: new ObjectId(id) })
+    );
 
     if (result.deletedCount === 0) {
       return NextResponse.json({ error: "Order not found or already deleted" }, { status: 404 });

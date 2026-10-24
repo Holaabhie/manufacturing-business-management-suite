@@ -47,6 +47,27 @@ export async function POST(req: Request) {
       return rateLimitResponse(idRateCheck.retryAfterMs);
     }
 
+    // ─── Per-Identifier Backstop Rate Limit (30 attempts/hr across all IPs) ───
+    // Does NOT hard lock the account, but requires OTP step-up to prevent brute-force attacks
+    const backstopKey = getHashedRateLimitKey("login-backstop", identifier);
+    const backstopCheck = await checkRateLimitMongo(backstopKey, "loginBackstop");
+    if (backstopCheck.limited) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "High volume of failed login attempts detected on this account. Please use OTP login or wait before trying password login again.",
+          stepUp: "otp",
+          retryAfter: Math.ceil(backstopCheck.retryAfterMs / 1000),
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(Math.ceil(backstopCheck.retryAfterMs / 1000)),
+          },
+        }
+      );
+    }
+
     const db = await getDb();
     let user: UserDoc | null = null;
 

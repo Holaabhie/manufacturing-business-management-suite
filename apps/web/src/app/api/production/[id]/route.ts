@@ -4,6 +4,7 @@ import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { triggerNotification } from "@/lib/notifications/dispatcher";
 import { syncOrderStatusFromProduction } from "@/lib/utils/orderStatusSync";
+import { tenantFilter } from "@/lib/tenant-filter";
 
 // ─── GET: Single production detail ──────────────────────────────────
 export async function GET(
@@ -32,7 +33,7 @@ export async function GET(
         const ownerId = getDataOwnerId(user);
         const production = await db
             .collection("productions")
-            .findOne({ _id: new ObjectId(id), userId: ownerId });
+            .findOne(tenantFilter(ownerId, "productions", { _id: new ObjectId(id) }));
 
         if (!production) {
             return NextResponse.json(
@@ -125,7 +126,7 @@ export async function PUT(
 
         const existing = await db
             .collection("productions")
-            .findOne({ _id: new ObjectId(id), userId: getDataOwnerId(user) });
+            .findOne(tenantFilter(getDataOwnerId(user), "productions", { _id: new ObjectId(id) }));
 
         if (!existing) {
             return NextResponse.json(
@@ -276,7 +277,7 @@ export async function PUT(
         const ownerId = getDataOwnerId(user);
         const updateResult = await db
             .collection("productions")
-            .updateOne({ _id: new ObjectId(id), userId: ownerId }, { $set: updateData });
+            .updateOne(tenantFilter(ownerId, "productions", { _id: new ObjectId(id) }), { $set: updateData });
 
         if (updateResult.matchedCount === 0) {
             return NextResponse.json({ error: "Production not found" }, { status: 404 });

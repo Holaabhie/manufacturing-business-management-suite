@@ -3,6 +3,7 @@ import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { syncOrderStatusFromProduction } from "@/lib/utils/orderStatusSync";
+import { tenantFilter } from "@/lib/tenant-filter";
 
 // ─── POST: Record a production progress update ──────────────────────
 // This creates a new entry in the productionProgress collection
@@ -46,10 +47,9 @@ export async function POST(request: Request) {
         const adminId = getDataOwnerId(user);
 
         // Find the production record — scoped to tenant adminId
-        const production = await db.collection("productions").findOne({
-            _id: new ObjectId(body.productionId),
-            userId: adminId,
-        });
+        const production = await db.collection("productions").findOne(
+            tenantFilter(adminId, "productions", { _id: new ObjectId(body.productionId) })
+        );
 
         if (!production) {
             return NextResponse.json(
@@ -119,7 +119,7 @@ export async function POST(request: Request) {
 
                 const invItem = await db
                     .collection("inventory")
-                    .findOne({ _id: new ObjectId(mat.inventoryId), userId: adminId });
+                    .findOne(tenantFilter(adminId, "inventory", { _id: new ObjectId(mat.inventoryId) }));
 
                 if (!invItem) continue;
 
@@ -180,7 +180,7 @@ export async function POST(request: Request) {
         }
 
         const updateResult = await db.collection("productions").updateOne(
-            { _id: new ObjectId(body.productionId), userId: adminId },
+            tenantFilter(adminId, "productions", { _id: new ObjectId(body.productionId) }),
             { $set: updateFields }
         );
 
@@ -279,10 +279,9 @@ export async function GET(request: Request) {
             );
         }
 
-        const prod = await db.collection("productions").findOne({
-            _id: new ObjectId(productionId),
-            userId: ownerId,
-        });
+        const prod = await db.collection("productions").findOne(
+            tenantFilter(ownerId, "productions", { _id: new ObjectId(productionId) })
+        );
 
         if (!prod) {
             return NextResponse.json(

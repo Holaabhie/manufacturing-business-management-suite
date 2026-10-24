@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
-import { getDataOwnerId } from "@/lib/auth-session";
-import { requireAdmin } from "@/lib/require-role";
+import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
+import { resolvePermissions, hasPermission, isOwnerRole } from "@/lib/permissions";
+import { tenantFilter } from "@/lib/tenant-filter";
 import { ObjectId } from "mongodb";
 
 export async function GET(
@@ -9,11 +10,15 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const result = await requireAdmin();
-        if (result.error) {
-            return NextResponse.json({ error: result.error }, { status: result.status });
+        const user = await getSessionUser();
+        if (!user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
-        const user = result.user!;
+
+        const perms = resolvePermissions(user.role, (user as any).customPermissions);
+        if (!hasPermission(perms, "invoices.view", isOwnerRole(user.role))) {
+            return NextResponse.json({ error: "Forbidden: invoices.view permission required" }, { status: 403 });
+        }
 
         const { id } = await params;
 
@@ -22,10 +27,9 @@ export async function GET(
         }
 
         const db = await getDb();
-        const bill = await db.collection("bills").findOne({
-            _id: new ObjectId(id),
-            userId: getDataOwnerId(user)
-        });
+        const bill = await db.collection("bills").findOne(
+            tenantFilter(getDataOwnerId(user), "bills", { _id: new ObjectId(id) })
+        );
 
         if (!bill) {
             return NextResponse.json({ error: "Bill not found" }, { status: 404 });
@@ -65,11 +69,15 @@ export async function PUT(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const resultAuth = await requireAdmin();
-        if (resultAuth.error) {
-            return NextResponse.json({ error: resultAuth.error }, { status: resultAuth.status });
+        const user = await getSessionUser();
+        if (!user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
-        const user = resultAuth.user!;
+
+        const perms = resolvePermissions(user.role, (user as any).customPermissions);
+        if (!hasPermission(perms, "invoices.create", isOwnerRole(user.role)) && !hasPermission(perms, "invoices.markPaid", isOwnerRole(user.role))) {
+            return NextResponse.json({ error: "Forbidden: invoice update permission required" }, { status: 403 });
+        }
 
         const { id } = await params;
 
@@ -99,7 +107,7 @@ export async function PUT(
         });
 
         const result = await db.collection("bills").updateOne(
-            { _id: new ObjectId(id), userId: ownerId },
+            tenantFilter(ownerId, "bills", { _id: new ObjectId(id) }),
             { $set: updateData }
         );
 
@@ -109,7 +117,9 @@ export async function PUT(
 
         // Log activity for status changes
         if (body.status) {
-            const bill = await db.collection("bills").findOne({ _id: new ObjectId(id), userId: ownerId });
+            const bill = await db.collection("bills").findOne(
+                tenantFilter(ownerId, "bills", { _id: new ObjectId(id) })
+            );
             await db.collection("activity").insertOne({
                 userId: ownerId,
                 type: "billing",
@@ -130,11 +140,15 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const resultAuth = await requireAdmin();
-        if (resultAuth.error) {
-            return NextResponse.json({ error: resultAuth.error }, { status: resultAuth.status });
+        const user = await getSessionUser();
+        if (!user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
-        const user = resultAuth.user!;
+
+        const perms = resolvePermissions(user.role, (user as any).customPermissions);
+        if (!hasPermission(perms, "invoices.delete", isOwnerRole(user.role))) {
+            return NextResponse.json({ error: "Forbidden: invoices.delete permission required" }, { status: 403 });
+        }
 
         const { id } = await params;
 
@@ -144,16 +158,17 @@ export async function DELETE(
 
         const db = await getDb();
         const ownerId = getDataOwnerId(user);
-        const bill = await db.collection("bills").findOne({
-            _id: new ObjectId(id),
-            userId: ownerId
-        });
+        const bill = await db.collection("bills").findOne(
+            tenantFilter(ownerId, "bills", { _id: new ObjectId(id) })
+        );
 
         if (!bill) {
             return NextResponse.json({ error: "Bill not found" }, { status: 404 });
         }
 
-        await db.collection("bills").deleteOne({ _id: new ObjectId(id), userId: ownerId });
+        await db.collection("bills").deleteOne(
+            tenantFilter(ownerId, "bills", { _id: new ObjectId(id) })
+        );
 
         // Log activity
         await db.collection("activity").insertOne({
