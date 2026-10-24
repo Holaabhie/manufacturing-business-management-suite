@@ -83,12 +83,13 @@ export async function PUT(
 
     // ── Trigger notification for order status update ──
     if (body.status) {
-      const updatedOrder = await db.collection("orders").findOne({ _id: new ObjectId(id) });
+      const ownerId = getDataOwnerId(user);
+      const updatedOrder = await db.collection("orders").findOne({ _id: new ObjectId(id), userId: ownerId });
       let clientName = "Unknown Client";
       let clientPhone = "";
       if (updatedOrder?.client_id) {
         try {
-          const client = await db.collection("clients").findOne({ _id: new ObjectId(updatedOrder.client_id) });
+          const client = await db.collection("clients").findOne({ _id: new ObjectId(updatedOrder.client_id), userId: ownerId });
           if (client) {
             clientName = client.name || clientName;
             clientPhone = client.phone || "";

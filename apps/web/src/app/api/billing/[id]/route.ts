@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
-import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
+import { getDataOwnerId } from "@/lib/auth-session";
+import { requireAdmin } from "@/lib/require-role";
 import { ObjectId } from "mongodb";
 
 export async function GET(
@@ -8,11 +9,13 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const { id } = await params;
-        const user = await getSessionUser();
-        if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const result = await requireAdmin();
+        if (result.error) {
+            return NextResponse.json({ error: result.error }, { status: result.status });
         }
+        const user = result.user!;
+
+        const { id } = await params;
 
         if (!ObjectId.isValid(id)) {
             return NextResponse.json({ error: "Invalid ID format" }, { status: 400 });
@@ -62,11 +65,13 @@ export async function PUT(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const { id } = await params;
-        const user = await getSessionUser();
-        if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const resultAuth = await requireAdmin();
+        if (resultAuth.error) {
+            return NextResponse.json({ error: resultAuth.error }, { status: resultAuth.status });
         }
+        const user = resultAuth.user!;
+
+        const { id } = await params;
 
         if (!ObjectId.isValid(id)) {
             return NextResponse.json({ error: "Invalid ID format" }, { status: 400 });
@@ -74,6 +79,7 @@ export async function PUT(
 
         const body = await request.json();
         const db = await getDb();
+        const ownerId = getDataOwnerId(user);
 
         const updateData: Record<string, any> = {
             updated_at: new Date().toISOString(),
@@ -93,7 +99,7 @@ export async function PUT(
         });
 
         const result = await db.collection("bills").updateOne(
-            { _id: new ObjectId(id), userId: getDataOwnerId(user) },
+            { _id: new ObjectId(id), userId: ownerId },
             { $set: updateData }
         );
 
@@ -103,9 +109,9 @@ export async function PUT(
 
         // Log activity for status changes
         if (body.status) {
-            const bill = await db.collection("bills").findOne({ _id: new ObjectId(id) });
+            const bill = await db.collection("bills").findOne({ _id: new ObjectId(id), userId: ownerId });
             await db.collection("activity").insertOne({
-                userId: getDataOwnerId(user),
+                userId: ownerId,
                 type: "billing",
                 message: `Invoice ${bill?.billNumber} marked as ${body.status}`,
                 createdAt: new Date().toISOString(),
@@ -124,31 +130,34 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const { id } = await params;
-        const user = await getSessionUser();
-        if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const resultAuth = await requireAdmin();
+        if (resultAuth.error) {
+            return NextResponse.json({ error: resultAuth.error }, { status: resultAuth.status });
         }
+        const user = resultAuth.user!;
+
+        const { id } = await params;
 
         if (!ObjectId.isValid(id)) {
             return NextResponse.json({ error: "Invalid ID format" }, { status: 400 });
         }
 
         const db = await getDb();
+        const ownerId = getDataOwnerId(user);
         const bill = await db.collection("bills").findOne({
             _id: new ObjectId(id),
-            userId: getDataOwnerId(user)
+            userId: ownerId
         });
 
         if (!bill) {
             return NextResponse.json({ error: "Bill not found" }, { status: 404 });
         }
 
-        await db.collection("bills").deleteOne({ _id: new ObjectId(id), userId: getDataOwnerId(user) });
+        await db.collection("bills").deleteOne({ _id: new ObjectId(id), userId: ownerId });
 
         // Log activity
         await db.collection("activity").insertOne({
-            userId: getDataOwnerId(user),
+            userId: ownerId,
             type: "billing",
             message: `Invoice ${bill.billNumber} deleted`,
             createdAt: new Date().toISOString(),

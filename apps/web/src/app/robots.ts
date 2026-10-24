@@ -16,7 +16,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: ["/", "/login"],
+        allow: ["/", "/login", "/brand/*", "/brand/favicons/*", "/favicon.ico"],
         disallow: [
           "/dashboard",
           "/dashboard/*",
@@ -35,7 +35,6 @@ export default function robots(): MetadataRoute.Robots {
           "/offline",
           "/platform",
           "/platform/*",
-          "/ai-assistant",
         ],
       },
     ],

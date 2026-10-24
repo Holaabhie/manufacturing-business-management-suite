@@ -318,7 +318,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `ProductionStatus`
   - **Citation**: Status progression tracks jobs across Pending, Running, Paused, Completed.
 - **[step-4]** **Complete and deduct stock**: *"Marking the run Completed finishes the job, logs output figures, and decrements allocated raw materials."*
-  - **Proof**: [`apps/web/src/app/api/production/[id]/route.ts#L180-L190`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/production/[id]/route.ts)
+  - **Proof**: [`apps/web/src/app/api/production/[id]/route.ts#L175-L185`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/production/[id]/route.ts)
   - **Anchor**: `lowStockAlerts`
   - **Citation**: Completing run logs actual output and flags low-stock warnings.
 
@@ -1298,7 +1298,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `Hinglish`
   - **Citation**: Submit queries in plain English or Hinglish.
 - **[step-3]** **Assistant executes tools**: *"The assistant invokes read-only database tools (get_pending_orders, get_orders, get_order_details)."*
-  - **Proof**: [`apps/web/src/app/api/assistant/chat/route.ts#L548-L552`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/assistant/chat/route.ts)
+  - **Proof**: [`apps/web/src/app/api/assistant/chat/route.ts#L558-L565`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/assistant/chat/route.ts)
   - **Anchor**: `orderToolDeclarations`
   - **Citation**: Assistant executes orderToolDeclarations: get_pending_orders, get_orders, get_order_details.
 - **[step-4]** **Receive formatted reply**: *"Review structured answers with markdown tables, bullet points, and Indian Rupee (₹) amounts."*

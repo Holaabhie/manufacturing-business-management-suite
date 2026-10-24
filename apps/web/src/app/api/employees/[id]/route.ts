@@ -133,7 +133,7 @@ export async function PUT(
             const newStatus = employee.status === "active" ? "inactive" : "active";
 
             await db.collection("users").updateOne(
-                { _id: id as any },
+                { _id: id as any, adminId },
                 { $set: { status: newStatus, updatedAt: new Date() } }
             );
 
@@ -171,7 +171,7 @@ export async function PUT(
             const passwordHash = await bcrypt.hash(newPassword, 10);
 
             await db.collection("users").updateOne(
-                { _id: id as any },
+                { _id: id as any, adminId },
                 {
                     $set: {
                         passwordHash,
@@ -245,7 +245,7 @@ export async function PUT(
             const passwordHash = await bcrypt.hash(newPassword, 12);
 
             await db.collection("users").updateOne(
-                { _id: id as any },
+                { _id: id as any, adminId },
                 {
                     $set: {
                         passwordHash,
@@ -285,7 +285,7 @@ export async function PUT(
         // ─── Action: Unlock Account ──────────────────────
         if (action === "unlock_account") {
             await db.collection("users").updateOne(
-                { _id: id as any },
+                { _id: id as any, adminId },
                 {
                     $set: {
                         failedLoginAttempts: 0,
@@ -353,7 +353,7 @@ export async function PUT(
             const beforePermissions = employee.permissions || EMPTY_PERMISSIONS;
 
             await db.collection("users").updateOne(
-                { _id: id as any },
+                { _id: id as any, adminId },
                 {
                     $set: {
                         permissions: newPermissions,
@@ -402,7 +402,7 @@ export async function PUT(
             if (body.designation !== undefined) updates.designation = body.designation.trim();
 
             await db.collection("users").updateOne(
-                { _id: id as any },
+                { _id: id as any, adminId },
                 { $set: updates }
             );
 
@@ -462,7 +462,7 @@ export async function DELETE(
         await destroyAllUserSessions(id);
 
         // Delete the user
-        await db.collection("users").deleteOne({ _id: id as any });
+        await db.collection("users").deleteOne({ _id: id as any, adminId });
 
         const ipAddress = getClientIp(request);
         const userAgent = request.headers.get("user-agent") || undefined;

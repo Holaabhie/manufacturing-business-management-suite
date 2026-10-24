@@ -77,10 +77,12 @@ export async function POST(req: Request) {
       });
 
       if (!user) {
-        return NextResponse.json(
-          { error: "No account found with this phone number" },
-          { status: 404 }
-        );
+        // Timing-safe user enumeration defense: identical response whether user exists or not
+        await new Promise((r) => setTimeout(r, 120));
+        return NextResponse.json({
+          success: true,
+          message: "OTP sent successfully",
+        });
       }
 
       if (user.status === "inactive" || user.status === "suspended") {
@@ -101,9 +103,10 @@ export async function POST(req: Request) {
 
       if (!user) {
         // Timing-safe user enumeration defense
+        await new Promise((r) => setTimeout(r, 120));
         return NextResponse.json({
           success: true,
-          message: "If an account exists with this number, an OTP has been sent.",
+          message: "If an account exists with this phone number, an OTP has been sent.",
         });
       }
     }
@@ -120,7 +123,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      message: "OTP sent successfully",
+      message: purpose === "forgot-password"
+        ? "If an account exists with this phone number, an OTP has been sent."
+        : "OTP sent successfully",
     });
   } catch (error: any) {
     console.error("Send OTP error:", error);

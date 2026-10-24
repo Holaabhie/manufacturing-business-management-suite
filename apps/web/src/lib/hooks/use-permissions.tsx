@@ -138,19 +138,17 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
 // ─── Hook ───────────────────────────────────────────────────────
 export function usePermissions(): PermissionContextValue {
     const context = useContext(PermissionContext);
+    const fallback = useFallbackPermissions(context !== null);
 
-    if (!context) {
-        return useFallbackPermissions();
-    }
-
-    return context;
+    return context ?? fallback;
 }
 
-function useFallbackPermissions(): PermissionContextValue {
+function useFallbackPermissions(skip = false): PermissionContextValue {
     const [user, setUser] = useState<UserInfo | null>(null);
     const [loading, setLoading] = useState(true);
 
     const fetchUser = useCallback(async () => {
+        if (skip) return;
         try {
             const res = await fetch("/api/auth/me");
             const json = await res.json().catch(() => ({}));
@@ -162,11 +160,13 @@ function useFallbackPermissions(): PermissionContextValue {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [skip]);
 
     useEffect(() => {
-        fetchUser();
-    }, [fetchUser]);
+        if (!skip) {
+            fetchUser();
+        }
+    }, [fetchUser, skip]);
 
     const role = user?.role ?? null;
     const isOwner = isOwnerRole(role);

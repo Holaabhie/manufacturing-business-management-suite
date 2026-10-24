@@ -73,10 +73,15 @@ export async function PATCH(
             newQty = currentQty + quantity;
         }
 
-        await db.collection("inventory").updateOne(
-            { _id: new ObjectId(id) },
+        const ownerId = getDataOwnerId(user);
+        const updateResult = await db.collection("inventory").updateOne(
+            { _id: new ObjectId(id), userId: ownerId },
             { $set: { quantity: newQty, updatedAt: new Date() } }
         );
+
+        if (updateResult.matchedCount === 0) {
+            return NextResponse.json({ error: "Inventory item not found" }, { status: 404 });
+        }
 
         // Trigger low stock alert if quantity falls below min_stock_level
         const minStock = Number(item.min_stock_level) || 10;

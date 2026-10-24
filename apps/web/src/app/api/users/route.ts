@@ -8,12 +8,13 @@ import { ObjectId } from "mongodb";
 export async function GET() {
     try {
         const result = await requireAdmin();
-        if (result.error) {
-            return NextResponse.json({ error: result.error }, { status: result.status });
+        if (result.error || !result.user) {
+            return NextResponse.json({ error: result.error || "Unauthorized" }, { status: result.status || 401 });
         }
+        const user = result.user;
 
-        const dataOwnerId = getDataOwnerId(result.user);
-        const idMatches: any[] = [dataOwnerId, result.user._id];
+        const dataOwnerId = getDataOwnerId(user);
+        const idMatches: any[] = [dataOwnerId, user._id];
         if (ObjectId.isValid(dataOwnerId)) {
             idMatches.push(new ObjectId(dataOwnerId));
         }

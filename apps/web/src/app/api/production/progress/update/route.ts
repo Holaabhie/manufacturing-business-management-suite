@@ -45,23 +45,16 @@ export async function POST(request: Request) {
         const userId = user._id.toString();
         const adminId = getDataOwnerId(user);
 
-        // Find the production record
+        // Find the production record — scoped to tenant adminId
         const production = await db.collection("productions").findOne({
             _id: new ObjectId(body.productionId),
+            userId: adminId,
         });
 
         if (!production) {
             return NextResponse.json(
                 { error: "Production not found" },
                 { status: 404 }
-            );
-        }
-
-        // Ensure the user belongs to the same admin scope
-        if (production.userId !== adminId && production.userId !== userId) {
-            return NextResponse.json(
-                { error: "Access denied" },
-                { status: 403 }
             );
         }
 
@@ -186,10 +179,14 @@ export async function POST(request: Request) {
             updateFields.status = "in_progress";
         }
 
-        await db.collection("productions").updateOne(
-            { _id: new ObjectId(body.productionId) },
+        const updateResult = await db.collection("productions").updateOne(
+            { _id: new ObjectId(body.productionId), userId: adminId },
             { $set: updateFields }
         );
+
+        if (updateResult.matchedCount === 0) {
+            return NextResponse.json({ error: "Production not found" }, { status: 404 });
+        }
 
         // ── Sync order status when production auto-completes (via shared helper) ──
         if (isAutoComplete && production.orderId) {
@@ -273,6 +270,26 @@ export async function GET(request: Request) {
         }
 
         const db = await getDb();
+        const ownerId = getDataOwnerId(user);
+
+        if (!ObjectId.isValid(productionId)) {
+            return NextResponse.json(
+                { error: "Invalid production ID" },
+                { status: 400 }
+            );
+        }
+
+        const prod = await db.collection("productions").findOne({
+            _id: new ObjectId(productionId),
+            userId: ownerId,
+        });
+
+        if (!prod) {
+            return NextResponse.json(
+                { error: "Production not found" },
+                { status: 404 }
+            );
+        }
 
         const history = await db
             .collection("productionProgress")

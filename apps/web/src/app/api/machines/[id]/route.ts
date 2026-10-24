@@ -14,7 +14,7 @@ export async function PUT(
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        if (user.role !== "Admin") {
+        if (user.role !== "Admin" && user.role !== "Owner") {
             return NextResponse.json(
                 { error: "Only admins can update machines" },
                 { status: 403 }
@@ -75,13 +75,17 @@ export async function PUT(
             updates.status = body.status;
         }
 
-        await db
+        const updateResult = await db
             .collection("machines")
-            .updateOne({ _id: new ObjectId(id) }, { $set: updates });
+            .updateOne({ _id: new ObjectId(id), adminId }, { $set: updates });
+
+        if (updateResult.matchedCount === 0) {
+            return NextResponse.json({ error: "Machine not found" }, { status: 404 });
+        }
 
         const updated = await db
             .collection("machines")
-            .findOne({ _id: new ObjectId(id) });
+            .findOne({ _id: new ObjectId(id), adminId });
 
         return NextResponse.json({
             id: updated!._id.toString(),
@@ -110,7 +114,7 @@ export async function DELETE(
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        if (user.role !== "Admin") {
+        if (user.role !== "Admin" && user.role !== "Owner") {
             return NextResponse.json(
                 { error: "Only admins can delete machines" },
                 { status: 403 }

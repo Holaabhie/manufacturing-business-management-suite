@@ -40,9 +40,6 @@ export function TablePagination({
 }: TablePaginationProps) {
   const t = useTranslations("common");
 
-  // Don't render if there's only 1 page or no items
-  if (totalPages <= 1 && totalItems <= pageSize) return null;
-
   const startItem = Math.min((currentPage - 1) * pageSize + 1, totalItems);
   const endItem = Math.min(currentPage * pageSize, totalItems);
 
@@ -51,6 +48,7 @@ export function TablePagination({
 
   // ── Generate page numbers with ellipsis ──
   const pageNumbers = useMemo(() => {
+    if (totalPages <= 1 && totalItems <= pageSize) return [];
     const pages: (number | "ellipsis-start" | "ellipsis-end")[] = [];
     const SIBLINGS = 1; // Number of pages to show around current
 
@@ -84,7 +82,10 @@ export function TablePagination({
     }
 
     return pages;
-  }, [currentPage, totalPages]);
+  }, [currentPage, totalPages, totalItems, pageSize]);
+
+  // Don't render if there's only 1 page or no items
+  if (totalPages <= 1 && totalItems <= pageSize) return null;
 
   // ── Shared button class ──
   const pageButtonBase = cn(

@@ -46,7 +46,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        if (user.role !== "Admin") {
+        if (user.role !== "Admin" && user.role !== "Owner") {
             return NextResponse.json(
                 { error: "Only admins can create machines" },
                 { status: 403 }

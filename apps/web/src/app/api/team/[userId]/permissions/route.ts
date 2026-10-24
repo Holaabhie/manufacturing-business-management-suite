@@ -1,7 +1,16 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
-import { isOwnerRole, hasPermission, resolvePermissions, type FlatPermissionMap, countPermissions } from "@/lib/permissions";
+import {
+    isOwnerRole,
+    hasPermission,
+    resolvePermissions,
+    type FlatPermissionMap,
+    countPermissions,
+    getCallerRoleRank,
+    getTargetRoleRank,
+    ALL_PERMISSION_KEYS
+} from "@/lib/permissions";
 
 /**
  * PUT /api/team/[userId]/permissions
@@ -22,6 +31,15 @@ export async function PUT(
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
+        // Validate caller role rank strictly (fail-closed for invalid/corrupted roles)
+        const callerRank = getCallerRoleRank(user.role);
+        if (callerRank === -1) {
+            return NextResponse.json(
+                { error: "Forbidden - Your user account role is unrecognized or invalid" },
+                { status: 403 }
+            );
+        }
+
         // Check permission: Owner or team.editPermissions
         const isOwner = isOwnerRole(user.role);
         if (!isOwner) {
@@ -35,6 +53,15 @@ export async function PUT(
         }
 
         const { userId } = await params;
+
+        // Prevent self-modification of permissions
+        if (String(user._id) === userId) {
+            return NextResponse.json(
+                { error: "You cannot modify your own permissions" },
+                { status: 400 }
+            );
+        }
+
         const body = await request.json();
         const { customPermissions } = body;
 
@@ -43,6 +70,25 @@ export async function PUT(
                 { error: "customPermissions object is required" },
                 { status: 400 }
             );
+        }
+
+        // Privilege delegation check: non-owners cannot grant permissions they do not possess
+        if (!isOwner) {
+            const callerPermissions = resolvePermissions(user.role, user.customPermissions as FlatPermissionMap);
+            for (const [key, val] of Object.entries(customPermissions)) {
+                if (!ALL_PERMISSION_KEYS.includes(key)) {
+                    return NextResponse.json(
+                        { error: `Invalid permission key '${key}'` },
+                        { status: 400 }
+                    );
+                }
+                if (val === true && !callerPermissions[key]) {
+                    return NextResponse.json(
+                        { error: `Forbidden - You cannot grant permission '${key}' which you do not possess` },
+                        { status: 403 }
+                    );
+                }
+            }
         }
 
         const db = await getDb();
@@ -57,15 +103,27 @@ export async function PUT(
         const dataOwnerId = getDataOwnerId(user);
         const isSameTeam =
             targetUser.adminId === dataOwnerId ||
-            String(targetUser._id) === dataOwnerId;
+            String(targetUser._id) === dataOwnerId ||
+            Boolean(user.organizationId && targetUser.organizationId === user.organizationId);
         if (!isSameTeam) {
             return NextResponse.json(
-                { error: "Forbidden - User does not belong to your organization" },
-                { status: 403 }
+                { error: "User not found" },
+                { status: 404 }
             );
         }
 
-        // Prevent non-owners from modifying owner permissions
+        // Rank hierarchy enforcement: caller rank must be strictly higher than target user rank
+        if (!isOwner) {
+            const targetRank = getTargetRoleRank(targetUser.role);
+            if (callerRank <= targetRank) {
+                return NextResponse.json(
+                    { error: "Forbidden - You can only modify permissions for roles lower than your own" },
+                    { status: 403 }
+                );
+            }
+        }
+
+        // Prevent non-owners from modifying owner permissions (defense-in-depth)
         if (isOwnerRole(targetUser.role) && !isOwner) {
             return NextResponse.json(
                 { error: "Only owners can modify other owner accounts" },

@@ -11,9 +11,10 @@ export async function PUT(
 ) {
     try {
         const result = await requireAdmin();
-        if (result.error) {
-            return NextResponse.json({ error: result.error }, { status: result.status });
+        if (result.error || !result.user) {
+            return NextResponse.json({ error: result.error || "Unauthorized" }, { status: result.status || 401 });
         }
+        const user = result.user;
 
         const { id } = await params;
         const body = await request.json();
@@ -27,7 +28,7 @@ export async function PUT(
         }
 
         // Prevent changing own role
-        if (result.user._id.toString() === id) {
+        if (user._id.toString() === id) {
             return NextResponse.json(
                 { error: "You cannot change your own role" },
                 { status: 400 }
@@ -35,27 +36,20 @@ export async function PUT(
         }
 
         const db = await getDb();
+        const dataOwnerId = getDataOwnerId(user);
 
-        // Fetch target user first to verify tenant membership
-        const targetUser = await db.collection("users").findOne({ _id: new ObjectId(id) });
+        // Fetch target user — scoped to this admin's organization
+        const targetUser = await db.collection("users").findOne({
+            _id: new ObjectId(id),
+            adminId: dataOwnerId,
+        });
+
         if (!targetUser) {
             return NextResponse.json({ error: "User not found" }, { status: 404 });
         }
 
-        // Tenant isolation: verify target user belongs to same organization
-        const dataOwnerId = getDataOwnerId(result.user);
-        const isSameTeam =
-            targetUser.adminId === dataOwnerId ||
-            String(targetUser._id) === dataOwnerId;
-        if (!isSameTeam) {
-            return NextResponse.json(
-                { error: "Forbidden - User does not belong to your organization" },
-                { status: 403 }
-            );
-        }
-
         const updateResult = await db.collection("users").updateOne(
-            { _id: new ObjectId(id) },
+            { _id: new ObjectId(id), adminId: dataOwnerId },
             {
                 $set: {
                     role: newRole,

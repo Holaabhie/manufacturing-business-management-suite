@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
         const { searchParams } = new URL(req.url);
         const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
         const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get('pageSize') || '20', 10)));
-        const module = searchParams.get('module');
+        const moduleParam = searchParams.get('module');
         const actionType = searchParams.get('actionType');
         const severity = searchParams.get('severity');
         const userId = searchParams.get('userId');
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
             organizationId,
         };
 
-        if (module) filter.module = module;
+        if (moduleParam) filter.module = moduleParam;
         if (actionType) filter.actionType = actionType;
         if (severity) filter.severity = severity;
         if (userId) filter.userId = userId;

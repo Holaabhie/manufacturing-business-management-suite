@@ -29,14 +29,10 @@ export async function GET(
 
         // Fetch production — scoped to data owner for Admin/Owner
         // Staff access is validated separately below
-        const isAdmin = user.role === "Admin" || user.role === "Owner";
-        const production = isAdmin
-            ? await db
-                  .collection("productions")
-                  .findOne({ _id: new ObjectId(id), userId: getDataOwnerId(user) })
-            : await db
-                  .collection("productions")
-                  .findOne({ _id: new ObjectId(id) });
+        const ownerId = getDataOwnerId(user);
+        const production = await db
+            .collection("productions")
+            .findOne({ _id: new ObjectId(id), userId: ownerId });
 
         if (!production) {
             return NextResponse.json(
@@ -46,6 +42,7 @@ export async function GET(
         }
 
         // Staff access control: must be in assignedStaff array
+        const isAdmin = user.role === "Admin" || user.role === "Owner";
         if (!isAdmin) {
             const assignedStaff = (production.assignedStaff as any[]) || [];
             const isAssigned = assignedStaff.some(
@@ -276,14 +273,19 @@ export async function PUT(
         if (body._materialsDeducted) updateData.materialsDeducted = body._materialsDeducted;
         if (body._lowStockAlerts) updateData.lowStockAlerts = body._lowStockAlerts;
 
-        await db
+        const ownerId = getDataOwnerId(user);
+        const updateResult = await db
             .collection("productions")
-            .updateOne({ _id: new ObjectId(id) }, { $set: updateData });
+            .updateOne({ _id: new ObjectId(id), userId: ownerId }, { $set: updateData });
+
+        if (updateResult.matchedCount === 0) {
+            return NextResponse.json({ error: "Production not found" }, { status: 404 });
+        }
 
         // Return updated document
         const updated = await db
             .collection("productions")
-            .findOne({ _id: new ObjectId(id) });
+            .findOne({ _id: new ObjectId(id), userId: ownerId });
 
         // ── Trigger notification for production complete ──
         if (body.action === "complete" && updated) {
@@ -291,9 +293,9 @@ export async function PUT(
             let recipientName = "Unknown Client";
             if (updated.orderId) {
                 try {
-                    const order = await db.collection("orders").findOne({ _id: new ObjectId(updated.orderId) });
+                    const order = await db.collection("orders").findOne({ _id: new ObjectId(updated.orderId), userId: ownerId });
                     if (order?.client_id) {
-                        const client = await db.collection("clients").findOne({ _id: new ObjectId(order.client_id) });
+                        const client = await db.collection("clients").findOne({ _id: new ObjectId(order.client_id), userId: ownerId });
                         if (client) {
                             recipientContact = client.phone || "";
                             recipientName = client.name || recipientName;

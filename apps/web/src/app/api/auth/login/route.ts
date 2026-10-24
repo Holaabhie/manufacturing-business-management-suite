@@ -39,9 +39,9 @@ export async function POST(req: Request) {
 
     const { email = "", password, loginType, employeeId = "", masterKey = "", rememberMe = false } = parseResult.data;
 
-    // ─── Account / Identifier Rate Limiting ──────────────────────
+    // ─── Account / Identifier Rate Limiting (keyed by IP + identifier to prevent denial-of-service lockout) ───
     const identifier = (loginType === "staff" ? (employeeId || email) : email).trim().toLowerCase();
-    const idRateLimitKey = getHashedRateLimitKey("login-id", identifier);
+    const idRateLimitKey = getHashedRateLimitKey("login-ip-id", `${ipAddress}:${identifier}`);
     const idRateCheck = await checkRateLimitMongo(idRateLimitKey, "login");
     if (idRateCheck.limited) {
       return rateLimitResponse(idRateCheck.retryAfterMs);

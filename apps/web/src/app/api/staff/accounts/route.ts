@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth-session";
+import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import bcrypt from "bcrypt";
@@ -17,14 +17,14 @@ export async function GET() {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        if (user.role !== "Admin") {
+        if (user.role !== "Admin" && user.role !== "Owner") {
             return NextResponse.json(
                 { error: "Admin access required" },
                 { status: 403 }
             );
         }
 
-        const adminId = user._id.toString();
+        const adminId = getDataOwnerId(user);
         const db = await getDb();
 
         const staffAccounts = await db
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        if (user.role !== "Admin") {
+        if (user.role !== "Admin" && user.role !== "Owner") {
             return NextResponse.json(
                 { error: "Admin access required" },
                 { status: 403 }
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
 
         const body = await request.json();
         const db = await getDb();
-        const adminId = user._id.toString();
+        const adminId = getDataOwnerId(user);
 
         // Validation
         if (!body.fullName || !body.email || !body.password) {
@@ -163,7 +163,7 @@ export async function PATCH(request: Request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        if (user.role !== "Admin") {
+        if (user.role !== "Admin" && user.role !== "Owner") {
             return NextResponse.json(
                 { error: "Admin access required" },
                 { status: 403 }
@@ -172,7 +172,7 @@ export async function PATCH(request: Request) {
 
         const body = await request.json();
         const db = await getDb();
-        const adminId = user._id.toString();
+        const adminId = getDataOwnerId(user);
 
         if (!body.staffId || !body.action) {
             return NextResponse.json(
@@ -242,10 +242,14 @@ export async function PATCH(request: Request) {
                 );
         }
 
-        await db.collection("users").updateOne(
-            { _id: new ObjectId(body.staffId) },
+        const updateResult = await db.collection("users").updateOne(
+            { _id: new ObjectId(body.staffId), adminId },
             { $set: updates }
         );
+
+        if (updateResult.matchedCount === 0) {
+            return NextResponse.json({ error: "Staff account not found" }, { status: 404 });
+        }
 
         return NextResponse.json({
             success: true,

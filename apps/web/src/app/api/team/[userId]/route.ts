@@ -1,7 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionUser, getDataOwnerId, destroyAllUserSessions } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
-import { isOwnerRole, hasPermission, resolvePermissions, type FlatPermissionMap } from "@/lib/permissions";
+import {
+    isOwnerRole,
+    hasPermission,
+    resolvePermissions,
+    type FlatPermissionMap,
+    getCallerRoleRank,
+    getTargetRoleRank,
+    ALL_PERMISSION_KEYS
+} from "@/lib/permissions";
 
 /**
  * PUT /api/team/[userId]
@@ -17,6 +25,15 @@ export async function PUT(
         const user = await getSessionUser();
         if (!user) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        // Validate caller role rank strictly (fail-closed for invalid/corrupted roles)
+        const callerRank = getCallerRoleRank(user.role);
+        if (callerRank === -1) {
+            return NextResponse.json(
+                { error: "Forbidden - Your user account role is unrecognized or invalid" },
+                { status: 403 }
+            );
         }
 
         // Check permission: Owner or team.editPermissions
@@ -35,6 +52,65 @@ export async function PUT(
         const body = await request.json();
         const { role, customPermissions } = body;
 
+        // Block self-edit: callers cannot modify their own role or customPermissions
+        if (String(user._id) === userId) {
+            if (role !== undefined || customPermissions !== undefined) {
+                return NextResponse.json(
+                    { error: "You cannot modify your own role or permissions" },
+                    { status: 400 }
+                );
+            }
+        }
+
+        if (role) {
+            const validRoles = ["Owner", "Manager", "Staff", "Accountant"];
+            if (!validRoles.includes(role)) {
+                return NextResponse.json(
+                    { error: `Invalid role. Must be one of: ${validRoles.join(", ")}` },
+                    { status: 400 }
+                );
+            }
+            // Non-owners cannot promote any user to Owner or assign a role equal to or higher than their own
+            if (!isOwner) {
+                const newRoleRank = getTargetRoleRank(role);
+                if (role === "Owner" || callerRank <= newRoleRank) {
+                    return NextResponse.json(
+                        { error: "Forbidden - You cannot assign a role equal to or higher than your own" },
+                        { status: 403 }
+                    );
+                }
+            }
+        }
+
+        // Privilege delegation check: non-owners cannot grant permissions they do not possess
+        if (customPermissions !== undefined && customPermissions !== null) {
+            if (typeof customPermissions !== "object" || Array.isArray(customPermissions)) {
+                return NextResponse.json(
+                    { error: "Invalid customPermissions format" },
+                    { status: 400 }
+                );
+            }
+            for (const key of Object.keys(customPermissions)) {
+                if (!ALL_PERMISSION_KEYS.includes(key)) {
+                    return NextResponse.json(
+                        { error: `Invalid permission key '${key}'` },
+                        { status: 400 }
+                    );
+                }
+            }
+            if (!isOwner) {
+                const callerPermissions = resolvePermissions(user.role, user.customPermissions as FlatPermissionMap);
+                for (const [key, val] of Object.entries(customPermissions)) {
+                    if (val === true && !callerPermissions[key]) {
+                        return NextResponse.json(
+                            { error: `Forbidden - You cannot grant permission '${key}' which you do not possess` },
+                            { status: 403 }
+                        );
+                    }
+                }
+            }
+        }
+
         const db = await getDb();
 
         // Find the target user
@@ -47,12 +123,36 @@ export async function PUT(
         const dataOwnerId = getDataOwnerId(user);
         const isSameTeam =
             targetUser.adminId === dataOwnerId ||
-            String(targetUser._id) === dataOwnerId;
+            String(targetUser._id) === dataOwnerId ||
+            Boolean(user.organizationId && targetUser.organizationId === user.organizationId);
         if (!isSameTeam) {
             return NextResponse.json(
-                { error: "Forbidden - User does not belong to your organization" },
+                { error: "User not found" },
+                { status: 404 }
+            );
+        }
+
+        // Protect primary owner account from modification by secondary owners
+        const isTargetPrimaryOwner =
+            String(targetUser._id) === dataOwnerId ||
+            String(targetUser._id) === user.adminId ||
+            (!targetUser.adminId && (targetUser.role === "Owner" || targetUser.role === "Admin"));
+        if (isTargetPrimaryOwner && String(user._id) !== String(targetUser._id)) {
+            return NextResponse.json(
+                { error: "Forbidden - The tenant primary owner account cannot be modified, demoted, or deactivated by secondary owners" },
                 { status: 403 }
             );
+        }
+
+        // Rank hierarchy enforcement: caller rank must be strictly higher than target user rank
+        if (!isOwner) {
+            const targetRank = getTargetRoleRank(targetUser.role);
+            if (callerRank <= targetRank) {
+                return NextResponse.json(
+                    { error: "Forbidden - You can only modify users with roles lower than your own" },
+                    { status: 403 }
+                );
+            }
         }
 
         // Prevent non-owners from modifying owner accounts
@@ -122,6 +222,15 @@ export async function DELETE(
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
+        // Validate caller role rank strictly (fail-closed for invalid/corrupted roles)
+        const callerRank = getCallerRoleRank(user.role);
+        if (callerRank === -1) {
+            return NextResponse.json(
+                { error: "Forbidden - Your user account role is unrecognized or invalid" },
+                { status: 403 }
+            );
+        }
+
         // Check permission: Owner or team.removeUser
         const isOwner = isOwnerRole(user.role);
         if (!isOwner) {
@@ -156,12 +265,36 @@ export async function DELETE(
         const dataOwnerId = getDataOwnerId(user);
         const isSameTeam =
             targetUser.adminId === dataOwnerId ||
-            String(targetUser._id) === dataOwnerId;
+            String(targetUser._id) === dataOwnerId ||
+            Boolean(user.organizationId && targetUser.organizationId === user.organizationId);
         if (!isSameTeam) {
             return NextResponse.json(
-                { error: "Forbidden - User does not belong to your organization" },
+                { error: "User not found" },
+                { status: 404 }
+            );
+        }
+
+        // Protect primary owner account from deactivation by secondary owners
+        const isTargetPrimaryOwner =
+            String(targetUser._id) === dataOwnerId ||
+            String(targetUser._id) === user.adminId ||
+            (!targetUser.adminId && (targetUser.role === "Owner" || targetUser.role === "Admin"));
+        if (isTargetPrimaryOwner && String(user._id) !== String(targetUser._id)) {
+            return NextResponse.json(
+                { error: "Forbidden - The tenant primary owner account cannot be modified, demoted, or deactivated by secondary owners" },
                 { status: 403 }
             );
+        }
+
+        // Rank hierarchy enforcement: caller rank must be strictly higher than target user rank
+        if (!isOwner) {
+            const targetRank = getTargetRoleRank(targetUser.role);
+            if (callerRank <= targetRank) {
+                return NextResponse.json(
+                    { error: "Forbidden - You can only deactivate users with roles lower than your own" },
+                    { status: 403 }
+                );
+            }
         }
 
         // Prevent non-owners from deactivating owner accounts

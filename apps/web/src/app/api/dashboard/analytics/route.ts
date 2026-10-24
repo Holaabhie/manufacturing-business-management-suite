@@ -70,6 +70,10 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
+        if (user.role !== "Admin" && user.role !== "Owner") {
+            return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+        }
+
         const db = await getDb();
         const userId = getDataOwnerId(user);
 

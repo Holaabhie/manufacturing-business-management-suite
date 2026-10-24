@@ -5,6 +5,8 @@ import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
+export const maxDuration = 60;
+
 // ─── Constants ──────────────────────────────────────────────────
 
 const MAX_TOOL_ITERATIONS = 5;
@@ -418,6 +420,32 @@ async function executeTool(
   }
 }
 
+// ─── Retry & Safety Helpers ─────────────────────────────────────
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const MUTATING_TOOLS = new Set<string>([
+  "create_order",
+  "update_order",
+  "delete_order",
+]);
+
+function isRetryableError(err: unknown): boolean {
+  if (!err) return false;
+  const msg = err instanceof Error ? err.message : String(err);
+  return (
+    msg.includes("503") ||
+    msg.includes("UNAVAILABLE") ||
+    msg.includes("429") ||
+    msg.includes("RATE_LIMIT") ||
+    msg.includes("RESOURCE_EXHAUSTED") ||
+    msg.includes("fetch failed") ||
+    msg.includes("ECONNRESET") ||
+    msg.includes("ETIMEDOUT") ||
+    msg.includes("network")
+  );
+}
+
 // ─── POST Handler ───────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
@@ -426,8 +454,21 @@ export async function POST(req: NextRequest) {
     const user = await getSessionUser();
     if (!user) {
       return NextResponse.json(
-        { success: false, error: "Unauthorized" },
+        {
+          success: false,
+          error: { code: "UNAUTHORIZED", message: "Unauthorized" },
+        },
         { status: 401 }
+      );
+    }
+
+    if (user.role !== "Admin" && user.role !== "Owner") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "FORBIDDEN", message: "Admin access required" },
+        },
+        { status: 403 }
       );
     }
     const ownerId = getDataOwnerId(user);
@@ -438,8 +479,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error:
-            "Gemini API key not configured. Please set GEMINI_API_KEY in your .env.local file.",
+          error: {
+            code: "AI_NOT_CONFIGURED",
+            message: "Gemini API key not configured.",
+          },
         },
         { status: 500 }
       );
@@ -453,7 +496,10 @@ export async function POST(req: NextRequest) {
 
     if (!message || typeof message !== "string" || !message.trim()) {
       return NextResponse.json(
-        { success: false, error: "Message is required." },
+        {
+          success: false,
+          error: { code: "VALIDATION_ERROR", message: "Message is required." },
+        },
         { status: 400 }
       );
     }
@@ -462,7 +508,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: `Message too long. Maximum ${MAX_MESSAGE_LENGTH} characters.`,
+          error: {
+            code: "VALIDATION_ERROR",
+            message: `Message too long. Maximum ${MAX_MESSAGE_LENGTH} characters.`,
+          },
         },
         { status: 400 }
       );
@@ -494,20 +543,76 @@ export async function POST(req: NextRequest) {
     const modelName = process.env.GEMINI_MODEL || "gemini-2.5-flash";
     const ai = new GoogleGenAI({ apiKey });
 
+    // Track whether any mutating tool was run in this request
+    let hasMutated = false;
+
+    // Retry runner for single generateContent calls
+    async function callGeminiWithRetry(currentContents: Content[]) {
+      const maxRetries = 2; // total 3 attempts
+      const backoffs = [800, 2000]; // total backoff: 2.8s, well within route budget
+      let lastErr: unknown;
+
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          return await ai.models.generateContent({
+            model: modelName,
+            contents: currentContents,
+            config: {
+              systemInstruction: SYSTEM_INSTRUCTION,
+              tools: [{ functionDeclarations: orderToolDeclarations }],
+            },
+          });
+        } catch (err) {
+          lastErr = err;
+          console.error(`[AI Assistant] Gemini attempt ${attempt + 1} failed:`, err);
+
+          // If a mutating tool already ran, NEVER retry
+          if (hasMutated) {
+            throw err;
+          }
+
+          if (attempt < maxRetries && isRetryableError(err)) {
+            await sleep(backoffs[attempt]);
+            continue;
+          }
+          break;
+        }
+      }
+
+      // If primary model retries failed, check for optional fallback model
+      const fallbackModel = process.env.GEMINI_FALLBACK_MODEL;
+      if (
+        fallbackModel &&
+        fallbackModel !== modelName &&
+        !hasMutated &&
+        isRetryableError(lastErr)
+      ) {
+        try {
+          console.log(`[AI Assistant] Attempting fallback model: ${fallbackModel}`);
+          return await ai.models.generateContent({
+            model: fallbackModel,
+            contents: currentContents,
+            config: {
+              systemInstruction: SYSTEM_INSTRUCTION,
+              tools: [{ functionDeclarations: orderToolDeclarations }],
+            },
+          });
+        } catch (fallbackErr) {
+          console.error(`[AI Assistant] Fallback model failed:`, fallbackErr);
+          throw fallbackErr;
+        }
+      }
+
+      throw lastErr;
+    }
+
     // ── Tool-Calling Loop ───────────────────────────────
     let iterations = 0;
 
     while (iterations < MAX_TOOL_ITERATIONS) {
       iterations++;
 
-      const response = await ai.models.generateContent({
-        model: modelName,
-        contents,
-        config: {
-          systemInstruction: SYSTEM_INSTRUCTION,
-          tools: [{ functionDeclarations: orderToolDeclarations }],
-        },
-      });
+      const response = await callGeminiWithRetry(contents);
 
       // If no function calls, we have a final text response
       const functionCalls = response.functionCalls;
@@ -529,6 +634,10 @@ export async function POST(req: NextRequest) {
       for (const fc of functionCalls) {
         const fnName = fc.name || "unknown";
         const fnArgs = (fc.args || {}) as Record<string, unknown>;
+
+        if (MUTATING_TOOLS.has(fnName)) {
+          hasMutated = true;
+        }
 
         let result: Record<string, unknown>;
         try {
@@ -571,34 +680,64 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error:
-            "Invalid Gemini API key. Please check your configuration.",
+          error: {
+            code: "INVALID_API_KEY",
+            message: "Invalid Gemini API key. Please check your configuration.",
+          },
         },
         { status: 401 }
       );
     }
-    if (errorMessage.includes("RATE_LIMIT") || errorMessage.includes("429")) {
+    if (
+      errorMessage.includes("RATE_LIMIT") ||
+      errorMessage.includes("429") ||
+      errorMessage.includes("RESOURCE_EXHAUSTED")
+    ) {
       return NextResponse.json(
         {
           success: false,
-          error: "Rate limit exceeded. Please wait a moment and try again.",
+          error: {
+            code: "RATE_LIMIT",
+            message: "The AI is busy right now. Please try again in a moment.",
+          },
         },
         { status: 429 }
+      );
+    }
+    if (errorMessage.includes("503") || errorMessage.includes("UNAVAILABLE")) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "SERVICE_UNAVAILABLE",
+            message: "The AI is busy right now. Please try again in a moment.",
+          },
+        },
+        { status: 503 }
       );
     }
     if (errorMessage.includes("SAFETY")) {
       return NextResponse.json(
         {
           success: false,
-          error:
-            "The response was blocked by safety filters. Please rephrase your question.",
+          error: {
+            code: "SAFETY_BLOCKED",
+            message:
+              "The response was blocked by safety filters. Please rephrase your question.",
+          },
         },
         { status: 400 }
       );
     }
 
     return NextResponse.json(
-      { success: false, error: `AI service error: ${errorMessage}` },
+      {
+        success: false,
+        error: {
+          code: "SERVER_ERROR",
+          message: "Something went wrong. Please try again.",
+        },
+      },
       { status: 500 }
     );
   }
