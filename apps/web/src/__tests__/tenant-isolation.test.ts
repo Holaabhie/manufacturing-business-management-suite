@@ -34,6 +34,8 @@ const mockDbStore: Record<string, any[]> = {
   clients: [],
   productions: [],
   activity: [],
+  orders: [],
+  users: [],
 };
 
 // Helper to match queries
@@ -107,17 +109,50 @@ import { PATCH as updateInventoryStock } from "@/app/api/inventory/[id]/stock/ro
 import { PUT as updateMachine, DELETE as deleteMachine } from "@/app/api/machines/[id]/route";
 import { GET as getBill, PUT as updateBill, DELETE as deleteBill } from "@/app/api/billing/[id]/route";
 import { DELETE as deleteClient } from "@/app/api/clients/[id]/route";
+import { PUT as updateOrder, DELETE as deleteOrder } from "@/app/api/orders/[id]/route";
+import { PUT as updateUser } from "@/app/api/users/[id]/route";
+import { POST as updateProductionProgress } from "@/app/api/production/progress/update/route";
 
-describe("Tenant Filter Helper Unit Tests", () => {
-  it("maps collections to deterministic tenant fields without $or", () => {
-    expect(tenantIdFor("inventory").field).toBe("userId");
-    expect(tenantIdFor("machines").field).toBe("adminId");
-    expect(tenantIdFor("bills").field).toBe("userId");
+describe("Tenant Filter Helper Unit Tests (lib/tenant-filter.ts)", () => {
+  it("maps known collections to correct tenant field names", () => {
     expect(tenantIdFor("clients").field).toBe("userId");
+    expect(tenantIdFor("inventory").field).toBe("userId");
+    expect(tenantIdFor("orders").field).toBe("userId");
+    expect(tenantIdFor("productions").field).toBe("userId");
+    expect(tenantIdFor("bills").field).toBe("userId");
+    expect(tenantIdFor("payments").field).toBe("userId");
+    expect(tenantIdFor("machines").field).toBe("adminId");
+    expect(tenantIdFor("users").field).toBe("adminId");
+    expect(tenantIdFor("auditlogs").field).toBe("organizationId");
+  });
 
-    const filtered = tenantFilter(TENANT_A_ID, "inventory", { status: "active" });
-    expect(filtered).toEqual({ status: "active", userId: TENANT_A_ID });
+  it("produces scoped query filters with zero $or clauses", () => {
+    const query = { _id: new ObjectId(TENANT_B_ID) };
+    const filtered = tenantFilter(TENANT_A_ID, "clients", query);
+
+    expect(filtered).toEqual({
+      _id: query._id,
+      userId: TENANT_A_ID,
+    });
     expect((filtered as any).$or).toBeUndefined();
+  });
+
+  it("handles collections with adminId tenant keys", () => {
+    const query = { status: "active" };
+    const filtered = tenantFilter(TENANT_A_ID, "machines", query);
+
+    expect(filtered).toEqual({
+      status: "active",
+      adminId: TENANT_A_ID,
+    });
+    expect((filtered as any).$or).toBeUndefined();
+  });
+
+  it("defaults unmapped collections safely to userId", () => {
+    const filtered = tenantFilter(TENANT_A_ID, "unknown_table", {});
+    expect(filtered).toEqual({
+      userId: TENANT_A_ID,
+    });
   });
 });
 
@@ -126,6 +161,9 @@ describe("Actual Route Handlers: Cross-Tenant Isolation Enforcement", () => {
   const machineBId = new ObjectId("607f191e810c19729de86002");
   const billBId = new ObjectId("607f191e810c19729de86003");
   const clientBId = new ObjectId("607f191e810c19729de86004");
+  const orderBId = new ObjectId("607f191e810c19729de86005");
+  const userBId = new ObjectId("607f191e810c19729de86006");
+  const productionBId = new ObjectId("607f191e810c19729de86007");
 
   beforeEach(() => {
     // Reset DB with records owned strictly by Tenant B
@@ -164,6 +202,35 @@ describe("Actual Route Handlers: Cross-Tenant Isolation Enforcement", () => {
         _id: clientBId,
         userId: TENANT_B_ID,
         name: "Tenant B VIP Client",
+      },
+    ];
+
+    mockDbStore.orders = [
+      {
+        _id: orderBId,
+        userId: TENANT_B_ID,
+        product_name: "Tenant B Industrial Valve",
+        status: "pending",
+      },
+    ];
+
+    mockDbStore.users = [
+      {
+        _id: userBId,
+        adminId: TENANT_B_ID,
+        fullName: "Tenant B Operator",
+        role: "Staff",
+        status: "active",
+      },
+    ];
+
+    mockDbStore.productions = [
+      {
+        _id: productionBId,
+        userId: TENANT_B_ID,
+        orderProductName: "Tenant B Valve Batch",
+        producedQty: 10,
+        status: "in_progress",
       },
     ];
 
@@ -271,6 +338,60 @@ describe("Actual Route Handlers: Cross-Tenant Isolation Enforcement", () => {
 
     expect(response.status).toBe(404);
     expect(mockDbStore.clients.length).toBe(1);
+  });
+
+  it("Orders Route Handler: Tenant A PUT on Tenant B order returns 404 and does not update", async () => {
+    const req = new Request("http://localhost:3000/api/orders", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "cancelled" }),
+    });
+
+    const response = await updateOrder(req, {
+      params: Promise.resolve({ id: orderBId.toString() }),
+    });
+
+    expect(response.status).toBe(404);
+    expect(mockDbStore.orders[0].status).toBe("pending");
+  });
+
+  it("Orders Route Handler: Tenant A DELETE on Tenant B order returns 404 and does not delete", async () => {
+    const req = new Request("http://localhost:3000/api/orders", { method: "DELETE" });
+
+    const response = await deleteOrder(req, {
+      params: Promise.resolve({ id: orderBId.toString() }),
+    });
+
+    expect(response.status).toBe(404);
+    expect(mockDbStore.orders.length).toBe(1);
+  });
+
+  it("Users Route Handler: Tenant A PUT on Tenant B user returns 404 and does not update role", async () => {
+    const req = new Request("http://localhost:3000/api/users", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role: "Admin" }),
+    });
+
+    const response = await updateUser(req, {
+      params: Promise.resolve({ id: userBId.toString() }),
+    });
+
+    expect(response.status).toBe(404);
+    expect(mockDbStore.users[0].role).toBe("Staff");
+  });
+
+  it("Production Progress Route Handler: Tenant A POST on Tenant B production returns 404", async () => {
+    const req = new Request("http://localhost:3000/api/production/progress/update", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ productionId: productionBId.toString(), producedQty: 50 }),
+    });
+
+    const response = await updateProductionProgress(req);
+
+    expect(response.status).toBe(404);
+    expect(mockDbStore.productions[0].producedQty).toBe(10);
   });
 });
 
