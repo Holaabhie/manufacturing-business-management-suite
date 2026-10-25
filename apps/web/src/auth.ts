@@ -2,7 +2,6 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 import GitHub from "next-auth/providers/github";
-import { connectToDatabase } from "@/lib/mongodb";
 import { authLogger } from "@/infrastructure/logging/logger";
 
 // ── Environment Variable Inference Backward Compatibility ──────────
@@ -26,8 +25,20 @@ if (!process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER && process.env.AZURE_AD_TENANT_I
 if (!process.env.AUTH_URL && process.env.NEXTAUTH_URL) {
   process.env.AUTH_URL = process.env.NEXTAUTH_URL;
 }
-if (!process.env.AUTH_SECRET && process.env.NEXTAUTH_SECRET) {
-  process.env.AUTH_SECRET = process.env.NEXTAUTH_SECRET;
+const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
+const authSecret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
+
+if (!authSecret) {
+  if (isBuildPhase) {
+    process.env.AUTH_SECRET = "build_placeholder_secret_at_least_32_chars_long";
+  } else if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "FATAL: AUTH_SECRET (or NEXTAUTH_SECRET) environment variable is not set in production. " +
+      "Refusing to start. Set AUTH_SECRET to a secure random string (at least 32 characters) and restart."
+    );
+  }
+} else if (!process.env.AUTH_SECRET) {
+  process.env.AUTH_SECRET = authSecret;
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -58,13 +69,39 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (!account || !user.email) return true;
 
       const { User } = await import("@/models/User");
+      const { connectToDatabase } = await import("@/lib/mongodb");
       await connectToDatabase();
 
       const provider = account.provider;
 
-      if (provider === "google" || provider === "microsoft-entra-id" || provider === "github") {
-        const providerIdField =
-          provider === "google" ? "googleId" : provider === "github" ? "githubId" : "microsoftId";
+      if (provider === "google") {
+        try {
+          const { findOrCreateGoogleAdminUser } = await import("@/lib/google-auth");
+          const emailVerified = (profile as any)?.email_verified ?? (profile as any)?.emailVerified ?? true;
+          const { user: dbUser, isNewUser } = await findOrCreateGoogleAdminUser({
+            email: user.email,
+            googleId: account.providerAccountId || user.id || "",
+            name: user.name || profile?.name,
+            picture: user.image || (profile as any)?.picture,
+            emailVerified,
+          });
+          user.id = dbUser._id;
+          (user as any).company_setup_complete = dbUser.company_setup_complete;
+          (user as any).isNewUser = isNewUser;
+
+          // For NEW users (or incomplete setup), send to /setup
+          if (isNewUser || dbUser.company_setup_complete === false) {
+            return "/setup";
+          }
+          return true;
+        } catch (saveErr) {
+          authLogger.error('Google OAuth user save error', { error: saveErr instanceof Error ? saveErr.message : String(saveErr) });
+          return false;
+        }
+      }
+
+      if (provider === "microsoft-entra-id" || provider === "github") {
+        const providerIdField = provider === "github" ? "githubId" : "microsoftId";
 
         // Check if user already exists by email
         const existingUser = await User.findOne({ email: user.email });
@@ -82,23 +119,28 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         } else {
           // Create new admin user from OAuth
           const newUser = new User({
-            email: user.email,
+            email: user.email.toLowerCase(),
             fullName: user.name || profile?.name,
             [providerIdField]: account.providerAccountId || user.id,
-            phone: "",
             isEmailVerified: true,
             isPhoneVerified: false,
             role: "Admin",
             status: "active",
             subscription_tier: "starter",
+            subscription_status: "active",
             firstLoginCompleted: true,
             company_setup_complete: false,
             failedLoginAttempts: 0,
             lastLogin: new Date(),
             lastActiveAt: new Date(),
           });
-          const savedUser = await newUser.save();
-          user.id = savedUser._id.toString();
+          try {
+            const savedUser = await newUser.save();
+            user.id = savedUser._id.toString();
+          } catch (saveErr) {
+            authLogger.error('OAuth newUser save error', { error: saveErr instanceof Error ? saveErr.message : String(saveErr) });
+            return false;
+          }
         }
       }
 
@@ -116,6 +158,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (token?.subscription_tier) {
         (session.user as any).subscription_tier = token.subscription_tier;
       }
+      if (typeof token?.company_setup_complete === "boolean") {
+        (session.user as any).company_setup_complete = token.company_setup_complete;
+      }
       return session;
     },
 
@@ -128,6 +173,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if ((user || trigger === "update") && token.sub) {
         try {
           const { User } = await import("@/models/User");
+          const { connectToDatabase } = await import("@/lib/mongodb");
           await connectToDatabase();
           const dbUser = await User.findById(token.sub);
           if (dbUser) {
@@ -136,6 +182,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             token.organizationId = dbUser.organizationId;
             token.email = dbUser.email;
             token.name = dbUser.fullName;
+            token.company_setup_complete = dbUser.company_setup_complete;
           }
         } catch (e) {
           authLogger.error('JWT callback DB error', { error: e instanceof Error ? e.message : String(e) });
@@ -146,6 +193,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
 
     async redirect({ url, baseUrl }) {
+      if (url.includes("/setup") || url === "/setup") return `${baseUrl}/setup`;
       // Prevent open redirect attacks
       if (url.startsWith("/")) return `${baseUrl}${url}`;
       if (new URL(url).origin === baseUrl) return url;
@@ -154,7 +202,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   pages: {
     signIn: "/login",
-    error: "/login?error=oauth",
+    error: "/login",
   },
   useSecureCookies: process.env.NODE_ENV === "production" && !(process.env.AUTH_URL || process.env.NEXTAUTH_URL)?.startsWith("http://localhost"),
   secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
@@ -184,7 +232,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             .collection("users")
             .findOne({ email: user.email });
 
-          await db.collection("sessions").insertOne({
+          await db.collection<import("@/lib/auth-session").SessionDoc>("sessions").insertOne({
             _id: sessionId,
             userId: user.id,
             createdAt: now,

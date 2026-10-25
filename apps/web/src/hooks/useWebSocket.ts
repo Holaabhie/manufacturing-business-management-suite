@@ -52,9 +52,11 @@ async function getIO() {
 
 // ─── Hook ───────────────────────────────────────────────
 export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketReturn {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const resolvedUrl = options.url || process.env.NEXT_PUBLIC_WS_URL || (isProduction ? undefined : 'http://localhost:3001');
+
     const {
         tenantId,
-        url = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001',
         autoReconnect = true,
     } = options;
 
@@ -66,6 +68,9 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
 
     // ── Connect ─────────────────────────────────────────
     useEffect(() => {
+        const targetUrl = resolvedUrl;
+        if (!targetUrl) return;
+
         let mounted = true;
 
         async function connect() {
@@ -73,7 +78,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
 
             if (socketRef.current?.connected) return;
 
-            const socket = io(url, {
+            const socket = io(targetUrl, {
                 transports: ['websocket', 'polling'],
                 reconnection: autoReconnect,
                 reconnectionAttempts: 10,
@@ -131,7 +136,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
             socketRef.current?.disconnect();
             socketRef.current = null;
         };
-    }, [url, tenantId, autoReconnect]);
+    }, [resolvedUrl, tenantId, autoReconnect]);
 
     // ── Event subscription helpers ──────────────────────
     const onOrderUpdate = useCallback(

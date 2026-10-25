@@ -11,11 +11,10 @@ import {
 import { exportWorkbook } from "@/lib/excel-export";
 import { generateDataExportPDF } from "@/lib/pdf-generator";
 import { EnterpriseDataTable } from "@/components/EnterpriseDataTable";
-import { MobileTableCards, type MobileField } from "@/components/ui/MobileTableCards";
-import { StatWidget } from "@/components/ui/StatWidget";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ColumnDef } from "@tanstack/react-table";
+import type { MobileField } from "@/components/ui/MobileTableCards";
 import {
     Calendar,
     Download,
@@ -26,6 +25,7 @@ import {
     ArrowUpRight,
     ArrowDownLeft,
     Coins,
+    RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -51,10 +51,31 @@ export function VendorStatement({
     const [from, setFrom] = useState<string>(defaultFY.from);
     const [to, setTo] = useState<string>(defaultFY.to);
     const [activePreset, setActivePreset] = useState<"current" | "previous" | "custom">("current");
+    const [exportingExcel, setExportingExcel] = useState(false);
+    const [exportingPDF, setExportingPDF] = useState(false);
 
     const [data, setData] = useState<VendorStatementResult | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+
+    const formatDisplayDate = useCallback((dStr: string) => {
+        if (!dStr) return "";
+        const parts = dStr.split("-");
+        if (parts.length === 3) {
+            const y = Number(parts[0]);
+            const m = Number(parts[1]);
+            const d = Number(parts[2]);
+            if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+                const dt = new Date(y, m - 1, d);
+                return dt.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+            }
+        }
+        const dt = new Date(dStr);
+        if (!isNaN(dt.getTime())) {
+            return dt.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+        }
+        return dStr;
+    }, []);
 
     const fetchStatement = useCallback(async () => {
         if (!vendorId) return;
@@ -326,7 +347,7 @@ export function VendorStatement({
                                 bal < 0 ? "text-blue-600 dark:text-blue-400" : "text-[var(--foreground)]"
                             )}
                         >
-                            {bal < 0 ? `${formatINR(Math.abs(bal))} Adv` : formatINR(bal)}
+                            {bal < 0 ? `${formatINR(Math.abs(bal))} ${t("advSuffix")}` : formatINR(bal)}
                         </div>
                     );
                 },
@@ -341,7 +362,7 @@ export function VendorStatement({
                 key: "particulars",
                 label: t("particulars"),
                 primary: true,
-                render: (v, item) => (
+                render: (v: any, item: VendorStatementLine) => (
                     <div className="min-w-0">
                         <span className="font-semibold text-[13px] text-[var(--foreground)] truncate block">{v}</span>
                         {item.tdsNote && (
@@ -359,7 +380,7 @@ export function VendorStatement({
             {
                 key: "type",
                 label: t("type"),
-                render: (v) => (
+                render: (v: any) => (
                     <span
                         className={cn(
                             "text-[10px] font-semibold px-2 py-0.5 rounded-full inline-block",
@@ -375,17 +396,17 @@ export function VendorStatement({
             {
                 key: "debit",
                 label: t("debitPayment"),
-                render: (v) => (v > 0 ? formatINR(v) : "—"),
+                render: (v: any) => (Number(v) > 0 ? formatINR(Number(v)) : "—"),
             },
             {
                 key: "credit",
                 label: t("creditBill"),
-                render: (v) => (v > 0 ? formatINR(v) : "—"),
+                render: (v: any) => (Number(v) > 0 ? formatINR(Number(v)) : "—"),
             },
             {
                 key: "runningBalance",
                 label: t("balance"),
-                render: (v) => (v < 0 ? `${formatINR(Math.abs(v))} Adv` : formatINR(v)),
+                render: (v: any) => (Number(v) < 0 ? `${formatINR(Math.abs(Number(v)))} Adv` : formatINR(Number(v))),
             },
         ],
         [t, formatINR]
@@ -396,169 +417,282 @@ export function VendorStatement({
         return formatINR(amount);
     };
 
+    // Group lines by month for compact mobile ledger cards
+    const groupedLines = useMemo(() => {
+        if (!data || data.lines.length === 0) return [];
+        const groups: { monthKey: string; lines: VendorStatementLine[] }[] = [];
+        data.lines.forEach((line) => {
+            const parts = line.date.split("-");
+            let monthKey = "";
+            if (parts.length === 3) {
+                const dt = new Date(Number(parts[0]), Number(parts[1]) - 1, 1);
+                monthKey = dt.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+            } else {
+                monthKey = line.date;
+            }
+            const lastGroup = groups[groups.length - 1];
+            if (lastGroup && lastGroup.monthKey === monthKey) {
+                lastGroup.lines.push(line);
+            } else {
+                groups.push({ monthKey, lines: [line] });
+            }
+        });
+        return groups;
+    }, [data]);
+
     return (
-        <div className="w-full min-w-0 space-y-4">
-            {/* ─── Controls: Presets + Date Range + Export Actions ─── */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-[16px] bg-[var(--muted)]/50 border border-[var(--border)] min-w-0">
-                {/* Preset Pill Buttons */}
-                <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                    <button
-                        type="button"
-                        onClick={() => handlePresetChange("current")}
-                        className={cn(
-                            "px-3 py-1.5 rounded-xl text-[12px] font-semibold transition-all cursor-pointer",
-                            activePreset === "current"
-                                ? "bg-[var(--primary)] text-white shadow-sm"
-                                : "bg-[var(--card)] hover:bg-[var(--accent)] text-[var(--muted-foreground)] border border-[var(--border)]"
-                        )}
-                    >
-                        {t("currentFY")}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => handlePresetChange("previous")}
-                        className={cn(
-                            "px-3 py-1.5 rounded-xl text-[12px] font-semibold transition-all cursor-pointer",
-                            activePreset === "previous"
-                                ? "bg-[var(--primary)] text-white shadow-sm"
-                                : "bg-[var(--card)] hover:bg-[var(--accent)] text-[var(--muted-foreground)] border border-[var(--border)]"
-                        )}
-                    >
-                        {t("previousFY")}
-                    </button>
+        <div className="w-full min-w-0 flex flex-col h-full min-h-0 bg-[var(--background)]">
+            {/* ─── Scrollable Body ────────────────────────────────────────── */}
+            <div className="flex-1 overflow-y-auto p-3 sm:p-5 min-h-0 space-y-4 scrollbar-hide">
+                {/* ─── Filters Section ───────────────────────────────────── */}
+                <div className="space-y-2.5">
+                    {/* Segmented Control */}
+                    <div className="flex rounded-xl bg-[var(--muted)] p-1 border border-[var(--border)]">
+                        <button
+                            type="button"
+                            onClick={() => handlePresetChange("current")}
+                            className={cn(
+                                "flex-1 py-1.5 px-3 rounded-lg text-[13px] font-medium transition-all text-center cursor-pointer",
+                                activePreset === "current"
+                                    ? "bg-[var(--card)] text-[var(--foreground)] shadow-xs font-semibold"
+                                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                            )}
+                        >
+                            {t("currentFY")}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handlePresetChange("previous")}
+                            className={cn(
+                                "flex-1 py-1.5 px-3 rounded-lg text-[13px] font-medium transition-all text-center cursor-pointer",
+                                activePreset === "previous"
+                                    ? "bg-[var(--card)] text-[var(--foreground)] shadow-xs font-semibold"
+                                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                            )}
+                        >
+                            {t("previousFY")}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setActivePreset("custom")}
+                            className={cn(
+                                "flex-1 py-1.5 px-3 rounded-lg text-[13px] font-medium transition-all text-center cursor-pointer",
+                                activePreset === "custom"
+                                    ? "bg-[var(--card)] text-[var(--foreground)] shadow-xs font-semibold"
+                                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                            )}
+                        >
+                            {t("customFY") || "Custom"}
+                        </button>
+                    </div>
+
+                    {/* From / To Date Inputs (2-col grid) */}
+                    <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+                        <div>
+                            <label className="block text-[11px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider mb-1">
+                                {t("fromDate")}
+                            </label>
+                            <input
+                                type="date"
+                                value={from}
+                                onChange={(e) => handleCustomDateChange(e.target.value, to)}
+                                className="w-full h-10 px-3 rounded-xl bg-[var(--card)] border border-[var(--border)] text-[13px] font-medium text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all cursor-pointer"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-[11px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider mb-1">
+                                {t("toDate")}
+                            </label>
+                            <input
+                                type="date"
+                                value={to}
+                                onChange={(e) => handleCustomDateChange(from, e.target.value)}
+                                className="w-full h-10 px-3 rounded-xl bg-[var(--card)] border border-[var(--border)] text-[13px] font-medium text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all cursor-pointer"
+                            />
+                        </div>
+                    </div>
                 </div>
 
-                {/* Date Inputs */}
-                <div className="flex items-center gap-2 flex-wrap min-w-0">
-                    <div className="flex items-center gap-1.5 bg-[var(--card)] border border-[var(--border)] rounded-xl px-2.5 py-1">
-                        <span className="text-[11px] font-medium text-[var(--muted-foreground)]">{t("fromDate")}:</span>
-                        <input
-                            type="date"
-                            value={from}
-                            onChange={(e) => handleCustomDateChange(e.target.value, to)}
-                            className="bg-transparent text-[12px] text-[var(--foreground)] outline-none border-none cursor-pointer"
-                        />
+                {/* ─── Compact 2x2 Summary Block ─────────────────────────── */}
+                {loading ? (
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 grid grid-cols-2 gap-2.5">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                            <Skeleton key={i} className="h-16 w-full rounded-xl" />
+                        ))}
                     </div>
-                    <div className="flex items-center gap-1.5 bg-[var(--card)] border border-[var(--border)] rounded-xl px-2.5 py-1">
-                        <span className="text-[11px] font-medium text-[var(--muted-foreground)]">{t("toDate")}:</span>
-                        <input
-                            type="date"
-                            value={to}
-                            onChange={(e) => handleCustomDateChange(from, e.target.value)}
-                            className="bg-transparent text-[12px] text-[var(--foreground)] outline-none border-none cursor-pointer"
-                        />
+                ) : data ? (
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 sm:p-4 grid grid-cols-2 gap-2.5 sm:gap-3">
+                        <div className="p-2.5 rounded-xl bg-[var(--muted)]/40 border border-[var(--border)]/40 min-w-0">
+                            <span className="block text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] font-semibold truncate">
+                                {t("openingBalance")}
+                            </span>
+                            <span className="mt-1 block text-[15px] sm:text-base font-bold text-[var(--foreground)] tabular-nums truncate">
+                                {formatBalance(data.openingBalance)}
+                            </span>
+                        </div>
+                        <div className="p-2.5 rounded-xl bg-[var(--muted)]/40 border border-[var(--border)]/40 min-w-0">
+                            <span className="block text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] font-semibold truncate">
+                                {t("totalDebitPayment")}
+                            </span>
+                            <span className="mt-1 block text-[15px] sm:text-base font-bold text-rose-600 dark:text-rose-400 tabular-nums truncate">
+                                {formatINR(data.totalDebit)}
+                            </span>
+                        </div>
+                        <div className="p-2.5 rounded-xl bg-[var(--muted)]/40 border border-[var(--border)]/40 min-w-0">
+                            <span className="block text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] font-semibold truncate">
+                                {t("totalCreditBill")}
+                            </span>
+                            <span className="mt-1 block text-[15px] sm:text-base font-bold text-amber-600 dark:text-amber-400 tabular-nums truncate">
+                                {formatINR(data.totalCredit)}
+                            </span>
+                        </div>
+                        <div className={cn(
+                            "p-2.5 rounded-xl border min-w-0",
+                            data.closingBalance < 0
+                                ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                                : "bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400"
+                        )}>
+                            <span className="block text-[11px] uppercase tracking-wider font-semibold opacity-80 truncate">
+                                {t("closingBalance")}
+                            </span>
+                            <span className="mt-1 block text-[15px] sm:text-base font-bold tabular-nums truncate">
+                                {formatBalance(data.closingBalance)}
+                            </span>
+                        </div>
                     </div>
-                </div>
+                ) : null}
 
-                {/* Export & Share Action Buttons */}
-                <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
-                    <button
-                        type="button"
-                        onClick={handleExportExcel}
-                        title={t("exportExcel")}
-                        disabled={loading || !data}
-                        className="h-8 px-2.5 rounded-xl bg-[var(--card)] hover:bg-[var(--accent)] text-[var(--foreground)] border border-[var(--border)] flex items-center gap-1.5 text-[12px] font-medium transition-all disabled:opacity-50 cursor-pointer"
-                    >
-                        <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                        <span className="hidden md:inline">Excel</span>
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleExportPDF}
-                        title={t("downloadPDF")}
-                        disabled={loading || !data}
-                        className="h-8 px-2.5 rounded-xl bg-[var(--card)] hover:bg-[var(--accent)] text-[var(--foreground)] border border-[var(--border)] flex items-center gap-1.5 text-[12px] font-medium transition-all disabled:opacity-50 cursor-pointer"
-                    >
-                        <FileText className="h-3.5 w-3.5 text-red-500" />
-                        <span className="hidden md:inline">PDF</span>
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleWhatsAppShare}
-                        title={t("shareWhatsApp")}
-                        disabled={loading || !data}
-                        className="h-8 px-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 text-[12px] font-medium transition-all disabled:opacity-50 cursor-pointer shadow-sm"
-                    >
-                        <MessageSquare className="h-3.5 w-3.5" />
-                        <span className="hidden md:inline">WhatsApp</span>
-                    </button>
-                </div>
+                {/* ─── Transactions List ─────────────────────────────────── */}
+                {loading ? (
+                    <div className="space-y-3">
+                        {Array.from({ length: 3 }).map((_, i) => (
+                            <Skeleton key={i} className="h-24 w-full rounded-xl" />
+                        ))}
+                    </div>
+                ) : !data || data.lines.length === 0 ? (
+                    <div className="py-10 px-4 text-center rounded-2xl border border-[var(--border)] bg-[var(--card)]">
+                        <p className="text-3xl mb-2">📄</p>
+                        <p className="text-[14px] font-semibold text-[var(--foreground)]">{t("noTransactions") || t("emptyStatementTitle")}</p>
+                        <p className="text-[12px] text-[var(--muted-foreground)] mt-1">{t("emptyStatementDesc")}</p>
+                    </div>
+                ) : (
+                    <div className="w-full min-w-0 space-y-3">
+                        {/* Desktop EnterpriseDataTable */}
+                        <div className="hidden md:block rounded-2xl border border-[var(--border)] bg-[var(--card)] overflow-hidden min-w-0">
+                            <EnterpriseDataTable
+                                columns={columns}
+                                data={data.lines}
+                                searchColumn="particulars"
+                                searchPlaceholder={`${t("particulars")}...`}
+                                showBulkActions={false}
+                            />
+                        </div>
+
+                        {/* Mobile Grouped Row Cards */}
+                        <div className="md:hidden space-y-3">
+                            {groupedLines.map((group) => (
+                                <div key={group.monthKey} className="space-y-2">
+                                    <div className="sticky top-0 z-10 py-1 px-3 rounded-lg bg-[var(--muted)]/90 backdrop-blur-xs text-[11px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] border border-[var(--border)]/40">
+                                        {group.monthKey}
+                                    </div>
+                                    <div className="space-y-2">
+                                        {group.lines.map((line, idx) => (
+                                            <div
+                                                key={`${line.refId}-${idx}`}
+                                                className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 space-y-2 shadow-2xs"
+                                            >
+                                                {/* Line 1: Date + Type badge */}
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-[12px] font-semibold text-[var(--muted-foreground)] tabular-nums">
+                                                        {formatDisplayDate(line.date)}
+                                                    </span>
+                                                    <span
+                                                        className={cn(
+                                                            "text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider",
+                                                            line.type === "Bill"
+                                                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                                                                : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                                                        )}
+                                                    >
+                                                        {line.type === "Bill" ? t("bill") : t("payment")}
+                                                    </span>
+                                                </div>
+
+                                                {/* Line 2: Particulars (wrap, max 2 lines) */}
+                                                <p className="text-[13px] font-medium text-[var(--foreground)] line-clamp-2 leading-snug">
+                                                    {line.particulars}
+                                                </p>
+
+                                                {/* Line 3: Debit / Credit / Balance in 3 equal columns */}
+                                                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[var(--border)]/40 text-[12px]">
+                                                    <div>
+                                                        <span className="block text-[10px] uppercase tracking-wider text-[var(--muted-foreground)] font-medium">
+                                                            {t("debitPayment")}
+                                                        </span>
+                                                        <span className="mt-0.5 block font-semibold text-rose-600 dark:text-rose-400 tabular-nums truncate">
+                                                            {line.debit > 0 ? formatINR(line.debit) : "—"}
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="block text-[10px] uppercase tracking-wider text-[var(--muted-foreground)] font-medium">
+                                                            {t("creditBill")}
+                                                        </span>
+                                                        <span className="mt-0.5 block font-semibold text-amber-600 dark:text-amber-400 tabular-nums truncate">
+                                                            {line.credit > 0 ? formatINR(line.credit) : "—"}
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="block text-[10px] uppercase tracking-wider text-[var(--muted-foreground)] font-medium">
+                                                            {t("balance")}
+                                                        </span>
+                                                        <span className={cn(
+                                                            "mt-0.5 block font-bold tabular-nums truncate",
+                                                            line.runningBalance < 0 ? "text-emerald-600 dark:text-emerald-400" : "text-[var(--foreground)]"
+                                                        )}>
+                                                            {line.runningBalance < 0 ? `${formatINR(Math.abs(line.runningBalance))} (Advance)` : formatINR(line.runningBalance)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
 
-            {/* ─── StatWidget KPI Row ───────────────────────────────── */}
-            {loading ? (
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 w-full min-w-0">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                        <Skeleton key={i} className="h-28 w-full rounded-[20px]" />
-                    ))}
-                </div>
-            ) : data ? (
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 w-full min-w-0">
-                    <StatWidget
-                        label={t("openingBalance")}
-                        value={data.openingBalance}
-                        displayValue={formatBalance(data.openingBalance)}
-                        icon={Wallet}
-                        color="blue"
-                    />
-                    <StatWidget
-                        label={t("totalDebitPayment")}
-                        value={data.totalDebit}
-                        displayValue={formatINR(data.totalDebit)}
-                        icon={ArrowDownLeft}
-                        color="purple"
-                    />
-                    <StatWidget
-                        label={t("totalCreditBill")}
-                        value={data.totalCredit}
-                        displayValue={formatINR(data.totalCredit)}
-                        icon={ArrowUpRight}
-                        color="green"
-                    />
-                    <StatWidget
-                        label={t("closingBalance")}
-                        value={data.closingBalance}
-                        displayValue={formatBalance(data.closingBalance)}
-                        icon={Coins}
-                        color={data.closingBalance <= 0 ? "green" : "orange"}
-                    />
-                </div>
-            ) : null}
-
-            {/* ─── Transactions Table / Cards / Empty State ────────── */}
-            {loading ? (
-                <div className="p-6 text-center">
-                    <Skeleton className="h-48 w-full rounded-2xl" />
-                </div>
-            ) : !data || data.lines.length === 0 ? (
-                <EmptyState
-                    icon="📄"
-                    title={t("emptyStatementTitle")}
-                    description={t("emptyStatementDesc")}
-                />
-            ) : (
-                <div className="space-y-3 w-full min-w-0">
-                    {/* Desktop EnterpriseDataTable */}
-                    <div className="hidden md:block rounded-2xl border border-[var(--border)] bg-[var(--card)] overflow-hidden min-w-0">
-                        <EnterpriseDataTable
-                            columns={columns}
-                            data={data.lines}
-                            searchColumn="particulars"
-                            searchPlaceholder={`${t("particulars")}...`}
-                            showBulkActions={false}
-                        />
-                    </div>
-
-                    {/* Mobile Cards View */}
-                    <div className="md:hidden">
-                        <MobileTableCards
-                            data={data.lines}
-                            fields={mobileFields}
-                            keyExtractor={(item, idx) => `${item.refId}-${idx}`}
-                        />
-                    </div>
-                </div>
-            )}
+            {/* ─── Sticky Footer Actions ───────────────────────────────────── */}
+            <div className="shrink-0 p-3 sm:p-4 border-t border-[var(--border)] bg-[var(--card)] flex items-center gap-2 sm:gap-3">
+                <button
+                    type="button"
+                    onClick={handleExportExcel}
+                    disabled={loading || !data || exportingExcel}
+                    className="flex-1 h-11 px-3 rounded-xl bg-[var(--muted)] hover:bg-[var(--accent)] text-[var(--foreground)] border border-[var(--border)] flex items-center justify-center gap-2 text-[13px] font-semibold transition-all disabled:opacity-50 cursor-pointer"
+                >
+                    {exportingExcel ? <RefreshCw className="h-4 w-4 animate-spin text-[var(--muted-foreground)]" /> : <FileSpreadsheet className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />}
+                    <span>Excel</span>
+                </button>
+                <button
+                    type="button"
+                    onClick={handleExportPDF}
+                    disabled={loading || !data || exportingPDF}
+                    className="flex-1 h-11 px-3 rounded-xl bg-[var(--muted)] hover:bg-[var(--accent)] text-[var(--foreground)] border border-[var(--border)] flex items-center justify-center gap-2 text-[13px] font-semibold transition-all disabled:opacity-50 cursor-pointer"
+                >
+                    {exportingPDF ? <RefreshCw className="h-4 w-4 animate-spin text-[var(--muted-foreground)]" /> : <FileText className="h-4 w-4 text-rose-500 shrink-0" />}
+                    <span>PDF</span>
+                </button>
+                <button
+                    type="button"
+                    onClick={handleWhatsAppShare}
+                    disabled={loading || !data}
+                    className="flex-[1.4] h-11 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2 text-[13px] font-semibold transition-all disabled:opacity-50 cursor-pointer shadow-xs"
+                >
+                    <MessageSquare className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{t("shareWhatsApp") || "Send on WhatsApp"}</span>
+                </button>
+            </div>
         </div>
     );
 }

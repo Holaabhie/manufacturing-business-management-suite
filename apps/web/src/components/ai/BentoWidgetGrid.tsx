@@ -16,7 +16,7 @@ import {
   IndianRupee,
   FileText,
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 
 interface BentoWidgetGridProps {
   isContextLoaded: boolean;
@@ -79,9 +79,9 @@ export function BentoWidgetGrid({
       transition: { staggerChildren: 0.06 },
     },
   };
-  const itemVariants = {
+  const itemVariants: Variants = {
     hidden: { opacity: 0, y: 12 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.18, ease: [0.16, 1, 0.3, 1] } },
+    show: { opacity: 1, y: 0, transition: { duration: 0.18, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] } },
   };
 
   return (

@@ -41,6 +41,10 @@ describe("Orders Domain Types", () => {
                 totalTax: 0,
                 shippingCharges: 0,
                 roundOff: 0,
+                materialCost: 0,
+                labourCost: 0,
+                overheadCost: 0,
+                machineryCost: 0,
                 totalPaid: 0,
                 balanceDue: 0
             };
