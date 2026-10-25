@@ -19,7 +19,7 @@ export async function GET() {
             .sort({ createdAt: -1 })
             .toArray();
 
-        const formatted = productions.map((p: any) => ({
+        const formatted = productions.map((p) => ({
             id: p._id.toString(),
             orderId: p.orderId,
             orderProductName: p.orderProductName,
@@ -49,9 +49,9 @@ export async function GET() {
         }));
 
         return NextResponse.json(formatted);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error fetching productions:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
     }
 }
 
@@ -197,8 +197,8 @@ export async function POST(request: Request) {
         // ─── Save materials to production_material_usage ───
         if (body.materials && Array.isArray(body.materials) && body.materials.length > 0) {
             const materialDocs = body.materials
-                .filter((m: any) => m.inventoryId || m.inventoryItemId)
-                .map((m: any) => ({
+                .filter((m: Record<string, unknown>) => m.inventoryId || m.inventoryItemId)
+                .map((m: Record<string, unknown>) => ({
                     userId: ownerId,
                     productionJobId: jobId,
                     inventoryItemId: m.inventoryId || m.inventoryItemId,
@@ -221,10 +221,10 @@ export async function POST(request: Request) {
             id: jobId,
             ...production,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error creating production:", error);
         return NextResponse.json(
-            { success: false, message: error.message || "Internal server error" },
+            { success: false, message: error instanceof Error ? error.message : String(error) || "Internal server error" },
             { status: 500 }
         );
     }

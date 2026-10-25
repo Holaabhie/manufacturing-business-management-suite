@@ -18,9 +18,10 @@ export async function GET(request: NextRequest) {
     const account = searchParams.get("account") || undefined;
     const from = searchParams.get("from") || undefined;
     const to = searchParams.get("to") || undefined;
-    const direction = (searchParams.get("direction") as any) || undefined;
-    const match_status = (searchParams.get("match_status") as any) || undefined;
-    const needs_review = searchParams.get("needs_review") || undefined;
+    const direction = (searchParams.get("direction") as "all" | "credit" | "debit") || undefined;
+    const match_status = (searchParams.get("match_status") as "Unmatched" | "Partial" | "Matched" | "Excluded" | "all") || undefined;
+    const needsReviewRaw = searchParams.get("needs_review");
+    const needs_review = needsReviewRaw === "true" ? true : needsReviewRaw === "false" ? false : undefined;
     const search = searchParams.get("search") || undefined;
     const import_id = searchParams.get("import_id") || undefined;
     const page = parseInt(searchParams.get("page") || "1", 10);
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
       to,
       direction,
       match_status,
-      needs_review: (needs_review as any),
+      needs_review,
       search,
       import_id,
       page,
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
       limit,
       totalPages: Math.ceil(data.total / limit) || 1,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching transactions:", error);
     return NextResponse.json({ error: "Failed to fetch transactions" }, { status: 500 });
   }

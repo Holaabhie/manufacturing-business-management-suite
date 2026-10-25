@@ -22,7 +22,7 @@ export async function GET() {
             .toArray();
 
         return NextResponse.json(
-            templates.map((t: any) => ({
+            templates.map((t) => ({
                 id: t._id.toString(),
                 name: t.name,
                 productName: t.productName || "",
@@ -30,9 +30,9 @@ export async function GET() {
                 createdAt: t.createdAt,
             }))
         );
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error fetching templates:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
     }
 }
 
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
             userId,
             name: name.trim(),
             productName: productName?.trim() || "",
-            items: items.map((item: any) => ({
+            items: items.map((item: Record<string, unknown>) => ({
                 inventoryItemId: item.inventoryItemId || "",
                 itemName: item.itemName || "",
                 quantity: Number(item.quantity) || 0,
@@ -82,8 +82,8 @@ export async function POST(request: Request) {
             id: result.insertedId.toString(),
             ...doc,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error creating template:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
     }
 }

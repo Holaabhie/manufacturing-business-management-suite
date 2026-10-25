@@ -87,7 +87,7 @@ export const GET = withRateLimit(
                 if (!oid) continue;
                 const existing = productionsByOrderId.get(oid) || [];
                 const mats = Array.isArray(prod.materials) ? prod.materials : [];
-                existing.push(...mats.map((m: any) => ({
+                existing.push(...mats.map((m: Record<string, unknown>) => ({
                     inventoryId: String(m.inventoryId || ""),
                     name: String(m.name || "Unknown"),
                     quantityUsed: Number(m.quantityUsed || 0),

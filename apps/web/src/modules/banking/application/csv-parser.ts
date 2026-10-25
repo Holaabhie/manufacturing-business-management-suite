@@ -1,14 +1,15 @@
 import crypto from "crypto";
-import type {
-  CsvMapping,
-  DateFormat,
-  AmountMode,
-  ParsedRowResult,
-  BankStatementImportError,
-  BalanceCheckResult,
+import {
+  type CsvMapping,
+  type DateFormat,
+  type AmountMode,
+  type ParsedRowResult,
+  type BankStatementImportError,
+  type BalanceCheckResult,
+  MAX_FILE_SIZE_BYTES,
 } from "../domain/types";
 
-export const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+export { MAX_FILE_SIZE_BYTES };
 export const MAX_ROWS_LIMIT = 20000;
 
 export interface DecodeResult {

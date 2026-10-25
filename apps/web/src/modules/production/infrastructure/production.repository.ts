@@ -33,7 +33,7 @@ function toEntity(doc: Record<string, unknown>): Production {
         completedAt: (doc.completedAt as Date) || null,
         createdBy: String(doc.createdBy || ""),
         assignedStaff: (doc.assignedStaff as string[])?.map(String) || [],
-        assignmentLogs: (doc.assignmentLogs as any[]) || [],
+        assignmentLogs: (doc.assignmentLogs as Production["assignmentLogs"]) || [],
     };
 }
 
@@ -150,7 +150,7 @@ export class MongoProductionRepository implements IProductionRepository {
         context: { productionId: string; orderId: string; orderProductName: string },
     ): Promise<void> {
         const db = await getDb();
-        const invCol = db.collection("inventory");
+        const invCol = db.collection<{ quantity: number; updatedAt: Date; usageHistory: Record<string, unknown>[] }>("inventory");
         for (const mat of materials) {
             if (!mat.inventoryId) continue;
             const invItem = await invCol.findOne({ _id: new ObjectId(mat.inventoryId) });
@@ -170,7 +170,7 @@ export class MongoProductionRepository implements IProductionRepository {
                             status: "pending",
                             usedAt: new Date(),
                         },
-                    } as any,
+                    },
                 },
             );
         }

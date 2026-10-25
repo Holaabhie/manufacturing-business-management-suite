@@ -4,7 +4,7 @@ import { getDataOwnerId } from "@/lib/auth-session";
 import { withRateLimit } from "@/shared/middleware/rate-limiter";
 import { AppError } from "@/shared/lib/errors";
 import { ZodError } from "zod";
-import { getBankingService } from "@/modules/banking";
+import { getBankingService, MAX_MULTIPART_BYTES } from "@/modules/banking";
 
 const ALLOWED_ROLES = ["Owner", "Admin", "Accountant"];
 
@@ -19,13 +19,10 @@ export const POST = withRateLimit(
       const tenantId = getDataOwnerId(result.user);
 
       // Enforce payload size limit BEFORE buffering body
-      const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB file
-      const MULTIPART_OVERHEAD = 256 * 1024; // 256 KB allowance for multipart headers/boundaries
-      const MAX_MULTIPART_BYTES = MAX_FILE_BYTES + MULTIPART_OVERHEAD; // 5,505,024 bytes (5.25 MB)
       const contentLength = request.headers.get("content-length");
       if (contentLength && parseInt(contentLength, 10) > MAX_MULTIPART_BYTES) {
         return NextResponse.json(
-          { error: "Payload exceeds maximum allowed size of 5 MB" },
+          { error: "Payload exceeds maximum allowed size of 4 MB" },
           { status: 413 }
         );
       }
@@ -55,14 +52,16 @@ export const POST = withRateLimit(
 
         try {
           formData = await cappedRequest.formData();
-        } catch (err: any) {
+        } catch (err: unknown) {
+          const errStr = String(err);
+          const errObj = (typeof err === "object" && err !== null) ? (err as { message?: string; cause?: { message?: string } }) : null;
           if (
-            err?.message === "PAYLOAD_TOO_LARGE" ||
-            err?.cause?.message === "PAYLOAD_TOO_LARGE" ||
-            String(err).includes("PAYLOAD_TOO_LARGE")
+            errObj?.message === "PAYLOAD_TOO_LARGE" ||
+            errObj?.cause?.message === "PAYLOAD_TOO_LARGE" ||
+            errStr.includes("PAYLOAD_TOO_LARGE")
           ) {
             return NextResponse.json(
-              { error: "Payload exceeds maximum allowed size of 5 MB" },
+              { error: "Payload exceeds maximum allowed size of 4 MB" },
               { status: 413 }
             );
           }
@@ -105,7 +104,7 @@ export const POST = withRateLimit(
       );
 
       return NextResponse.json(preview);
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error instanceof ZodError) {
         return NextResponse.json(
           { error: error.issues?.[0]?.message || "Validation failed", details: error.issues },

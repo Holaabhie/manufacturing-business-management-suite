@@ -15,7 +15,7 @@ export async function GET(
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const perms = resolvePermissions(user.role, (user as any).customPermissions);
+        const perms = resolvePermissions(user.role, user.customPermissions);
         if (!hasPermission(perms, "invoices.view", isOwnerRole(user.role))) {
             return NextResponse.json({ error: "Forbidden: invoices.view permission required" }, { status: 403 });
         }
@@ -74,7 +74,7 @@ export async function PUT(
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const perms = resolvePermissions(user.role, (user as any).customPermissions);
+        const perms = resolvePermissions(user.role, user.customPermissions);
         if (!hasPermission(perms, "invoices.create", isOwnerRole(user.role)) && !hasPermission(perms, "invoices.markPaid", isOwnerRole(user.role))) {
             return NextResponse.json({ error: "Forbidden: invoice update permission required" }, { status: 403 });
         }
@@ -89,7 +89,7 @@ export async function PUT(
         const db = await getDb();
         const ownerId = getDataOwnerId(user);
 
-        const updateData: Record<string, any> = {
+        const updateData: Record<string, unknown> = {
             updated_at: new Date().toISOString(),
         };
 
@@ -145,7 +145,7 @@ export async function DELETE(
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const perms = resolvePermissions(user.role, (user as any).customPermissions);
+        const perms = resolvePermissions(user.role, user.customPermissions);
         if (!hasPermission(perms, "invoices.delete", isOwnerRole(user.role))) {
             return NextResponse.json({ error: "Forbidden: invoices.delete permission required" }, { status: 403 });
         }

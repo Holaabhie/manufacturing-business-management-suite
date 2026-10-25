@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     const accounts = await service.listAccounts(tenantId);
 
     return NextResponse.json({ accounts });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching bank accounts:", error);
     return NextResponse.json({ error: "Failed to fetch bank accounts" }, { status: 500 });
   }
@@ -44,8 +44,7 @@ export const POST = withIdempotency(
 
       const user = result.user;
       const tenantId = getDataOwnerId(user);
-      const userAny = user as any;
-      const createdBy = userAny.fullName || userAny.name || user.email || String(user._id);
+      const createdBy = user.fullName || user.email || String(user._id);
 
       const body = await request.json();
       const service = getBankingService();
@@ -55,9 +54,9 @@ export const POST = withIdempotency(
       await logDataOperation({
         organizationId: tenantId,
         userId: String(user._id),
-        userName: userAny.fullName || userAny.name || user.email || "Unknown User",
-        userRole: (userAny.role === "Admin" || userAny.role === "Owner") ? "Admin" : "Staff",
-            userRoleDetail: userAny.role || user.role,
+        userName: user.fullName || user.email || "Unknown User",
+        userRole: (user.role === "Admin" || user.role === "Owner") ? "Admin" : "Staff",
+            userRoleDetail: user.role || user.role,
         action: `Created bank account ${account.name} (${account.bank_name} - ${account.account_last4})`,
         actionType: "create",
         module: "banking",
@@ -69,7 +68,7 @@ export const POST = withIdempotency(
       });
 
       return NextResponse.json(account, { status: 201 });
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error instanceof ZodError) {
         return NextResponse.json(
           { error: error.issues?.[0]?.message || "Validation failed", details: error.issues },

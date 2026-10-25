@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     );
 
     return NextResponse.json({ summary });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof AppError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode });
     }

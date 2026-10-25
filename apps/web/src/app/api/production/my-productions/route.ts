@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
         const limit = 20;
         const skip = (page - 1) * limit;
 
-        let query: Record<string, any>;
+        let query: Record<string, unknown>;
 
         if (role === "Admin" || role === "Owner") {
             // Admin/Owner sees all productions in their scope
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
             db.collection("productions").countDocuments(query),
         ]);
 
-        const formatted = productions.map((p: any) => ({
+        const formatted = productions.map((p: Record<string, unknown>) => ({
             id: String(p._id),
             orderId: p.orderId,
             orderProductName: p.orderProductName,
@@ -97,10 +97,10 @@ export async function GET(request: NextRequest) {
             page,
             totalPages: Math.ceil(total / limit),
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[my-productions] Error:", error);
         return NextResponse.json(
-            { success: false, message: error.message },
+            { success: false, message: error instanceof Error ? error.message : String(error) },
             { status: 500 }
         );
     }

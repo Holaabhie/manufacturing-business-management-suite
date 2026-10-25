@@ -27,7 +27,7 @@ export async function GET(
 
     const suggestions = await service.getSuggestions(id, tenantId);
     return NextResponse.json({ suggestions });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof AppError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode });
     }

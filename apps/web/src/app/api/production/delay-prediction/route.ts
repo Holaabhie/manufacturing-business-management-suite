@@ -41,12 +41,12 @@ export async function GET() {
             .find({ adminId })
             .toArray();
 
-        const machineStatusMap = new Map(
-            machines.map((m: any) => [m._id.toString(), m.status || "idle"])
+        const machineStatusMap = new Map<string, string>(
+            machines.map((m) => [m._id.toString(), String(m.status || "idle")])
         );
 
         const now = new Date();
-        const predictions: any[] = [];
+        const predictions: Array<{ riskLevel: string; [key: string]: unknown }> = [];
 
         for (const prod of activeProductions) {
             const startDate = new Date(prod.createdAt);
@@ -192,8 +192,8 @@ export async function GET() {
             },
             lastUpdated: new Date().toISOString(),
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error computing delay predictions:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
     }
 }

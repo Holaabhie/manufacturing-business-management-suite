@@ -233,3 +233,7 @@ export interface TransactionFilters {
   limit?: number;
 }
 
+export const MAX_FILE_SIZE_BYTES = 4 * 1024 * 1024; // 4 MB (4,194,304 bytes)
+export const MULTIPART_OVERHEAD_BYTES = 256 * 1024; // 256 KB allowance for multipart headers/boundaries (262,144 bytes)
+export const MAX_MULTIPART_BYTES = MAX_FILE_SIZE_BYTES + MULTIPART_OVERHEAD_BYTES; // 4,456,448 bytes (4.25 MB)
+

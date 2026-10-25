@@ -44,8 +44,7 @@ export const POST = withIdempotency(
 
       const user = result.user;
       const tenantId = getDataOwnerId(user);
-      const userAny = user as any;
-      const unlinkedBy = userAny.fullName || userAny.name || user.email || String(user._id);
+      const unlinkedBy = user.fullName || user.email || String(user._id);
 
       let reason = null;
       try {
@@ -64,8 +63,8 @@ export const POST = withIdempotency(
         organizationId: tenantId,
         userId: String(user._id),
         userName: unlinkedBy,
-        userRole: (userAny.role === "Admin" || userAny.role === "Owner") ? "Admin" : "Staff",
-            userRoleDetail: userAny.role || user.role,
+        userRole: (user.role === "Admin" || user.role === "Owner") ? "Admin" : "Staff",
+            userRoleDetail: user.role || user.role,
         action: `Unlinked payment from transaction ${unlinked.bank_transaction_id}`,
         actionType: "delete",
         module: "banking",
@@ -77,7 +76,7 @@ export const POST = withIdempotency(
       });
 
       return NextResponse.json({ link: unlinked });
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error instanceof ZodError) {
         return NextResponse.json(
           { error: error.issues?.[0]?.message || "Validation failed", details: error.issues },

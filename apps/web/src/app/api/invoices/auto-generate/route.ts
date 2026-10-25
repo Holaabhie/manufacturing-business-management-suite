@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
         }
 
         // ── 2. Fetch client info ────────────────────────────────
-        let client: any = null;
+        let client: Record<string, unknown> | null = null;
         if (order.client_id) {
             try {
                 client = await db.collection("clients").findOne({
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
         }
 
         // ── 3. Fetch company/business info ──────────────────────
-        let company: any = null;
+        let company: Record<string, unknown> | null = null;
         try {
             company = await db.collection("company_profiles").findOne({ userId });
             if (!company) {
@@ -175,10 +175,10 @@ export async function POST(request: NextRequest) {
             invoiceNumber,
             invoiceData,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[invoices/auto-generate] Error:", error);
         return NextResponse.json(
-            { error: error.message || "Failed to generate invoice" },
+            { error: (error as Error).message || "Failed to generate invoice" },
             { status: 500 },
         );
     }

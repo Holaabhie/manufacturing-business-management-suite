@@ -39,16 +39,16 @@ export const POST = withRateLimit(
             // 2. Sum all payments linked to this order
             //    Payment docs store order reference as `order_id` (string)
             const paymentDocs = await db
-                .collection("payments")
+                .collection<{ amount?: number; order_id?: string; userId?: string }>("payments")
                 .find({ order_id: orderId, userId })
                 .toArray();
 
-            const totalPaid = paymentDocs.reduce(
-                (sum: number, p: any) => sum + (Number(p.amount) || 0),
+            const totalPaid = paymentDocs.reduce<number>(
+                (sum, p) => sum + (Number(p.amount) || 0),
                 0
             );
 
-            const totalAmount = Number(order.total_amount || order.grand_total || 0);
+            const totalAmount = Number((order.total_amount as number | undefined) ?? (order.grand_total as number | undefined) ?? 0);
             const balanceDue = totalAmount - totalPaid;
 
             // 3. Determine new payment status
@@ -63,7 +63,7 @@ export const POST = withRateLimit(
             }
 
             // 4. Build update — only payment-related fields, never touch production status
-            const updateFields: Record<string, any> = {
+            const updateFields: Record<string, unknown> = {
                 payment_status: paymentStatus,
                 total_paid: totalPaid,
                 balance_due: Math.max(0, balanceDue),

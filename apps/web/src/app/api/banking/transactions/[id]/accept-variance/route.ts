@@ -44,8 +44,7 @@ export const POST = withIdempotency(
 
       const user = result.user;
       const tenantId = getDataOwnerId(user);
-      const userAny = user as any;
-      const createdBy = userAny.fullName || userAny.name || user.email || String(user._id);
+      const createdBy = user.fullName || user.email || String(user._id);
 
       const body = await request.json();
       const parsed = acceptVarianceSchema.parse(body);
@@ -63,8 +62,8 @@ export const POST = withIdempotency(
         organizationId: tenantId,
         userId: String(user._id),
         userName: createdBy,
-        userRole: (userAny.role === "Admin" || userAny.role === "Owner") ? "Admin" : "Staff",
-            userRoleDetail: userAny.role || user.role,
+        userRole: (user.role === "Admin" || user.role === "Owner") ? "Admin" : "Staff",
+            userRoleDetail: user.role || user.role,
         action: `Accepted variance for transaction ${id} (${parsed.reason})`,
         actionType: "update",
         module: "banking",
@@ -76,7 +75,7 @@ export const POST = withIdempotency(
       });
 
       return NextResponse.json({ transaction: tx });
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error instanceof ZodError) {
         return NextResponse.json(
           { error: error.issues?.[0]?.message || "Validation failed", details: error.issues },

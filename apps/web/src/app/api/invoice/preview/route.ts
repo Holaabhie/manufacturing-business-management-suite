@@ -77,9 +77,9 @@ export async function POST(request: NextRequest) {
             status: 200,
             headers: { "Content-Type": "text/html; charset=utf-8" },
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         return NextResponse.json(
-            { error: "Invalid invoice data", details: error.message },
+            { error: "Invalid invoice data", details: (error as Error).message },
             { status: 400 },
         );
     }

@@ -72,7 +72,7 @@ export async function GET(request: Request) {
             sourceBatchNumber: matchingJob.batchNumber || null,
             sourceProductName: matchingJob.orderProductName,
             sourceCompletedAt: matchingJob.completedAt || matchingJob.createdAt,
-            materials: materials.map((m: any) => ({
+            materials: materials.map((m) => ({
                 id: m._id.toString(),
                 inventoryItemId: m.inventoryItemId,
                 itemName: m.itemName,
@@ -81,9 +81,9 @@ export async function GET(request: Request) {
                 wastagePercent: m.wastagePercent || 0,
             })),
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error fetching material history:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
     }
 }
 

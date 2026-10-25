@@ -121,7 +121,7 @@ export async function PATCH(
 
         // --- SAFE UPDATE: atomic set + audit log append ---
         const ownerId = getDataOwnerId(user);
-        await db.collection("productions").updateOne(
+        await db.collection<{ assignedStaff: string[]; updatedAt: Date; assignmentLogs: Record<string, unknown>[] }>("productions").updateOne(
             { _id: new ObjectId(productionId), userId: ownerId },
             {
                 $set: {
@@ -134,7 +134,7 @@ export async function PATCH(
                         assignedStaff: uniqueIds,
                         timestamp: new Date(),
                     },
-                } as any,
+                },
             }
         );
 
@@ -158,10 +158,10 @@ export async function PATCH(
                 assignmentLogs: updated!.assignmentLogs || [],
             },
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[assign-staff] Error:", error);
         return NextResponse.json(
-            { success: false, message: error.message },
+            { success: false, message: error instanceof Error ? error.message : String(error) },
             { status: 500 }
         );
     }

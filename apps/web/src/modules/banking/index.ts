@@ -57,6 +57,12 @@ export {
 } from "./domain/schemas";
 
 export {
+  MAX_FILE_SIZE_BYTES,
+  MULTIPART_OVERHEAD_BYTES,
+  MAX_MULTIPART_BYTES,
+} from "./domain/types";
+
+export {
   decodeCsvBuffer,
   parseRfc4180Csv,
   parseAmountToPaise,
@@ -65,7 +71,6 @@ export {
   processCsvRows,
   checkBalanceContinuity,
   normalizeNarration,
-  MAX_FILE_SIZE_BYTES,
   MAX_ROWS_LIMIT,
 } from "./application/csv-parser";
 

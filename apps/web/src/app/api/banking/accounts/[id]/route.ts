@@ -21,8 +21,6 @@ export async function PATCH(
 
     const user = result.user;
     const tenantId = getDataOwnerId(user);
-    const userAny = user as any;
-
     const service = getBankingService();
     const existing = await service.getAccountById(id, tenantId);
     if (!existing) {
@@ -36,9 +34,9 @@ export async function PATCH(
     await logDataOperation({
       organizationId: tenantId,
       userId: String(user._id),
-      userName: userAny.fullName || userAny.name || user.email || "Unknown User",
-      userRole: (userAny.role === "Admin" || userAny.role === "Owner") ? "Admin" : "Staff",
-            userRoleDetail: userAny.role || user.role,
+      userName: user.fullName || user.email || "Unknown User",
+      userRole: (user.role === "Admin" || user.role === "Owner") ? "Admin" : "Staff",
+            userRoleDetail: user.role || user.role,
       action: `Updated bank account ${updated.name}`,
       actionType: "update",
       module: "banking",
@@ -51,7 +49,7 @@ export async function PATCH(
     });
 
     return NextResponse.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof ZodError) {
       return NextResponse.json(
         { error: error.issues?.[0]?.message || "Validation failed", details: error.issues },
@@ -82,8 +80,6 @@ export async function DELETE(
 
     const user = result.user;
     const tenantId = getDataOwnerId(user);
-    const userAny = user as any;
-
     const service = getBankingService();
     const existing = await service.getAccountById(id, tenantId);
     if (!existing) {
@@ -96,9 +92,9 @@ export async function DELETE(
     await logDataOperation({
       organizationId: tenantId,
       userId: String(user._id),
-      userName: userAny.fullName || userAny.name || user.email || "Unknown User",
-      userRole: (userAny.role === "Admin" || userAny.role === "Owner") ? "Admin" : "Staff",
-            userRoleDetail: userAny.role || user.role,
+      userName: user.fullName || user.email || "Unknown User",
+      userRole: (user.role === "Admin" || user.role === "Owner") ? "Admin" : "Staff",
+            userRoleDetail: user.role || user.role,
       action: `Deleted bank account ${existing.name}`,
       actionType: "delete",
       module: "banking",
@@ -110,7 +106,7 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: true, message: "Bank account deleted" });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof AppError) {
       return NextResponse.json(
         { error: error.message, code: error.code, details: error.details },

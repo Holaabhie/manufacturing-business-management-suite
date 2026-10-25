@@ -88,7 +88,7 @@ export class MongoOrderRepository implements IOrderRepository {
         restrictToOrderIds?: string[]
     ): Promise<Order[]> {
         const col = await this.ordersCol();
-        const matchStage: any = { userId };
+        const matchStage: Record<string, unknown> = { userId };
         
         if (filters?.clientId) {
             matchStage.$or = [

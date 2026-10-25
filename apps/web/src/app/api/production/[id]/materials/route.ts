@@ -60,8 +60,8 @@ export async function POST(
         // Insert new records
         const now = new Date();
         const docs = materials
-            .filter((m: any) => m.inventoryItemId && m.itemName)
-            .map((m: any) => ({
+            .filter((m: Record<string, unknown>) => m.inventoryItemId && m.itemName)
+            .map((m: Record<string, unknown>) => ({
                 userId,
                 productionJobId: jobId,
                 inventoryItemId: m.inventoryItemId,
@@ -81,8 +81,8 @@ export async function POST(
             jobId,
             materialsCount: docs.length,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error saving production materials:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
     }
 }

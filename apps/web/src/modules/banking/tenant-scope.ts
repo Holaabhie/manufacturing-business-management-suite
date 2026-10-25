@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getSessionUser, getDataOwnerId, SESSION_COOKIE_NAME } from "@/lib/auth-session";
+import { getSessionUser, getDataOwnerId, SESSION_COOKIE_NAME, type SessionDoc, type UserDoc } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 
 /**
@@ -23,10 +23,10 @@ export async function getBankingTenantUserId(request: NextRequest): Promise<stri
       request.cookies.get("session_id")?.value;
     if (sessionId) {
       const db = await getDb();
-      const session = await db.collection<any>("sessions").findOne({ _id: sessionId as any });
+      const session = await db.collection<SessionDoc>("sessions").findOne({ _id: sessionId });
       if (session) {
-        const u = await db.collection<any>("users").findOne({ _id: session.userId });
-        if (u) return getDataOwnerId(u as any);
+        const u = await db.collection<UserDoc>("users").findOne({ _id: session.userId });
+        if (u) return getDataOwnerId(u);
       }
     }
   } catch {

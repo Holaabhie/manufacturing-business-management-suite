@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const imports = await service.listImports(tenantId, bankAccountId);
 
     return NextResponse.json({ imports });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error listing statement imports:", error);
     return NextResponse.json({ error: "Failed to list statement imports" }, { status: 500 });
   }

@@ -1,4 +1,4 @@
-import type { IOrderRepository, Order } from "../domain/types";
+import type { IOrderRepository, Order, CreateOrderDTO, LegacyDeductionItem } from "../domain/types";
 import { createOrderSchema, updateOrderSchema } from "../domain/schemas";
 import { NotFoundError, ValidationError, type FieldError } from "@/shared/lib/errors";
 
@@ -33,16 +33,16 @@ export class OrderService {
             orderData.grand_total = orderData.total_amount;
         }
 
-        const order = await this.repo.create(userId, orderData as any);
+        const order = await this.repo.create(userId, orderData as CreateOrderDTO);
 
         // Separate legacy inventory-deduction items from sales order line items
         if (order_items && order_items.length > 0) {
             const legacyItems = order_items.filter(
-                (item): item is { inventory_id: string; quantity_deducted: number } =>
+                (item): item is LegacyDeductionItem =>
                     "inventory_id" in item,
             );
             if (legacyItems.length > 0) {
-                await this.repo.deductInventory(userId, order.id, legacyItems as any);
+                await this.repo.deductInventory(userId, order.id, legacyItems);
             }
         }
 

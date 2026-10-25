@@ -45,9 +45,9 @@ export async function GET(
         // Staff access control: must be in assignedStaff array
         const isAdmin = user.role === "Admin" || user.role === "Owner";
         if (!isAdmin) {
-            const assignedStaff = (production.assignedStaff as any[]) || [];
+            const assignedStaff = (production.assignedStaff as Record<string, unknown>[]) || [];
             const isAssigned = assignedStaff.some(
-                (memberId: any) =>
+                (memberId: unknown) =>
                     String(memberId) === String(user._id)
             );
 
@@ -60,14 +60,14 @@ export async function GET(
         }
 
         // Resolve assigned staff names for the response
-        let assignedStaffDetails: any[] = [];
-        if (production.assignedStaff && (production.assignedStaff as any[]).length > 0) {
+        let assignedStaffDetails: Record<string, unknown>[] = [];
+        if (production.assignedStaff && (production.assignedStaff as Record<string, unknown>[]).length > 0) {
             const staffDocs = await db
                 .collection("users")
                 .find({ _id: { $in: production.assignedStaff as ObjectId[] } })
                 .project({ fullName: 1, full_name: 1, email: 1 })
                 .toArray();
-            assignedStaffDetails = staffDocs.map((s: any) => ({
+            assignedStaffDetails = staffDocs.map((s: Record<string, unknown>) => ({
                 id: String(s._id),
                 name: s.fullName || s.full_name || s.email || "Unknown",
                 email: s.email || "",
@@ -103,9 +103,9 @@ export async function GET(
             createdBy: production.createdBy,
             assignedStaff: assignedStaffDetails,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error fetching production:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
     }
 }
 
@@ -148,7 +148,7 @@ export async function PUT(
         const userRole = user.role || "Staff";
 
         // Build activity log entry if status changed
-        const newLog: any[] = [...(existing.activityLog || [])];
+        const newLog: Record<string, unknown>[] = [...(existing.activityLog || [])];
         const now = new Date();
 
         if (body.action) {
@@ -178,7 +178,7 @@ export async function PUT(
                     //     deducted at order creation in POST /api/orders) ───
                     {
                         const materials = existing.materials || [];
-                        const lowStockAlerts: any[] = [];
+                        const lowStockAlerts: Record<string, unknown>[] = [];
 
                         if (materials.length > 0) {
                             const origin = new URL(request.url).origin;
@@ -196,7 +196,7 @@ export async function PUT(
                                         const itemId = mat.inventoryId || mat.inventoryItemId;
                                         if (!itemId) continue;
 
-                                        const item = allItems.find((i: any) => i.id === itemId);
+                                        const item = allItems.find((i: Record<string, unknown>) => i.id === itemId);
                                         if (item && item.quantity !== undefined) {
                                             const minLevel = Number(item.min_stock_level || item.minStockLevel || 10);
                                             if (item.quantity <= minLevel) {
@@ -258,7 +258,7 @@ export async function PUT(
             100
         );
 
-        const updateData: any = {
+        const updateData: Record<string, unknown> = {
             updatedAt: now,
             activityLog: newLog,
             progressPercent,
@@ -344,9 +344,9 @@ export async function PUT(
             id: updated!._id.toString(),
             ...updated,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error updating production:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
     }
 }
 
@@ -416,7 +416,7 @@ export async function DELETE(
         );
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error deleting production:", error);
         return NextResponse.json(
             { success: false, message: "Internal server error" },

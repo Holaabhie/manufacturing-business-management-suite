@@ -148,9 +148,9 @@ export const POST = withIdempotency(async (request: NextRequest) => {
             id: insertResult.insertedId.toString(),
             ...billData,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         // Handle MongoDB duplicate key error (unique index on billNumber)
-        if (error.code === 11000) {
+        if ((error as { code?: number })?.code === 11000) {
             return NextResponse.json(
                 {
                     error: "Duplicate invoice",

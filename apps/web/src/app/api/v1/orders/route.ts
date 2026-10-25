@@ -33,8 +33,8 @@ export const GET = withRateLimit(
                 const orderIds = [
                     ...new Set(
                         productions
-                            .map((p: any) => p.orderId)
-                            .filter((id: any) => id != null && String(id).trim() !== "")
+                            .map((p: Record<string, unknown>) => String(p.orderId || ""))
+                            .filter((id) => id.trim() !== "")
                     ),
                 ];
 
@@ -51,7 +51,7 @@ export const GET = withRateLimit(
 
                 const repo = getOrderRepository();
                 const items = await repo.findAll(ownerId, { ...(clientId && { clientId }), restrictToOrderIds: orderIds });
-                const enriched = items.map((item: any) => ({
+                const enriched = items.map((item) => ({
                     ...item,
                     productionId: orderToProdMap.get(item.id) || undefined,
                 }));

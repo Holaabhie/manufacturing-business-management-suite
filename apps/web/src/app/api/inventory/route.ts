@@ -17,8 +17,8 @@ export async function GET() {
       .sort({ name: 1 })
       .toArray();
 
-    const formatted = items.map((item: any) => ({
-      id: item._id.toString(),
+    const formatted = items.map((item: Record<string, unknown>) => ({
+      id: String(item._id),
       name: item.name,
       quantity: item.quantity,
       unit: item.unit,
@@ -36,9 +36,9 @@ export async function GET() {
     }));
 
     return NextResponse.json(formatted);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching inventory:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }
 
@@ -79,8 +79,8 @@ export async function POST(request: Request) {
       id: item!._id.toString(),
       ...item,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating inventory item:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }

@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     const candidates = await service.searchCandidates(tenantId, parsedFilter);
 
     return NextResponse.json({ candidates });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof AppError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode });
     }

@@ -67,7 +67,7 @@ export async function POST(request: Request) {
 
         const now = new Date();
         const userName =
-            user.fullName || (user as any).full_name || user.email?.split("@")[0] || "System";
+            user.fullName || user.fullName || user.email?.split("@")[0] || "System";
 
         // Store old values for audit trail (Feature 10)
         const oldProducedQty = production.producedQuantity || 0;
@@ -162,7 +162,7 @@ export async function POST(request: Request) {
             newValues: { producedQuantity: newProduced, rejectQuantity: newRejected, progressPercent },
         });
 
-        const updateFields: any = {
+        const updateFields: Record<string, unknown> = {
             producedQuantity: newProduced,
             rejectQuantity: newRejected,
             progressPercent,
@@ -214,7 +214,7 @@ export async function POST(request: Request) {
             await db.collection("attendance").insertOne({
                 userId,
                 adminId,
-                employeeId: (user as any).employeeId || "",
+                employeeId: user.employeeId || "",
                 employeeName: userName,
                 date: todayStart,
                 firstActivityTime: now,
@@ -226,7 +226,7 @@ export async function POST(request: Request) {
 
         // 5. Update user lastActiveAt
         await db.collection("users").updateOne(
-            { _id: userId as any },
+            { _id: new ObjectId(userId) },
             { $set: { lastActiveAt: now } }
         ).catch(() => { /* non-blocking */ });
 
@@ -244,9 +244,9 @@ export async function POST(request: Request) {
                 progressPercent: oldProgressPercent,
             },
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error updating production progress:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
     }
 }
 
@@ -296,7 +296,7 @@ export async function GET(request: Request) {
             .sort({ timestamp: -1 })
             .toArray();
 
-        const formatted = history.map((h: any) => ({
+        const formatted = history.map((h) => ({
             id: h._id.toString(),
             productionId: h.productionId,
             producedQty: h.producedQty,
@@ -309,8 +309,8 @@ export async function GET(request: Request) {
         }));
 
         return NextResponse.json(formatted);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error fetching progress history:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
     }
 }

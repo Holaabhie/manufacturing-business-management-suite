@@ -1,4 +1,4 @@
-import { ObjectId } from "mongodb";
+import { ObjectId, type Document, type Filter } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 import { ensureBankingIndexes } from "@/lib/migrations/ensureBankingIndexes";
 import { AppError, ErrorCode } from "@/shared/lib/errors";
@@ -19,17 +19,17 @@ import type {
 } from "../domain/types";
 import type { CandidateFilterInput } from "../domain/schemas";
 
-function buildIdQuery(id: string, userId: string) {
+function buildIdQuery(id: string, userId: string): Filter<Document> {
   if (ObjectId.isValid(id)) {
     return {
-      _id: { $in: [new ObjectId(id), id] },
+      _id: { $in: [new ObjectId(id), id as unknown as ObjectId] },
       userId,
     };
   }
-  return { _id: id, userId };
+  return { _id: id as unknown as ObjectId, userId };
 }
 
-function toAccountEntity(doc: Record<string, any>): BankAccount {
+function toAccountEntity(doc: Document): BankAccount {
   return {
     id: String(doc._id),
     userId: String(doc.userId || ""),
@@ -49,7 +49,7 @@ function toAccountEntity(doc: Record<string, any>): BankAccount {
   };
 }
 
-function toImportEntity(doc: Record<string, any>): BankStatementImport {
+function toImportEntity(doc: Document): BankStatementImport {
   return {
     id: String(doc._id),
     userId: String(doc.userId || ""),
@@ -73,7 +73,7 @@ function toImportEntity(doc: Record<string, any>): BankStatementImport {
   };
 }
 
-function toTransactionEntity(doc: Record<string, any>): BankTransaction {
+function toTransactionEntity(doc: Document): BankTransaction {
   const debitPaise = Number(doc.debit_paise || 0);
   const creditPaise = Number(doc.credit_paise || 0);
   const rowAmount = debitPaise > 0 ? debitPaise : creditPaise;
@@ -129,7 +129,7 @@ function toTransactionEntity(doc: Record<string, any>): BankTransaction {
   };
 }
 
-function toLinkEntity(doc: Record<string, any>): BankMatchLink {
+function toLinkEntity(doc: Document): BankMatchLink {
   return {
     id: String(doc._id || doc.id),
     userId: String(doc.userId || ""),
@@ -157,35 +157,35 @@ function toLinkEntity(doc: Record<string, any>): BankMatchLink {
 
 export class MongoBankingRepository {
   private async accountsCol() {
-    return (await getDb()).collection<any>("bank_accounts");
+    return (await getDb()).collection<Document>("bank_accounts");
   }
 
   private async importsCol() {
-    return (await getDb()).collection<any>("bank_statement_imports");
+    return (await getDb()).collection<Document>("bank_statement_imports");
   }
 
   private async transactionsCol() {
-    return (await getDb()).collection<any>("bank_transactions");
+    return (await getDb()).collection<Document>("bank_transactions");
   }
 
   private async matchLinksCol() {
-    return (await getDb()).collection<any>("bank_match_links");
+    return (await getDb()).collection<Document>("bank_match_links");
   }
 
   private async paymentsCol() {
-    return (await getDb()).collection<any>("payments");
+    return (await getDb()).collection<Document>("payments");
   }
 
   private async vendorBillPaymentsCol() {
-    return (await getDb()).collection<any>("vendor_bill_payments");
+    return (await getDb()).collection<Document>("vendor_bill_payments");
   }
 
   private async clientsCol() {
-    return (await getDb()).collection<any>("clients");
+    return (await getDb()).collection<Document>("clients");
   }
 
   private async vendorsCol() {
-    return (await getDb()).collection<any>("vendors");
+    return (await getDb()).collection<Document>("vendors");
   }
 
   constructor() {
@@ -202,7 +202,7 @@ export class MongoBankingRepository {
       created_at: account.created_at || new Date(),
       updated_at: account.updated_at || new Date(),
     };
-    await col.insertOne(docToInsert as any);
+    await col.insertOne(docToInsert as unknown as Document);
     return account;
   }
 
@@ -241,7 +241,7 @@ export class MongoBankingRepository {
     updates: Partial<BankAccount>
   ): Promise<BankAccount | null> {
     const col = await this.accountsCol();
-    const cleanUpdates: Record<string, any> = {
+    const cleanUpdates: Record<string, unknown> = {
       ...updates,
       updated_at: new Date(),
     };
@@ -277,7 +277,7 @@ export class MongoBankingRepository {
       _id: importDoc.id,
       created_at: importDoc.created_at || new Date(),
     };
-    await col.insertOne(docToInsert as any);
+    await col.insertOne(docToInsert as unknown as Document);
     return importDoc;
   }
 
@@ -304,7 +304,7 @@ export class MongoBankingRepository {
 
   async listImports(userId: string, bankAccountId?: string): Promise<BankStatementImport[]> {
     const col = await this.importsCol();
-    const query: Record<string, any> = { userId };
+    const query: Record<string, unknown> = { userId };
     if (bankAccountId) {
       query.bank_account_id = bankAccountId;
     }
@@ -382,13 +382,13 @@ export class MongoBankingRepository {
     }));
 
     try {
-      const res = await col.insertMany(docsToInsert as any, { ordered: false });
+      const res = await col.insertMany(docsToInsert as unknown as Document[], { ordered: false });
       return {
         inserted: res.insertedCount,
         skippedDuplicates: preSkipped + (toInsert.length - res.insertedCount),
       };
-    } catch (err: any) {
-      const insertedCount = err.result?.insertedCount ?? 0;
+    } catch (err: unknown) {
+      const insertedCount = (err as { result?: { insertedCount?: number } })?.result?.insertedCount ?? 0;
       return {
         inserted: insertedCount,
         skippedDuplicates: preSkipped + (toInsert.length - insertedCount),
@@ -449,7 +449,7 @@ export class MongoBankingRepository {
     return toTransactionEntity(doc);
   }
 
-  async checkStaleLinks(activeLinks: any[]): Promise<Set<string>> {
+  async checkStaleLinks(activeLinks: Document[]): Promise<Set<string>> {
     const staleLinkIds = new Set<string>();
     if (activeLinks.length === 0) return staleLinkIds;
 
@@ -512,16 +512,17 @@ export class MongoBankingRepository {
     summary: TransactionsSummary;
   }> {
     const col = await this.transactionsCol();
-    const match: Record<string, any> = { userId };
+    const match: Record<string, unknown> = { userId };
 
     if (filters.account) {
       match.bank_account_id = filters.account;
     }
 
     if (filters.from || filters.to) {
-      match.value_date = {};
-      if (filters.from) match.value_date.$gte = filters.from;
-      if (filters.to) match.value_date.$lte = filters.to;
+      const dateFilter: Record<string, string> = {};
+      if (filters.from) dateFilter.$gte = filters.from;
+      if (filters.to) dateFilter.$lte = filters.to;
+      match.value_date = dateFilter;
     }
 
     if (filters.direction === "credit") {
@@ -601,7 +602,7 @@ export class MongoBankingRepository {
     }
 
     // Needs review filtering (derived from stale active links)
-    if (filters.needs_review !== undefined && (filters.needs_review as any) !== "") {
+    if (filters.needs_review !== undefined && String(filters.needs_review) !== "") {
       const isNeedsReview =
         filters.needs_review === true || filters.needs_review === "true";
       const matchLinksCol = await this.matchLinksCol();
@@ -896,10 +897,10 @@ export class MongoBankingRepository {
       { returnDocument: "after" }
     );
 
-    const updatedTxDoc = (updatedTx as any)?.value || updatedTx;
+    const updatedTxDoc = ((updatedTx && typeof updatedTx === "object" && "value" in updatedTx ? (updatedTx as { value?: Document }).value : updatedTx) || {}) as Document;
     if (
       !updatedTxDoc ||
-      (!updatedTxDoc._id && !(updatedTx as any).lastErrorObject?.updatedExisting)
+      (!updatedTxDoc._id && !(updatedTx as { lastErrorObject?: { updatedExisting?: boolean } })?.lastErrorObject?.updatedExisting)
     ) {
       const fresh = await txCol.findOne(buildIdQuery(txId, userId));
       const freshAllocated = Number(fresh?.allocated_paise || 0);
@@ -927,14 +928,14 @@ export class MongoBankingRepository {
     });
 
     try {
-      await matchLinksCol.insertMany(docsToInsert as any, { ordered: true });
+      await matchLinksCol.insertMany(docsToInsert as unknown as Document[], { ordered: true });
       return docsToInsert.map(toLinkEntity);
-    } catch (err: any) {
+    } catch (err: unknown) {
       // 3. Roll back the $inc on error
       await txCol.updateOne(buildIdQuery(txId, userId), {
         $inc: { allocated_paise: -totalAllocatingPaise },
       });
-      if (err?.code === 11000) {
+      if ((err as { code?: number })?.code === 11000) {
         throw new AppError(
           "One or more payments are already actively linked to another transaction",
           ErrorCode.CONFLICT,
@@ -970,7 +971,7 @@ export class MongoBankingRepository {
       { returnDocument: "after" }
     );
 
-    const linkDoc = (updated as any)?.value || updated;
+    const linkDoc = ((updated && typeof updated === "object" && "value" in updated ? (updated as { value?: Document }).value : updated) || {}) as Document;
     if (!linkDoc || !linkDoc.bank_transaction_id) {
       return null;
     }
@@ -1010,7 +1011,7 @@ export class MongoBankingRepository {
       },
       { returnDocument: "after" }
     );
-    const doc = (res as any)?.value || res;
+    const doc = ((res && typeof res === "object" && "value" in res ? (res as { value?: Document }).value : res) || {}) as Document;
     if (!doc || !doc._id) {
       const existing = await txCol.findOne(buildIdQuery(txId, userId));
       if (existing && existing.allocated_paise > 0) {
@@ -1038,7 +1039,7 @@ export class MongoBankingRepository {
       },
       { returnDocument: "after" }
     );
-    const doc = (res as any)?.value || res;
+    const doc = ((res && typeof res === "object" && "value" in res ? (res as { value?: Document }).value : res) || {}) as Document;
     return doc ? toTransactionEntity(doc) : null;
   }
 
@@ -1080,7 +1081,7 @@ export class MongoBankingRepository {
         reverted: { $ne: true },
         excluded: null,
         allocated_paise: allocated,
-      },
+      } as Filter<Document>,
       {
         $set: {
           variance: {
@@ -1093,7 +1094,7 @@ export class MongoBankingRepository {
       },
       { returnDocument: "after" }
     );
-    const doc = (res as any)?.value || res;
+    const doc = ((res && typeof res === "object" && "value" in res ? (res as { value?: Document }).value : res) || {}) as Document;
     return doc ? toTransactionEntity(doc) : null;
   }
 
@@ -1127,7 +1128,7 @@ export class MongoBankingRepository {
       const clientsCol = await this.clientsCol();
 
       const targetRupees = rowAmountPaise / 100;
-      const query: Record<string, any> = {
+      const query: Record<string, unknown> = {
         userId,
         amount: targetRupees,
       };
@@ -1138,8 +1139,8 @@ export class MongoBankingRepository {
       const clientDocs = await clientsCol
         .find({
           _id: {
-            $in: clientIds.map((cid: any) =>
-              ObjectId.isValid(cid) ? new ObjectId(cid) : cid
+            $in: clientIds.map((cid: unknown) =>
+              (ObjectId.isValid(String(cid)) ? new ObjectId(String(cid)) : cid) as unknown as ObjectId
             ),
           },
         })
@@ -1201,7 +1202,7 @@ export class MongoBankingRepository {
       const vbpCol = await this.vendorBillPaymentsCol();
       const vendorsCol = await this.vendorsCol();
 
-      const query: Record<string, any> = {
+      const query: Record<string, unknown> = {
         userId,
         voided: { $ne: true },
         $or: [
@@ -1216,8 +1217,8 @@ export class MongoBankingRepository {
       const vendorDocs = await vendorsCol
         .find({
           _id: {
-            $in: vendorIds.map((vid: any) =>
-              ObjectId.isValid(vid) ? new ObjectId(vid) : vid
+            $in: vendorIds.map((vid: unknown) =>
+              (ObjectId.isValid(String(vid)) ? new ObjectId(String(vid)) : vid) as unknown as ObjectId
             ),
           },
         })
@@ -1312,7 +1313,7 @@ export class MongoBankingRepository {
       const paymentsCol = await this.paymentsCol();
       const clientsCol = await this.clientsCol();
 
-      const query: Record<string, any> = { userId };
+      const query: Record<string, unknown> = { userId };
       const docs = await paymentsCol
         .find(query)
         .sort({ payment_date: -1, createdAt: -1 })
@@ -1323,8 +1324,8 @@ export class MongoBankingRepository {
       const clientDocs = await clientsCol
         .find({
           _id: {
-            $in: clientIds.map((cid: any) =>
-              ObjectId.isValid(cid) ? new ObjectId(cid) : cid
+            $in: clientIds.map((cid: unknown) =>
+              (ObjectId.isValid(String(cid)) ? new ObjectId(String(cid)) : cid) as unknown as ObjectId
             ),
           },
         })
@@ -1394,7 +1395,7 @@ export class MongoBankingRepository {
       const vbpCol = await this.vendorBillPaymentsCol();
       const vendorsCol = await this.vendorsCol();
 
-      const query: Record<string, any> = { userId, voided: { $ne: true } };
+      const query: Record<string, unknown> = { userId, voided: { $ne: true } };
       const docs = await vbpCol
         .find(query)
         .sort({ payment_date: -1, created_at: -1 })
@@ -1405,8 +1406,8 @@ export class MongoBankingRepository {
       const vendorDocs = await vendorsCol
         .find({
           _id: {
-            $in: vendorIds.map((vid: any) =>
-              ObjectId.isValid(vid) ? new ObjectId(vid) : vid
+            $in: vendorIds.map((vid: unknown) =>
+              (ObjectId.isValid(String(vid)) ? new ObjectId(String(vid)) : vid) as unknown as ObjectId
             ),
           },
         })
@@ -1478,13 +1479,14 @@ export class MongoBankingRepository {
     to?: string
   ): Promise<ReconciliationSummary> {
     const txCol = await this.transactionsCol();
-    const match: Record<string, any> = { userId, reverted: { $ne: true } };
+    const match: Record<string, unknown> = { userId, reverted: { $ne: true } };
 
     if (bankAccountId) match.bank_account_id = bankAccountId;
     if (from || to) {
-      match.value_date = {};
-      if (from) match.value_date.$gte = from;
-      if (to) match.value_date.$lte = to;
+      const dateFilter: Record<string, string> = {};
+      if (from) dateFilter.$gte = from;
+      if (to) dateFilter.$lte = to;
+      match.value_date = dateFilter;
     }
 
     const txs = await txCol.find(match).toArray();

@@ -28,8 +28,10 @@ const recordPaymentSchema = z.object({
 
 // ─── Payment Status Computation ─────────────────────────
 // Used for SalesOrder (Mongoose model)
-function computePaymentStatus(order: any) {
-    const { grand_total, total_paid, payment_due_date } = order;
+function computePaymentStatus(order: { grand_total?: number; total_paid?: number; payment_due_date?: Date | string | null }) {
+    const grand_total = Number(order.grand_total || 0);
+    const total_paid = Number(order.total_paid || 0);
+    const payment_due_date = order.payment_due_date;
     const today = new Date();
 
     if (total_paid <= 0) {
@@ -174,7 +176,7 @@ export async function POST(req: NextRequest) {
             const paymentsCol = db.collection("payments");
 
             // Try to find the order in the legacy collection
-            let legacyOrder: any = null;
+            let legacyOrder: Record<string, unknown> | null = null;
             try {
                 if (ObjectId.isValid(data.reference_id)) {
                     legacyOrder = await ordersCol.findOne({ _id: new ObjectId(data.reference_id) });
@@ -189,8 +191,8 @@ export async function POST(req: NextRequest) {
                     .find({ order_id: data.reference_id })
                     .toArray();
 
-                const legacyTotalPaid = legacyPayments.reduce(
-                    (sum: number, p: any) => sum + Number(p.amount || 0),
+                const legacyTotalPaid = legacyPayments.reduce<number>(
+                    (sum, p) => sum + Number((p as { amount?: number }).amount || 0),
                     0,
                 );
 
@@ -280,11 +282,11 @@ export async function POST(req: NextRequest) {
             order_summary: orderSummary,
         });
 
-    } catch (e: any) {
+    } catch (e: unknown) {
         if (e instanceof z.ZodError) {
             return NextResponse.json({ success: false, error: e.issues }, { status: 400 });
         }
         console.error("[payments/record] Error:", e);
-        return NextResponse.json({ success: false, error: e.message || 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({ success: false, error: (e as Error).message || 'Internal Server Error' }, { status: 500 });
     }
 }

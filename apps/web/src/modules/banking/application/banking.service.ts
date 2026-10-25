@@ -90,8 +90,8 @@ export class BankingService {
 
     try {
       return await this.repo.createAccount(account);
-    } catch (err: any) {
-      if (err?.code === 11000) {
+    } catch (err: unknown) {
+      if ((err as { code?: number })?.code === 11000) {
         throw new AppError(
           `Account with ${validated.bank_name} ending in ${validated.account_last4} already exists`,
           ErrorCode.CONFLICT,
@@ -154,10 +154,10 @@ export class BankingService {
       throw new AppError("Bank account not found", ErrorCode.NOT_FOUND, 404);
     }
 
-    // 2. Check file size cap (5 MB)
+    // 2. Check file size cap (4 MB)
     if (fileBuffer.length > MAX_FILE_SIZE_BYTES) {
       throw new AppError(
-        `File size (${(fileBuffer.length / (1024 * 1024)).toFixed(2)} MB) exceeds the 5 MB limit`,
+        `File size (${(fileBuffer.length / (1024 * 1024)).toFixed(2)} MB) exceeds the 4 MB limit`,
         ErrorCode.VALIDATION_FAILED,
         400
       );
@@ -243,7 +243,7 @@ export class BankingService {
 
     // 2. Enforce limits
     if (fileBuffer.length > MAX_FILE_SIZE_BYTES) {
-      throw new AppError("File size exceeds 5 MB limit", ErrorCode.VALIDATION_FAILED, 400);
+      throw new AppError("File size exceeds 4 MB limit", ErrorCode.VALIDATION_FAILED, 400);
     }
 
     const fileHash = crypto.createHash("sha256").update(fileBuffer).digest("hex");
@@ -331,8 +331,8 @@ export class BankingService {
 
     try {
       return await this.repo.createImport(importDoc);
-    } catch (err: any) {
-      if (err?.code === 11000) {
+    } catch (err: unknown) {
+      if ((err as { code?: number })?.code === 11000) {
         const existing = await this.repo.findCommittedImportByHash(
           bankAccountId,
           fileHash,

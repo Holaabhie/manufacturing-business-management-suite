@@ -9,6 +9,7 @@ import { ZodError } from "zod";
 import {
   getBankingService,
   getBankingTenantUserId,
+  MAX_MULTIPART_BYTES,
 } from "@/modules/banking";
 import { ensureBankingIndexes } from "@/lib/migrations/ensureBankingIndexes";
 
@@ -27,17 +28,13 @@ export const POST = withRateLimit(
 
         const user = result.user;
         const tenantId = getDataOwnerId(user);
-        const userAny = user as any;
-        const importedBy = userAny.fullName || userAny.name || user.email || String(user._id);
+        const importedBy = user.fullName || user.email || String(user._id);
 
         // Enforce payload size limit BEFORE buffering body
-        const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB file
-        const MULTIPART_OVERHEAD = 256 * 1024; // 256 KB allowance for multipart headers/boundaries
-        const MAX_MULTIPART_BYTES = MAX_FILE_BYTES + MULTIPART_OVERHEAD; // 5,505,024 bytes (5.25 MB)
         const contentLength = request.headers.get("content-length");
         if (contentLength && parseInt(contentLength, 10) > MAX_MULTIPART_BYTES) {
           return NextResponse.json(
-            { error: "Payload exceeds maximum allowed size of 5 MB" },
+            { error: "Payload exceeds maximum allowed size of 4 MB" },
             { status: 413 }
           );
         }
@@ -67,14 +64,16 @@ export const POST = withRateLimit(
 
           try {
             formData = await cappedRequest.formData();
-          } catch (err: any) {
+          } catch (err: unknown) {
+            const errStr = String(err);
+            const errObj = (typeof err === "object" && err !== null) ? (err as { message?: string; cause?: { message?: string } }) : null;
             if (
-              err?.message === "PAYLOAD_TOO_LARGE" ||
-              err?.cause?.message === "PAYLOAD_TOO_LARGE" ||
-              String(err).includes("PAYLOAD_TOO_LARGE")
+              errObj?.message === "PAYLOAD_TOO_LARGE" ||
+              errObj?.cause?.message === "PAYLOAD_TOO_LARGE" ||
+              errStr.includes("PAYLOAD_TOO_LARGE")
             ) {
               return NextResponse.json(
-                { error: "Payload exceeds maximum allowed size of 5 MB" },
+                { error: "Payload exceeds maximum allowed size of 4 MB" },
                 { status: 413 }
               );
             }
@@ -123,9 +122,9 @@ export const POST = withRateLimit(
         await logDataOperation({
           organizationId: tenantId,
           userId: String(user._id),
-          userName: userAny.fullName || userAny.name || user.email || "Unknown User",
-          userRole: (userAny.role === "Admin" || userAny.role === "Owner") ? "Admin" : "Staff",
-            userRoleDetail: userAny.role || user.role,
+          userName: user.fullName || user.email || "Unknown User",
+          userRole: (user.role === "Admin" || user.role === "Owner") ? "Admin" : "Staff",
+            userRoleDetail: user.role || user.role,
           action: `Committed bank statement import ${importDoc.file_name} (${importDoc.rows_inserted} inserted, ${importDoc.rows_skipped_duplicate} skipped)`,
           actionType: "create",
           module: "banking",
@@ -137,7 +136,7 @@ export const POST = withRateLimit(
         });
 
         return NextResponse.json(importDoc, { status: 201 });
-      } catch (error: any) {
+      } catch (error: unknown) {
         if (error instanceof ZodError) {
           return NextResponse.json(
             { error: error.issues?.[0]?.message || "Validation failed", details: error.issues },

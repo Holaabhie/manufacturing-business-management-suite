@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
             return errorResponse("PAYLOAD_TOO_LARGE", "Request payload exceeds 1.5 MB limit", undefined, 413);
         }
 
-        let body: any;
+        let body: unknown;
         try {
             body = JSON.parse(rawBody);
         } catch {

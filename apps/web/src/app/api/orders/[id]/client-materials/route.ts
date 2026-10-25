@@ -36,16 +36,16 @@ export async function GET(
       })
       .toArray();
 
-    const formatted = materials.map((m: any) => ({
-      id: m._id.toString(),
+    const formatted = materials.map((m: Record<string, unknown>) => ({
+      id: String(m._id),
       name: m.name,
       type: m.type,
       default_rate: m.default_rate,
     }));
 
     return NextResponse.json(formatted);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching client materials:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }

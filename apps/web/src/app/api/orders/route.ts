@@ -20,7 +20,7 @@ export async function GET() {
 
     const db = await getDb();
     const ownerId = getDataOwnerId(user);
-    const matchFilter: Record<string, any> = { userId: ownerId };
+    const matchFilter: Record<string, unknown> = { userId: ownerId };
 
     if (user.role === "Staff") {
         const productions = await db
@@ -35,8 +35,8 @@ export async function GET() {
         const orderIds = [
             ...new Set(
                 productions
-                    .map((p: any) => p.orderId)
-                    .filter((id: any) => id != null && String(id).trim() !== "")
+                    .map((p: Record<string, unknown>) => String(p.orderId || ""))
+                    .filter((id) => id.trim() !== "")
             ),
         ];
 
@@ -114,8 +114,8 @@ export async function GET() {
       ])
       .toArray();
 
-    const formatted = orders.map((o: any) => ({
-      id: o._id.toString(),
+    const formatted = orders.map((o: Record<string, unknown>) => ({
+      id: String(o._id),
       product_name: o.product_name,
       quantity: o.quantity,
       unit: o.unit || "kg",
@@ -142,11 +142,11 @@ export async function GET() {
       processedAt: o.processedAt || null,
       completedAt: o.completedAt || null,
       is_sample: o.is_sample === true,
-      clients: o.client
+      clients: (o.client && typeof o.client === "object")
         ? {
-          name: o.client.name,
-          email: o.client.email,
-          address: o.client.address,
+          name: (o.client as { name?: string }).name,
+          email: (o.client as { email?: string }).email,
+          address: (o.client as { address?: string }).address,
         }
         : null,
     }));
@@ -156,9 +156,9 @@ export async function GET() {
     }
 
     return NextResponse.json(formatted);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching orders:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }
 
@@ -211,7 +211,7 @@ export async function POST(request: Request) {
 
     // ─── Pre-check material stock BEFORE creating order ─────
     const materialsToDeduct = Array.isArray(body.materials)
-      ? body.materials.filter((m: any) => m.inventoryItemId && m.quantityRequired > 0)
+      ? body.materials.filter((m: { inventoryItemId?: string; quantityRequired?: number }) => Boolean(m.inventoryItemId && m.quantityRequired && m.quantityRequired > 0))
       : [];
 
     if (materialsToDeduct.length > 0) {
@@ -347,11 +347,10 @@ export async function POST(request: Request) {
         orderResult.insertedId.toString()
       );
 
-      const userAny = user as any;
       await logDataOperation({
         organizationId: ownerId,
         userId: String(user._id),
-        userName: userAny.fullName || userAny.name || user.email || "Unknown User",
+        userName: user.fullName || user.email || "Unknown User",
         userRole: "Admin",
         action: `Created order ${orderResult.insertedId.toString()} from quotation ${attachRes?.quote.quotation_number || quotationId}, line ${quotationLineIndex}`,
         actionType: "create",
@@ -364,7 +363,7 @@ export async function POST(request: Request) {
         await logDataOperation({
           organizationId: ownerId,
           userId: String(user._id),
-          userName: userAny.fullName || userAny.name || user.email || "Unknown User",
+          userName: user.fullName || user.email || "Unknown User",
           userRole: "Admin",
           action: `Quotation ${attachRes.quote.quotation_number} status automatically changed from Sent to Accepted upon order conversion`,
           actionType: "update",
@@ -383,10 +382,10 @@ export async function POST(request: Request) {
       id: order!._id.toString(),
       ...order,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating order:", error);
     return NextResponse.json(
-      { success: false, message: error.message || "Internal server error" },
+      { success: false, message: (error as Error).message || "Internal server error" },
       { status: 500 }
     );
   }

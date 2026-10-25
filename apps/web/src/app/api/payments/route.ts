@@ -73,8 +73,8 @@ export async function GET() {
       ])
       .toArray();
 
-    const formatted = payments.map((p: any) => ({
-      id: p._id.toString(),
+    const formatted = payments.map((p: Record<string, unknown>) => ({
+      id: String(p._id),
       amount: p.amount,
       payment_date: p.payment_date,
       payment_method: p.payment_method,
@@ -83,14 +83,14 @@ export async function GET() {
       order_id: p.order_id,
       created_at: p.createdAt,
       createdAt: p.createdAt,
-      clients: p.client ? { name: p.client.name } : null,
-      orders: p.order ? { product_name: p.order.product_name } : null,
+      clients: p.client ? { name: (p.client as { name?: string }).name } : null,
+      orders: p.order ? { product_name: (p.order as { product_name?: string }).product_name } : null,
     }));
 
     return NextResponse.json(formatted);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching payments:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }
 
@@ -149,8 +149,8 @@ export async function POST(request: Request) {
       id: payment!._id.toString(),
       ...payment,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating payment:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }

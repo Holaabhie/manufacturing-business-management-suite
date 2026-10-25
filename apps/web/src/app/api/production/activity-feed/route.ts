@@ -28,7 +28,7 @@ export async function GET(request: Request) {
         const db = await getDb();
 
         // Build time filter
-        const timeFilter: any = {};
+        const timeFilter: Record<string, unknown> = {};
         if (since) {
             timeFilter.timestamp = { $gt: new Date(since) };
         }
@@ -80,7 +80,7 @@ export async function GET(request: Request) {
             .limit(limit)
             .toArray();
 
-        const machineActivities = machineEvents.map((e: any) => ({
+        const machineActivities = machineEvents.map((e: Record<string, unknown>) => ({
             type: "machine_event",
             timestamp: e.timestamp,
             employeeName: e.reportedByName || "System",
@@ -117,7 +117,7 @@ export async function GET(request: Request) {
             })
             .toArray();
 
-        const productionCreations = recentProductions.map((p: any) => ({
+        const productionCreations = recentProductions.map((p: Record<string, unknown>) => ({
             type: "production_created",
             timestamp: p.createdAt,
             employeeName: p.createdBy || "System",
@@ -144,7 +144,7 @@ export async function GET(request: Request) {
             .limit(limit)
             .toArray();
 
-        const downtimeActivities = downtimeIssues.map((d: any) => ({
+        const downtimeActivities = downtimeIssues.map((d: Record<string, unknown>) => ({
             type: "downtime_report",
             timestamp: d.reportedAt,
             employeeName: d.reportedByName || "Unknown",
@@ -170,49 +170,59 @@ export async function GET(request: Request) {
             .slice(0, limit);
 
         // Generate human-readable messages
-        const feed = allActivities.map((activity: any) => {
+        const feed = allActivities.map((act) => {
+            const activity = act as {
+                _id?: unknown;
+                type: string;
+                timestamp: string | number | Date;
+                employeeName?: string | null;
+                employeeId?: string | null;
+                role?: string | null;
+                details: Record<string, unknown>;
+            };
+            const details = activity.details || {};
             let message = "";
             let icon = "📋";
             let severity: "info" | "warning" | "success" | "error" = "info";
 
             switch (activity.type) {
                 case "progress_update":
-                    message = `${activity.employeeName} updated progress → Produced: ${activity.details.producedQty} units on ${activity.details.orderName}`;
+                    message = `${activity.employeeName} updated progress → Produced: ${details.producedQty} units on ${details.orderName}`;
                     icon = "📊";
                     severity = "info";
                     break;
                 case "machine_event":
-                    if (activity.details.event === "started") {
-                        message = `${activity.details.machineName} started by ${activity.employeeName}`;
+                    if (details.event === "started") {
+                        message = `${details.machineName} started by ${activity.employeeName}`;
                         icon = "🟢";
                         severity = "success";
-                    } else if (activity.details.event === "stopped") {
-                        message = `${activity.details.machineName} stopped`;
+                    } else if (details.event === "stopped") {
+                        message = `${details.machineName} stopped`;
                         icon = "🔴";
                         severity = "warning";
-                    } else if (activity.details.event === "maintenance") {
-                        message = `${activity.details.machineName} → Maintenance mode`;
+                    } else if (details.event === "maintenance") {
+                        message = `${details.machineName} → Maintenance mode`;
                         icon = "🔧";
                         severity = "warning";
                     } else {
-                        message = `${activity.details.machineName} → ${activity.details.event}`;
+                        message = `${details.machineName} → ${details.event}`;
                         icon = "⚙️";
                     }
                     break;
                 case "production_created":
-                    message = `${activity.employeeName} started ${activity.details.orderName} (${activity.details.batchNumber})`;
+                    message = `${activity.employeeName} started ${details.orderName} (${details.batchNumber})`;
                     icon = "🏭";
                     severity = "success";
                     break;
                 case "downtime_report":
-                    message = `⚠️ ${activity.details.machineName} issue: ${activity.details.reason}`;
+                    message = `⚠️ ${details.machineName} issue: ${details.reason}`;
                     icon = "🚨";
                     severity = "error";
                     break;
             }
 
             return {
-                id: activity._id?.toString() || `${activity.type}-${new Date(activity.timestamp).getTime()}`,
+                id: String(activity._id || `${activity.type}-${new Date(activity.timestamp).getTime()}`),
                 type: activity.type,
                 message,
                 icon,
@@ -230,8 +240,8 @@ export async function GET(request: Request) {
             total: feed.length,
             lastUpdated: new Date().toISOString(),
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error fetching activity feed:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
     }
 }

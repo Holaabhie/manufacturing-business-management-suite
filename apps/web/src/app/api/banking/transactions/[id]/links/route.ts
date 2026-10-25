@@ -35,7 +35,7 @@ export async function GET(
 
     const links = await service.getLinksForTransaction(id, tenantId);
     return NextResponse.json({ links });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof AppError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode });
     }
@@ -78,8 +78,7 @@ export const POST = withIdempotency(
 
       const user = result.user;
       const tenantId = getDataOwnerId(user);
-      const userAny = user as any;
-      const createdBy = userAny.fullName || userAny.name || user.email || String(user._id);
+      const createdBy = user.fullName || user.email || String(user._id);
 
       const body = await request.json();
       const parsed = createLinksSchema.parse(body);
@@ -99,8 +98,8 @@ export const POST = withIdempotency(
         organizationId: tenantId,
         userId: String(user._id),
         userName: createdBy,
-        userRole: (userAny.role === "Admin" || userAny.role === "Owner") ? "Admin" : "Staff",
-            userRoleDetail: userAny.role || user.role,
+        userRole: (user.role === "Admin" || user.role === "Owner") ? "Admin" : "Staff",
+            userRoleDetail: user.role || user.role,
         action: `Matched ${createdLinks.length} payment(s) to transaction ${id}`,
         actionType: "create",
         module: "banking",
@@ -112,7 +111,7 @@ export const POST = withIdempotency(
       });
 
       return NextResponse.json({ links: createdLinks }, { status: 201 });
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error instanceof ZodError) {
         return NextResponse.json(
           { error: error.issues?.[0]?.message || "Validation failed", details: error.issues },
@@ -120,8 +119,11 @@ export const POST = withIdempotency(
         );
       }
       if (error instanceof AppError) {
+        const metadata = 'metadata' in error && typeof (error as Record<string, unknown>).metadata === 'object' && (error as Record<string, unknown>).metadata !== null
+          ? ((error as Record<string, unknown>).metadata as Record<string, unknown>)
+          : {};
         return NextResponse.json(
-          { error: error.message, ...(error.details || {}), ...((error as any).metadata || {}) },
+          { error: error.message, ...(error.details || {}), ...metadata },
           { status: error.statusCode }
         );
       }
