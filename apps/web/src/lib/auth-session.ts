@@ -93,6 +93,7 @@ export type UserDoc = {
   status?: "active" | "inactive" | "suspended" | "pending_setup";
   isActive?: boolean;
   firstLoginCompleted?: boolean;
+  company_setup_complete?: boolean;
   failedLoginAttempts?: number;
   lockedUntil?: Date;
   lastLogin?: Date;

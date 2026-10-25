@@ -78,8 +78,8 @@ export function withAuth<C = any>(
             const [module, action] = options.permission.split(".") as [PermissionModule, string];
             const userPermissions = user.permissions as PermissionMap | undefined;
 
-            // Admins have all permissions
-            if (user.role !== "Admin" && !hasPermission(userPermissions, module, action)) {
+            // Admins/Owners have all permissions
+            if (!hasPermission(userPermissions, options.permission, user.role === "Admin" || user.role === "Owner")) {
                 throw new AuthorizationError(options.permission);
             }
         }

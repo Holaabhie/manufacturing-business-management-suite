@@ -31,6 +31,46 @@ export function isOwnerRole(role: string | null | undefined): boolean {
     return lower === "admin" || lower === "owner";
 }
 
+/**
+ * Resolves caller rank strictly. Returns -1 if caller role is invalid/unrecognized (fail-closed).
+ * Hierarchy: Owner (100) > Manager (50) > Accountant (20) > Staff (10).
+ */
+export function getCallerRoleRank(role: string | null | undefined): number {
+    const normalized = normalizeRoleType(role);
+    switch (normalized) {
+        case "Owner":
+            return 100;
+        case "Manager":
+            return 50;
+        case "Accountant":
+            return 20;
+        case "Staff":
+            return 10;
+        default:
+            return -1; // Fail-closed for caller
+    }
+}
+
+/**
+ * Resolves target user role rank. Returns 999 for unknown/unrecognized roles so non-owners
+ * cannot edit, modify, or demote them (fail-closed for target).
+ */
+export function getTargetRoleRank(role: string | null | undefined): number {
+    const normalized = normalizeRoleType(role);
+    switch (normalized) {
+        case "Owner":
+            return 100;
+        case "Manager":
+            return 50;
+        case "Accountant":
+            return 20;
+        case "Staff":
+            return 10;
+        default:
+            return 999; // Fail-closed for target roles
+    }
+}
+
 // ─── Flat Permission Map Type ───────────────────────────────────
 export type FlatPermissionMap = Record<string, boolean>;
 
@@ -288,6 +328,9 @@ export const ROLE_PRESETS: Record<RoleType, { label: string; description: string
         },
     },
 };
+
+// Backward compatibility alias for employee repository
+export const DEFAULT_TEMPLATES: Record<string, { label: string; description: string; permissions: FlatPermissionMap }> = ROLE_PRESETS;
 
 // ─── Permission Resolution ──────────────────────────────────────
 

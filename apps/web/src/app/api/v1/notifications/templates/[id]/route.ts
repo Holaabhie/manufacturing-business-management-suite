@@ -18,7 +18,7 @@ import { getDataOwnerId } from "@/lib/auth-session";
 import { requireAdmin } from "@/lib/require-role";
 import { ObjectId } from "mongodb";
 import { renderForChannel } from "@/lib/notifications/template-renderer";
-import type { NotificationChannel } from "@/lib/notifications/types";
+import type { NotificationChannel, NotificationTemplateDoc } from "@/lib/notifications/types";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -189,8 +189,8 @@ export const POST = withRateLimit(
       }
 
       const template = await db
-        .collection("notification_templates")
-        .findOne({ _id: new ObjectId(id), userId: ownerId });
+        .collection<NotificationTemplateDoc>("notification_templates")
+        .findOne({ _id: new ObjectId(id) as any, userId: ownerId });
 
       if (!template) {
         return envelope.error("Template not found", 404, "NOT_FOUND");

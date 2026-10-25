@@ -25,6 +25,7 @@ import type {
   NotificationEvent,
   NotificationChannel,
   NotificationLogDoc,
+  NotificationTemplateDoc,
   DeliveryStatus,
 } from "./types";
 import { EVENT_TO_TRIGGER } from "./types";
@@ -87,7 +88,7 @@ export async function triggerNotification(
 
     // ── Find matching active templates ──
     const templates = await db
-      .collection("notification_templates")
+      .collection<NotificationTemplateDoc>("notification_templates")
       .find({
         userId: event.triggeredBy,
         trigger: triggerField,

@@ -1,11 +1,12 @@
-import { MongoClient, MongoClientOptions } from "mongodb";
+import { MongoClient, type Db } from "mongodb";
 import mongoose from "mongoose";
 
 // ─── Environment validation ────────────────────────────────────
 const uri = process.env.MONGODB_URI;
+const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
 
 if (!uri) {
-  if (process.env.NODE_ENV === "production") {
+  if (process.env.NODE_ENV === "production" && !isBuildPhase) {
     throw new Error(
       "FATAL: MONGODB_URI environment variable is not set in production. " +
       "Refusing to start with localhost fallback. " +
@@ -43,124 +44,105 @@ export function isDbUnavailableError(err: unknown): err is DbUnavailableError {
   return err instanceof DbUnavailableError;
 }
 
-declare global {
-  // eslint-disable-next-line no-var
-  var __mongoClientPromise: Promise<MongoClient> | undefined;
-  // eslint-disable-next-line no-var
-  var __mongooseCache: {
-    conn: typeof mongoose | null;
-    promise: Promise<typeof mongoose> | null;
-  };
+// ─── Global Connection Cache (Resolved instances only) ─────────
+interface MongoServerlessCache {
+  conn: typeof mongoose | null;
+  client: MongoClient | null;
 }
 
-// ─── MongoClient (for raw driver queries via getDb()) ──────────
-const clientOptions: MongoClientOptions = {
-  connectTimeoutMS: 15_000,
+declare global {
+  // eslint-disable-next-line no-var
+  var __mongoServerlessCache: MongoServerlessCache | undefined;
+  // eslint-disable-next-line no-var
+  var __mongoClientPromise: Promise<MongoClient> | undefined;
+}
+
+const isVercel = Boolean(process.env.VERCEL);
+
+const mongoOpts: mongoose.ConnectOptions = {
+  bufferCommands: false,
+  connectTimeoutMS: isVercel ? 8_000 : 15_000,
+  serverSelectionTimeoutMS: isVercel ? 8_000 : 30_000,
   socketTimeoutMS: 30_000,
-  serverSelectionTimeoutMS: 30_000,
   heartbeatFrequencyMS: 10_000,
   maxPoolSize: 10,
-  minPoolSize: 1,
-  maxIdleTimeMS: 30_000,
-  retryWrites: true,
-  retryReads: true,
+  minPoolSize: 0, // Serverless safe: never hold idle connections open
+  maxIdleTimeMS: 20_000,
 };
 
-const client = new MongoClient(resolvedUri, clientOptions);
-
-async function connectWithRetry(
-  maxAttempts = 2,
-  delayMs = 500
-): Promise<MongoClient> {
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      const connected = await client.connect();
-      console.log("✅ MongoDB connected successfully");
-      return connected;
-    } catch (err) {
-      console.error(
-        `⚠️  MongoDB connection attempt ${attempt}/${maxAttempts} failed:`,
-        err instanceof Error ? err.message : err
-      );
-      if (attempt === maxAttempts) {
-        console.error(
-          "❌ All MongoDB connection attempts exhausted. Check your MONGODB_URI."
-        );
-        throw err;
-      }
-      // Exponential backoff: 500ms → 1s
-      const wait = delayMs * Math.pow(2, attempt - 1);
-      await new Promise((r) => setTimeout(r, wait));
-    }
+function getCache(): MongoServerlessCache {
+  if (!global.__mongoServerlessCache) {
+    global.__mongoServerlessCache = { conn: null, client: null };
   }
-  throw new Error("Unreachable");
+  return global.__mongoServerlessCache;
 }
 
 /**
- * Returns a promise that resolves to a connected MongoClient.
- * If the previous connection attempt failed, the cached promise is cleared
- * so the next call will retry instead of returning the stale rejection.
+ * Connects to MongoDB via Mongoose and caches the RESOLVED connection and client.
+ * Uses a single unified connection pool for both Mongoose schemas and native driver queries.
  */
-function getClientPromise(): Promise<MongoClient> {
-  if (!global.__mongoClientPromise) {
-    global.__mongoClientPromise = connectWithRetry().catch((err) => {
-      // Clear the cached promise so subsequent requests retry
-      global.__mongoClientPromise = undefined;
-      throw err;
-    });
+export async function connectToDatabase(): Promise<typeof mongoose> {
+  const cached = getCache();
+
+  if (!process.env.MONGODB_URI && process.env.NODE_ENV === "production" && !isBuildPhase) {
+    throw new Error(
+      "FATAL: MONGODB_URI environment variable is not set in production. " +
+      "Set MONGODB_URI to your MongoDB connection string and restart."
+    );
   }
-  return global.__mongoClientPromise;
-}
 
-export const mongoClientPromise: Promise<MongoClient> = getClientPromise();
-
-// ─── Mongoose (for models / schemas) ───────────────────────────
-let cached = global.__mongooseCache;
-
-if (!cached) {
-  cached = global.__mongooseCache = { conn: null, promise: null };
-}
-
-export async function connectToDatabase() {
-  if (cached.conn) {
+  // 1. If we have a healthy active connection (readyState 1 = connected), reuse it
+  if (cached.conn && cached.conn.connection?.readyState === 1) {
     return cached.conn;
   }
 
-  if (!cached.promise) {
-    const opts = {
-      bufferCommands: false,
-      connectTimeoutMS: 15_000,
-      socketTimeoutMS: 30_000,
-      serverSelectionTimeoutMS: 30_000,
-      heartbeatFrequencyMS: 10_000,
-      maxPoolSize: 10,
-      minPoolSize: 1,
-      maxIdleTimeMS: 30_000,
-    };
-
-    cached.promise = mongoose.connect(resolvedUri!, opts).then(() => {
-      console.log("✅ Mongoose connected successfully");
-      return mongoose;
-    });
+  // 2. If cached connection is dead or disconnecting, ensure cleanup
+  if (cached.conn && cached.conn.connection?.readyState !== 1) {
+    try {
+      await mongoose.disconnect().catch(() => {});
+    } catch {
+      // Ignore disconnect errors
+    }
+    cached.conn = null;
+    cached.client = null;
   }
 
+  // 3. Connect fresh and store RESOLVED connection & client
   try {
-    cached.conn = await cached.promise;
-  } catch (e) {
-    cached.promise = null;
-    console.error("❌ Mongoose connection failed:", e instanceof Error ? e.message : e);
-    throw e;
+    const conn = await mongoose.connect(resolvedUri, mongoOpts);
+    const client = conn.connection.getClient() as unknown as MongoClient;
+    cached.conn = conn;
+    cached.client = client;
+    return conn;
+  } catch (err) {
+    // On failure: close any partial connection and clear cache immediately
+    try {
+      await mongoose.disconnect().catch(() => {});
+    } catch {
+      // Ignore
+    }
+    cached.conn = null;
+    cached.client = null;
+    console.error("❌ MongoDB connection failed:", err instanceof Error ? err.message : err);
+    throw err;
   }
-
-  return cached.conn;
 }
 
-// ─── getDb() — primary API for route handlers ──────────────────
-export async function getDb() {
+/**
+ * Primary API for raw driver queries.
+ * Wraps the single shared Mongoose connection pool to prevent dual-driver socket leaks
+ * and BSON version incompatibility.
+ */
+export async function getDb(): Promise<Db> {
   try {
-    const connectedClient = await getClientPromise();
-    const dbName = process.env.MONGODB_DB ?? "ind_manager";
-    return connectedClient.db(dbName);
+    const conn = await connectToDatabase();
+    const db = conn.connection.db as unknown as Db;
+    if (!db) {
+      const dbName = process.env.MONGODB_DB ?? "ind_manager";
+      const client = conn.connection.getClient() as unknown as MongoClient;
+      return client.db(dbName);
+    }
+    return db;
   } catch (err) {
     throw new DbUnavailableError(
       "Database is unavailable. Check your MongoDB connection.",
@@ -169,5 +151,17 @@ export async function getDb() {
   }
 }
 
-// Export clientPromise for NextAuth adapter
+/**
+ * Returns the underlying MongoClient from the single shared pool.
+ */
+export async function getMongoClient(): Promise<MongoClient> {
+  const conn = await connectToDatabase();
+  return conn.connection.getClient() as unknown as MongoClient;
+}
+
+// Export lazy promise for any consumer needing Promise<MongoClient>
+export const mongoClientPromise: Promise<MongoClient> = (async () => {
+  return getMongoClient();
+})();
+
 export default mongoClientPromise;
