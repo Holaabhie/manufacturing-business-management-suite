@@ -38,6 +38,7 @@ import {
   Settings2,
 } from "lucide-react";
 import { useClients, useInventory, useUpdateOrder } from "@/lib/hooks/use-orders";
+import { apiClient, ApiError } from "@/lib/api-client";
 import { useRole } from "@/lib/hooks/use-role";
 
 // ─── Types ─────────────────────────────────────────────────────────
@@ -319,13 +320,8 @@ export default function EditOrderPage() {
 
     async function loadOrder() {
       try {
-        const res = await fetch(`/api/v1/orders/${orderId}`, { credentials: "include" });
-        if (!res.ok) {
-          if (res.status === 404) { setPageState("not-found"); return; }
-          throw new Error("Failed to load order");
-        }
-        const json = await res.json();
-        const orderData = json.data ?? json;
+        const json = await apiClient.get<any>(`/api/v1/orders/${orderId}`);
+        const orderData = json?.data ?? json;
         if (cancelled) return;
 
         setOrder(orderData);
@@ -334,8 +330,14 @@ export default function EditOrderPage() {
         initialSnapshot.current = JSON.stringify(hydrated);
         formHydrated.current = true;
         setPageState("ready");
-      } catch {
-        if (!cancelled) setPageState("error");
+      } catch (err: unknown) {
+        if (!cancelled) {
+          if (err instanceof ApiError && err.status === 404) {
+            setPageState("not-found");
+            return;
+          }
+          setPageState("error");
+        }
       }
     }
 

@@ -1207,7 +1207,8 @@ export default function PaymentsPage() {
         entityLabel={t("actions.entityPayment")}
         entityName={
           payments.find((p) => p.id === paymentToDeleteId)?.id ||
-          payments.find((p) => p.id === paymentToDeleteId)?.transaction_id
+          payments.find((p) => p.id === paymentToDeleteId)?.transaction_id ||
+          undefined
         }
         consequenceText={t("actions.deleteConsequence")}
       />

@@ -40,7 +40,9 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
-  DialogDescription
+  DialogDescription,
+  DialogBody,
+  DialogClose
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -66,7 +68,6 @@ import { cn } from "@/lib/utils";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRole } from "@/lib/hooks/use-role";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { ReadOnlyBanner } from "@/components/AccessDenied";
 import { generateDataExportPDF } from "@/lib/pdf-generator";
 import { NumericInput } from "@/components/ui/numeric-input";
@@ -74,9 +75,21 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useCachedPage } from "@/hooks/useCachedPage";
 import { ConfirmDeleteSheet } from "@/components/ui/ConfirmDeleteSheet";
 import { STARTER_LIMIT } from "@/lib/entitlements/limits";
+import {
+  useClients,
+  useCreateClient,
+  useUpdateClient,
+  useDeleteClient,
+  useAddClientProduct,
+  useDeleteClientProduct,
+  useAddClientMaterial,
+  useDeleteClientMaterial,
+} from "@/hooks/useClients";
+import { apiClient } from "@/lib/api-client";
 
 export default function ClientsPage() {
   const t = useTranslations("clients");
+  const tCommon = useTranslations("common");
   const { locale } = useAppLocale();
   const dateLocale = locale === "hi" ? "hi-IN" : locale === "gu" ? "gu-IN" : locale === "mr" ? "mr-IN" : "en-IN";
   const { role, isAdmin, isPro } = useRole();
@@ -93,6 +106,23 @@ export default function ClientsPage() {
   const [clientToDeleteId, setClientToDeleteId] = useState<string | null>(null);
   const [restoredFromCache, setRestoredFromCache] = useState(false);
   const restoredFromCacheRef = useRef(false);
+
+  // ── Unified Data Fetching (Phase 3) ──
+  const { data: clientsData, refetch: refetchClients } = useClients();
+  const createClientMutation = useCreateClient();
+  const updateClientMutation = useUpdateClient();
+  const deleteClientMutation = useDeleteClient();
+  const addClientProductMutation = useAddClientProduct();
+  const deleteClientProductMutation = useDeleteClientProduct();
+  const addClientMaterialMutation = useAddClientMaterial();
+  const deleteClientMaterialMutation = useDeleteClientMaterial();
+
+  useEffect(() => {
+    if (clientsData) {
+      setClients(clientsData);
+      setLoading(false);
+    }
+  }, [clientsData]);
 
   // ── Cache persistence ──
   const { restoreState, persist, scrollYRef, containerRef: cachedScrollRef, restoreScroll } = useCachedPage({
@@ -178,6 +208,7 @@ export default function ClientsPage() {
 
   // New Client Form
   const [formData, setFormData] = useState({ name: "", company: "", email: "", phone: "", address: "", customerSince: new Date().toISOString().split("T")[0] });
+  const [isAddingClient, setIsAddingClient] = useState(false);
 
   // Edit Client Form
   const [editData, setEditData] = useState({ name: "", company: "", email: "", phone: "", address: "", customerSince: "" });
@@ -191,34 +222,34 @@ export default function ClientsPage() {
   const fetchClients = async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
-      const res = await fetch("/api/clients");
-      const data = await res.json();
-      if (data.error) toast.error(t("toasts.fetchFailed"));
-      else setClients(data || []);
-    } catch (error) {
+      const res = await refetchClients();
+      if (res.data) setClients(res.data);
+    } catch {
       toast.error(t("toasts.fetchFailed"));
     } finally {
       if (showLoading) setLoading(false);
     }
   };
 
-    const fetchClientDetails = async (client: any) => {
+  const fetchClientDetails = async (client: any) => {
     setLoadingDetails(true);
     try {
       const [productsRes, ordersRes] = await Promise.all([
-        fetch(`/api/v1/clients/${client.id}/products`).then(r => r.json()),
-        fetch(`/api/v1/orders?clientId=${client.id}`).then(r => r.json())
+        apiClient.get<any>(`/api/v1/clients/${client.id}/products`),
+        apiClient.get<any>(`/api/v1/orders?clientId=${client.id}`)
       ]);
 
-      if (productsRes.error) throw new Error(productsRes.error.message);
-      if (ordersRes.error) throw new Error(ordersRes.error.message);
+      const products = Array.isArray(productsRes)
+        ? productsRes
+        : productsRes?.data || [];
+      const filteredOrders = Array.isArray(ordersRes)
+        ? ordersRes
+        : ordersRes?.data || [];
 
-      const filteredOrders = ordersRes.data || [];
-
-      setClientProducts(productsRes.data || []);
+      setClientProducts(products);
       setClientOrders(filteredOrders);
       setExpandedProducts([]);
-    } catch (error) {
+    } catch {
       toast.error(t("toasts.fetchDetailsFailed"));
     } finally {
       setLoadingDetails(false);
@@ -229,11 +260,12 @@ export default function ClientsPage() {
     if (!selectedClient) return;
     setLoadingMaterials(prev => ({ ...prev, [productId]: true }));
     try {
-      const res = await fetch(`/api/v1/clients/${selectedClient.id}/products/${productId}/materials`);
-      const json = await res.json();
-      if (json.error) throw new Error(json.error.message);
-      setProductMaterials(prev => ({ ...prev, [productId]: json.data || [] }));
-    } catch (error) {
+      const res = await apiClient.get<any>(
+        `/api/v1/clients/${selectedClient.id}/products/${productId}/materials`
+      );
+      const materials = Array.isArray(res) ? res : res?.data || [];
+      setProductMaterials(prev => ({ ...prev, [productId]: materials }));
+    } catch {
       toast.error(t("toasts.fetchMaterialsFailed"));
     } finally {
       setLoadingMaterials(prev => ({ ...prev, [productId]: false }));
@@ -266,15 +298,15 @@ export default function ClientsPage() {
 
   const handleAddClient = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isAddingClient) return;
+    setIsAddingClient(true);
     try {
-      const res = await fetch("/api/clients", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-      const data = await res.json();
-
-      if (res.status === 403 || data.code === "PLAN_LIMIT_REACHED") {
+      const data = await createClientMutation.mutateAsync(formData);
+      setIsDialogOpen(false);
+      setFormData({ name: "", company: "", email: "", phone: "", address: "", customerSince: new Date().toISOString().split("T")[0] });
+      handleSelectClient(data);
+    } catch (error: any) {
+      if (error?.status === 403 || error?.code === "PLAN_LIMIT_REACHED") {
         toast.error(`Starter tier limit reached (${starterLimit} clients). Please upgrade to Pro for unlimited CRM capacity.`, {
           action: {
             label: "Upgrade",
@@ -283,17 +315,9 @@ export default function ClientsPage() {
         });
         return;
       }
-
-      if (data.error) toast.error(t("toasts.createFailed"));
-      else {
-        toast.success(t("toasts.created"));
-        fetchClients();
-        setIsDialogOpen(false);
-        setFormData({ name: "", company: "", email: "", phone: "", address: "", customerSince: new Date().toISOString().split("T")[0] });
-        handleSelectClient(data);
-      }
-    } catch (error) {
       toast.error(t("toasts.createFailed"));
+    } finally {
+      setIsAddingClient(false);
     }
   };
 
@@ -301,37 +325,20 @@ export default function ClientsPage() {
     if (!selectedClient) return;
 
     try {
-      const res = await fetch(`/api/clients/${selectedClient.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editData),
+      await updateClientMutation.mutateAsync({
+        id: selectedClient.id,
+        payload: editData,
       });
-      const data = await res.json();
-
-      if (data.error) toast.error(t("toasts.updateFailed"));
-      else {
-        toast.success(t("toasts.updated"));
-        fetchClients();
-      }
-    } catch (error) {
+    } catch {
       toast.error(t("toasts.updateFailed"));
     }
   };
 
   const handleDeleteClient = async (id: string) => {
     try {
-      const res = await fetch(`/api/clients/${id}`, {
-        method: "DELETE",
-      });
-      const data = await res.json();
-
-      if (data.error) toast.error(t("toasts.deleteFailed"));
-      else {
-        toast.success(t("toasts.deleted"));
-        if (selectedClient?.id === id) setSelectedClient(null);
-        fetchClients();
-      }
-    } catch (error) {
+      await deleteClientMutation.mutateAsync(id);
+      if (selectedClient?.id === id) setSelectedClient(null);
+    } catch {
       toast.error(t("toasts.deleteFailed"));
     } finally {
       setIsDeleteDialogOpenConfirm(false);
@@ -350,11 +357,11 @@ export default function ClientsPage() {
     });
     fetchClientDetails(client);
     // Lazy-load avatar from single-client endpoint (not included in list fetch to avoid payload bloat)
-    fetch(`/api/v1/clients/${client.id}`)
-      .then(r => r.ok ? r.json() : null)
+    apiClient.get<any>(`/api/v1/clients/${client.id}`)
       .then(res => {
-        if (res?.data?.avatarUrl) {
-          setSelectedClient((prev: any) => prev?.id === client.id ? { ...prev, avatarUrl: res.data.avatarUrl } : prev);
+        const avatarUrl = res?.data?.avatarUrl || res?.avatarUrl;
+        if (avatarUrl) {
+          setSelectedClient((prev: any) => prev?.id === client.id ? { ...prev, avatarUrl } : prev);
         }
       })
       .catch(() => { /* avatar fetch is best-effort */ });
@@ -364,40 +371,28 @@ export default function ClientsPage() {
     e.preventDefault();
     if (!selectedClient) return;
     try {
-      const res = await fetch(`/api/v1/clients/${selectedClient.id}/products`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: productForm.name, defaultRate: Number(productForm.defaultRate) }),
+      await addClientProductMutation.mutateAsync({
+        clientId: selectedClient.id,
+        payload: { name: productForm.name, defaultRate: Number(productForm.defaultRate) },
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || data.error) {
-        toast.error(data?.error?.message || data?.error || "Failed to add product");
-      } else {
-        toast.success(t("toasts.productAdded"));
-        setProductForm({ name: "", defaultRate: "" });
-        fetchClientDetails(selectedClient);
-      }
-    } catch (error) {
-      toast.error(t("toasts.productAddFailed"));
+      setProductForm({ name: "", defaultRate: "" });
+      fetchClientDetails(selectedClient);
+    } catch (error: any) {
+      toast.error(error?.message || t("toasts.productAddFailed"));
     }
   };
 
   const handleDeleteProduct = async (productId: string) => {
     if (!selectedClient) return;
     try {
-      const res = await fetch(`/api/v1/clients/products/${productId}`, {
-        method: "DELETE",
+      await deleteClientProductMutation.mutateAsync({
+        clientId: selectedClient.id,
+        productId,
       });
-      if (res.ok || res.status === 404) {
-        toast.success(t("toasts.productDeleted"));
-        setClientProducts((prev) => prev.filter((p) => p.id !== productId));
-        fetchClientDetails(selectedClient);
-      } else {
-        const data = await res.json().catch(() => ({}));
-        toast.error(data?.error?.message || data?.error || "Failed to delete product");
-      }
-    } catch (error) {
-      toast.error(t("toasts.productDeleteFailed"));
+      setClientProducts((prev) => prev.filter((p) => p.id !== productId));
+      fetchClientDetails(selectedClient);
+    } catch (error: any) {
+      toast.error(error?.message || t("toasts.productDeleteFailed"));
     }
   };
 
@@ -405,43 +400,33 @@ export default function ClientsPage() {
     e.preventDefault();
     if (!selectedClient) return;
     try {
-      const res = await fetch(`/api/v1/clients/${selectedClient.id}/products/${productId}/materials`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: materialForm.name, type: materialForm.type, defaultQty: materialForm.defaultQty || null }),
+      await addClientMaterialMutation.mutateAsync({
+        clientId: selectedClient.id,
+        productId,
+        payload: { name: materialForm.name, type: materialForm.type, defaultQty: materialForm.defaultQty || null },
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || data.error) {
-        toast.error(data?.error?.message || data?.error || "Failed to add material");
-      } else {
-        toast.success(t("toasts.materialAdded"));
-        setMaterialForm({ productId: "", name: "", type: "", defaultQty: "" });
-        fetchMaterialsForProduct(productId);
-      }
-    } catch (error) {
-      toast.error(t("toasts.materialAddFailed"));
+      setMaterialForm({ productId: "", name: "", type: "", defaultQty: "" });
+      fetchMaterialsForProduct(productId);
+    } catch (error: any) {
+      toast.error(error?.message || t("toasts.materialAddFailed"));
     }
   };
 
   const handleDeleteMaterial = async (productId: string, materialId: string) => {
     if (!selectedClient) return;
     try {
-      const res = await fetch(`/api/v1/clients/materials/${materialId}`, {
-        method: "DELETE",
+      await deleteClientMaterialMutation.mutateAsync({
+        clientId: selectedClient.id,
+        productId,
+        materialId,
       });
-      if (res.ok || res.status === 404) {
-        toast.success(t("toasts.materialDeleted"));
-        setProductMaterials((prev) => ({
-          ...prev,
-          [productId]: (prev[productId] || []).filter((m) => m.id !== materialId),
-        }));
-        fetchMaterialsForProduct(productId);
-      } else {
-        const data = await res.json().catch(() => ({}));
-        toast.error(data?.error?.message || data?.error || "Failed to delete material");
-      }
-    } catch (error) {
-      toast.error(t("toasts.materialDeleteFailed"));
+      setProductMaterials((prev) => ({
+        ...prev,
+        [productId]: (prev[productId] || []).filter((m) => m.id !== materialId),
+      }));
+      fetchMaterialsForProduct(productId);
+    } catch (error: any) {
+      toast.error(error?.message || t("toasts.materialDeleteFailed"));
     }
   };
 
@@ -485,72 +470,159 @@ export default function ClientsPage() {
                   </IOSButton>
                 </DialogTrigger>
               )}
-              <DialogContent fullScreenMobile className="max-w-md p-0 overflow-hidden">
-                <ScrollArea className="max-h-[90vh]">
-                  <div className="p-6">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 16, marginBottom: 16, borderBottom: '1px solid var(--border)' }}>
-                      <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--muted)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <DialogContent fullScreenMobile className="max-w-xl w-full flex flex-col max-h-[calc(100dvh-2rem)] overflow-hidden p-0">
+                <form id="add-client-form" onSubmit={handleAddClient} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+                  <div className="shrink-0 px-6 py-4 border-b border-[var(--border)] flex items-center justify-between gap-3 bg-[var(--card)]/50">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-[var(--primary)]/10 border border-[var(--primary)]/20 flex items-center justify-center shrink-0">
                         <User className="h-[18px] w-[18px] text-[var(--primary)]" />
                       </div>
-                      <div>
-                        <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: 'var(--foreground)', lineHeight: '22px', margin: 0 }}>{t("addDialogTitle")}</DialogTitle>
-                        <p style={{ fontSize: 13, color: 'var(--muted-foreground)', lineHeight: '18px', margin: '2px 0 0' }}>{t("addDialogSubtitle")}</p>
+                      <div className="min-w-0">
+                        <DialogTitle className="text-lg font-bold text-[var(--foreground)] m-0 leading-tight">
+                          {t("addDialogTitle")}
+                        </DialogTitle>
+                        <p className="text-xs text-[var(--muted-foreground)] mt-0.5 leading-normal">
+                          {t("addDialogSubtitle")}
+                        </p>
                       </div>
                     </div>
-                    <form onSubmit={handleAddClient} className="space-y-4 pt-4">
-                      <div className="space-y-2">
-                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">{t("lblName")} *</label>
-                        <IOSInput
+                    <DialogClose asChild>
+                      <button
+                        type="button"
+                        aria-label="Close"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)] transition-colors shrink-0 cursor-pointer"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </DialogClose>
+                  </div>
+
+                  <DialogBody className="px-6 py-5 space-y-4">
+                    {/* Client Name */}
+                    <div className="space-y-1.5">
+                      <label htmlFor="name" className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--foreground)]/70 ml-0.5">
+                        {t("lblName")} <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="field-wrapper flex items-center h-12 rounded-xl bg-[var(--muted)]/40 border border-[var(--border)] px-3.5 transition-all">
+                        <User className="field-icon h-[18px] w-[18px] text-[var(--muted-foreground)] shrink-0 pointer-events-none mr-2.5" />
+                        <input
                           id="name"
                           value={formData.name}
-                          onChange={(e: any) => setFormData({ ...formData, name: e.target.value })}
+                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                           placeholder={t("placeholderName")}
                           required
+                          className="field-bare w-full h-full text-sm placeholder:text-[var(--muted-foreground)]/60"
+                          data-bare
                         />
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">{t("lblCompany")}</label>
-                        <IOSInput
+                    </div>
+
+                    {/* Company Name */}
+                    <div className="space-y-1.5">
+                      <label htmlFor="company" className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--foreground)]/70 ml-0.5">
+                        {t("lblCompany")}
+                      </label>
+                      <div className="field-wrapper flex items-center h-12 rounded-xl bg-[var(--muted)]/40 border border-[var(--border)] px-3.5 transition-all">
+                        <Building2 className="field-icon h-[18px] w-[18px] text-[var(--muted-foreground)] shrink-0 pointer-events-none mr-2.5" />
+                        <input
                           id="company"
                           value={formData.company}
-                          onChange={(e: any) => setFormData({ ...formData, company: e.target.value })}
+                          onChange={(e) => setFormData({ ...formData, company: e.target.value })}
                           placeholder={t("placeholderCompany")}
+                          className="field-bare w-full h-full text-sm placeholder:text-[var(--muted-foreground)]/60"
+                          data-bare
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">{t("lblEmail")}</label>
-                          <IOSInput
+                    </div>
+
+                    {/* Email and Phone */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Email */}
+                      <div className="space-y-1.5 min-w-0">
+                        <label htmlFor="email" className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--foreground)]/70 ml-0.5">
+                          {t("lblEmail")}
+                        </label>
+                        <div className="field-wrapper flex items-center h-12 rounded-xl bg-[var(--muted)]/40 border border-[var(--border)] px-3.5 transition-all">
+                          <Mail className="field-icon h-[18px] w-[18px] text-[var(--muted-foreground)] shrink-0 pointer-events-none mr-2.5" />
+                          <input
                             id="email"
                             type="email"
                             value={formData.email}
-                            onChange={(e: any) => setFormData({ ...formData, email: e.target.value })}
-                            placeholder={t("placeholderEmail")}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">{t("lblPhone")}</label>
-                          <IOSInput
-                            id="phone"
-                            value={formData.phone}
-                            onChange={(e: any) => setFormData({ ...formData, phone: e.target.value })}
-                            placeholder={t("placeholderPhone")}
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                            placeholder="name@company.com"
+                            className="field-bare w-full h-full text-sm placeholder:text-[var(--muted-foreground)]/60"
+                            data-bare
                           />
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">{t("lblAddress")}</label>
-                        <IOSInput
+
+                      {/* Phone */}
+                      <div className="space-y-1.5 min-w-0">
+                        <label htmlFor="phone" className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--foreground)]/70 ml-0.5">
+                          {t("lblPhone")}
+                        </label>
+                        <div className="field-wrapper flex items-center h-12 rounded-xl bg-[var(--muted)]/40 border border-[var(--border)] px-3.5 transition-all">
+                          <span className="text-xs font-semibold text-[var(--muted-foreground)] bg-[var(--muted)] px-2 py-0.5 rounded-md shrink-0 pointer-events-none mr-2 border border-[var(--border)]">
+                            +91
+                          </span>
+                          <input
+                            id="phone"
+                            type="tel"
+                            value={formData.phone}
+                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                            placeholder="98765 43210"
+                            className="field-bare w-full h-full text-sm placeholder:text-[var(--muted-foreground)]/60 font-mono"
+                            data-bare
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Address */}
+                    <div className="space-y-1.5">
+                      <label htmlFor="address" className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--foreground)]/70 ml-0.5">
+                        {t("lblAddress")}
+                      </label>
+                      <div className="field-wrapper flex items-start rounded-xl bg-[var(--muted)]/40 border border-[var(--border)] px-3.5 py-2.5 transition-all">
+                        <MapPin className="field-icon h-[18px] w-[18px] text-[var(--muted-foreground)] shrink-0 pointer-events-none mr-2.5 mt-0.5" />
+                        <textarea
                           id="address"
+                          rows={3}
                           value={formData.address}
-                          onChange={(e: any) => setFormData({ ...formData, address: e.target.value })}
+                          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                           placeholder={t("placeholderAddress")}
+                          className="field-bare w-full text-sm placeholder:text-[var(--muted-foreground)]/60 resize-none font-sans"
+                          data-bare
                         />
                       </div>
-                      <button type="submit" style={{ width: '100%', height: 48, borderRadius: 14, background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', border: '1px solid rgba(16,185,129,0.3)', boxShadow: '0 4px 16px rgba(16,185,129,0.25)', marginTop: 16 }}>{t("btnCreateProfile")}</button>
-                    </form>
-                  </div>
-                </ScrollArea>
+                    </div>
+                  </DialogBody>
+
+                  <DialogFooter className="px-6 py-3 border-t border-[var(--border)] bg-[var(--card)]/90 backdrop-blur shrink-0 flex items-center justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsDialogOpen(false)}
+                      disabled={isAddingClient}
+                      className="px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--card)] hover:bg-[var(--muted)] text-sm font-medium text-[var(--foreground)] transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      {tCommon("cancel")}
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isAddingClient || !formData.name.trim()}
+                      className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white text-sm font-semibold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      {isAddingClient ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>{t("creatingProfile")}</span>
+                        </>
+                      ) : (
+                        t("btnCreateProfile")
+                      )}
+                    </button>
+                  </DialogFooter>
+                </form>
               </DialogContent>
             </Dialog>
           </div>
@@ -657,14 +729,14 @@ export default function ClientsPage() {
 
       {/* Client profile modal (name, company, profile, orders, sum) */}
       <Dialog open={!!selectedClient} onOpenChange={(open) => { if (!open) setSelectedClient(null); }}>
-        <DialogContent fullScreenMobile className="max-w-[900px] w-full p-0 overflow-hidden rounded-2xl" aria-describedby={undefined}>
+        <DialogContent fullScreenMobile className="max-w-[900px] w-full p-0 overflow-hidden rounded-2xl flex flex-col max-h-[calc(100dvh-2rem)]" aria-describedby={undefined}>
           <DialogTitle className="sr-only">{t("profileDialogTitle")}</DialogTitle>
           {selectedClient && (
             <div
-              className="flex flex-col overflow-hidden bg-[var(--background)] border border-[var(--border)] shadow-lg"
+              className="flex flex-col flex-1 min-h-0 overflow-hidden bg-[var(--background)] border border-[var(--border)] shadow-lg"
             >
               {/* -- Header Bar -- */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+              <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
                 <button onClick={() => setSelectedClient(null)} className="w-[38px] h-[38px] rounded-xl bg-[var(--muted)] border border-[var(--border)] flex items-center justify-center cursor-pointer text-[var(--muted-foreground)] hover:bg-[var(--accent)]/10 transition-colors">
                   <X className="h-4 w-4" />
                 </button>
@@ -678,7 +750,7 @@ export default function ClientsPage() {
                 ) : <div style={{ width: 38 }} />}
               </div>
 
-              <div className="flex-1 overflow-y-auto" style={{ padding: '0 20px 24px', maxHeight: '85vh' }}>
+              <DialogBody className="px-5 pb-6">
                 {/* -- Avatar + Name Hero -- */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '24px 0 16px' }}>
                   <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -704,12 +776,7 @@ export default function ClientsPage() {
                           const prevAvatar = selectedClient.avatarUrl;
                           setSelectedClient((prev: any) => prev ? { ...prev, avatarUrl: base64String } : prev);
                           try {
-                            const res = await fetch(`/api/clients/${selectedClient.id}`, {
-                              method: 'PUT',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ ...editData, avatarUrl: base64String }),
-                            });
-                            if (!res.ok) throw new Error('Failed to save avatar');
+                            await apiClient.put(`/api/clients/${selectedClient.id}`, { ...editData, avatarUrl: base64String });
                             toast.success(t("toasts.avatarSaved"));
                           } catch (err: any) {
                             // Revert on failure
@@ -858,16 +925,8 @@ export default function ClientsPage() {
                             value={editData.name}
                             onChange={(e) => setEditData({ ...editData, name: e.target.value })}
                             placeholder="Enter full name"
-                            style={{
-                              background: 'transparent',
-                              border: 'none',
-                              outline: 'none',
-                              color: 'var(--foreground)',
-                              fontSize: 14,
-                              width: '100%',
-                              minWidth: 0,
-                            }}
-                            className="client-profile-field-input"
+                            data-bare
+                            className="client-profile-field-input field-bare"
                           />
                         </div>
                       </div>
@@ -901,16 +960,8 @@ export default function ClientsPage() {
                             value={editData.company}
                             onChange={(e) => setEditData({ ...editData, company: e.target.value })}
                             placeholder="Company name (optional)"
-                            style={{
-                              background: 'transparent',
-                              border: 'none',
-                              outline: 'none',
-                              color: 'var(--foreground)',
-                              fontSize: 14,
-                              width: '100%',
-                              minWidth: 0,
-                            }}
-                            className="client-profile-field-input"
+                            data-bare
+                            className="client-profile-field-input field-bare"
                           />
                         </div>
                       </div>
@@ -949,16 +1000,8 @@ export default function ClientsPage() {
                             placeholder="name@example.com"
                             type="email"
                             inputMode="email"
-                            style={{
-                              background: 'transparent',
-                              border: 'none',
-                              outline: 'none',
-                              color: 'var(--foreground)',
-                              fontSize: 14,
-                              width: '100%',
-                              minWidth: 0,
-                            }}
-                            className="client-profile-field-input"
+                            data-bare
+                            className="client-profile-field-input field-bare"
                           />
                         </div>
                       </div>
@@ -994,16 +1037,8 @@ export default function ClientsPage() {
                             placeholder="10-digit mobile number"
                             type="tel"
                             inputMode="tel"
-                            style={{
-                              background: 'transparent',
-                              border: 'none',
-                              outline: 'none',
-                              color: 'var(--foreground)',
-                              fontSize: 14,
-                              width: '100%',
-                              minWidth: 0,
-                            }}
-                            className="client-profile-field-input"
+                            data-bare
+                            className="client-profile-field-input field-bare"
                           />
                         </div>
                       </div>
@@ -1062,17 +1097,11 @@ export default function ClientsPage() {
                       disabled={!isAdmin}
                       rows={3}
                       placeholder="House / Building, Street, Area, City, State, PIN"
-                      className="client-profile-field-input"
+                      data-bare
+                      className="client-profile-field-input field-bare"
                       style={{
-                        background: 'transparent',
-                        border: 'none',
-                        outline: 'none',
-                        color: 'var(--foreground)',
-                        fontSize: 14,
-                        lineHeight: '1.5',
-                        width: '100%',
                         resize: 'none',
-                        minWidth: 0,
+                        lineHeight: '1.5',
                         fontFamily: 'inherit',
                       }}
                     />
@@ -1284,7 +1313,7 @@ export default function ClientsPage() {
                 </TabsContent>
               )}
                 </Tabs>
-              </div>
+              </DialogBody>
             </div>
           )}
         </DialogContent>

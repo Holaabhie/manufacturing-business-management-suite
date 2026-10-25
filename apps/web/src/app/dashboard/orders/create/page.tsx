@@ -14,6 +14,7 @@ import { StepClientProduct, StepFinancials, StepProduction, StepMaterials, StepR
 import { parseNumericValue } from "@/components/ui/numeric-input";
 import { useCachedPage } from "@/hooks/useCachedPage";
 import { queryKeys, apiFetch } from "@/lib/hooks/use-orders";
+import { apiClient } from "@/lib/api-client";
 import type { Order } from "@/modules/orders/domain/types";
 import { STARTER_LIMIT } from "@/lib/entitlements/limits";
 
@@ -132,9 +133,7 @@ export function CreateOrderWizardContent() {
 
     (async () => {
       try {
-        const res = await fetch(`/api/quotes/${quoteIdParam}`, { credentials: "include" });
-        if (!res.ok) throw new Error("Failed to load quotation details");
-        const quote = await res.json();
+        const quote = await apiClient.get<any>(`/api/quotes/${quoteIdParam}`);
         if (!isMounted || !quote) return;
 
         const line = quote.items?.[lineIndex] || quote.items?.[0];
@@ -226,10 +225,10 @@ export function CreateOrderWizardContent() {
 
   const fetchData = useCallback(async () => {
     const [cRes, mRes, eRes, iRes] = await Promise.all([
-      fetch("/api/clients", { credentials: "include" }).then((r) => r.ok ? r.json() : []).catch(() => []),
-      fetch("/api/machines", { credentials: "include" }).then((r) => r.ok ? r.json() : []).catch(() => []),
-      fetch("/api/employees", { credentials: "include" }).then((r) => r.ok ? r.json() : { employees: [] }).catch(() => ({ employees: [] })),
-      fetch("/api/v1/inventory", { credentials: "include" }).then((r) => r.ok ? r.json() : { data: [] }).catch(() => ({ data: [] })),
+      apiClient.get<any>("/api/clients").catch(() => []),
+      apiClient.get<any>("/api/machines").catch(() => []),
+      apiClient.get<any>("/api/employees").catch(() => ({ employees: [] })),
+      apiClient.get<any>("/api/v1/inventory").catch(() => ({ data: [] })),
     ]);
     setClients(Array.isArray(cRes) ? cRes : []);
     setMachines(Array.isArray(mRes) ? mRes : []);
@@ -401,26 +400,28 @@ export function CreateOrderWizardContent() {
       // 1) Create client inline if needed
       let clientId = form.client_id;
       if (addingClient && newClient.name.trim()) {
-        const cRes = await fetch("/api/clients", {
-          method: "POST", credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: newClient.name.trim(), phone: newClient.phone, email: newClient.email }),
-        });
-        const cData = await cRes.json();
-        if (cRes.status === 403 || cData.code === "PLAN_LIMIT_REACHED") {
-          toast.error(
-            `Starter tier limit reached (${STARTER_LIMIT} clients). Please upgrade to Pro for unlimited CRM capacity.`,
-            {
-              action: {
-                label: "Upgrade",
-                onClick: () => (window.location.href = "/dashboard/upgrade"),
-              },
-            }
-          );
-          return;
+        try {
+          const cData = await apiClient.post<any>("/api/clients", {
+            name: newClient.name.trim(),
+            phone: newClient.phone,
+            email: newClient.email,
+          });
+          clientId = cData.id;
+        } catch (cErr: any) {
+          if (cErr?.status === 403 || cErr?.code === "PLAN_LIMIT_REACHED" || cErr?.details?.code === "PLAN_LIMIT_REACHED") {
+            toast.error(
+              `Starter tier limit reached (${STARTER_LIMIT} clients). Please upgrade to Pro for unlimited CRM capacity.`,
+              {
+                action: {
+                  label: "Upgrade",
+                  onClick: () => (window.location.href = "/dashboard/upgrade"),
+                },
+              }
+            );
+            return;
+          }
+          throw new Error(cErr.message || t("toasts.failedCreateClient"));
         }
-        if (!cRes.ok) throw new Error(cData.message || cData.error || t("toasts.failedCreateClient"));
-        clientId = cData.id;
       }
 
       // 2) Calculate totals
@@ -470,67 +471,63 @@ export function CreateOrderWizardContent() {
           : {}),
       };
 
-      const oRes = await fetch("/api/orders", {
-        method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(orderPayload),
-      });
-      const oData = await oRes.json();
-      if (oRes.status === 409 && oData.error === "QUOTE_LINE_ALREADY_CONVERTED_OR_NOT_ELIGIBLE") {
-        toast.error(t("toasts.quoteLineAlreadyConverted") || "Quote line already converted or not eligible", {
-          action: oData.existing_order_id
-            ? {
-                label: "View Order",
-                onClick: () => router.push(`/dashboard/orders/${oData.existing_order_id}`),
-              }
-            : undefined,
-        });
-        return;
+      let orderId: string;
+      try {
+        const oData = await apiClient.post<any>("/api/orders", orderPayload);
+        orderId = oData.id;
+      } catch (oErr: any) {
+        const errCode = oErr?.details?.error || oErr?.details?.code || oErr?.code;
+        if (oErr?.status === 409 && errCode === "QUOTE_LINE_ALREADY_CONVERTED_OR_NOT_ELIGIBLE") {
+          toast.error(t("toasts.quoteLineAlreadyConverted") || "Quote line already converted or not eligible", {
+            action: oErr?.details?.existing_order_id
+              ? {
+                  label: "View Order",
+                  onClick: () => router.push(`/dashboard/orders/${oErr.details.existing_order_id}`),
+                }
+              : undefined,
+          });
+          return;
+        }
+        if (oErr?.status === 403 || errCode === "PLAN_LIMIT_REACHED") {
+          toast.error(
+            `Starter tier limit reached (${STARTER_LIMIT} orders). Upgrade to Pro for unlimited.`,
+            {
+              action: {
+                label: "Upgrade",
+                onClick: () => (window.location.href = "/dashboard/upgrade"),
+              },
+            }
+          );
+          return;
+        }
+        throw new Error(oErr.message || t("toasts.failedCreateOrder"));
       }
-      if (oRes.status === 403 || oData.code === "PLAN_LIMIT_REACHED") {
-        toast.error(
-          `Starter tier limit reached (${STARTER_LIMIT} orders). Upgrade to Pro for unlimited.`,
-          {
-            action: {
-              label: "Upgrade",
-              onClick: () => (window.location.href = "/dashboard/upgrade"),
-            },
-          }
-        );
-        return;
-      }
-      if (!oRes.ok) throw new Error(oData.message || oData.error || t("toasts.failedCreateOrder"));
-      const orderId = oData.id;
 
       // 4) Create production run if opted in — send assignments array
       if (form.setup_production && orderId) {
         const client = clients.find((c) => c.id === clientId);
         const validAssignments = form.productionAssignments.filter((a) => a.machineId && a.operatorId);
-        await fetch("/api/production", {
-          method: "POST", credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            orderId,
-            orderProductName: form.product_name,
-            orderQuantity: qty,
-            clientName: client?.name || newClient.name || "",
-            deliveryDate: form.delivery_date || null,
-            productionAssignments: validAssignments.map((a) => ({
-              machineId: a.machineId,
-              machineName: a.machineName,
-              operatorId: a.operatorId,
-              operatorName: a.operatorName,
-            })),
-            expectedOutput: qty,
-            startTime: form.start_date || new Date().toISOString(),
-            targetCompletion: form.delivery_date || null,
-            materials: form.materials.map((m) => ({
-              inventoryId: m.inventoryItemId,
-              name: m.itemName,
-              quantityUsed: m.quantityRequired,
-              unit: m.unit,
-            })),
-          }),
+        await apiClient.post("/api/production", {
+          orderId,
+          orderProductName: form.product_name,
+          orderQuantity: qty,
+          clientName: client?.name || newClient.name || "",
+          deliveryDate: form.delivery_date || null,
+          productionAssignments: validAssignments.map((a) => ({
+            machineId: a.machineId,
+            machineName: a.machineName,
+            operatorId: a.operatorId,
+            operatorName: a.operatorName,
+          })),
+          expectedOutput: qty,
+          startTime: form.start_date || new Date().toISOString(),
+          targetCompletion: form.delivery_date || null,
+          materials: form.materials.map((m) => ({
+            inventoryId: m.inventoryItemId,
+            name: m.itemName,
+            quantityUsed: m.quantityRequired,
+            unit: m.unit,
+          })),
         });
       }
 

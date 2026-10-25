@@ -1,8 +1,7 @@
 /**
- * React Query hooks for Orders, Clients, Inventory CRUD
+ * React Query hooks for Orders, Clients, and Payments
  * ──────────────────────────────────────────────────────
- * Replaces manual useState/useEffect/fetchData pattern with
- * automatic cache invalidation via React Query.
+ * Cleanly typed with apiClient and centralized queryKeys.
  */
 
 import {
@@ -12,71 +11,103 @@ import {
 } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { playCompletionSound } from "@/hooks/useCompletionSound";
+import { apiClient } from "@/lib/api-client";
+import { queryKeys } from "@/lib/query-keys";
+import { useClients } from "./use-clients";
+import { useInventory } from "./use-inventory";
 
-// ─── Query Keys ──────────────────────────────────────────
-export const queryKeys = {
-    orders: ["orders"] as const,
-    clients: ["clients"] as const,
-    inventory: ["inventory"] as const,
-    payments: ["payments"] as const,
-    production: ["production"] as const,
-    stats: ["dashboard-stats"] as const,
-    order: (id: string) => ["orders", id] as const,
-    ordersByClient: (clientId: string) => ["orders", "by-client", clientId] as const,
-};
+// Re-export queryKeys, useClients, useInventory for full backward compatibility
+export { queryKeys, useClients, useInventory };
 
-// ─── Generic fetcher (resilient) ─────────────────────────
-export async function apiFetch<T>(url: string): Promise<T> {
-    const res = await fetch(url);
-    if (!res.ok) {
-        let errorMsg = `API ${url} → ${res.status}`;
-        try {
-            const json = await res.json();
-            errorMsg = json.error?.message || json.error || errorMsg;
-        } catch { /* non-JSON error body */ }
-        console.error("[apiFetch] ERROR:", errorMsg);
-        throw new Error(errorMsg);
-    }
-    const json = await res.json();
-    if (json.error) {
-        const msg = json.error?.message || json.error || "Request failed";
-        console.error("[apiFetch] API error in response body:", msg);
-        throw new Error(msg);
-    }
-    console.log(`[apiFetch] ${url} →`, Array.isArray(json.data) ? `${json.data.length} items` : "ok");
-    return json.data ?? json;
+export interface OrderItem {
+    id: string;
+    product_name?: string;
+    productName?: string;
+    quantity: number;
+    unit?: string;
+    rate?: number;
+    total_amount?: number;
+    totalAmount?: number;
+    delivery_date?: string;
+    deliveryDate?: string;
+    status: string;
+    productionStatus?: string;
+    productionStatusManualOverride?: boolean;
+    payment_status?: string;
+    paymentStatus?: string;
+    client_id?: string;
+    clientId?: string;
+    client?: {
+        name?: string;
+        email?: string;
+        phone?: string;
+        address?: string;
+    } | null;
+    clients?: {
+        name?: string;
+        email?: string;
+        address?: string;
+    } | null;
+    materials?: Array<Record<string, unknown>>;
+    material_cost?: number;
+    labour_cost?: number;
+    overhead_cost?: number;
+    totalPaid?: number;
+    balanceDue?: number;
+    priority?: string;
+    notes?: string;
+    createdAt?: string;
+    processedAt?: string | null;
+    completedAt?: string | null;
+    is_sample?: boolean;
 }
 
-/** Shared query defaults – retry twice, cache 30s, no window-focus refetch */
-const QUERY_DEFAULTS = {
-    retry: 2,
-    staleTime: 30_000,
-    refetchOnWindowFocus: false,
-} as const;
+export interface PaymentItem {
+    id: string;
+    clientId?: string;
+    client_id?: string;
+    orderId?: string | null;
+    order_id?: string | null;
+    amount: number;
+    paymentMethod?: string;
+    payment_method?: string;
+    paymentDate?: string;
+    payment_date?: string;
+    referenceId?: string;
+    reference_id?: string;
+    transaction_ref?: string | null;
+    transaction_id?: string | null;
+    notes?: string;
+    client?: { name?: string };
+    order?: OrderItem | null;
+}
+
+export async function apiFetch<T>(url: string): Promise<T> {
+    return apiClient.get<T>(url);
+}
 
 // ─── Queries ─────────────────────────────────────────────
 
-export function useOrders() {
+export function useOrders(filters?: Record<string, unknown>) {
     return useQuery({
-        queryKey: queryKeys.orders,
-        queryFn: () => apiFetch<any[]>("/api/v1/orders"),
-        ...QUERY_DEFAULTS,
+        queryKey: filters ? [...queryKeys.orders, filters] : queryKeys.orders,
+        queryFn: async () => {
+            const data = await apiClient.get<OrderItem[] | { data: OrderItem[] }>("/api/v1/orders", {
+                params: filters as Record<string, string | number | boolean>,
+            });
+            if (data && typeof data === "object" && "data" in data && Array.isArray((data as { data: OrderItem[] }).data)) {
+                return (data as { data: OrderItem[] }).data;
+            }
+            return (Array.isArray(data) ? data : []) as OrderItem[];
+        },
     });
 }
 
-export function useClients() {
+export function useOrder(id: string, options?: { enabled?: boolean }) {
     return useQuery({
-        queryKey: queryKeys.clients,
-        queryFn: () => apiFetch<any[]>("/api/v1/clients"),
-        ...QUERY_DEFAULTS,
-    });
-}
-
-export function useInventory() {
-    return useQuery({
-        queryKey: queryKeys.inventory,
-        queryFn: () => apiFetch<any[]>("/api/v1/inventory"),
-        ...QUERY_DEFAULTS,
+        queryKey: queryKeys.order(id),
+        queryFn: () => apiClient.get<OrderItem>(`/api/v1/orders/${id}`),
+        enabled: Boolean(id) && (options?.enabled ?? true),
     });
 }
 
@@ -85,17 +116,8 @@ export function useInventory() {
 export function useCreateOrder() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: async (payload: Record<string, unknown>) => {
-            const res = await fetch("/api/v1/orders", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-            });
-            const json = await res.json();
-            if (!res.ok || json.error)
-                throw new Error(json.error?.message || "Failed to create order");
-            return json;
-        },
+        mutationFn: (payload: Record<string, unknown>) =>
+            apiClient.post<OrderItem>("/api/v1/orders", payload),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: queryKeys.orders });
             qc.invalidateQueries({ queryKey: queryKeys.inventory });
@@ -111,25 +133,16 @@ export function useCreateOrder() {
 export function useUpdateOrder() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: async ({
+        mutationFn: ({
             id,
             payload,
         }: {
             id: string;
             payload: Record<string, unknown>;
-        }) => {
-            const res = await fetch(`/api/v1/orders/${id}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-            });
-            const json = await res.json();
-            if (!res.ok || json.error)
-                throw new Error(json.error?.message || "Failed to update order");
-            return json;
-        },
-        onSuccess: () => {
+        }) => apiClient.put<OrderItem>(`/api/v1/orders/${id}`, payload),
+        onSuccess: (_, variables) => {
             qc.invalidateQueries({ queryKey: queryKeys.orders });
+            qc.invalidateQueries({ queryKey: queryKeys.order(variables.id) });
             qc.invalidateQueries({ queryKey: queryKeys.stats });
             toast.success("Order updated successfully");
         },
@@ -143,23 +156,18 @@ export function useDeleteOrder() {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: async (id: string) => {
-            const res = await fetch(`/api/v1/orders/${id}`, { method: "DELETE" });
-            if (!res.ok) {
-                const json = await res.json();
-                throw new Error(json.error?.message || "Failed to delete order");
-            }
+            await apiClient.delete(`/api/v1/orders/${id}`);
             return id;
         },
-        // ─── Optimistic delete ───
         onMutate: async (id: string) => {
             await qc.cancelQueries({ queryKey: queryKeys.orders });
-            const previous = qc.getQueryData<any[]>(queryKeys.orders);
-            qc.setQueryData<any[]>(queryKeys.orders, (old: any[] | undefined) =>
-                old ? old.filter((o: any) => o.id !== id) : [],
+            const previous = qc.getQueryData<OrderItem[]>(queryKeys.orders);
+            qc.setQueryData<OrderItem[]>(queryKeys.orders, (old) =>
+                old ? old.filter((o) => o.id !== id) : [],
             );
             return { previous };
         },
-        onError: (_err: Error, _id: string, context: { previous?: any[] } | undefined) => {
+        onError: (_err: Error, _id: string, context: { previous?: OrderItem[] } | undefined) => {
             if (context?.previous) {
                 qc.setQueryData(queryKeys.orders, context.previous);
             }
@@ -178,29 +186,26 @@ export function useDeleteOrder() {
 export function useRecordPayment() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: async (payload: Record<string, unknown>) => {
-            const res = await fetch("/api/v1/payments/record", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-            });
-            const json = await res.json();
-            if (!res.ok || !json.success)
-                throw new Error(json.error || "Failed to record payment");
-            return json;
-        },
-        onSuccess: (data: any, _variables: Record<string, unknown>) => {
-            // Optimistic local patch from server response
+        mutationFn: (payload: Record<string, unknown>) =>
+            apiClient.post<{
+                success: boolean;
+                order_summary?: {
+                    payment_status?: string;
+                    total_paid?: number;
+                    balance_due?: number;
+                    order_status?: string;
+                };
+            }>("/api/v1/payments/record", payload),
+        onSuccess: (data, variables) => {
             if (data.order_summary) {
                 const summary = data.order_summary;
-                qc.setQueryData<any[]>(queryKeys.orders, (old: any[] | undefined) =>
+                qc.setQueryData<OrderItem[]>(queryKeys.orders, (old) =>
                     old
-                        ? old.map((o: any) =>
-                            o.id === _variables.reference_id
+                        ? old.map((o) =>
+                            o.id === variables.reference_id
                                 ? {
                                     ...o,
-                                    paymentStatus:
-                                        summary.payment_status || o.paymentStatus,
+                                    paymentStatus: summary.payment_status || o.paymentStatus,
                                     totalPaid: summary.total_paid ?? o.totalPaid,
                                     balanceDue: summary.balance_due ?? o.balanceDue,
                                     status: summary.order_status || o.status,
@@ -213,8 +218,8 @@ export function useRecordPayment() {
             qc.invalidateQueries({ queryKey: queryKeys.orders });
             qc.invalidateQueries({ queryKey: queryKeys.payments });
             qc.invalidateQueries({ queryKey: queryKeys.stats });
-            if (typeof _variables.reference_id === "string") {
-                qc.invalidateQueries({ queryKey: queryKeys.order(_variables.reference_id) });
+            if (typeof variables.reference_id === "string") {
+                qc.invalidateQueries({ queryKey: queryKeys.order(variables.reference_id) });
             }
             toast.success("Payment recorded — status updated automatically");
             playCompletionSound("payment");
@@ -234,39 +239,28 @@ const STATUS_LABELS: Record<string, string> = {
 export function useUpdateOrderStatus() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: async ({ id, status }: { id: string; status: string }) => {
-            const res = await fetch(`/api/v1/orders/${id}/status`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status }),
-            });
-            const json = await res.json();
-            if (!res.ok || json.success === false || json.error) {
-                throw new Error(
-                    json.error?.message || json.error || "Failed to update status",
-                );
-            }
-            return json.data ?? json;
-        },
-        // ─── Optimistic status update (patches productionStatus, not legacy status) ───
+        mutationFn: ({ id, status }: { id: string; status: string }) =>
+            apiClient.patch<{ data?: OrderItem; warnings?: string[] }>(`/api/v1/orders/${id}/status`, { status }),
         onMutate: async ({ id, status }: { id: string; status: string }) => {
             await qc.cancelQueries({ queryKey: queryKeys.orders });
-            const previous = qc.getQueryData<any[]>(queryKeys.orders);
+            const previous = qc.getQueryData<OrderItem[]>(queryKeys.orders);
             const now = new Date().toISOString();
-            qc.setQueryData<any[]>(queryKeys.orders, (old: any[] | undefined) =>
+            qc.setQueryData<OrderItem[]>(queryKeys.orders, (old) =>
                 old
-                    ? old.map((o: any) =>
+                    ? old.map((o) =>
                         o.id === id
                             ? {
                                 ...o,
                                 productionStatus: status,
                                 updatedAt: now,
                                 ...(status === "processing" ? { processedAt: now } : {}),
-                                ...(status === "completed" ? {
-                                    completedAt: now,
-                                    processedAt: o.processedAt || now,
-                                    productionStatusManualOverride: true,
-                                } : {}),
+                                ...(status === "completed"
+                                    ? {
+                                        completedAt: now,
+                                        processedAt: o.processedAt || now,
+                                        productionStatusManualOverride: true,
+                                    }
+                                    : {}),
                                 ...(status === "cancelled" || status === "on_hold" ? { status } : {}),
                             }
                             : o,
@@ -275,25 +269,23 @@ export function useUpdateOrderStatus() {
             );
             return { previous };
         },
-        onError: (_err: Error, _vars: { id: string; status: string }, context: { previous?: any[] } | undefined) => {
+        onError: (_err: Error, _vars: { id: string; status: string }, context: { previous?: OrderItem[] } | undefined) => {
             if (context?.previous) {
                 qc.setQueryData(queryKeys.orders, context.previous);
             }
             toast.error(_err.message || "Failed to update order status");
         },
-        onSuccess: (_data: unknown, vars: { id: string; status: string }) => {
+        onSuccess: (data, vars: { id: string; status: string }) => {
             toast.success(`Order status updated to ${STATUS_LABELS[vars.status] || vars.status}`);
-            // Show warning toast if materials had insufficient stock during deduction
-            const data = _data as Record<string, unknown>;
             if (Array.isArray(data?.warnings) && data.warnings.length > 0) {
                 setTimeout(() => {
                     toast.warning("⚠️ Some materials had insufficient stock. Check inventory.");
                 }, 500);
             }
         },
-        onSettled: () => {
-            // Refresh orders + cross-module data (dashboard stats, inventory)
+        onSettled: (_, __, vars) => {
             qc.invalidateQueries({ queryKey: queryKeys.orders });
+            qc.invalidateQueries({ queryKey: queryKeys.order(vars.id) });
             qc.invalidateQueries({ queryKey: queryKeys.inventory });
             qc.invalidateQueries({ queryKey: queryKeys.stats });
         },
@@ -305,15 +297,15 @@ export function useUpdateOrderStatus() {
 export function usePayments() {
     return useQuery({
         queryKey: queryKeys.payments,
-        queryFn: () => apiFetch<any[]>("/api/v1/payments"),
-        staleTime: 60_000, // 60s cache – prevents redundant refetches
+        queryFn: () => apiClient.get<PaymentItem[]>("/api/v1/payments"),
+        staleTime: 60_000,
     });
 }
 
 export function useCreatePayment() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: async (payload: {
+        mutationFn: (payload: {
             client_id: string;
             order_id: string | null;
             amount: number;
@@ -321,109 +313,23 @@ export function useCreatePayment() {
             payment_date: string;
             reference_id: string;
             notes: string;
-        }) => {
-            const res = await fetch("/api/v1/payments", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-            });
-            const json = await res.json();
-            if (!res.ok || json.error) {
-                throw new Error(json.error?.message || json.error || "Failed to record payment");
-            }
-            return json.data ?? json;
-        },
-        // ─── Optimistic: instantly add payment to cache ───
-        onMutate: async (payload) => {
-            await qc.cancelQueries({ queryKey: queryKeys.payments });
-            await qc.cancelQueries({ queryKey: queryKeys.orders });
-
-            const prevPayments = qc.getQueryData<any[]>(queryKeys.payments);
-            const prevOrders = qc.getQueryData<any[]>(queryKeys.orders);
-
-            // Optimistically append payment
-            const optimisticPayment = {
-                id: `tmp-${Date.now()}`,
-                clientId: payload.client_id,
-                orderId: payload.order_id,
-                amount: payload.amount,
-                paymentMethod: payload.payment_method,
-                paymentDate: payload.payment_date,
-                referenceId: payload.reference_id,
-                notes: payload.notes,
-                client: prevOrders
-                    ? (() => {
-                        const order = prevOrders.find((o: any) => o.clientId === payload.client_id);
-                        return order?.client || { name: "—" };
-                    })()
-                    : { name: "—" },
-                order: payload.order_id
-                    ? prevOrders?.find((o: any) => o.id === payload.order_id) || null
-                    : null,
-            };
-
-            qc.setQueryData<any[]>(queryKeys.payments, (old) =>
-                old ? [...old, optimisticPayment] : [optimisticPayment],
-            );
-
-            // Optimistically update order payment status
-            if (payload.order_id && prevOrders) {
-                const currentPayments = prevPayments || [];
-                const orderPaid = currentPayments
-                    .filter((p: any) => p.orderId === payload.order_id)
-                    .reduce((acc: number, p: any) => acc + Number(p.amount), 0) + payload.amount;
-                const order = prevOrders.find((o: any) => o.id === payload.order_id);
-                if (order) {
-                    let newStatus = "pending";
-                    if (orderPaid >= Number(order.totalAmount) - 0.01) newStatus = "paid";
-                    else if (orderPaid > 0) newStatus = "partial";
-
-                    qc.setQueryData<any[]>(queryKeys.orders, (old) =>
-                        old
-                            ? old.map((o: any) =>
-                                o.id === payload.order_id
-                                    ? { ...o, paymentStatus: newStatus, totalPaid: orderPaid }
-                                    : o,
-                            )
-                            : [],
-                    );
-                }
-            }
-
-            return { prevPayments, prevOrders };
-        },
-        onError: (
-            _err: Error,
-            _payload: any,
-            context: { prevPayments?: any[]; prevOrders?: any[] } | undefined,
-        ) => {
-            // Rollback on error
-            if (context?.prevPayments) qc.setQueryData(queryKeys.payments, context.prevPayments);
-            if (context?.prevOrders) qc.setQueryData(queryKeys.orders, context.prevOrders);
-            toast.error(_err.message || "Failed to record payment");
-        },
+        }) => apiClient.post<PaymentItem>("/api/v1/payments", payload),
         onSuccess: () => {
             toast.success("Payment recorded successfully");
             playCompletionSound("payment");
         },
-        onSettled: async (_data: any, _error: any, payload: any) => {
-            // Reconcile order payment status in DB if linked to an order
-            try {
-                const orderId = payload?.order_id;
-                if (orderId) {
-                    await fetch(`/api/v1/orders/${orderId}/reconcile-payment`, {
-                        method: "POST",
-                    });
+        onSettled: async (_, __, payload) => {
+            if (payload?.order_id) {
+                try {
+                    await apiClient.post(`/api/v1/orders/${payload.order_id}/reconcile-payment`);
+                } catch (err) {
+                    console.warn("[reconcile-payment] failed silently:", err);
                 }
-            } catch (err) {
-                // Reconciliation failure is non-blocking — payment is already saved
-                console.warn("[reconcile-payment] failed silently:", err);
             }
-
-            // Background re-validate for server truth
-            qc.invalidateQueries({ queryKey: queryKeys.payments, exact: false });
-            qc.invalidateQueries({ queryKey: queryKeys.orders, exact: false });
-            qc.invalidateQueries({ queryKey: queryKeys.clients, exact: false });
+            qc.invalidateQueries({ queryKey: queryKeys.payments });
+            qc.invalidateQueries({ queryKey: queryKeys.orders });
+            qc.invalidateQueries({ queryKey: queryKeys.clients });
+            qc.invalidateQueries({ queryKey: queryKeys.stats });
         },
     });
 }
@@ -431,83 +337,15 @@ export function useCreatePayment() {
 export function useDeletePayment() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: async (paymentId: string) => {
-            const res = await fetch(`/api/v1/payments/${paymentId}`, { method: "DELETE" });
-            const json = await res.json();
-            if (!res.ok || json.error) {
-                throw new Error(json.error?.message || "Failed to delete payment");
-            }
-            return paymentId;
-        },
-        // ─── Optimistic: instantly remove payment from cache ───
-        onMutate: async (paymentId: string) => {
-            await qc.cancelQueries({ queryKey: queryKeys.payments });
-            await qc.cancelQueries({ queryKey: queryKeys.orders });
-
-            const prevPayments = qc.getQueryData<any[]>(queryKeys.payments);
-            const prevOrders = qc.getQueryData<any[]>(queryKeys.orders);
-            const deletedPayment = prevPayments?.find((p: any) => p.id === paymentId);
-
-            // Remove from cache
-            qc.setQueryData<any[]>(queryKeys.payments, (old) =>
-                old ? old.filter((p: any) => p.id !== paymentId) : [],
-            );
-
-            // If linked to an order, recalculate payment status
-            if (deletedPayment?.orderId && prevOrders && prevPayments) {
-                const remainingPaid = prevPayments
-                    .filter((p: any) => p.orderId === deletedPayment.orderId && p.id !== paymentId)
-                    .reduce((acc: number, p: any) => acc + Number(p.amount), 0);
-                const order = prevOrders.find((o: any) => o.id === deletedPayment.orderId);
-                if (order) {
-                    let newStatus = "pending";
-                    if (remainingPaid >= Number(order.totalAmount) - 0.01) newStatus = "paid";
-                    else if (remainingPaid > 0) newStatus = "partial";
-
-                    qc.setQueryData<any[]>(queryKeys.orders, (old) =>
-                        old
-                            ? old.map((o: any) =>
-                                o.id === deletedPayment.orderId
-                                    ? { ...o, paymentStatus: newStatus, totalPaid: remainingPaid }
-                                    : o,
-                            )
-                            : [],
-                    );
-                }
-            }
-
-            return { prevPayments, prevOrders };
-        },
-        onError: (
-            _err: Error,
-            _id: string,
-            context: { prevPayments?: any[]; prevOrders?: any[] } | undefined,
-        ) => {
-            if (context?.prevPayments) qc.setQueryData(queryKeys.payments, context.prevPayments);
-            if (context?.prevOrders) qc.setQueryData(queryKeys.orders, context.prevOrders);
-            toast.error("Failed to delete payment");
-        },
+        mutationFn: (paymentId: string) => apiClient.delete<{ success: boolean }>(`/api/v1/payments/${paymentId}`),
         onSuccess: () => {
             toast.success("Payment deleted");
         },
-        onSettled: async (_data: any, _error: any, _paymentId: string, context: any) => {
-            // Reconcile order payment status in DB if the deleted payment was linked to an order
-            try {
-                const deletedPayment = context?.prevPayments?.find((p: any) => p.id === _paymentId);
-                const orderId = deletedPayment?.orderId;
-                if (orderId) {
-                    await fetch(`/api/v1/orders/${orderId}/reconcile-payment`, {
-                        method: "POST",
-                    });
-                }
-            } catch (err) {
-                console.warn("[reconcile-payment] failed silently:", err);
-            }
-
-            qc.invalidateQueries({ queryKey: queryKeys.payments, exact: false });
-            qc.invalidateQueries({ queryKey: queryKeys.orders, exact: false });
-            qc.invalidateQueries({ queryKey: queryKeys.clients, exact: false });
+        onSettled: () => {
+            qc.invalidateQueries({ queryKey: queryKeys.payments });
+            qc.invalidateQueries({ queryKey: queryKeys.orders });
+            qc.invalidateQueries({ queryKey: queryKeys.clients });
+            qc.invalidateQueries({ queryKey: queryKeys.stats });
         },
     });
 }
-

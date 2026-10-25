@@ -68,7 +68,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `urgent`
   - **Citation**: Priority field supporting workshop production scheduling.
 - **[feature-4]** *"Option to auto-generate GST tax invoices upon order completion"*
-  - **Proof**: [`apps/web/src/app/dashboard/orders/page.tsx#L825-L865`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/orders/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/orders/page.tsx#L820-L865`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/orders/page.tsx)
   - **Anchor**: `handleCompleteAndInvoice`
   - **Citation**: handleCompleteAndInvoice triggers auto-generation of linked invoice.
 - **[feature-5]** *"Full registry export to PDF and Excel formats"*
@@ -464,7 +464,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
 
 ### 1. Uses Evidence (6 items)
 - **[use-1]** *"Track current on-hand stock for raw materials, hardware components, and finished goods"*
-  - **Proof**: [`apps/web/src/app/dashboard/inventory/page.tsx#L120-L155`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/inventory/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/inventory/page.tsx#L145-L175`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/inventory/page.tsx)
   - **Anchor**: `quantity`
   - **Citation**: Inventory catalog displays on-hand quantity, unit, and item details.
 - **[use-2]** *"Filter inventory by Low Stock, Critical, Out of Stock, or Recently Updated items"*
@@ -484,7 +484,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `Received`
   - **Citation**: Marking purchase order Received increments item quantities in inventory.
 - **[use-6]** *"Store HSN codes, default units of measure, and purchase costs for accurate GST costing"*
-  - **Proof**: [`apps/web/src/app/dashboard/inventory/page.tsx#L135-L160`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/inventory/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/inventory/page.tsx#L150-L175`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/inventory/page.tsx)
   - **Anchor**: `hsn_code`
   - **Citation**: Table records HSN codes, default units, and purchase costs per unit.
 
@@ -524,11 +524,11 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `Low Stock Items`
   - **Citation**: Executive dashboard Low Stock Items widget.
 - **[feature-5]** *"HSN code and tax rate mapping for GST billing accuracy"*
-  - **Proof**: [`apps/web/src/app/dashboard/inventory/page.tsx#L135-L160`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/inventory/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/inventory/page.tsx#L150-L175`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/inventory/page.tsx)
   - **Anchor**: `hsn_code`
   - **Citation**: HSN code and tax rate mapping for GST billing accuracy.
 - **[feature-6]** *"Purchase cost recording for margin and valuation calculations"*
-  - **Proof**: [`apps/web/src/app/dashboard/inventory/page.tsx#L135-L145`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/inventory/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/inventory/page.tsx#L150-L175`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/inventory/page.tsx)
   - **Anchor**: `purchase_cost_per_unit`
   - **Citation**: Purchase cost recording for margin and valuation calculations.
 
@@ -538,7 +538,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `$inc`
   - **Citation**: Atomic stock decrements and increments connected to operational workflows.
 - **[section-2]** **Low Stock Filters & Dashboard Monitoring**: *"Monitor shortages using dedicated Low Stock, Critical, and Out of Stock tab filt..."*
-  - **Proof**: [`apps/web/src/app/dashboard/inventory/page.tsx#L655-L663`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/inventory/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/inventory/page.tsx#L650-L665`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/inventory/page.tsx)
   - **Anchor**: `criticalStock`
   - **Citation**: Shortage identification via tab filters and dashboard widget.
 
@@ -1020,13 +1020,13 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `ClientStatement`
   - **Citation**: Customer account statement compiles ledger transactions.
 - **[use-5]** *"Initiate new quotations or sales orders directly from the client profile"*
-  - **Proof**: [`apps/web/src/app/dashboard/clients/page.tsx#L152-L170`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/clients/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/clients/page.tsx#L170-L195`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/clients/page.tsx)
   - **Anchor**: `exportToPDF`
   - **Citation**: Export client directory to PDF format.
 
 ### 2. How It Works Steps Evidence (4 items)
 - **[step-1]** **Add customer details**: *"Enter company name, GSTIN, billing address, state, and contact person details."*
-  - **Proof**: [`apps/web/src/app/dashboard/clients/page.tsx#L180-L195`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/clients/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/clients/page.tsx#L200-L225`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/clients/page.tsx)
   - **Anchor**: `formData`
   - **Citation**: Add client with business name, contact info, and GSTIN.
 - **[step-2]** **Issue transactions**: *"Select the client across Quotes, Orders, Invoices, and Delivery Challans without typing details again."*
@@ -1038,7 +1038,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `ClientStatement`
   - **Citation**: Generate statement showing billed orders and received payments.
 - **[step-4]** **Communicate directly**: *"Reach out to clients via phone, email, or WhatsApp directly from their profile card."*
-  - **Proof**: [`apps/web/src/app/dashboard/clients/page.tsx#L90-L95`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/clients/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/clients/page.tsx#L100-L108`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/clients/page.tsx)
   - **Anchor**: `searchTerm`
   - **Citation**: Search and filter client directory by name or phone.
 
@@ -1056,7 +1056,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `ClientStatement`
   - **Citation**: Printable customer account statement generation.
 - **[feature-4]** *"Quick actions to generate quotes, orders, and invoices"*
-  - **Proof**: [`apps/web/src/app/dashboard/clients/page.tsx#L152-L170`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/clients/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/clients/page.tsx#L170-L195`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/clients/page.tsx)
   - **Anchor**: `exportToPDF`
   - **Citation**: Directory export to PDF format.
 - **[feature-5]** *"Contact management for owners, procurement officers, and accountants"*

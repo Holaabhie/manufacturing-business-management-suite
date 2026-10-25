@@ -116,6 +116,7 @@ import {
   useUpdateOrderStatus,
   queryKeys,
 } from "@/lib/hooks/use-orders";
+import { apiClient } from "@/lib/api-client";
 import { STARTER_LIMIT } from "@/lib/entitlements/limits";
 
 function OrdersContent() {
@@ -188,10 +189,10 @@ function OrdersContent() {
   const paymentOrderId = paymentOrder?.id as string | undefined;
   const { data: freshOrder } = useQuery<Record<string, unknown>>({
     queryKey: queryKeys.order(paymentOrderId ?? ""),
-    queryFn: () => fetch(`/api/v1/orders/${paymentOrderId}`).then(r => {
-      if (!r.ok) throw new Error("Failed to fetch order");
-      return r.json().then(json => json.data ?? json);
-    }),
+    queryFn: () =>
+      apiClient.get<Record<string, unknown> | { data: Record<string, unknown> }>(
+        `/api/v1/orders/${paymentOrderId}`
+      ).then(res => (res && typeof res === "object" && "data" in res && res.data ? res.data : res) as Record<string, unknown>),
     staleTime: 0,
     enabled: !!paymentOrderId && isPaymentDialogOpen,
   });
@@ -379,10 +380,8 @@ function OrdersContent() {
       return;
     }
     try {
-      const res = await fetch(`/api/v1/clients/${clientId}/products`);
-      const json = await res.json();
-      if (json.error) throw new Error(json.error.message);
-      setClientProducts(json.data || []);
+      const res = await apiClient.get<any>(`/api/v1/clients/${clientId}/products`);
+      setClientProducts(Array.isArray(res) ? res : res?.data || []);
     } catch (error) {
       console.error("Failed to fetch client products:", error);
       setClientProducts([]);
@@ -395,12 +394,10 @@ function OrdersContent() {
   ) => {
     setIsLoadingMaterials(true);
     try {
-      const res = await fetch(
+      const res = await apiClient.get<any>(
         `/api/v1/clients/${clientId}/products/${productId}/materials`,
       );
-      const json = await res.json();
-      if (json.error) throw new Error(json.error.message);
-      setClientProductMaterials(json.data || []);
+      setClientProductMaterials(Array.isArray(res) ? res : res?.data || []);
     } catch (error) {
       setClientProductMaterials([]);
     } finally {
@@ -621,8 +618,7 @@ function OrdersContent() {
     try {
       let companyData: PDFCompanyInfo | null = null;
       try {
-        const res = await fetch("/api/profile/company");
-        const data = await res.json();
+        const data = await apiClient.get<any>("/api/profile/company");
         if (data.company) companyData = data.company;
       } catch { }
       const poData: PurchaseOrderData = {
@@ -702,13 +698,13 @@ function OrdersContent() {
 
   const monthGroupedOrders: MonthGroup[] = useMemo(() => {
     const sorted = [...searchFilteredOrders].sort(
-      (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      (a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
     );
 
     const groups = new Map<string, MonthGroup>();
 
     for (const order of sorted) {
-      const d = new Date(order.createdAt);
+      const d = new Date(order.createdAt || Date.now());
       const year = d.getFullYear();
       const month = d.getMonth();
       const key = `${year}-${String(month + 1).padStart(2, "0")}`;
@@ -837,16 +833,7 @@ function OrdersContent() {
           // 2. Auto-generate invoice
           setIsGeneratingInvoice(true);
           try {
-            const res = await fetch("/api/invoices/auto-generate", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ orderId: completionOrder.id }),
-            });
-            const data = await res.json();
-            if (!res.ok || data.error) {
-              showToast(data.error || t("toasts.failedInvoice"));
-              return;
-            }
+            const data = await apiClient.post<any>("/api/invoices/auto-generate", { orderId: completionOrder.id });
             setGeneratedInvoice(data);
             setInvoiceEditData({
               invoiceNumber: data.invoiceNumber,

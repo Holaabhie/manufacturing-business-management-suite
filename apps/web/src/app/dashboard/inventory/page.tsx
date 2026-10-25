@@ -76,6 +76,13 @@ import { CollapsingTitle } from "@/components/ui/CollapsingTitle";
 import { useTranslations } from "next-intl";
 import { useAppLocale } from "@/components/LocaleProvider";
 import { useCollapseProgress } from "@/hooks/useCollapseProgress";
+import {
+  useInventory,
+  useInventoryForecast,
+  useCreateInventoryItem,
+  useUpdateInventoryItem,
+  useDeleteInventoryItem,
+} from "@/hooks/useInventory";
 
 export default function InventoryPage() {
   const t = useTranslations("inventory");
@@ -98,6 +105,26 @@ export default function InventoryPage() {
   const [forecastLoading, setForecastLoading] = useState(false);
   const [expandedForecast, setExpandedForecast] = useState<string | null>(null);
 
+  // ── Unified Data Fetching (Phase 3) ──
+  const { data: inventoryData, isLoading: inventoryLoading, refetch: refetchInventory } = useInventory();
+  const { data: forecastQueryData, refetch: refetchForecast } = useInventoryForecast({ enabled: viewMode === "forecast" });
+  const createItemMutation = useCreateInventoryItem();
+  const updateItemMutation = useUpdateInventoryItem();
+  const deleteItemMutation = useDeleteInventoryItem();
+
+  useEffect(() => {
+    if (inventoryData) {
+      setItems(inventoryData);
+      setLoading(false);
+    }
+  }, [inventoryData]);
+
+  useEffect(() => {
+    if (forecastQueryData) {
+      setForecastData(forecastQueryData);
+    }
+  }, [forecastQueryData]);
+
   // ── Usage Drawer State ──
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
 
@@ -113,15 +140,14 @@ export default function InventoryPage() {
   const fetchForecast = useCallback(async () => {
     setForecastLoading(true);
     try {
-      const res = await fetch("/api/v1/inventory/forecast");
-      const json = await res.json();
-      if (json.success) setForecastData(json.data);
+      const res = await refetchForecast();
+      if (res.data) setForecastData(res.data);
     } catch {
       console.error("Failed to fetch forecast");
     } finally {
       setForecastLoading(false);
     }
-  }, []);
+  }, [refetchForecast]);
 
   const starterLimit = STARTER_LIMIT;
   // UI pre-block skipped because /api/v1/inventory domain entity does not expose is_sample.
@@ -228,11 +254,9 @@ export default function InventoryPage() {
 
   const fetchInventory = async () => {
     try {
-      const res = await fetch("/api/v1/inventory");
-      const data = await res.json();
-      if (!data.success) toast.error(t("fetchError"));
-      else setItems(Array.isArray(data.data) ? data.data : []);
-    } catch (error) {
+      const res = await refetchInventory();
+      if (res.data) setItems(Array.isArray(res.data) ? res.data : []);
+    } catch {
       toast.error(t("fetchError"));
     } finally {
       setLoading(false);
@@ -294,61 +318,34 @@ export default function InventoryPage() {
       };
 
       if (currentItem) {
-        const res = await fetch(`/api/v1/inventory/${currentItem.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        if (data.error) toast.error(t("updateError"));
-        else {
-          toast.success(t("itemUpdated"));
-          fetchInventory();
-          setIsDialogOpen(false);
-        }
+        await updateItemMutation.mutateAsync({ id: currentItem.id, payload });
+        setIsDialogOpen(false);
       } else {
-        const res = await fetch("/api/v1/inventory", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        if (res.status === 403 || data.code === "PLAN_LIMIT_REACHED") {
-          toast.error(
-            t("starterLimitReached", { count: starterLimit }),
-            {
-              action: {
-                label: t("upgrade"),
-                onClick: () => (window.location.href = "/dashboard/upgrade"),
-              },
-            }
-          );
-          return;
-        }
-        if (data.error) toast.error(t("addError"));
-        else {
-          toast.success(t("itemAdded"));
-          fetchInventory();
-          setIsDialogOpen(false);
-        }
+        await createItemMutation.mutateAsync(payload);
+        setIsDialogOpen(false);
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.status === 403 || error?.code === "PLAN_LIMIT_REACHED") {
+        toast.error(
+          t("starterLimitReached", { count: starterLimit }),
+          {
+            action: {
+              label: t("upgrade"),
+              onClick: () => (window.location.href = "/dashboard/upgrade"),
+            },
+          }
+        );
+        return;
+      }
       toast.error(t("operationFailed"));
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
-      const res = await fetch(`/api/v1/inventory/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        toast.success(t("itemDeleted"));
-        fetchInventory();
-      } else {
-        const data = await res.json().catch(() => ({ error: "Failed to delete item" }));
-        toast.error(data.error || t("deleteError"));
-      }
-    } catch (error) {
-      toast.error(t("deleteError"));
+      await deleteItemMutation.mutateAsync(id);
+    } catch (error: any) {
+      toast.error(error?.message || t("deleteError"));
     } finally {
       setIsDeleteDialogOpenConfirm(false);
       setItemToDeleteId(null);
