@@ -73,12 +73,12 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
 
         let mounted = true;
 
-        async function connect() {
+        async function connect(url: string) {
             const { io } = await getIO();
 
             if (socketRef.current?.connected) return;
 
-            const socket = io(targetUrl, {
+            const socket = io(url, {
                 transports: ['websocket', 'polling'],
                 reconnection: autoReconnect,
                 reconnectionAttempts: 10,
@@ -126,7 +126,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
             });
         }
 
-        connect();
+        connect(targetUrl);
 
         return () => {
             mounted = false;
