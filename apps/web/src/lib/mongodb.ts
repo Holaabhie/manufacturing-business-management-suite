@@ -51,9 +51,7 @@ interface MongoServerlessCache {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
   var __mongoServerlessCache: MongoServerlessCache | undefined;
-  // eslint-disable-next-line no-var
   var __mongoClientPromise: Promise<MongoClient> | undefined;
 }
 

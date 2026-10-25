@@ -201,10 +201,6 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  typescript: {
-    // TODO [PHASE-2]: Remove this once all TypeScript errors are fixed.
-    ignoreBuildErrors: true,
-  },
 };
 
 export default withPWA(nextConfig);

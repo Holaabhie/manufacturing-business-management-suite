@@ -42,6 +42,18 @@ const eslintConfig = [
       'import/no-useless-path-segments': 'warn',
     },
   },
+  {
+    files: [
+      'src/lib/auth-session.ts',
+      'src/lib/permissions.ts',
+      'src/lib/mongodb.ts',
+      'src/lib/tenant-filter.ts',
+      'src/shared/middleware/with-auth.ts',
+    ],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'error',
+    },
+  },
 ];
 
 export default eslintConfig;

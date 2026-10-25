@@ -1,4 +1,4 @@
-import { ObjectId } from "mongodb";
+import { type Filter, ObjectId } from "mongodb";
 
 export type TenantFieldType = "string" | "objectId";
 
@@ -54,11 +54,11 @@ export function tenantIdFor(collection: string): CollectionTenantMeta {
  * Attaches the appropriate tenant field to a query filter object.
  * Does NOT use $or queries to guarantee optimal index use and deterministic filtering.
  */
-export function tenantFilter<T extends Record<string, any>>(
+export function tenantFilter<T extends Record<string, unknown> = Record<string, unknown>>(
   ownerId: string | ObjectId,
   collection: string,
   filter?: T
-): Record<string, any> {
+): Filter<Record<string, unknown>> {
   const meta = tenantIdFor(collection);
   const strOwnerId = typeof ownerId === "string" ? ownerId : ownerId.toString();
   const value = meta.type === "objectId" ? new ObjectId(strOwnerId) : strOwnerId;
@@ -66,5 +66,5 @@ export function tenantFilter<T extends Record<string, any>>(
   return {
     ...(filter || {}),
     [meta.field]: value,
-  };
+  } as Filter<Record<string, unknown>>;
 }

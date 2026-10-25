@@ -36,7 +36,7 @@ import { AuthenticationError, AuthorizationError } from "@/shared/lib/errors";
 
 export type AuthenticatedUser = WithId<UserDoc>;
 
-type AuthenticatedHandler<C = any> = (
+type AuthenticatedHandler<C = unknown> = (
     request: NextRequest,
     user: AuthenticatedUser,
     context: C,
@@ -52,7 +52,7 @@ interface AuthOptions {
 /**
  * Wraps a handler with authentication + optional authorization.
  */
-export function withAuth<C = any>(
+export function withAuth<C = unknown>(
     handler: AuthenticatedHandler<C>,
     options: AuthOptions = {},
 ): (request: NextRequest, context: C) => Promise<NextResponse> {

@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { getDb } from "@/lib/mongodb";
-import { ObjectId, type WithId } from "mongodb";
+import { ObjectId, type WithId, type Filter } from "mongodb";
 import type { FlatPermissionMap } from "@/lib/permissions";
 
 // Backward compat alias
@@ -269,12 +269,12 @@ export async function refreshSession(): Promise<{
 
   // Check if user still active
   const strUserId = String(session.userId);
-  const userQuery = ObjectId.isValid(strUserId)
-    ? { $or: [{ _id: new ObjectId(strUserId) }, { _id: strUserId }] }
+  const userQuery: Filter<UserDoc> = ObjectId.isValid(strUserId)
+    ? ({ $or: [{ _id: new ObjectId(strUserId) }, { _id: strUserId }] } as unknown as Filter<UserDoc>)
     : { _id: strUserId };
   const user = await db
     .collection<UserDoc>("users")
-    .findOne(userQuery as any);
+    .findOne(userQuery);
   if (!user || user.status === "inactive" || user.status === "suspended") {
     await db
       .collection<SessionDoc>("sessions")
@@ -492,12 +492,12 @@ async function getSessionUserById(
   }
 
   const strUserId = String(session.userId);
-  const userQuery = ObjectId.isValid(strUserId)
-    ? { $or: [{ _id: new ObjectId(strUserId) }, { _id: strUserId }] }
+  const userQuery: Filter<UserDoc> = ObjectId.isValid(strUserId)
+    ? ({ $or: [{ _id: new ObjectId(strUserId) }, { _id: strUserId }] } as unknown as Filter<UserDoc>)
     : { _id: strUserId };
   const user = await db
     .collection<UserDoc>("users")
-    .findOne(userQuery as any);
+    .findOne(userQuery);
 
   // Check if user is deactivated/suspended
   if (
