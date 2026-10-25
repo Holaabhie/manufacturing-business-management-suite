@@ -44,9 +44,13 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { PLAN_LIMITS } from "@/lib/entitlements/limits";
+import { useUpgrade } from "@/hooks/useUpgrade";
 
 // Enforced limits on Starter tier across production code
 const STARTER_LIMITS = PLAN_LIMITS.starter;
+const starterInventoryLimit = STARTER_LIMITS.inventory ?? 5;
+const starterOrdersLimit = STARTER_LIMITS.orders ?? 5;
+const starterClientsLimit = STARTER_LIMITS.clients ?? 5;
 
 export default function UpgradePage() {
   const t = useTranslations("upgrade");
@@ -57,6 +61,8 @@ export default function UpgradePage() {
   const tCheckout = useTranslations("upgrade.checkoutModal");
   const tCancel = useTranslations("upgrade.cancelModal");
   const tToasts = useTranslations("upgrade.toasts");
+
+  const { openCheckout, isProcessing: checkoutLoading } = useUpgrade();
 
   const [user, setUser] = useState<any>(null);
   const [subscription, setSubscription] = useState<any>(null);
@@ -316,18 +322,18 @@ export default function UpgradePage() {
                   </span>
                   <span className={cn(
                     "font-semibold",
-                    inventoryCount >= STARTER_LIMITS.inventory ? "text-red-500" : "text-[var(--foreground)]"
+                    inventoryCount >= starterInventoryLimit ? "text-red-500" : "text-[var(--foreground)]"
                   )}>
-                    {inventoryCount} / {STARTER_LIMITS.inventory}
+                    {inventoryCount} / {starterInventoryLimit}
                   </span>
                 </div>
                 <div className="w-full h-2 rounded-full bg-[var(--card)] border border-[var(--border)] overflow-hidden">
                   <div
                     className={cn(
                       "h-full rounded-full transition-all duration-300",
-                      inventoryCount >= STARTER_LIMITS.inventory ? "bg-red-500" : inventoryCount >= 4 ? "bg-amber-500" : "bg-[var(--primary)]"
+                      inventoryCount >= starterInventoryLimit ? "bg-red-500" : inventoryCount >= 4 ? "bg-amber-500" : "bg-[var(--primary)]"
                     )}
-                    style={{ width: `${Math.min(100, Math.round((inventoryCount / STARTER_LIMITS.inventory) * 100))}%` }}
+                    style={{ width: `${Math.min(100, Math.round((inventoryCount / starterInventoryLimit) * 100))}%` }}
                   />
                 </div>
               </div>
@@ -340,18 +346,18 @@ export default function UpgradePage() {
                   </span>
                   <span className={cn(
                     "font-semibold",
-                    ordersCount >= STARTER_LIMITS.orders ? "text-red-500" : "text-[var(--foreground)]"
+                    ordersCount >= starterOrdersLimit ? "text-red-500" : "text-[var(--foreground)]"
                   )}>
-                    {ordersCount} / {STARTER_LIMITS.orders}
+                    {ordersCount} / {starterOrdersLimit}
                   </span>
                 </div>
                 <div className="w-full h-2 rounded-full bg-[var(--card)] border border-[var(--border)] overflow-hidden">
                   <div
                     className={cn(
                       "h-full rounded-full transition-all duration-300",
-                      ordersCount >= STARTER_LIMITS.orders ? "bg-red-500" : ordersCount >= 4 ? "bg-amber-500" : "bg-[var(--primary)]"
+                      ordersCount >= starterOrdersLimit ? "bg-red-500" : ordersCount >= 4 ? "bg-amber-500" : "bg-[var(--primary)]"
                     )}
-                    style={{ width: `${Math.min(100, Math.round((ordersCount / STARTER_LIMITS.orders) * 100))}%` }}
+                    style={{ width: `${Math.min(100, Math.round((ordersCount / starterOrdersLimit) * 100))}%` }}
                   />
                 </div>
               </div>
@@ -364,18 +370,18 @@ export default function UpgradePage() {
                   </span>
                   <span className={cn(
                     "font-semibold",
-                    clientsCount >= STARTER_LIMITS.clients ? "text-red-500" : "text-[var(--foreground)]"
+                    clientsCount >= starterClientsLimit ? "text-red-500" : "text-[var(--foreground)]"
                   )}>
-                    {clientsCount} / {STARTER_LIMITS.clients}
+                    {clientsCount} / {starterClientsLimit}
                   </span>
                 </div>
                 <div className="w-full h-2 rounded-full bg-[var(--card)] border border-[var(--border)] overflow-hidden">
                   <div
                     className={cn(
                       "h-full rounded-full transition-all duration-300",
-                      clientsCount >= STARTER_LIMITS.clients ? "bg-red-500" : clientsCount >= 4 ? "bg-amber-500" : "bg-[var(--primary)]"
+                      clientsCount >= starterClientsLimit ? "bg-red-500" : clientsCount >= 4 ? "bg-amber-500" : "bg-[var(--primary)]"
                     )}
-                    style={{ width: `${Math.min(100, Math.round((clientsCount / STARTER_LIMITS.clients) * 100))}%` }}
+                    style={{ width: `${Math.min(100, Math.round((clientsCount / starterClientsLimit) * 100))}%` }}
                   />
                 </div>
               </div>
@@ -691,19 +697,40 @@ export default function UpgradePage() {
 
           <div className="p-4 rounded-[16px] bg-blue-500/10 border border-blue-500/20 text-[13px] text-blue-700 dark:text-blue-300 leading-relaxed">
             <p className="font-semibold mb-1 flex items-center gap-1.5">
-              <Info className="h-4 w-4 flex-shrink-0" />
-              {tCheckout("gatewayTitle")}
+              <ShieldCheck className="h-4 w-4 flex-shrink-0 text-emerald-500" />
+              Secure Razorpay Checkout
             </p>
-            {tCheckout("gatewayDesc")}
+            You will be redirected to the official Razorpay payment modal to complete your subscription securely via UPI, Cards, NetBanking, or Wallets.
           </div>
 
           <DialogFooter className="mt-6 flex flex-col sm:flex-row gap-2.5">
             <IOSButton
               variant="gray"
-              className="w-full h-[44px] text-[14px] font-semibold"
+              className="w-full sm:w-1/2 h-[44px] text-[14px] font-semibold"
               onClick={() => setShowUpgradeModal(false)}
             >
-              {tCheckout("btnGotIt")}
+              Cancel
+            </IOSButton>
+            <IOSButton
+              variant="filled"
+              className="w-full sm:w-1/2 h-[44px] text-[14px] font-bold bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white shadow-md shadow-indigo-500/20"
+              disabled={checkoutLoading}
+              onClick={async () => {
+                const planId = billingInterval === "yearly" ? "pro_yearly" : "pro_monthly";
+                setShowUpgradeModal(false);
+                await openCheckout(planId, {
+                  onSuccess: () => {
+                    fetchData();
+                  },
+                });
+              }}
+            >
+              {checkoutLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <Zap className="w-4 h-4 mr-1.5" />
+              )}
+              Pay with Razorpay
             </IOSButton>
           </DialogFooter>
         </DialogContent>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
+import { exportToTally } from "@/lib/tallyExport";
 import { AccessDenied } from "@/components/AccessDenied";
 import {
     Plus,
@@ -215,7 +216,7 @@ export default function BillingPage() {
     const fetchCompanyInfo = async () => {
         setCompanyLoading(true);
         try {
-            const res = await fetch("/api/profile/company");
+            const res = await fetch("/api/profile/company", { cache: "no-store" });
             const data = await res.json();
             if (data.company) {
                 setCompanyInfo(data.company);
@@ -283,6 +284,12 @@ export default function BillingPage() {
         fetchData();
         fetchCompanyInfo();
         fetchUserRole();
+
+        const handleCompanyUpdated = () => {
+            fetchCompanyInfo();
+        };
+        window.addEventListener("company-updated", handleCompanyUpdated);
+        return () => window.removeEventListener("company-updated", handleCompanyUpdated);
     }, []);
 
     // Close client dropdown on outside click
@@ -755,7 +762,7 @@ export default function BillingPage() {
                         <AlertTitle className="text-amber-800 dark:text-amber-200">{t("companyWarningTitle")}</AlertTitle>
                         <AlertDescription className="text-amber-700 dark:text-amber-300">
                             {t("companyWarningDesc")}
-                            <Link href="/dashboard/profile?tab=company" className="ml-1 underline font-medium hover:text-amber-900">
+                            <Link href="/dashboard/settings/company-info" className="ml-1 underline font-medium hover:text-amber-900">
                                 {t("companyWarningLink")}
                             </Link>
                         </AlertDescription>
@@ -837,7 +844,7 @@ export default function BillingPage() {
             <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
                 <IOSSearchBar
                     value={searchTerm}
-                    onChange={setSearchTerm}
+                    onValueChange={setSearchTerm}
                     placeholder={t("searchPlaceholder")}
                     className="w-full md:max-w-xs shrink-0"
                 />

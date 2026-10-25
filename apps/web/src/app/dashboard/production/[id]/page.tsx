@@ -40,7 +40,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import { toast } from "sonner";
 import { playCompletionSound } from "@/hooks/useCompletionSound";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -75,12 +75,12 @@ const containerVariants = {
     },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
     hidden: { opacity: 0, y: 16 },
     visible: {
         opacity: 1,
         y: 0,
-        transition: { duration: 0.35, ease: "easeOut" },
+        transition: { duration: 0.35, ease: "easeOut" as const },
     },
 };
 

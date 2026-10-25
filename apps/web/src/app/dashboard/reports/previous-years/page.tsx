@@ -69,10 +69,10 @@ function formatCurrency(value: number): string {
 function StatusBadge({ status }: { status: string }) {
     const t = useTranslations("previousYears.statuses");
     const s = status?.toLowerCase() || "";
-    let variant: "default" | "success" | "warning" | "error" = "default";
-    if (["completed", "paid", "delivered"].includes(s)) variant = "success";
-    else if (["processing", "in_progress", "partial", "draft", "awaiting_payment", "awaiting payment"].includes(s)) variant = "warning";
-    else if (["cancelled", "on_hold", "overdue", "rejected"].includes(s)) variant = "error";
+    let color: "gray" | "green" | "orange" | "red" = "gray";
+    if (["completed", "paid", "delivered"].includes(s)) color = "green";
+    else if (["processing", "in_progress", "partial", "draft", "awaiting_payment", "awaiting payment"].includes(s)) color = "orange";
+    else if (["cancelled", "on_hold", "overdue", "rejected"].includes(s)) color = "red";
 
     const getStatusLabel = (key: string) => {
         switch (key) {
@@ -108,7 +108,7 @@ function StatusBadge({ status }: { status: string }) {
         }
     };
 
-    return <IOSBadge variant={variant}>{getStatusLabel(s)}</IOSBadge>;
+    return <IOSBadge color={color} variant="tinted">{getStatusLabel(s)}</IOSBadge>;
 }
 
 // ─── KPI Card ────────────────────────────────────────────
@@ -230,7 +230,9 @@ export default function PreviousYearsPage() {
             return;
         }
 
-        exportToExcel(activeData, `FY-${selectedFY}-report`);
+        const firstRow = activeData[0] || {};
+        const columns = Object.keys(firstRow).map((k) => ({ header: k, key: k }));
+        exportToExcel(`FY-${selectedFY}-report.xlsx`, `FY-${selectedFY}`, activeData, columns);
         toast.success(tToasts("exportSuccess"));
     }, [data, selectedFY, tExport, tToasts]);
 
@@ -337,8 +339,8 @@ export default function PreviousYearsPage() {
                     </div>
 
                     <IOSButton
-                        variant="secondary"
-                        size="sm"
+                        variant="gray"
+                        size="small"
                         onClick={handleExport}
                         disabled={!data}
                     >

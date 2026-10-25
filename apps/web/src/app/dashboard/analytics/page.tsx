@@ -187,7 +187,7 @@ function MaterialTooltip({ active, payload }: any) {
                 <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
                 <p className="text-[14px] font-semibold text-[var(--foreground)]">{item.name}</p>
             </div>
-            <p className="text-[13px] text-[var(--muted-foreground)] font-mono">
+            <p className="text-[13px] text-[var(--muted-foreground)] tabular-nums">
                 {typeof item.quantity === "number" ? item.quantity.toLocaleString() : item.quantity} {item.unit}
                 <span className="ml-1.5 font-bold text-[var(--foreground)]">({item.percentage}%)</span>
             </p>
@@ -267,7 +267,7 @@ function KPICard({
     const isPositive = change >= 0;
     const isZero = rawValue === 0 || rawValue === undefined || rawValue === null;
     const hasComparison = change !== 0 && !isZero;
-    const displayValue = isZero ? "—" : value;
+    const displayValue = isZero ? (value && value !== "—" ? value : "0") : value;
     const bgMap = {
         blue: "bg-[rgba(0,122,255,0.1)] dark:bg-[rgba(10,132,255,0.15)]",
         green: "bg-[rgba(52,199,89,0.1)] dark:bg-[rgba(48,209,88,0.15)]",
@@ -288,13 +288,18 @@ function KPICard({
                     <div className={cn("w-[40px] h-[40px] rounded-[10px] flex items-center justify-center shrink-0", bgMap[color])}>
                         <Icon className={cn("h-[18px] w-[18px]", iconColorMap[color])} />
                     </div>
-                    <span className="text-[13px] text-[var(--muted-foreground)] leading-[18px] truncate">{label}</span>
+                    <span className="text-[13px] text-[var(--muted-foreground)] leading-[18px] font-medium break-words line-clamp-2">{label}</span>
                 </div>
                 <div className="flex items-end justify-between min-w-0 gap-2">
-                    <span className={cn(
-                        "text-[24px] sm:text-[28px] font-bold tracking-[0.36px] truncate font-mono",
-                        isZero ? "text-[var(--muted-foreground)]" : "text-[var(--foreground)]"
-                    )}>{displayValue}</span>
+                    <div className="min-w-0 flex flex-col">
+                        <span className={cn(
+                            "text-[24px] sm:text-[28px] font-bold tracking-tight truncate tabular-nums",
+                            "text-[var(--foreground)]"
+                        )}>{displayValue}</span>
+                        {isZero && (
+                            <span className="text-[12px] text-[var(--muted-foreground)] mt-0.5">No activity</span>
+                        )}
+                    </div>
                     {hasComparison && (
                         <span className={cn(
                             "flex items-center gap-0.5 text-[12px] sm:text-[13px] font-semibold px-2 py-0.5 rounded-full shrink-0",
@@ -325,6 +330,14 @@ export default function AnalyticsPage() {
     const [showReportDropdown, setShowReportDropdown] = useState(false);
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState<AnalyticsData | null>(null);
+
+    const activeChipRef = useRef<HTMLButtonElement | null>(null);
+
+    useEffect(() => {
+        if (activeChipRef.current) {
+            activeChipRef.current.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+        }
+    }, [selectedMonth, data?.selectedMonth]);
 
     // ── Profit Margin State ──
     const [marginData, setMarginData] = useState<any>(null);
@@ -427,8 +440,8 @@ export default function AnalyticsPage() {
     useEffect(() => {
         const cached = restoreState();
         if (cached) {
-            if (cached.selectedMonth) setSelectedMonth(cached.selectedMonth);
-            if (cached.selectedReportMonth) setSelectedReportMonth(cached.selectedReportMonth);
+            if (cached.selectedMonth) setSelectedMonth(String(cached.selectedMonth));
+            if (cached.selectedReportMonth) setSelectedReportMonth(String(cached.selectedReportMonth));
             if (cached.data) {
                 setData(cached.data as AnalyticsData);
                 setLoading(false);
@@ -469,7 +482,7 @@ export default function AnalyticsPage() {
     // ─── Loading Skeleton ──────────────────────────────────
     if (loading || !data) {
         return (
-            <div className="space-y-6 w-full min-w-0 overflow-x-hidden p-6 -m-6">
+            <div className="space-y-6 page-bleed -m-4 md:-m-6 lg:-m-8 p-4 md:p-6 lg:p-8 w-full min-w-0 overflow-x-hidden">
                 <div className="space-y-2">
                     <div className="h-[34px] w-[200px] rounded-[10px] bg-[var(--muted)] shimmer" />
                     <div className="h-[20px] w-[320px] rounded-[8px] bg-[var(--muted)] shimmer" />
@@ -512,7 +525,7 @@ export default function AnalyticsPage() {
             variants={staggerContainer}
             initial="initial"
             animate="animate"
-            className="space-y-6 bg-[#F1F4F9] dark:bg-[#0F1117] -m-6 p-4 sm:p-6 w-full min-w-0 overflow-x-hidden transition-colors"
+            className="space-y-6 bg-[#F1F4F9] dark:bg-[#0F1117] page-bleed -m-4 md:-m-6 lg:-m-8 p-4 md:p-6 lg:p-8 w-full min-w-0 overflow-x-hidden transition-colors"
         >
             {/* ═══════════════════════════════════════════════════
                 1. HEADER & MONTH SELECTOR SINCE SIGNUP
@@ -535,7 +548,7 @@ export default function AnalyticsPage() {
                                 <button
                                     type="button"
                                     onClick={() => setShowMonthDropdown(!showMonthDropdown)}
-                                    className="flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-white dark:bg-[#161B27] border border-black/[0.08] dark:border-white/[0.08] text-[13px] font-medium text-[var(--foreground)] hover:bg-slate-100 dark:hover:bg-[#1C2333] transition-colors shrink-0 cursor-pointer shadow-sm active:scale-[0.98]"
+                                    className="flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-white dark:bg-[#161B27] border border-black/[0.08] dark:border-white/[0.08] text-[13px] font-medium text-[var(--foreground)] hover:bg-slate-100 dark:hover:bg-[#1C2333] transition-colors shrink-0 cursor-pointer shadow-sm active:scale-[0.98] h-[38px]"
                                 >
                                     <Calendar className="h-3.5 w-3.5 text-[var(--primary)]" />
                                     <span>{selectedMonthObj?.label || selectedMonth}</span>
@@ -567,7 +580,7 @@ export default function AnalyticsPage() {
                                                     >
                                                         <span>{m.label}</span>
                                                         {m.isCurrent && (
-                                                            <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded", isSel ? "bg-white/20 text-white" : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400")}>
+                                                            <span className={cn("text-[11px] font-bold px-1.5 py-0.5 rounded", isSel ? "bg-white/20 text-white" : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400")}>
                                                                 Current
                                                             </span>
                                                         )}
@@ -581,20 +594,20 @@ export default function AnalyticsPage() {
                         )}
 
                         {/* Excel Export */}
-                        <IOSButton variant="gray" size="medium" onClick={async () => {
+                        <IOSButton variant="gray" size="medium" className="h-[38px] flex items-center justify-center shrink-0" onClick={async () => {
                             try {
                                 const res = await fetch("/api/v1/orders");
                                 const ordersData = await res.json();
                                 const ordersList = Array.isArray(ordersData.data) ? ordersData.data : [];
                                 
                                 const enrichedData = revenueData.map(rt => {
-                                    const monthOrders = ordersList.filter(o => {
+                                    const monthOrders = ordersList.filter((o: any) => {
                                         const d = new Date(o.createdAt);
                                         return d.toLocaleString('default', { month: 'short' }) === rt.month || rt.month.includes(d.toLocaleString('default', { month: 'short' }));
                                     });
                                     
                                     const clientCounts: Record<string, number> = {};
-                                    monthOrders.forEach(o => {
+                                    monthOrders.forEach((o: any) => {
                                         const cName = o.client?.name || o.clients?.name || "Unknown";
                                         clientCounts[cName] = (clientCounts[cName] || 0) + (o.total_amount || 0);
                                     });
@@ -652,6 +665,7 @@ export default function AnalyticsPage() {
                                 return (
                                     <button
                                         key={m.value}
+                                        ref={isActive ? activeChipRef : null}
                                         type="button"
                                         onClick={() => setSelectedMonth(m.value)}
                                         className={cn(
@@ -768,7 +782,7 @@ export default function AnalyticsPage() {
                                                         )}
                                                     >
                                                         <span>{m.label}</span>
-                                                        {m.isPrevious && <span className="text-[10px] opacity-80">(Last Month)</span>}
+                                                        {m.isPrevious && <span className="text-[11px] opacity-80">(Last Month)</span>}
                                                     </button>
                                                 ))}
                                             </div>
@@ -785,10 +799,10 @@ export default function AnalyticsPage() {
                                     <ShoppingCart className="h-3.5 w-3.5 text-[var(--primary)] shrink-0" />
                                     <span className="truncate">Orders Placed</span>
                                 </div>
-                                <div className="text-[20px] sm:text-[24px] font-bold text-[var(--foreground)] tracking-[0.3px] font-mono truncate">
+                                <div className="text-[20px] sm:text-[24px] font-bold text-[var(--foreground)] tracking-tight tabular-nums truncate">
                                     {previousMonthReport.totalOrdersPlaced.toLocaleString()}
                                 </div>
-                                <span className="text-[11px] text-[var(--muted-foreground)] mt-0.5 block truncate">
+                                <span className="text-[12px] text-[var(--muted-foreground)] mt-0.5 block truncate">
                                     Total bookings
                                 </span>
                             </div>
@@ -799,10 +813,10 @@ export default function AnalyticsPage() {
                                     <CheckCircle2 className="h-3.5 w-3.5 text-[var(--erp-success)] shrink-0" />
                                     <span className="truncate">Orders Fulfilled</span>
                                 </div>
-                                <div className="text-[20px] sm:text-[24px] font-bold text-[var(--foreground)] tracking-[0.3px] font-mono truncate">
+                                <div className="text-[20px] sm:text-[24px] font-bold text-[var(--foreground)] tracking-tight tabular-nums truncate">
                                     {previousMonthReport.totalOrdersCompleted.toLocaleString()}
                                 </div>
-                                <span className="text-[11px] text-[var(--erp-success)] mt-0.5 block truncate font-medium">
+                                <span className="text-[12px] text-[var(--erp-success)] mt-0.5 block truncate font-medium">
                                     {previousMonthReport.totalOrdersPlaced > 0
                                         ? `${Math.round((previousMonthReport.totalOrdersCompleted / previousMonthReport.totalOrdersPlaced) * 100)}% completion`
                                         : "No orders"}
@@ -815,10 +829,10 @@ export default function AnalyticsPage() {
                                     <IndianRupee className="h-3.5 w-3.5 text-[var(--chart-4)] shrink-0" />
                                     <span className="truncate">Total Revenue</span>
                                 </div>
-                                <div className="text-[20px] sm:text-[24px] font-bold text-[var(--foreground)] tracking-[0.3px] font-mono truncate">
+                                <div className="text-[20px] sm:text-[24px] font-bold text-[var(--foreground)] tracking-tight tabular-nums truncate">
                                     {formatCurrency(previousMonthReport.totalRevenue)}
                                 </div>
-                                <span className="text-[11px] text-[var(--muted-foreground)] mt-0.5 block truncate">
+                                <span className="text-[12px] text-[var(--muted-foreground)] mt-0.5 block truncate">
                                     Revenue booked
                                 </span>
                             </div>
@@ -829,10 +843,10 @@ export default function AnalyticsPage() {
                                     <TrendingUp className="h-3.5 w-3.5 text-[var(--erp-warning)] shrink-0" />
                                     <span className="truncate">Avg Order Value (AOV)</span>
                                 </div>
-                                <div className="text-[20px] sm:text-[24px] font-bold text-[var(--foreground)] tracking-[0.3px] font-mono truncate">
+                                <div className="text-[20px] sm:text-[24px] font-bold text-[var(--foreground)] tracking-tight tabular-nums truncate">
                                     {formatCurrency(previousMonthReport.averageOrderValue)}
                                 </div>
-                                <span className="text-[11px] text-[var(--muted-foreground)] mt-0.5 block truncate">
+                                <span className="text-[12px] text-[var(--muted-foreground)] mt-0.5 block truncate">
                                     Per placed order
                                 </span>
                             </div>
@@ -862,7 +876,7 @@ export default function AnalyticsPage() {
                         </div>
                         {totalMaterialQty > 0 && (
                             <div className="self-start sm:self-auto px-3 py-1 rounded-full bg-[#F8FAFC] dark:bg-[#1C2333] border border-black/[0.06] dark:border-white/[0.06] text-[12px] font-medium text-[var(--foreground)] shrink-0">
-                                Total: <span className="font-bold text-[var(--primary)] font-mono">{totalMaterialQty.toLocaleString()}</span> units consumed
+                                Total: <span className="font-bold text-[var(--primary)] tabular-nums">{totalMaterialQty.toLocaleString()}</span> units consumed
                             </div>
                         )}
                     </div>
@@ -895,7 +909,7 @@ export default function AnalyticsPage() {
                                         </ResponsiveContainer>
                                     </div>
                                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                        <span className="text-[20px] font-bold text-[var(--foreground)] font-mono">
+                                        <span className="text-[20px] font-bold text-[var(--foreground)] tabular-nums">
                                             {materialUsage.length}
                                         </span>
                                         <span className="text-[11px] font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
@@ -923,7 +937,7 @@ export default function AnalyticsPage() {
                                                         </span>
                                                     </div>
                                                     <span
-                                                        className="text-[11px] font-bold px-1.5 py-0.5 rounded shrink-0 font-mono"
+                                                        className="text-[11px] font-bold px-1.5 py-0.5 rounded shrink-0 tabular-nums"
                                                         style={{
                                                             backgroundColor: `${mat.color}20`,
                                                             color: mat.color,
@@ -934,7 +948,7 @@ export default function AnalyticsPage() {
                                                 </div>
                                                 <div className="flex items-center justify-between text-[12px] text-[var(--muted-foreground)] mb-1.5">
                                                     <span>Consumed</span>
-                                                    <span className="font-semibold text-[var(--foreground)] font-mono">
+                                                    <span className="font-semibold text-[var(--foreground)] tabular-nums">
                                                         {mat.quantity.toLocaleString()} {mat.unit}
                                                     </span>
                                                 </div>
@@ -983,8 +997,8 @@ export default function AnalyticsPage() {
                                         layout="vertical"
                                         margin={{ left: 10 }}
                                     >
-                                        <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 13 }} />
-                                        <YAxis type="category" dataKey="stage" axisLine={false} tickLine={false} tick={{ fill: "var(--foreground)", fontSize: 13 }} width={150} />
+                                        <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 13, fontFamily: "inherit" }} />
+                                        <YAxis type="category" dataKey="stage" axisLine={false} tickLine={false} tick={{ fill: "var(--foreground)", fontSize: 13, fontFamily: "inherit" }} width={150} />
                                         <Tooltip content={<FunnelTooltip />} />
                                         <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={28} name="Orders">
                                             {orderFunnel.map((_, i) => (
@@ -1020,8 +1034,8 @@ export default function AnalyticsPage() {
                                                 </linearGradient>
                                             </defs>
                                             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                                            <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 13 }} />
-                                            <YAxis axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 13 }} tickFormatter={(v) => `\u20B9${v / 1000}K`} />
+                                            <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 13, fontFamily: "inherit" }} />
+                                            <YAxis axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 13, fontFamily: "inherit" }} tickFormatter={(v) => `\u20B9${v / 1000}K`} />
                                             <Tooltip content={<CustomTooltip />} />
                                             <Area type="monotone" dataKey="lastYear" stroke="var(--muted-foreground)" strokeWidth={1.5} strokeDasharray="4 4" fill="transparent" name="Last Year" />
                                             <Area type="monotone" dataKey="revenue" stroke="var(--primary)" strokeWidth={2.5} fill="url(#currentGradient)" name="This Year" />
@@ -1059,7 +1073,7 @@ export default function AnalyticsPage() {
                                             <div key={item.name} className="flex items-center gap-2 min-w-0">
                                                 <span className="w-2 h-2 rounded-full shrink-0" style={{ background: item.color }} />
                                                 <span className="text-[13px] text-[var(--muted-foreground)] truncate">{item.name}</span>
-                                                <span className="text-[13px] font-semibold text-[var(--foreground)] ml-auto font-mono shrink-0">{item.value}%</span>
+                                                <span className="text-[13px] font-semibold text-[var(--foreground)] ml-auto tabular-nums shrink-0">{item.value}%</span>
                                             </div>
                                         ))}
                                     </div>
@@ -1086,8 +1100,8 @@ export default function AnalyticsPage() {
                                     <ResponsiveContainer width="100%" height="100%">
                                         <LineChart data={productionData}>
                                             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                                            <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 13 }} />
-                                            <YAxis axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 13 }} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                                            <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 13, fontFamily: "inherit" }} />
+                                            <YAxis axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 13, fontFamily: "inherit" }} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
                                             <Tooltip content={<CustomTooltip />} />
                                             <Line type="monotone" dataKey="efficiency" stroke="var(--erp-success)" strokeWidth={2.5} name="Efficiency" dot={{ fill: "var(--erp-success)", r: 4, strokeWidth: 2, stroke: "var(--card)" }} activeDot={{ r: 6 }} />
                                         </LineChart>
@@ -1110,8 +1124,8 @@ export default function AnalyticsPage() {
                                     <ResponsiveContainer width="100%" height="100%">
                                         <LineChart data={productionQuality}>
                                             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                                            <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 13 }} />
-                                            <YAxis axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 13 }} />
+                                            <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 13, fontFamily: "inherit" }} />
+                                            <YAxis axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 13, fontFamily: "inherit" }} />
                                             <Tooltip content={<QualityTooltip />} />
                                             <Line
                                                 type="monotone"
@@ -1161,14 +1175,14 @@ export default function AnalyticsPage() {
                                             <div key={product.name} className="space-y-1.5 min-w-0">
                                                 <div className="flex items-center justify-between min-w-0">
                                                     <div className="flex items-center gap-2 min-w-0 flex-1">
-                                                        <span className="text-[13px] font-semibold text-[var(--muted-foreground)] w-[20px] shrink-0 font-mono">
+                                                        <span className="text-[13px] font-semibold text-[var(--muted-foreground)] w-[20px] shrink-0 tabular-nums">
                                                             {index + 1}
                                                         </span>
                                                         <span className="text-[15px] font-medium text-[var(--foreground)] truncate">
                                                             {product.name}
                                                         </span>
                                                     </div>
-                                                    <span className="text-[15px] font-semibold text-[var(--foreground)] shrink-0 ml-3 font-mono">
+                                                    <span className="text-[15px] font-semibold text-[var(--foreground)] shrink-0 ml-3 tabular-nums">
                                                         {formatCurrency(product.revenue)}
                                                     </span>
                                                 </div>
@@ -1221,7 +1235,7 @@ export default function AnalyticsPage() {
                                                             </span>
                                                         </div>
                                                     </div>
-                                                    <span className="text-[15px] font-semibold text-[var(--foreground)] shrink-0 ml-3 font-mono">
+                                                    <span className="text-[15px] font-semibold text-[var(--foreground)] shrink-0 ml-3 tabular-nums">
                                                         {formatCurrency(client.totalRevenue)}
                                                     </span>
                                                 </div>
@@ -1257,8 +1271,8 @@ export default function AnalyticsPage() {
                             <div className="h-[200px] -ml-4">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={inventoryData} layout="vertical">
-                                        <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 13 }} tickFormatter={(v) => `${v}%`} />
-                                        <YAxis type="category" dataKey="category" axisLine={false} tickLine={false} tick={{ fill: "var(--foreground)", fontSize: 13 }} width={120} />
+                                        <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 13, fontFamily: "inherit" }} tickFormatter={(v) => `${v}%`} />
+                                        <YAxis type="category" dataKey="category" axisLine={false} tickLine={false} tick={{ fill: "var(--foreground)", fontSize: 13, fontFamily: "inherit" }} width={120} />
                                         <Tooltip content={<CustomTooltip />} />
                                         <Bar dataKey="value" radius={[0, 6, 6, 0]} fill="var(--chart-4)" opacity={0.8} barSize={24} name="Percentage" />
                                     </BarChart>
@@ -1274,7 +1288,7 @@ export default function AnalyticsPage() {
             {/* ══════════════════════════════════════════════════════
                 PROFIT MARGINS — Per-Order Cost Breakdown
                ══════════════════════════════════════════════════════ */}
-            <motion.div variants={staggerItem} className="ind-page min-w-0 w-full overflow-hidden">
+            <motion.div variants={staggerItem} className="ind-page !font-sans min-w-0 w-full overflow-hidden">
                 <IOSCard variant="elevated" padding="lg" className={cardCls}>
                     <IOSCardHeader title={t("profitMargins")} subtitle={t("profitMarginsSubtitle")} />
                     <IOSCardContent>
@@ -1290,25 +1304,25 @@ export default function AnalyticsPage() {
                                 <div className="ind-stats-row" style={{ marginBottom: 20 }}>
                                     <div className="ind-stat-card">
                                         <span className="ind-stat-card__label">{t("totalRevenue")}</span>
-                                        <span className="ind-stat-card__value ind-mono" style={{ color: "var(--ind-blue)", fontSize: 22 }}>
+                                        <span className="ind-stat-card__value tabular-nums font-bold" style={{ color: "var(--ind-blue)", fontSize: 22 }}>
                                             {formatINR(marginData.summary.totalRevenue, { compact: true })}
                                         </span>
                                     </div>
                                     <div className="ind-stat-card">
                                         <span className="ind-stat-card__label">{t("totalCost")}</span>
-                                        <span className="ind-stat-card__value ind-mono" style={{ color: "var(--ind-orange)", fontSize: 22 }}>
+                                        <span className="ind-stat-card__value tabular-nums font-bold" style={{ color: "var(--ind-orange)", fontSize: 22 }}>
                                             {formatINR(marginData.summary.totalCost || 0, { compact: true })}
                                         </span>
                                     </div>
                                     <div className="ind-stat-card">
                                         <span className="ind-stat-card__label">{t("netProfit")}</span>
-                                        <span className="ind-stat-card__value ind-mono" style={{ color: marginData.summary.totalProfit >= 0 ? "var(--ind-green)" : "var(--ind-red)", fontSize: 22 }}>
+                                        <span className="ind-stat-card__value tabular-nums font-bold" style={{ color: marginData.summary.totalProfit >= 0 ? "var(--ind-green)" : "var(--ind-red)", fontSize: 22 }}>
                                             {formatINR(marginData.summary.totalProfit, { compact: true })}
                                         </span>
                                     </div>
                                     <div className="ind-stat-card">
                                         <span className="ind-stat-card__label">{t("avgMargin")}</span>
-                                        <span className="ind-stat-card__value ind-mono" style={{
+                                        <span className="ind-stat-card__value tabular-nums font-bold" style={{
                                             color: marginData.summary.avgMargin >= 30 ? "var(--ind-green)"
                                                 : marginData.summary.avgMargin >= 15 ? "var(--ind-orange)"
                                                 : "var(--ind-red)",
@@ -1354,17 +1368,17 @@ export default function AnalyticsPage() {
                                                             <div className="flex items-center gap-2">
                                                                 <span className="text-[12px]" style={{ color: "var(--ind-text-muted)" }}>{order.clientName}</span>
                                                                 {!order.hasProduction && (
-                                                                    <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,159,10,0.15)", color: "var(--erp-warning)" }}>{t("noProduction")}</span>
+                                                                    <span className="text-[11px] px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,159,10,0.15)", color: "var(--erp-warning)" }}>{t("noProduction")}</span>
                                                                 )}
                                                             </div>
                                                         </div>
                                                     </div>
                                                     <div className="text-right flex-shrink-0 ml-3">
-                                                        <span className="text-[13px] ind-mono block" style={{ color: "var(--ind-text-muted)" }}>{formatINR(order.revenue)}</span>
+                                                        <span className="text-[13px] tabular-nums font-medium block" style={{ color: "var(--ind-text-muted)" }}>{formatINR(order.revenue)}</span>
                                                         {!hasCostData ? (
-                                                            <span className="text-[12px] font-bold ind-mono" style={{ color: "var(--ind-text-muted)" }}>—</span>
+                                                            <span className="text-[12px] font-bold tabular-nums" style={{ color: "var(--ind-text-muted)" }}>—</span>
                                                         ) : (
-                                                            <span className="text-[14px] font-bold ind-mono" style={{ color: marginColor }}>
+                                                            <span className="text-[14px] font-bold tabular-nums" style={{ color: marginColor }}>
                                                                 {isLoss ? t("loss") : `${Math.round(liveMargin * 10) / 10}%`}
                                                             </span>
                                                         )}
@@ -1378,9 +1392,9 @@ export default function AnalyticsPage() {
                                                         <div className="mb-3">
                                                             <div className="flex items-center justify-between mb-1">
                                                                 <span className="text-[12px] font-medium" style={{ color: "var(--ind-text-muted)" }}>
-                                                                    {t("materialCost")} <span className="text-[10px]" style={{ color: "var(--ind-text-muted)", opacity: 0.6 }}>({t("materialCostAuto")})</span>
+                                                                    {t("materialCost")} <span className="text-[11px]" style={{ color: "var(--ind-text-muted)", opacity: 0.7 }}>({t("materialCostAuto")})</span>
                                                                 </span>
-                                                                <span className="text-[13px] font-bold ind-mono" style={{ color: "var(--ind-text)" }}>{formatINR(order.materialCost)}</span>
+                                                                <span className="text-[13px] font-bold tabular-nums" style={{ color: "var(--ind-text)" }}>{formatINR(order.materialCost)}</span>
                                                             </div>
                                                             <div className="ind-cost-bar">
                                                                 <div className="ind-cost-bar__fill" style={{ width: order.revenue > 0 ? `${Math.min((order.materialCost / order.revenue) * 100, 100)}%` : "0%", background: "var(--ind-blue)" }} />
@@ -1388,7 +1402,7 @@ export default function AnalyticsPage() {
                                                             {order.materialWarnings && order.materialWarnings.length > 0 && (
                                                                 <div className="mt-1.5 flex flex-wrap gap-1">
                                                                     {order.materialWarnings.map((name: string) => (
-                                                                        <span key={name} className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,159,10,0.12)", color: "var(--erp-warning)" }}>
+                                                                        <span key={name} className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,159,10,0.12)", color: "var(--erp-warning)" }}>
                                                                             <AlertTriangle className="h-2.5 w-2.5" /> {t("costMissingFor", { name })}
                                                                         </span>
                                                                     ))}
@@ -1420,7 +1434,7 @@ export default function AnalyticsPage() {
                                                                             <span className="text-[12px]" style={{ color: "var(--ind-text-muted)" }}>{"\u20B9"}</span>
                                                                             <input
                                                                                 type="number"
-                                                                                className="w-[90px] h-[28px] px-2 rounded-[6px] text-[13px] font-semibold text-right ind-mono bg-[#F1F4F9] dark:bg-[rgba(255,255,255,0.06)]"
+                                                                                className="w-[90px] h-[28px] px-2 rounded-[6px] text-[13px] font-semibold text-right tabular-nums bg-[#F1F4F9] dark:bg-[rgba(255,255,255,0.06)]"
                                                                                 style={{ border: "1px solid var(--ind-border)", color: "var(--ind-text)", outline: "none" }}
                                                                                 value={costs[key] || ""}
                                                                                 onChange={(e) => {
@@ -1435,7 +1449,7 @@ export default function AnalyticsPage() {
                                                                     </div>
                                                                 ))}
                                                                 {savingCost === order.id && (
-                                                                    <p className="text-[10px] text-right" style={{ color: "var(--ind-text-muted)" }}>Saving...</p>
+                                                                    <p className="text-[11px] text-right" style={{ color: "var(--ind-text-muted)" }}>Saving...</p>
                                                                 )}
                                                             </div>
                                                         )}
@@ -1448,14 +1462,14 @@ export default function AnalyticsPage() {
                                                             <div className="space-y-1.5">
                                                                 <div className="flex items-center justify-between">
                                                                     <span className="text-[12px]" style={{ color: "var(--ind-text-muted)" }}>{t("totalCost")}</span>
-                                                                    <span className="text-[13px] font-bold ind-mono" style={{ color: "var(--ind-text)" }}>{formatINR(liveTotalCost)}</span>
+                                                                    <span className="text-[13px] font-bold tabular-nums" style={{ color: "var(--ind-text)" }}>{formatINR(liveTotalCost)}</span>
                                                                 </div>
                                                                 <div className="flex items-center justify-between">
                                                                     <span className="text-[13px] font-semibold" style={{ color: "var(--ind-text)" }}>{t("netProfit")}</span>
                                                                     {!hasCostData ? (
-                                                                        <span className="text-[14px] font-bold ind-mono" style={{ color: "var(--ind-text-muted)" }}>—</span>
+                                                                        <span className="text-[14px] font-bold tabular-nums" style={{ color: "var(--ind-text-muted)" }}>—</span>
                                                                     ) : (
-                                                                        <span className="text-[16px] font-bold ind-mono" style={{ color: liveProfit >= 0 ? "var(--ind-green)" : "var(--ind-red)" }}>
+                                                                        <span className="text-[16px] font-bold tabular-nums" style={{ color: liveProfit >= 0 ? "var(--ind-green)" : "var(--ind-red)" }}>
                                                                             {formatINR(liveProfit)} ({Math.round(liveMargin * 10) / 10}%)
                                                                         </span>
                                                                     )}

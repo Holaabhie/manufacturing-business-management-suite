@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { NumericInput, parseNumericValue } from "@/components/ui/numeric-input";
@@ -145,12 +145,12 @@ function buildSubmitPayload(formData: EditFormData): Record<string, unknown> {
 
 // ─── Animation Variants ────────────────────────────────────────────
 
-const sectionVariants = {
+const sectionVariants: Variants = {
   hidden: { opacity: 0, y: 8 },
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.3, ease: "easeOut", delay: i * 0.06 },
+    transition: { duration: 0.3, ease: "easeOut" as const, delay: i * 0.06 },
   }),
 };
 
@@ -578,9 +578,8 @@ export default function EditOrderPage() {
 
   if (pageState === "loading") {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-6">
-          {/* Breadcrumb skeleton */}
+      <div className="max-w-7xl mx-auto w-full min-w-0">
+        {/* Breadcrumb skeleton */}
           <div className="h-4 w-48 rounded-md bg-muted animate-pulse mb-6" />
           <div className="h-8 w-72 rounded-md bg-muted animate-pulse mb-8" />
           <div className="flex gap-6">
@@ -602,7 +601,6 @@ export default function EditOrderPage() {
             />
           </div>
         </div>
-      </div>
     );
   }
 
@@ -658,8 +656,7 @@ export default function EditOrderPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-background">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-6">
+      <div className="max-w-7xl mx-auto w-full min-w-0">
           {/* ─── Page Title ─── */}
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-foreground">
@@ -1257,7 +1254,6 @@ export default function EditOrderPage() {
               </div>
             </div>
           </div>
-        </div>
 
         {/* Add bottom padding on mobile to account for nav */}
         <div className="lg:hidden h-24" />

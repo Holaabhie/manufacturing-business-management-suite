@@ -18,6 +18,8 @@ import {
   ClipboardList,
   X,
   UserPlus,
+  User,
+  Loader2,
   Send,
   CheckCircle2,
   Package,
@@ -153,8 +155,9 @@ export default function PurchasingPage() {
   const tOrderDetail = useTranslations("purchasing.orderDetail");
   const tToast = useTranslations("purchasing.toasts");
   const tDelete = useTranslations("purchasing.deleteModal");
-  const { currentLocale } = useAppLocale();
-  const dateLocale = currentLocale === "hi" ? "hi-IN" : currentLocale === "gu" ? "gu-IN" : currentLocale === "mr" ? "mr-IN" : "en-IN";
+  const tCommon = useTranslations("common");
+  const { locale } = useAppLocale();
+  const dateLocale = locale === "hi" ? "hi-IN" : locale === "gu" ? "gu-IN" : locale === "mr" ? "mr-IN" : "en-IN";
 
   const getStatusLabel = (status: "Pending" | "Ordered" | "Received") => {
     switch (status) {
@@ -220,6 +223,14 @@ export default function PurchasingPage() {
     gstin: "",
   };
   const [vendorForm, setVendorForm] = useState(emptyVendorForm);
+  const [vendorErrors, setVendorErrors] = useState<{
+    name?: string;
+    contactPerson?: string;
+    phone?: string;
+    email?: string;
+    gstin?: string;
+  }>({});
+  const [isSubmittingVendor, setIsSubmittingVendor] = useState(false);
 
   // PO form
   const [poVendorId, setPoVendorId] = useState("");
@@ -337,23 +348,80 @@ export default function PurchasingPage() {
 
   const handleVendorSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const errs: {
+      name?: string;
+      contactPerson?: string;
+      phone?: string;
+      email?: string;
+      gstin?: string;
+    } = {};
+
+    if (!vendorForm.name.trim()) {
+      errs.name = tVendorModal("errNameRequired");
+    }
+
+    if (!vendorForm.contactPerson.trim()) {
+      errs.contactPerson = tVendorModal("errContactRequired");
+    }
+
+    const cleanPhone = vendorForm.phone.replace(/[\s\-\+]/g, "");
+    if (!cleanPhone) {
+      errs.phone = tVendorModal("errPhoneRequired");
+    } else {
+      const digits = cleanPhone.startsWith("91") && cleanPhone.length === 12
+        ? cleanPhone.slice(2)
+        : cleanPhone;
+      if (!/^[6-9]\d{9}$/.test(digits)) {
+        errs.phone = tVendorModal("errPhoneInvalid");
+      }
+    }
+
+    if (vendorForm.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(vendorForm.email.trim())) {
+      errs.email = tVendorModal("errEmailInvalid");
+    }
+
+    const cleanGstin = vendorForm.gstin.trim().toUpperCase();
+    if (cleanGstin && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(cleanGstin)) {
+      errs.gstin = tVendorModal("errGstinInvalid");
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setVendorErrors(errs);
+      return;
+    }
+
+    setVendorErrors({});
+    setIsSubmittingVendor(true);
     try {
       const res = await fetch("/api/purchasing/vendors", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(vendorForm),
+        body: JSON.stringify({
+          ...vendorForm,
+          phone: cleanPhone.startsWith("91") && cleanPhone.length === 12
+            ? `+${cleanPhone}`
+            : cleanPhone.length === 10
+            ? `+91${cleanPhone}`
+            : vendorForm.phone.trim(),
+          gstin: cleanGstin,
+          email: vendorForm.email.trim(),
+          address: vendorForm.address.trim(),
+        }),
       });
       const data = await res.json();
       if (data.success) {
         toast.success(tToast("vendorAdded"));
         setIsVendorDialogOpen(false);
         setVendorForm(emptyVendorForm);
+        setVendorErrors({});
         fetchVendors();
       } else {
         toast.error(data.error || tToast("addVendorFailed"));
       }
     } catch {
       toast.error(tToast("addVendorFailed"));
+    } finally {
+      setIsSubmittingVendor(false);
     }
   };
 
@@ -619,23 +687,22 @@ export default function PurchasingPage() {
             {t("subtitle")}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="grid grid-cols-2 gap-3 w-full sm:flex sm:w-auto items-center">
           <IOSButton
-            variant="tinted"
-            color="green"
+            variant="gray"
             size="medium"
-            onClick={() => { setVendorForm(emptyVendorForm); setIsVendorDialogOpen(true); }}
-            icon={<UserPlus className="h-4 w-4" />}
+            onClick={() => { setVendorForm(emptyVendorForm); setVendorErrors({}); setIsVendorDialogOpen(true); }}
+            className="!h-12 !rounded-xl !px-3 !w-full sm:!w-auto justify-center whitespace-nowrap text-[13px] sm:text-sm font-semibold tracking-tight border border-[var(--border)] hover:bg-[var(--muted)]"
+            icon={<UserPlus className="h-4 w-4 shrink-0" />}
           >
             {t("btnAddVendor")}
           </IOSButton>
           <IOSButton
             variant="filled"
-            color="blue"
             size="medium"
             onClick={openNewPO}
-            className="glow-btn !bg-none shadow-none"
-            icon={<Plus className="h-4 w-4" />}
+            className="!h-12 !rounded-xl !px-3 !w-full sm:!w-auto justify-center whitespace-nowrap text-[13px] sm:text-sm font-semibold tracking-tight shadow-sm"
+            icon={<Plus className="h-4 w-4 shrink-0" />}
           >
             {t("btnNewPurchase")}
           </IOSButton>
@@ -643,14 +710,40 @@ export default function PurchasingPage() {
       </motion.div>
 
       {/* ── Stats Row ── */}
-      <div className="kpi-panel">
-        <div className="kpi-panel__glow" />
-        <div className="kpi-grid !grid-cols-1 md:!grid-cols-4">
-          <StatWidget label={tKpi("totalSpent")} value={totalSpend} icon={IndianRupee} color="blue" prefix={"\u20B9"} delay={0} />
-          <StatWidget label={tKpi("pending")} value={pendingCount} icon={Clock} color="orange" delay={1} />
-          <StatWidget label={tKpi("inTransit")} value={orderedCount} icon={Truck} color="purple" delay={2} />
-          <StatWidget label={tKpi("received")} value={receivedCount} icon={PackageCheck} color="green" delay={3} />
-        </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 w-full min-w-0 overflow-hidden">
+        <StatWidget
+          label={tKpi("totalSpent")}
+          value={totalSpend}
+          displayValue={totalSpend > 0 ? `₹${totalSpend.toLocaleString("en-IN")}` : "₹0"}
+          valueTitle={`₹${totalSpend.toLocaleString("en-IN")}`}
+          icon={IndianRupee}
+          color="blue"
+          delay={0}
+        />
+        <StatWidget
+          label={tKpi("pending")}
+          value={pendingCount}
+          valueTitle={`${pendingCount} pending orders`}
+          icon={Clock}
+          color="orange"
+          delay={0.05}
+        />
+        <StatWidget
+          label={tKpi("inTransit")}
+          value={orderedCount}
+          valueTitle={`${orderedCount} orders in transit`}
+          icon={Truck}
+          color="purple"
+          delay={0.1}
+        />
+        <StatWidget
+          label={tKpi("received")}
+          value={receivedCount}
+          valueTitle={`${receivedCount} orders received`}
+          icon={PackageCheck}
+          color="green"
+          delay={0.15}
+        />
       </div>
 
       {/* ── Tabs ── */}
@@ -1126,91 +1219,241 @@ export default function PurchasingPage() {
         open={isVendorDialogOpen}
         onOpenChange={(open) => {
           setIsVendorDialogOpen(open);
-          if (!open) setVendorForm(emptyVendorForm);
+          if (!open) {
+            setVendorForm(emptyVendorForm);
+            setVendorErrors({});
+          }
         }}
       >
-        <DialogContent fullScreenMobile className="max-w-md md:max-w-lg p-0 overflow-hidden rounded-[24px] border-[var(--glass-border)] glass-dialog md:max-h-[85dvh] flex flex-col">
-          <ScrollArea className="flex-1 min-h-0">
-            <div className="p-6">
-              <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid var(--glass-border)" }}>
-                <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, rgba(59,130,246,0.4), rgba(255,255,255,0.06))", border: "1px solid var(--glass-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Building2 className="h-[18px] w-[18px] text-[#60a5fa]" />
+        <DialogContent
+          fullScreenMobile
+          className="sm:max-w-[560px] max-h-[90dvh] md:max-h-[85dvh] flex flex-col overflow-hidden p-0 rounded-t-[24px] sm:rounded-[24px] border-[var(--border)] bg-[var(--card)]"
+        >
+          {/* Mobile drag handle */}
+          <div className="sm:hidden flex justify-center pt-2.5 pb-1 shrink-0">
+            <div className="w-10 h-1 rounded-full bg-[var(--muted-foreground)]/25" />
+          </div>
+
+          <form onSubmit={handleVendorSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+            {/* Header */}
+            <div className="shrink-0 px-5 pt-2 pb-3.5 sm:pt-4 border-b border-[var(--border)] flex items-center justify-between gap-3 bg-[var(--card)]/50">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-500 flex items-center justify-center shrink-0 shadow-sm">
+                  <Building2 className="w-5 h-5" />
                 </div>
-                <div>
-                  <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "var(--g-text-primary)", lineHeight: "22px", margin: 0 }}>{tVendorModal("titleNew")}</DialogTitle>
-                  <p style={{ fontSize: 13, color: "var(--g-text-secondary)", lineHeight: "18px", margin: "2px 0 0" }}>{tVendorModal("subtitle")}</p>
+                <div className="min-w-0">
+                  <DialogTitle className="text-base font-bold text-[var(--foreground)] truncate">
+                    {tVendorModal("titleNew")}
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-[var(--muted-foreground)] truncate mt-0.5">
+                    {tVendorModal("subtitle")}
+                  </DialogDescription>
                 </div>
               </div>
-              <form onSubmit={handleVendorSubmit} className="space-y-4 pt-4">
-                <div className="space-y-1.5">
-                  <Label className="text-[13px] text-[var(--muted-foreground)]">{tVendorModal("lblName")}</Label>
-                  <Input
+              <button
+                type="button"
+                onClick={() => setIsVendorDialogOpen(false)}
+                aria-label="Close"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)]/60 transition-colors shrink-0 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Scrollable Form Body */}
+            <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-5">
+              {/* Section 1: Basic details */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 pb-1.5 border-b border-[var(--border)]/60">
+                  <User className="w-3.5 h-3.5 text-sky-500" />
+                  <h3 className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider">
+                    {tVendorModal("sectionBasic")}
+                  </h3>
+                </div>
+
+                {/* Vendor Name */}
+                <div>
+                  <label className="text-xs font-semibold text-[var(--foreground)] block mb-1.5">
+                    {tVendorModal("lblName")} <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
                     value={vendorForm.name}
-                    onChange={(e) => setVendorForm({ ...vendorForm, name: e.target.value })}
+                    onChange={(e) => {
+                      setVendorForm({ ...vendorForm, name: e.target.value });
+                      if (vendorErrors.name) setVendorErrors((prev) => ({ ...prev, name: undefined }));
+                    }}
                     placeholder={tVendorModal("placeholderName")}
-                    required
-                    className="glass-input h-[44px] px-3"
+                    className={cn(
+                      "w-full h-12 px-3.5 text-sm rounded-xl bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] placeholder:text-[var(--muted-foreground)]/50 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all",
+                      vendorErrors.name && "border-red-500 focus:border-red-500 focus:ring-red-500/20"
+                    )}
                   />
+                  {vendorErrors.name && (
+                    <p className="text-[11px] text-red-500 mt-1 font-medium">{vendorErrors.name}</p>
+                  )}
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-[13px] text-[var(--muted-foreground)]">{tVendorModal("lblContact")}</Label>
-                    <Input
+
+                {/* Contact Person & Phone */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-semibold text-[var(--foreground)] block mb-1.5">
+                      {tVendorModal("lblContact")} <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
                       value={vendorForm.contactPerson}
-                      onChange={(e) => setVendorForm({ ...vendorForm, contactPerson: e.target.value })}
+                      onChange={(e) => {
+                        setVendorForm({ ...vendorForm, contactPerson: e.target.value });
+                        if (vendorErrors.contactPerson) setVendorErrors((prev) => ({ ...prev, contactPerson: undefined }));
+                      }}
                       placeholder={tVendorModal("placeholderContact")}
-                      required
-                      className="glass-input h-[44px] px-3"
+                      className={cn(
+                        "w-full h-12 px-3.5 text-sm rounded-xl bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] placeholder:text-[var(--muted-foreground)]/50 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all",
+                        vendorErrors.contactPerson && "border-red-500 focus:border-red-500 focus:ring-red-500/20"
+                      )}
                     />
+                    {vendorErrors.contactPerson && (
+                      <p className="text-[11px] text-red-500 mt-1 font-medium">{vendorErrors.contactPerson}</p>
+                    )}
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[13px] text-[var(--muted-foreground)]">{tVendorModal("lblPhone")}</Label>
-                    <Input
-                      value={vendorForm.phone}
-                      onChange={(e) => setVendorForm({ ...vendorForm, phone: e.target.value })}
-                      placeholder={tVendorModal("placeholderPhone")}
-                      required
-                      className="glass-input h-[44px] px-3"
-                    />
+                  <div>
+                    <label className="text-xs font-semibold text-[var(--foreground)] block mb-1.5">
+                      {tVendorModal("lblPhone")} <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="relative flex items-center">
+                      <span className="absolute left-3 text-xs font-semibold text-[var(--muted-foreground)] select-none bg-[var(--muted)]/60 px-1.5 py-1 rounded">
+                        +91
+                      </span>
+                      <input
+                        type="tel"
+                        inputMode="numeric"
+                        maxLength={10}
+                        value={vendorForm.phone.replace(/^\+91/, "").replace(/\D/g, "")}
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
+                          setVendorForm({ ...vendorForm, phone: digits });
+                          if (vendorErrors.phone) setVendorErrors((prev) => ({ ...prev, phone: undefined }));
+                        }}
+                        placeholder={tVendorModal("placeholderPhone")}
+                        className={cn(
+                          "w-full h-12 pl-14 pr-3.5 text-sm rounded-xl bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] placeholder:text-[var(--muted-foreground)]/50 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all font-mono tracking-wide",
+                          vendorErrors.phone && "border-red-500 focus:border-red-500 focus:ring-red-500/20"
+                        )}
+                      />
+                    </div>
+                    {vendorErrors.phone ? (
+                      <p className="text-[11px] text-red-500 mt-1 font-medium">{vendorErrors.phone}</p>
+                    ) : (
+                      <p className="text-[11px] text-[var(--muted-foreground)] mt-1">10-digit mobile number</p>
+                    )}
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-[13px] text-[var(--muted-foreground)]">Email</Label>
-                    <Input
+              </div>
+
+              {/* Section 2: Tax & contact */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 pb-1.5 border-b border-[var(--border)]/60">
+                  <Building2 className="w-3.5 h-3.5 text-sky-500" />
+                  <h3 className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider">
+                    {tVendorModal("sectionTaxContact")}
+                  </h3>
+                </div>
+
+                {/* Email & GSTIN */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-semibold text-[var(--foreground)] block mb-1.5">
+                      {tVendorModal("lblEmail")}
+                    </label>
+                    <input
+                      type="email"
                       value={vendorForm.email}
-                      onChange={(e) => setVendorForm({ ...vendorForm, email: e.target.value })}
+                      onChange={(e) => {
+                        setVendorForm({ ...vendorForm, email: e.target.value });
+                        if (vendorErrors.email) setVendorErrors((prev) => ({ ...prev, email: undefined }));
+                      }}
                       placeholder={tVendorModal("placeholderEmail")}
-                      className="glass-input h-[44px] px-3"
+                      className={cn(
+                        "w-full h-12 px-3.5 text-sm rounded-xl bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] placeholder:text-[var(--muted-foreground)]/50 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all",
+                        vendorErrors.email && "border-red-500 focus:border-red-500 focus:ring-red-500/20"
+                      )}
                     />
+                    {vendorErrors.email && (
+                      <p className="text-[11px] text-red-500 mt-1 font-medium">{vendorErrors.email}</p>
+                    )}
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[13px] text-[var(--muted-foreground)]">GSTIN</Label>
-                    <Input
+                  <div>
+                    <label className="text-xs font-semibold text-[var(--foreground)] block mb-1.5">
+                      {tVendorModal("lblGstin")}
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={15}
                       value={vendorForm.gstin}
-                      onChange={(e) => setVendorForm({ ...vendorForm, gstin: e.target.value })}
+                      onChange={(e) => {
+                        const val = e.target.value.toUpperCase().slice(0, 15);
+                        setVendorForm({ ...vendorForm, gstin: val });
+                        if (vendorErrors.gstin) setVendorErrors((prev) => ({ ...prev, gstin: undefined }));
+                      }}
                       placeholder={tVendorModal("placeholderGstin")}
-                      className="glass-input h-[44px] px-3"
+                      className={cn(
+                        "w-full h-12 px-3.5 text-sm rounded-xl bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] placeholder:text-[var(--muted-foreground)]/50 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all font-mono uppercase tracking-wider",
+                        vendorErrors.gstin && "border-red-500 focus:border-red-500 focus:ring-red-500/20"
+                      )}
                     />
+                    {vendorErrors.gstin ? (
+                      <p className="text-[11px] text-red-500 mt-1 font-medium">{vendorErrors.gstin}</p>
+                    ) : (
+                      <p className="text-[11px] text-[var(--muted-foreground)] mt-1">{tVendorModal("helperGstin")}</p>
+                    )}
                   </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[13px] text-[var(--muted-foreground)]">{tVendorModal("lblAddress")}</Label>
-                  <Input
+
+                {/* Address */}
+                <div>
+                  <label className="text-xs font-semibold text-[var(--foreground)] block mb-1.5">
+                    {tVendorModal("lblAddress")}
+                  </label>
+                  <textarea
+                    rows={3}
                     value={vendorForm.address}
                     onChange={(e) => setVendorForm({ ...vendorForm, address: e.target.value })}
                     placeholder={tVendorModal("placeholderAddress")}
-                    className="glass-input h-[44px] px-3"
+                    className="w-full py-2.5 px-3.5 text-sm rounded-xl bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] placeholder:text-[var(--muted-foreground)]/50 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all resize-none"
                   />
                 </div>
-                <DialogFooter className="pt-4">
-                  <button type="submit" className="glow-btn w-full h-[50px] text-[17px] flex items-center justify-center gap-2">
-                    {tVendorModal("btnSave")}
-                  </button>
-                </DialogFooter>
-              </form>
+              </div>
             </div>
-          </ScrollArea>
+
+            {/* Sticky Footer */}
+            <div className="shrink-0 px-5 py-3 border-t border-[var(--border)] bg-[var(--card)]/90 backdrop-blur pb-[max(env(safe-area-inset-bottom),14px)]">
+              <div className="grid grid-cols-2 gap-3 w-full">
+                <button
+                  type="button"
+                  onClick={() => setIsVendorDialogOpen(false)}
+                  disabled={isSubmittingVendor}
+                  className="h-12 rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--muted)]/50 font-medium text-sm transition-colors flex items-center justify-center disabled:opacity-50 cursor-pointer"
+                >
+                  {tVendorModal("btnCancel")}
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingVendor}
+                  className="h-12 rounded-xl bg-sky-500 hover:bg-sky-600 active:scale-[0.98] text-white font-semibold text-sm transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {isSubmittingVendor ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>{tCommon("loading")}</span>
+                    </>
+                  ) : (
+                    <span>{tVendorModal("btnSave")}</span>
+                  )}
+                </button>
+              </div>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
 

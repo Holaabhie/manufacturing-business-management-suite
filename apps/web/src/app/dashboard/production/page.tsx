@@ -140,7 +140,7 @@ export default function ProductionPage() {
     };
 
     // Filter out closed/deleted productions
-    const activeProductions = useMemo(() => productions.filter((p) => p.status !== "closed"), [productions]);
+    const activeProductions = useMemo(() => productions.filter((p) => (p.status as string) !== "closed"), [productions]);
 
     // Computed stats
     const stats = useMemo(() => {
@@ -710,7 +710,7 @@ export default function ProductionPage() {
                 entityLabel={t("deleteEntityLabel")}
                 entityName={
                     productions.find((p) => p.id === productionToDelete)?.batchNumber ||
-                    productions.find((p) => p.id === productionToDelete)?.productName
+                    productions.find((p) => p.id === productionToDelete)?.orderProductName
                 }
                 consequenceText={t("deleteConsequence")}
             />
