@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { getSessionUser } from '@/lib/auth-session';
 import { getDb } from '@/lib/mongodb';
+import { ObjectId } from 'mongodb';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,8 @@ export async function POST(request: NextRequest) {
     }
 
     const db = await getDb();
-    const profile = await db.collection("users").findOne({ _id: user._id });
+    const userQueryId = ObjectId.isValid(user._id) ? new ObjectId(user._id) : (user._id as unknown as ObjectId);
+    const profile = await db.collection("users").findOne({ _id: userQueryId });
 
     if (profile?.stripe_subscription_id) {
       return NextResponse.json(
@@ -41,7 +43,7 @@ export async function POST(request: NextRequest) {
       customerId = customer.id;
 
       await db.collection("users").updateOne(
-        { _id: user._id },
+        { _id: userQueryId },
         { $set: { stripe_customer_id: customerId } }
       );
     }

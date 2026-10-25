@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
+import { ObjectId } from "mongodb";
 import bcrypt from "bcrypt";
 
 export async function PUT(request: Request) {
@@ -20,8 +21,9 @@ export async function PUT(request: Request) {
     const db = await getDb();
     const passwordHash = await bcrypt.hash(newPassword, 10);
 
+    const userQueryId = ObjectId.isValid(user._id) ? new ObjectId(user._id) : (user._id as unknown as ObjectId);
     await db.collection("users").updateOne(
-      { _id: user._id },
+      { _id: userQueryId },
       { $set: { passwordHash, updatedAt: new Date() } }
     );
 

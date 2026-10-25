@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ObjectId } from "mongodb";
 import { getSessionUser } from "@/lib/auth-session";
 import { isDbUnavailableError } from "@/lib/mongodb";
 import { resolvePermissions, type FlatPermissionMap } from "@/lib/permissions";
@@ -25,7 +26,9 @@ export async function GET() {
       try {
         const { getDb } = await import("@/lib/mongodb");
         const db = await getDb();
-        const adminUser = await db.collection("users").findOne({ _id: user.adminId });
+        const adminUser = await db.collection("users").findOne({
+          _id: ObjectId.isValid(user.adminId) ? new ObjectId(user.adminId) : (user.adminId as unknown as ObjectId),
+        });
         if (adminUser?.createdAt) {
           tenantCreatedAt = adminUser.createdAt;
         }

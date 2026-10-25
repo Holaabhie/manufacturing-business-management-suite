@@ -16,6 +16,15 @@ import { buildInvoiceHTMLHandlebars } from "@/lib/invoice/handlebars-template";
 import { buildInvoiceHTML } from "@/lib/invoice/template";
 import type { InvoicePayload } from "@/lib/invoice/types";
 import { validateGSTIN } from "@/lib/invoice/sanitize";
+import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
+import {
+    getCallerRoleRank,
+    isOwnerRole,
+    normalizeRoleType,
+    resolvePermissions,
+    hasPermission,
+    type FlatPermissionMap
+} from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -36,11 +45,56 @@ function errorResponse(code: string, message: string, invoiceNumber?: string, st
 
 // ─── POST Handler ─────────────────────────────────────────────
 
+const MAX_BODY_BYTES = 1.5 * 1024 * 1024; // 1.5 MB cap (accommodates 500 KB max base64 logo + invoice payload)
+const STRICT_LOGO_DATA_URI = /^data:image\/(?:png|jpeg|jpg|webp|svg\+xml);base64,[A-Za-z0-9+/]+={0,2}$/;
+
 export async function POST(request: NextRequest) {
     let invoiceNumber = "";
 
     try {
-        const body = await request.json();
+        // ── Authentication & Role Verification ────────────────
+        const user = await getSessionUser();
+        if (!user) {
+            return errorResponse("UNAUTHORIZED", "Authentication required", undefined, 401);
+        }
+        const callerRank = getCallerRoleRank(user.role);
+        if (callerRank === -1) {
+            return errorResponse("FORBIDDEN", "Unauthorized user role", undefined, 403);
+        }
+        const dataOwnerId = getDataOwnerId(user);
+        if (!dataOwnerId) {
+            return errorResponse("FORBIDDEN", "No active tenant association found", undefined, 403);
+        }
+
+        const isOwner = isOwnerRole(user.role);
+        if (!isOwner) {
+            const normalizedRole = normalizeRoleType(user.role);
+            const isAllowedRole = normalizedRole === "Manager" || normalizedRole === "Accountant";
+            const resolved = resolvePermissions(user.role, user.customPermissions as FlatPermissionMap);
+            const canViewInvoices = hasPermission(resolved, "invoices.view", false);
+            if (!isAllowedRole && !canViewInvoices) {
+                return errorResponse("FORBIDDEN", "You don't have permission to generate invoices", undefined, 403);
+            }
+        }
+
+        // ── Body Size Cap Verification ────────────────────────
+        const contentLength = request.headers.get("content-length");
+        if (contentLength && parseInt(contentLength, 10) > MAX_BODY_BYTES) {
+            return errorResponse("PAYLOAD_TOO_LARGE", "Request payload exceeds 1.5 MB limit", undefined, 413);
+        }
+
+        const rawBody = await request.text();
+        if (rawBody.length > MAX_BODY_BYTES) {
+            return errorResponse("PAYLOAD_TOO_LARGE", "Request payload exceeds 1.5 MB limit", undefined, 413);
+        }
+
+        let body: any;
+        try {
+            body = JSON.parse(rawBody);
+        } catch {
+            return errorResponse("INVALID_JSON", "Malformed JSON payload", undefined, 400);
+        }
+
         const invoiceData = body as InvoicePayload;
         invoiceNumber = invoiceData.invoiceNumber || "";
 
@@ -52,6 +106,14 @@ export async function POST(request: NextRequest) {
                 invoiceNumber,
                 400,
             );
+        }
+
+        // ── Strict Logo URL Validation ────────────────────────
+        if (invoiceData.company.logoUrl) {
+            if (!STRICT_LOGO_DATA_URI.test(invoiceData.company.logoUrl)) {
+                console.warn(`[invoice/generate-pdf] Untrusted or invalid logoUrl format rejected: ${invoiceData.company.logoUrl.slice(0, 50)}...`);
+                invoiceData.company.logoUrl = undefined;
+            }
         }
 
         // ── GSTIN format validation (warn, don't block) ──────
@@ -105,7 +167,7 @@ export async function POST(request: NextRequest) {
         const safeNumber = invoiceData.invoiceNumber.replace(/[^a-zA-Z0-9\-_]/g, "_");
         const filename = `Invoice_${safeNumber}.pdf`;
 
-        return new NextResponse(pdfBytes, {
+        return new NextResponse(pdfBytes as unknown as BodyInit, {
             status: 200,
             headers: {
                 "Content-Type": "application/pdf",

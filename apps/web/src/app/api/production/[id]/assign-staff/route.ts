@@ -68,10 +68,13 @@ export async function PATCH(
         const db = await getDb();
 
         // --- VALIDATION 4: verify all IDs are real staff users ---
+        const queryIds = uniqueIds.map((id) =>
+            ObjectId.isValid(id) ? new ObjectId(id) : (id as unknown as ObjectId)
+        );
         const staffUsers = await db
             .collection("users")
             .find({
-                _id: { $in: uniqueIds },
+                _id: { $in: queryIds },
                 role: "Staff",
             })
             .toArray();

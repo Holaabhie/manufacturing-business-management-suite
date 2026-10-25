@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
+import { ObjectId } from "mongodb";
 import { getEffectiveTier } from "@/lib/entitlements";
 
 export async function GET() {
@@ -50,8 +51,9 @@ export async function PUT(request: Request) {
     if (body.notification_preferences !== undefined) updateData.notification_preferences = body.notification_preferences;
     if (body.avatar_url !== undefined) updateData.avatar_url = body.avatar_url;
 
+    const userQueryId = ObjectId.isValid(user._id) ? new ObjectId(user._id) : (user._id as unknown as ObjectId);
     await db.collection("users").updateOne(
-      { _id: user._id },
+      { _id: userQueryId },
       { $set: updateData }
     );
 

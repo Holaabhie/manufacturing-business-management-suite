@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
+import { ObjectId } from "mongodb";
 
 // ─── Validation Constants ───────────────────────────────
 const GST_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
@@ -179,8 +180,9 @@ export async function POST(req: Request) {
     );
 
     // Update user profile — mark setup complete + save owner name
+    const userQueryId = ObjectId.isValid(userId) ? new ObjectId(userId) : (userId as unknown as ObjectId);
     await db.collection("users").updateOne(
-      { _id: userId },
+      { _id: userQueryId },
       {
         $set: {
           company_setup_complete: true,

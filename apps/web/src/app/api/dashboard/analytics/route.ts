@@ -79,10 +79,12 @@ export async function GET(request: Request) {
         const db = await getDb();
         const userId = getDataOwnerId(user);
 
-        // ── 1. Determine tenant signup date & available months ─────
-        let ownerDoc = await db.collection("users").findOne({ _id: userId });
-        if (!ownerDoc && ObjectId.isValid(userId)) {
+        let ownerDoc = null;
+        if (ObjectId.isValid(userId)) {
             ownerDoc = await db.collection("users").findOne({ _id: new ObjectId(userId) });
+        }
+        if (!ownerDoc) {
+            ownerDoc = await db.collection("users").findOne({ _id: userId as unknown as ObjectId });
         }
 
         const earliestOrder = await db.collection("orders").findOne(

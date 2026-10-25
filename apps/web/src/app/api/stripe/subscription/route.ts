@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { getSessionUser } from '@/lib/auth-session';
 import { getDb } from '@/lib/mongodb';
+import { ObjectId } from 'mongodb';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +14,8 @@ export async function GET(request: NextRequest) {
     }
 
     const db = await getDb();
-    const profile = await db.collection("users").findOne({ _id: user._id });
+    const userQueryId = ObjectId.isValid(user._id) ? new ObjectId(user._id) : (user._id as unknown as ObjectId);
+    const profile = await db.collection("users").findOne({ _id: userQueryId });
 
     if (!profile) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 });

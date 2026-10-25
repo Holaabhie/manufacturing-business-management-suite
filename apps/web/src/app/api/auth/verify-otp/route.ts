@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 import { createSession } from "@/lib/auth-session";
 import {
@@ -140,7 +141,7 @@ export async function POST(req: Request) {
           createdAt: now,
           updatedAt: now,
         } as any);
-        user = await db.collection("users").findOne({ _id: newId });
+        user = await db.collection("users").findOne({ _id: newId as unknown as ObjectId });
       } else {
         await db.collection("users").updateOne(
           { _id: user._id },
