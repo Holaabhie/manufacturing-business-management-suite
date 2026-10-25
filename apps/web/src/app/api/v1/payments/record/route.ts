@@ -282,7 +282,7 @@ export async function POST(req: NextRequest) {
 
     } catch (e: any) {
         if (e instanceof z.ZodError) {
-            return NextResponse.json({ success: false, error: e.errors }, { status: 400 });
+            return NextResponse.json({ success: false, error: e.issues }, { status: 400 });
         }
         console.error("[payments/record] Error:", e);
         return NextResponse.json({ success: false, error: e.message || 'Internal Server Error' }, { status: 500 });

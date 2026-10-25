@@ -6,7 +6,7 @@
  * based on the actual sum of all payments linked to the order.
  */
 
-import { type NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { withApiRoute } from "@/shared/middleware/with-api-route";
 import { withAuth, type AuthenticatedUser } from "@/shared/middleware/with-auth";
 import { withRateLimit } from "@/shared/middleware/rate-limiter";
@@ -20,7 +20,7 @@ export const POST = withRateLimit(
     withApiRoute(
         withAuth(async (_req: NextRequest, user: AuthenticatedUser, context?: RouteContext) => {
             if (user.role === "Staff") {
-                return Response.json({ error: "Forbidden: Staff members cannot reconcile payments" }, { status: 403 });
+                return NextResponse.json({ error: "Forbidden: Staff members cannot reconcile payments" }, { status: 403 });
             }
             const { id: orderId } = await context!.params;
             const userId = getDataOwnerId(user);
@@ -33,7 +33,7 @@ export const POST = withRateLimit(
             });
 
             if (!order) {
-                return Response.json({ error: "Order not found" }, { status: 404 });
+                return NextResponse.json({ error: "Order not found" }, { status: 404 });
             }
 
             // 2. Sum all payments linked to this order
@@ -79,7 +79,7 @@ export const POST = withRateLimit(
                 );
 
             // 6. Return updated values
-            return Response.json({
+            return NextResponse.json({
                 success: true,
                 orderId,
                 paymentStatus,

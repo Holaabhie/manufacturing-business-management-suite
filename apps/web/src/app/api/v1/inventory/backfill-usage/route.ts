@@ -18,6 +18,8 @@ import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { getDataOwnerId } from "@/lib/auth-session";
 
+export const maxDuration = 60;
+
 interface BackfillResult {
     ordersScanned: number;
     entriesBackfilled: number;
@@ -51,7 +53,7 @@ export const GET = withRateLimit(
 
             // Only allow Admin/Owner roles
             if (user.role !== "Admin" && user.role !== "Owner") {
-                return envelope.fail("Only Admin or Owner can run backfill", 403);
+                return envelope.error("Only Admin or Owner can run backfill", 403, "FORBIDDEN");
             }
 
             const result: BackfillResult = {
@@ -175,7 +177,7 @@ export const GET = withRateLimit(
                                         status: String(order.status || "processing"),
                                         usedAt: order.updatedAt || order.createdAt || new Date(),
                                     },
-                                } as Record<string, unknown>,
+                                } as any,
                                 $set: { updatedAt: new Date() },
                             }
                         );

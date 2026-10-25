@@ -50,7 +50,7 @@ export const GET = withRateLimit(
                 }
 
                 const repo = getOrderRepository();
-                const items = await repo.findAll(ownerId, { ...(clientId && { clientId }) }, orderIds);
+                const items = await repo.findAll(ownerId, { ...(clientId && { clientId }), restrictToOrderIds: orderIds });
                 const enriched = items.map((item: any) => ({
                     ...item,
                     productionId: orderToProdMap.get(item.id) || undefined,

@@ -20,7 +20,7 @@ export const GET = withRateLimit(
             const service = getOrderService();
             const item = await service.findById(id, getDataOwnerId(user));
             if (!item) {
-                return envelope.notFound("Order not found");
+                return envelope.error("Order not found", 404, "NOT_FOUND");
             }
             if (user.role === "Staff") {
                 return envelope.ok(sanitizeOrderForStaff(item));

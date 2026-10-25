@@ -115,7 +115,7 @@ export const PATCH = withRateLimit(
                                             status: "processing",
                                             usedAt: new Date(),
                                         },
-                                    } as Record<string, unknown>,
+                                    } as any,
                                     $set: { updatedAt: new Date() },
                                 },
                             );
