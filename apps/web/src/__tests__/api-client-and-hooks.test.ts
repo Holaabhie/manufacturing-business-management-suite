@@ -153,6 +153,104 @@ describe("Unified Data Fetching - apiClient & queryKeys", () => {
 
       await expect(apiClient.get("/api/v1/orders", { signal: controller.signal })).rejects.toThrow(ApiError);
     });
+
+    describe("401 Redirect Safety", () => {
+      const originalWindow = globalThis.window;
+
+      beforeEach(() => {
+        // Mock window.location
+        delete (globalThis as { window?: unknown }).window;
+        (globalThis as { window: unknown }).window = {
+          location: {
+            pathname: "/dashboard/orders",
+            href: "http://localhost:3000/dashboard/orders",
+          },
+        };
+      });
+
+      afterEach(() => {
+        (globalThis as { window: unknown }).window = originalWindow;
+      });
+
+      it("does NOT redirect when endpoint is /api/auth/* and propagates ApiError", async () => {
+        globalThis.fetch = vi.fn().mockResolvedValue(
+          new Response(JSON.stringify({ error: "Invalid credentials" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+          })
+        );
+
+        await expect(apiClient.post("/api/auth/login", { email: "test@example.com" })).rejects.toThrow(ApiError);
+        expect(window.location.href).toBe("http://localhost:3000/dashboard/orders");
+      });
+
+      it("does NOT redirect when user is already on a public page (/login, /register, etc.)", async () => {
+        window.location.pathname = "/login";
+        window.location.href = "http://localhost:3000/login";
+
+        globalThis.fetch = vi.fn().mockResolvedValue(
+          new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+          })
+        );
+
+        await expect(apiClient.get("/api/v1/profile")).rejects.toThrow(ApiError);
+        expect(window.location.href).toBe("http://localhost:3000/login");
+      });
+
+      it("does NOT redirect when skipAuthRedirect is true", async () => {
+        window.location.pathname = "/dashboard/settings";
+        window.location.href = "http://localhost:3000/dashboard/settings";
+
+        globalThis.fetch = vi.fn().mockResolvedValue(
+          new Response(JSON.stringify({ error: "Session expired" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+          })
+        );
+
+        await expect(apiClient.get("/api/v1/notifications", { skipAuthRedirect: true })).rejects.toThrow(ApiError);
+        expect(window.location.href).toBe("http://localhost:3000/dashboard/settings");
+      });
+
+      it("redirects to /login?redirect=... on protected routes when 401 is received", async () => {
+        window.location.pathname = "/dashboard/orders";
+        window.location.href = "http://localhost:3000/dashboard/orders";
+
+        globalThis.fetch = vi.fn().mockResolvedValue(
+          new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+          })
+        );
+
+        await expect(apiClient.get("/api/v1/orders")).rejects.toThrow(ApiError);
+        expect(window.location.href).toBe("/login?redirect=%2Fdashboard%2Forders");
+      });
+    });
+  });
+
+  describe("Query Client & Account-Switch Cache Isolation", () => {
+    it("clears all queries and caches on clearAppQueryCache for account switch isolation", async () => {
+      const { getQueryClient, clearAppQueryCache } = await import("@/lib/query-client");
+      const qc = getQueryClient();
+
+      qc.setQueryData(["orders"], [{ id: "order-1", total: 1000 }]);
+      qc.setQueryData(["clients"], [{ id: "client-1", name: "Tenant A Client" }]);
+      qc.setQueryData(["inventory"], [{ id: "inv-1", name: "Steel Coil" }]);
+
+      expect(qc.getQueryData(["orders"])).toBeDefined();
+      expect(qc.getQueryData(["clients"])).toBeDefined();
+      expect(qc.getQueryData(["inventory"])).toBeDefined();
+
+      clearAppQueryCache();
+
+      expect(qc.getQueryData(["orders"])).toBeUndefined();
+      expect(qc.getQueryData(["clients"])).toBeUndefined();
+      expect(qc.getQueryData(["inventory"])).toBeUndefined();
+      expect(qc.getQueryCache().getAll().length).toBe(0);
+    });
   });
 
   describe("Hooks Exports Verification", () => {

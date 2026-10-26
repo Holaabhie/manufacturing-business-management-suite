@@ -36,6 +36,7 @@ import { AuthField, PhoneField, PasswordField } from "@/components/auth";
 import { User as UserIcon, Mail } from "lucide-react";
 import { fetchWithAuthTimeout } from "@/lib/auth-timeout";
 import { getStoredLocale, type Locale } from "@/lib/i18n";
+import { clearAppQueryCache } from "@/lib/query-client";
 
 type AuthMode = "login" | "register";
 type Portal = "admin" | "staff";
@@ -247,6 +248,7 @@ export default function LoginPage() {
 
       setAttemptsRemaining(null);
       setLockedMinutes(null);
+      clearAppQueryCache();
 
       // Incomplete admin company setup
       if (json.role === "Admin" && json.company_setup_complete === false) {
@@ -312,6 +314,8 @@ export default function LoginPage() {
         return;
       }
 
+      clearAppQueryCache();
+
       // First-time setup
       if (json.firstLoginCompleted === false) {
         toast.success("Welcome! Please complete your account setup.");
@@ -372,6 +376,7 @@ export default function LoginPage() {
         throw new Error(json?.message || json?.error || "OTP Verification failed");
       }
 
+      clearAppQueryCache();
       toast.success("Identity verified! Welcome back, Admin!");
       try {
         sessionStorage.setItem("imLoginRedirect", "true");
@@ -416,6 +421,7 @@ export default function LoginPage() {
         const json = await res.json().catch(() => ({}));
         throw new Error(json?.error || "Invalid OTP");
       }
+      clearAppQueryCache();
       toast.success("Verification successful!");
       try {
         sessionStorage.setItem("imLoginRedirect", "true");

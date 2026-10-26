@@ -56,6 +56,7 @@ export function useInventory(filters?: Record<string, unknown>) {
       }
       return [];
     },
+    staleTime: 30 * 1000,
   });
 }
 
@@ -70,6 +71,7 @@ export function useInventoryItem(id: string, options?: { enabled?: boolean }) {
       return res as InventoryItem;
     },
     enabled: Boolean(id) && (options?.enabled ?? true),
+    staleTime: 30 * 1000,
   });
 }
 
@@ -85,6 +87,7 @@ export function useInventoryForecast(options?: { enabled?: boolean }) {
       return [];
     },
     enabled: options?.enabled ?? true,
+    staleTime: 30 * 1000,
   });
 }
 
@@ -95,6 +98,7 @@ export function useCreateInventoryItem() {
       apiClient.post<InventoryItem>("/api/v1/inventory", payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.inventory });
+      qc.invalidateQueries({ queryKey: queryKeys.inventoryForecast });
       toast.success("Inventory item added");
     },
     onError: (err: Error) => {
@@ -111,6 +115,7 @@ export function useUpdateInventoryItem() {
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: queryKeys.inventory });
       qc.invalidateQueries({ queryKey: queryKeys.inventoryItem(variables.id) });
+      qc.invalidateQueries({ queryKey: queryKeys.inventoryForecast });
       toast.success("Inventory item updated");
     },
     onError: (err: Error) => {
@@ -125,6 +130,7 @@ export function useDeleteInventoryItem() {
     mutationFn: (id: string) => apiClient.delete<{ success: boolean }>(`/api/v1/inventory/${id}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.inventory });
+      qc.invalidateQueries({ queryKey: queryKeys.inventoryForecast });
       toast.success("Inventory item deleted");
     },
     onError: (err: Error) => {

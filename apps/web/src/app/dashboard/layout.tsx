@@ -6,6 +6,7 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { usePathname, useRouter } from "next/navigation";
 import usePageStateCache from "@/infrastructure/state/pageStateCache";
 import { clearAllDrafts } from "@/hooks/useDraftPersistence";
+import { clearAppQueryCache } from "@/lib/query-client";
 import {
   LayoutDashboard,
   Users,
@@ -73,6 +74,7 @@ import {
 import { CommandPalette } from "@/components/CommandPalette";
 import { InlineMobileSearch } from "@/components/ui/InlineMobileSearch";
 import { IOSToastContainer } from "@/components/ui/ios/IOSToast";
+import { IosInstallHint } from "@/components/ui/ios/IosInstallHint";
 import {
   filterNavigationByRole,
   filterMobileNavByRole,
@@ -335,6 +337,7 @@ export default function DashboardLayout({
   const handleLogout = async () => {
     usePageStateCache.getState().clearAll();
     clearAllDrafts();
+    clearAppQueryCache();
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
   };
@@ -569,7 +572,7 @@ export default function DashboardLayout({
       {/* ════════════ MAIN CONTENT AREA ════════════ */}
       <div
         className={cn(
-          "flex flex-col min-w-0 overflow-x-clip transition-all duration-200 ease-in-out",
+          "flex flex-col min-w-0 overflow-x-hidden supports-[overflow:clip]:overflow-x-clip transition-all duration-200 ease-in-out",
           "md:pl-[240px]",
           isCollapsed && "md:pl-[72px]"
         )}
@@ -773,7 +776,7 @@ export default function DashboardLayout({
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
-                    className="w-[240px] max-h-[calc(100vh-70px)] overflow-y-auto rounded-lg p-0 scrollbar-thin"
+                    className="w-[240px] max-h-[100dvh] overflow-y-auto rounded-lg p-0 scrollbar-thin"
                     align="end"
                   >
                     {/* Header Section */}
@@ -906,7 +909,7 @@ export default function DashboardLayout({
         {/* Main Content */}
         <main
           className={cn(
-            "flex-1 min-w-0 w-full max-w-full p-4 md:p-6 lg:p-8 pb-24 md:pb-8 transition-opacity duration-200 overflow-x-clip",
+            "flex-1 min-w-0 w-full max-w-full p-4 md:p-6 lg:p-8 pb-24 md:pb-8 transition-opacity duration-200 overflow-x-hidden supports-[overflow:clip]:overflow-x-clip",
             isMobileSearchActive && "opacity-35 pointer-events-none md:opacity-100 md:pointer-events-auto"
           )}
           aria-hidden={isMobileSearchActive ? "true" : undefined}
@@ -917,7 +920,7 @@ export default function DashboardLayout({
                on manual useEffect pages (users/, settings/team/) and keeps
                Suspense fallbacks from appearing mid-transition. */}
           <PageTransition>
-            <div className="max-w-[1400px] mx-auto overflow-x-hidden min-w-0 w-full">
+            <div className="max-w-[1400px] mx-auto overflow-x-hidden supports-[overflow:clip]:overflow-x-clip min-w-0 w-full">
               {children}
             </div>
           </PageTransition>
@@ -927,12 +930,12 @@ export default function DashboardLayout({
       {/* ════════════ MOBILE BOTTOM NAVIGATION — Floating Iconbar ════════════ */}
       <div
         className={cn(
-          "md:hidden fixed bottom-4 left-4 right-4 z-50 pointer-events-none transition-opacity duration-200",
+          "md:hidden fixed left-4 right-4 z-50 pointer-events-none transition-opacity duration-200",
           isMobileSearchActive && "opacity-35 pointer-events-none"
         )}
         aria-hidden={isMobileSearchActive ? "true" : undefined}
         {...(isMobileSearchActive ? { inert: true } : {})}
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
       >
         {/* floating-nav-fade gradient removed — redundant with solid rounded bar background */}
 
@@ -1030,6 +1033,9 @@ export default function DashboardLayout({
 
       {/* Toast Notification Container */}
       <IOSToastContainer />
+
+      {/* iOS Safari PWA Install Hint */}
+      <IosInstallHint />
     </div>
   );
 }

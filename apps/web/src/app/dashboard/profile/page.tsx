@@ -34,6 +34,7 @@ import { variantsFadeUp } from "@/lib/motion";
 import { toast } from "sonner";
 import usePageStateCache from "@/infrastructure/state/pageStateCache";
 import { clearAllDrafts } from "@/hooks/useDraftPersistence";
+import { clearAppQueryCache } from "@/lib/query-client";
 import {
   Dialog,
   DialogContent,
@@ -182,6 +183,7 @@ function ProfileContent() {
         return;
       }
 
+      clearAppQueryCache();
       toast.success(`Switched to ${targetRole} Account (${targetEmail})`);
       setIsSwitchAccountOpen(false);
 
@@ -305,6 +307,7 @@ function ProfileContent() {
     try {
       usePageStateCache.getState().clearAll();
       clearAllDrafts();
+      clearAppQueryCache();
       await fetch("/api/auth/logout", { method: "POST" });
       window.location.href = "/login";
     } catch (error) {
@@ -347,10 +350,10 @@ function ProfileContent() {
       variants={variantsFadeUp}
       initial="hidden"
       animate="visible"
-      className="max-w-6xl mx-auto pb-12 px-4 sm:px-6 overflow-x-hidden min-w-0"
+      className="max-w-6xl mx-auto pb-12 overflow-x-hidden min-w-0 w-full"
     >
       {/* ── Page Header ── */}
-      <div className="flex flex-col gap-1.5 pt-4 sm:pt-6">
+      <div className="flex flex-col gap-1.5 pt-2 sm:pt-6">
         <h1 className="text-[28px] sm:text-[34px] font-bold tracking-tight text-[var(--foreground)]">Profile</h1>
         <p className="text-[15px] sm:text-[17px] text-[var(--muted-foreground)]">Manage your account and personal details.</p>
       </div>
@@ -364,22 +367,22 @@ function ProfileContent() {
         </div>
 
         {/* Profile info below cover */}
-        <div className="px-5 pb-6 sm:px-8">
-          <div className="-mt-12 flex flex-col items-start gap-4 sm:-mt-14 sm:flex-row sm:items-end sm:justify-between">
-            <div className="flex items-end gap-4">
+        <div className="px-4 pb-6 sm:px-8">
+          <div className="-mt-12 flex flex-col items-start gap-4 sm:-mt-14 sm:flex-row sm:items-end sm:justify-between min-w-0 w-full">
+            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3 sm:gap-4 min-w-0 w-full">
               {/* Avatar with camera button */}
-              <div className="relative group">
-                <Avatar className="h-24 w-24 sm:h-28 sm:w-28 ring-4 ring-[var(--card)] shadow-[var(--shadow-sm)] group-hover:opacity-90 transition-all duration-300">
+              <div className="relative group shrink-0">
+                <Avatar className="h-20 w-20 sm:h-28 sm:w-28 ring-4 ring-[var(--card)] shadow-[var(--shadow-sm)] group-hover:opacity-90 transition-all duration-300">
                   <AvatarImage src={profile?.avatar_url} />
-                  <AvatarFallback className="bg-gradient-to-br from-[var(--primary)] to-[#5856D6] text-white text-2xl sm:text-3xl font-semibold">
+                  <AvatarFallback className="bg-gradient-to-br from-[var(--primary)] to-[#5856D6] text-white text-xl sm:text-3xl font-semibold">
                     {getInitials()}
                   </AvatarFallback>
                 </Avatar>
                 <label
                   htmlFor="avatar-upload-hero"
-                  className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--primary)] text-white shadow-md ring-2 ring-[var(--card)] cursor-pointer hover:scale-105 active:scale-95 transition-transform z-10"
+                  className="absolute bottom-0 right-0 flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-[var(--primary)] text-white shadow-md ring-2 ring-[var(--card)] cursor-pointer hover:scale-105 active:scale-95 transition-transform z-10"
                 >
-                  {uploading ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
+                  {uploading ? <Loader2 size={13} className="animate-spin" /> : <Camera size={13} />}
                 </label>
                 <input
                   type="file"
@@ -392,25 +395,25 @@ function ProfileContent() {
               </div>
 
               {/* Name + role + email */}
-              <div className="pb-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-[20px] sm:text-[22px] font-semibold text-[var(--foreground)]">
+              <div className="pb-1 min-w-0 flex-1 w-full sm:w-auto">
+                <div className="flex items-center gap-2 flex-wrap min-w-0">
+                  <h2 className="text-[18px] sm:text-[22px] font-semibold text-[var(--foreground)] truncate max-w-full">
                     {formData.full_name || "Admin User"}
                   </h2>
-                  <IOSBadge color="blue" variant="tinted" size="small" className="gap-1">
+                  <IOSBadge color="blue" variant="tinted" size="small" className="gap-1 shrink-0">
                     <ShieldCheck className="h-3 w-3" /> {formData.role}
                   </IOSBadge>
                 </div>
-                <p className="text-[13px] sm:text-[14px] text-[var(--muted-foreground)] mt-0.5">{user?.email}</p>
+                <p className="text-[13px] sm:text-[14px] text-[var(--muted-foreground)] mt-0.5 truncate break-all max-w-full min-w-0">{user?.email}</p>
               </div>
             </div>
           </div>
 
           {/* Stat pills */}
-          <div className="mt-5 flex flex-wrap gap-2">
-            <Pill icon={<Calendar className="h-3.5 w-3.5" />} text={`Member since ${getMemberSinceDate()}`} />
-            <Pill icon={<Clock className="h-3.5 w-3.5" />} text="Last login 2h ago" />
-            <Pill icon={<Check className="h-3.5 w-3.5 text-[var(--erp-success)]" />} text="Account verified" />
+          <div className="mt-4 sm:mt-5 flex flex-wrap gap-2 min-w-0">
+            <Pill icon={<Calendar className="h-3.5 w-3.5 shrink-0" />} text={`Member since ${getMemberSinceDate()}`} />
+            <Pill icon={<Clock className="h-3.5 w-3.5 shrink-0" />} text="Last login 2h ago" />
+            <Pill icon={<Check className="h-3.5 w-3.5 text-[var(--erp-success)] shrink-0" />} text="Account verified" />
           </div>
         </div>
       </IOSCard>
