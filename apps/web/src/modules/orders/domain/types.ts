@@ -160,6 +160,18 @@ export interface UpdateOrderDTO extends Partial<CreateOrderDTO> { }
 export interface IOrderRepository {
     findById(id: string, userId: string): Promise<Order | null>;
     findAll(userId: string, filters?: { clientId?: string; restrictToOrderIds?: string[] }): Promise<Order[]>;
+    findPaginated(
+        userId: string,
+        filters?: {
+            clientId?: string;
+            restrictToOrderIds?: string[];
+            page?: number;
+            limit?: number;
+            sort?: string;
+            order?: "asc" | "desc";
+            q?: string;
+        }
+    ): Promise<{ items: Order[]; total: number }>;
     create(userId: string, data: CreateOrderDTO): Promise<Order>;
     update(id: string, userId: string, data: UpdateOrderDTO): Promise<Order | null>;
     updateStatus(id: string, userId: string, status: string): Promise<Order | null>;

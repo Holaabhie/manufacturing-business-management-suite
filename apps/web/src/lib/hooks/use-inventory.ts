@@ -5,10 +5,11 @@
  * Built with apiClient and centralized queryKeys.
  */
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
+import type { PaginationInfo } from "@/shared/lib/pagination";
 
 export interface InventoryItem {
   id: string;
@@ -40,23 +41,29 @@ export interface InventoryForecast {
   suggestedReorderDate: string;
 }
 
+export type PaginatedInventoryList = InventoryItem[] & { pagination?: PaginationInfo };
+
 export function useInventory(filters?: Record<string, unknown>) {
-  return useQuery({
+  return useQuery<PaginatedInventoryList>({
     queryKey: filters ? [...queryKeys.inventory, filters] : queryKeys.inventory,
     queryFn: async () => {
-      const res = await apiClient.get<InventoryItem[] | { data: InventoryItem[] }>(
+      const res = await apiClient.get<InventoryItem[] | { data: InventoryItem[]; pagination?: PaginationInfo }>(
         "/api/v1/inventory",
         {
           params: filters as Record<string, string | number | boolean>,
         }
       );
-      if (Array.isArray(res)) return res;
-      if (res && typeof res === "object" && "data" in res && Array.isArray(res.data)) {
-        return res.data;
+      if (res && typeof res === "object" && "data" in res && Array.isArray((res as { data: InventoryItem[] }).data)) {
+        const arr = [...(res as { data: InventoryItem[] }).data] as PaginatedInventoryList;
+        if ((res as { pagination?: PaginationInfo }).pagination) {
+          arr.pagination = (res as { pagination?: PaginationInfo }).pagination;
+        }
+        return arr;
       }
-      return [];
+      return (Array.isArray(res) ? [...res] : []) as PaginatedInventoryList;
     },
     staleTime: 30 * 1000,
+    placeholderData: keepPreviousData,
   });
 }
 

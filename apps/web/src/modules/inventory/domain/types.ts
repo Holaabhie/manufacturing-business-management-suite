@@ -73,6 +73,17 @@ export interface UpdateInventoryItemDTO {
 export interface IInventoryRepository {
     findById(id: string, userId: string): Promise<InventoryItem | null>;
     findAll(userId: string): Promise<InventoryItem[]>;
+    findPaginated(
+        userId: string,
+        options?: {
+            page?: number;
+            limit?: number;
+            sort?: string;
+            order?: "asc" | "desc";
+            q?: string;
+            category?: string;
+        }
+    ): Promise<{ items: InventoryItem[]; total: number }>;
     create(userId: string, data: CreateInventoryItemDTO): Promise<InventoryItem>;
     update(id: string, userId: string, data: UpdateInventoryItemDTO): Promise<InventoryItem | null>;
     delete(id: string, userId: string): Promise<boolean>;

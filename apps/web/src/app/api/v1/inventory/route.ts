@@ -13,7 +13,7 @@
  *   - handler:       Pure business logic delegation to service
  */
 
-import { type NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { withApiRoute } from "@/shared/middleware/with-api-route";
 import { withAuth, type AuthenticatedUser } from "@/shared/middleware/with-auth";
 import { withRateLimit } from "@/shared/middleware/rate-limiter";
@@ -22,6 +22,7 @@ import { getInventoryService } from "@/modules/inventory";
 import type { InventoryItem } from "@/modules/inventory";
 import { getDataOwnerId } from "@/lib/auth-session";
 import { assertCanCreate } from "@/lib/entitlements";
+import { paginationQuerySchema, buildPaginatedEnvelope } from "@/shared/lib/pagination";
 
 // ─── Response Mapper: Domain Entity → Frontend snake_case format ──
 // The frontend expects snake_case fields (purchase_cost_per_unit, min_stock_level, etc.)
@@ -52,9 +53,29 @@ function toApiResponse(item: InventoryItem) {
 // Middleware: rate-limit (read tier) → error handling → auth
 export const GET = withRateLimit(
     withApiRoute(
-        withAuth(async (_request: NextRequest, user: AuthenticatedUser) => {
+        withAuth(async (request: NextRequest, user: AuthenticatedUser) => {
+            const searchParams = request.nextUrl.searchParams;
+            const hasPagination = searchParams.has("page") || searchParams.has("limit") || searchParams.has("q") || searchParams.has("sort") || searchParams.has("category");
+
+            const ownerId = getDataOwnerId(user);
             const service = getInventoryService();
-            const items = await service.findAll(getDataOwnerId(user));
+
+            if (hasPagination) {
+                const parsed = paginationQuerySchema.safeParse({
+                    page: searchParams.get("page") ?? 1,
+                    limit: searchParams.get("limit") ?? 25,
+                    sort: searchParams.get("sort") ?? "name",
+                    order: searchParams.get("order") ?? "asc",
+                    q: searchParams.get("q") ?? undefined,
+                });
+
+                const query = parsed.success ? parsed.data : { page: 1, limit: 25, sort: "name", order: "asc" as const };
+                const category = searchParams.get("category") || undefined;
+                const { items, total } = await service.findPaginated(ownerId, { ...query, category });
+                return NextResponse.json(buildPaginatedEnvelope(items.map(toApiResponse), query.page, query.limit, total));
+            }
+
+            const items = await service.findAll(ownerId);
             return envelope.ok(items.map(toApiResponse));
         }),
     ),

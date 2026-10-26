@@ -2,7 +2,7 @@
  * Orders API — /api/v1/orders
  */
 
-import { type NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { withApiRoute } from "@/shared/middleware/with-api-route";
 import { withAuth, type AuthenticatedUser } from "@/shared/middleware/with-auth";
 import { withRateLimit } from "@/shared/middleware/rate-limiter";
@@ -11,12 +11,25 @@ import { getOrderService, getOrderRepository } from "@/modules/orders";
 import { getDataOwnerId } from "@/lib/auth-session";
 import { assertCanCreate } from "@/lib/entitlements";
 import { sanitizeOrderForStaff } from "@/lib/sanitizeOrderForStaff";
+import { paginationQuerySchema, buildPaginatedEnvelope } from "@/shared/lib/pagination";
 
 export const GET = withRateLimit(
     withApiRoute(
         withAuth(async (req: NextRequest, user: AuthenticatedUser) => {
-            const clientId = req.nextUrl.searchParams.get("clientId");
+            const searchParams = req.nextUrl.searchParams;
+            const clientId = searchParams.get("clientId") || undefined;
             const ownerId = getDataOwnerId(user);
+            const hasPagination = searchParams.has("page") || searchParams.has("limit") || searchParams.has("q") || searchParams.has("sort");
+
+            const parsed = paginationQuerySchema.safeParse({
+                page: searchParams.get("page") ?? 1,
+                limit: searchParams.get("limit") ?? 25,
+                sort: searchParams.get("sort") ?? "createdAt",
+                order: searchParams.get("order") ?? "desc",
+                q: searchParams.get("q") ?? undefined,
+            });
+
+            const query = parsed.success ? parsed.data : { page: 1, limit: 25, sort: "createdAt", order: "desc" as const };
 
             if (user.role === "Staff") {
                 const { getDb } = await import("@/lib/mongodb");
@@ -39,7 +52,9 @@ export const GET = withRateLimit(
                 ];
 
                 if (orderIds.length === 0) {
-                    return envelope.ok([]);
+                    return hasPagination
+                        ? NextResponse.json(buildPaginatedEnvelope([], query.page, query.limit, 0))
+                        : envelope.ok([]);
                 }
 
                 const orderToProdMap = new Map<string, string>();
@@ -50,6 +65,23 @@ export const GET = withRateLimit(
                 }
 
                 const repo = getOrderRepository();
+                if (hasPagination) {
+                    const { items, total } = await repo.findPaginated(ownerId, {
+                        clientId,
+                        restrictToOrderIds: orderIds,
+                        page: query.page,
+                        limit: query.limit,
+                        sort: query.sort,
+                        order: query.order,
+                        q: query.q,
+                    });
+                    const enriched = items.map((item) => ({
+                        ...item,
+                        productionId: orderToProdMap.get(item.id) || undefined,
+                    }));
+                    return NextResponse.json(buildPaginatedEnvelope(sanitizeOrderForStaff(enriched), query.page, query.limit, total));
+                }
+
                 const items = await repo.findAll(ownerId, { ...(clientId && { clientId }), restrictToOrderIds: orderIds });
                 const enriched = items.map((item) => ({
                     ...item,
@@ -59,6 +91,18 @@ export const GET = withRateLimit(
             }
 
             const service = getOrderService();
+            if (hasPagination) {
+                const { items, total } = await service.findPaginated(ownerId, {
+                    clientId,
+                    page: query.page,
+                    limit: query.limit,
+                    sort: query.sort,
+                    order: query.order,
+                    q: query.q,
+                });
+                return NextResponse.json(buildPaginatedEnvelope(items, query.page, query.limit, total));
+            }
+
             const items = await service.findAll(ownerId, { ...(clientId && { clientId }) });
             return envelope.ok(items);
         }),

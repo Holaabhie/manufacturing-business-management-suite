@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 import type { IClientRepository, Client, CreateClientDTO, UpdateClientDTO, ClientProduct, CreateClientProductDTO, ClientProductMaterial, CreateClientProductMaterialDTO } from "../domain/types";
+import { escapeRegex } from "@/shared/lib/pagination";
 
 interface ClientDoc {
     _id: ObjectId;
@@ -58,6 +59,49 @@ export class MongoClientRepository implements IClientRepository {
         return docs.map(toEntity);
     }
 
+    async findPaginated(
+        userId: string,
+        options?: {
+            page?: number;
+            limit?: number;
+            sort?: string;
+            order?: "asc" | "desc";
+            q?: string;
+        }
+    ): Promise<{ items: Client[]; total: number }> {
+        const c = await this.col();
+        const filter: Record<string, unknown> = { userId };
+
+        if (options?.q && options.q.trim()) {
+            const safeQ = escapeRegex(options.q.trim());
+            filter.$or = [
+                { name: { $regex: safeQ, $options: "i" } },
+                { email: { $regex: safeQ, $options: "i" } },
+                { phone: { $regex: safeQ, $options: "i" } },
+                { gstin: { $regex: safeQ, $options: "i" } },
+            ];
+        }
+
+        const total = await c.countDocuments(filter);
+
+        const page = Math.max(1, options?.page ?? 1);
+        const limit = Math.min(100, Math.max(1, options?.limit ?? 25));
+
+        const sortField = options?.sort === "createdAt" || options?.sort === "updatedAt" || options?.sort === "phone"
+            ? options.sort
+            : "name";
+        const sortDir = options?.order === "desc" ? -1 : 1;
+
+        const docs = await c
+            .find(filter)
+            .sort({ [sortField]: sortDir })
+            .skip((page - 1) * limit)
+            .limit(limit)
+            .toArray();
+
+        return { items: docs.map(toEntity), total };
+    }
+
     async create(userId: string, data: CreateClientDTO): Promise<Client> {
         const c = await this.col();
         const now = new Date();
@@ -95,7 +139,7 @@ export class MongoClientRepository implements IClientRepository {
                 { $set: fields },
                 { returnDocument: "after" },
             );
-            return result ? toEntity(result as unknown as ClientDoc) : null;
+            return result ? toEntity(result) : null;
         } catch { return null; }
     }
 

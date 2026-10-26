@@ -9,6 +9,19 @@ export class ClientService {
         return this.repo.findAll(userId);
     }
 
+    async findPaginated(
+        userId: string,
+        options?: {
+            page?: number;
+            limit?: number;
+            sort?: string;
+            order?: "asc" | "desc";
+            q?: string;
+        }
+    ): Promise<{ items: Client[]; total: number }> {
+        return this.repo.findPaginated(userId, options);
+    }
+
     async findById(id: string, userId: string): Promise<Client> {
         const client = await this.repo.findById(id, userId);
         if (!client) throw new NotFoundError("Client", id);

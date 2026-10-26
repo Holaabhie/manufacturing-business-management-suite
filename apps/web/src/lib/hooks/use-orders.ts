@@ -8,11 +8,13 @@ import {
     useQuery,
     useMutation,
     useQueryClient,
+    keepPreviousData,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { playCompletionSound } from "@/hooks/useCompletionSound";
 import { apiClient } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
+import type { PaginationInfo } from "@/shared/lib/pagination";
 import { useClients } from "./use-clients";
 import { useInventory } from "./use-inventory";
 
@@ -88,18 +90,25 @@ export async function apiFetch<T>(url: string): Promise<T> {
 
 // ─── Queries ─────────────────────────────────────────────
 
+export type PaginatedOrderList = OrderItem[] & { pagination?: PaginationInfo };
+
 export function useOrders(filters?: Record<string, unknown>) {
-    return useQuery({
+    return useQuery<PaginatedOrderList>({
         queryKey: filters ? [...queryKeys.orders, filters] : queryKeys.orders,
         queryFn: async () => {
-            const data = await apiClient.get<OrderItem[] | { data: OrderItem[] }>("/api/v1/orders", {
+            const res = await apiClient.get<OrderItem[] | { data: OrderItem[]; pagination?: PaginationInfo }>("/api/v1/orders", {
                 params: filters as Record<string, string | number | boolean>,
             });
-            if (data && typeof data === "object" && "data" in data && Array.isArray((data as { data: OrderItem[] }).data)) {
-                return (data as { data: OrderItem[] }).data;
+            if (res && typeof res === "object" && "data" in res && Array.isArray((res as { data: OrderItem[] }).data)) {
+                const arr = [...(res as { data: OrderItem[] }).data] as PaginatedOrderList;
+                if ((res as { pagination?: PaginationInfo }).pagination) {
+                    arr.pagination = (res as { pagination?: PaginationInfo }).pagination;
+                }
+                return arr;
             }
-            return (Array.isArray(data) ? data : []) as OrderItem[];
+            return (Array.isArray(res) ? [...res] : []) as PaginatedOrderList;
         },
+        placeholderData: keepPreviousData,
     });
 }
 

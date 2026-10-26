@@ -87,6 +87,16 @@ export interface CreateClientProductMaterialDTO {
 export interface IClientRepository {
     findById(id: string, userId: string): Promise<Client | null>;
     findAll(userId: string): Promise<Client[]>;
+    findPaginated(
+        userId: string,
+        options?: {
+            page?: number;
+            limit?: number;
+            sort?: string;
+            order?: "asc" | "desc";
+            q?: string;
+        }
+    ): Promise<{ items: Client[]; total: number }>;
     create(userId: string, data: CreateClientDTO): Promise<Client>;
     update(id: string, userId: string, data: UpdateClientDTO): Promise<Client | null>;
     delete(id: string, userId: string): Promise<boolean>;

@@ -11,6 +11,21 @@ export class OrderService {
         return this.repo.findAll(userId, filters);
     }
 
+    async findPaginated(
+        userId: string,
+        filters?: {
+            clientId?: string;
+            restrictToOrderIds?: string[];
+            page?: number;
+            limit?: number;
+            sort?: string;
+            order?: "asc" | "desc";
+            q?: string;
+        }
+    ): Promise<{ items: Order[]; total: number }> {
+        return this.repo.findPaginated(userId, filters);
+    }
+
     async findById(id: string, userId: string): Promise<Order> {
         const order = await this.repo.findById(id, userId);
         if (!order) throw new NotFoundError("Order", id);

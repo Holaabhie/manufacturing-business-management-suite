@@ -38,6 +38,23 @@ export class InventoryService {
     }
 
     /**
+     * Get paginated inventory items for a user with sorting and search.
+     */
+    async findPaginated(
+        userId: string,
+        options?: {
+            page?: number;
+            limit?: number;
+            sort?: string;
+            order?: "asc" | "desc";
+            q?: string;
+            category?: string;
+        }
+    ): Promise<{ items: InventoryItem[]; total: number }> {
+        return this.repo.findPaginated(userId, options);
+    }
+
+    /**
      * Get a single inventory item by ID.
      */
     async findById(id: string, userId: string): Promise<InventoryItem> {

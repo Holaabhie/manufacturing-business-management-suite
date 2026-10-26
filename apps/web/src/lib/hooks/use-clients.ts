@@ -5,10 +5,11 @@
  * Built with apiClient and centralized queryKeys.
  */
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
+import type { PaginationInfo } from "@/shared/lib/pagination";
 
 export interface ClientProductMaterial {
   id: string;
@@ -47,19 +48,25 @@ export interface Client {
   products?: ClientProduct[];
 }
 
+export type PaginatedClientList = Client[] & { pagination?: PaginationInfo };
+
 export function useClients(filters?: Record<string, unknown>) {
-  return useQuery({
+  return useQuery<PaginatedClientList>({
     queryKey: filters ? [...queryKeys.clients, filters] : queryKeys.clients,
     queryFn: async () => {
-      const res = await apiClient.get<Client[] | { data: Client[] }>("/api/clients", {
+      const res = await apiClient.get<Client[] | { data: Client[]; pagination?: PaginationInfo }>("/api/v1/clients", {
         params: filters as Record<string, string | number | boolean>,
       });
-      if (Array.isArray(res)) return res;
-      if (res && typeof res === "object" && "data" in res && Array.isArray(res.data)) {
-        return res.data;
+      if (res && typeof res === "object" && "data" in res && Array.isArray((res as { data: Client[] }).data)) {
+        const arr = [...(res as { data: Client[] }).data] as PaginatedClientList;
+        if ((res as { pagination?: PaginationInfo }).pagination) {
+          arr.pagination = (res as { pagination?: PaginationInfo }).pagination;
+        }
+        return arr;
       }
-      return [];
+      return (Array.isArray(res) ? [...res] : []) as PaginatedClientList;
     },
+    placeholderData: keepPreviousData,
   });
 }
 

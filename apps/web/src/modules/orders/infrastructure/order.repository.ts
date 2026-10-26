@@ -1,9 +1,10 @@
-import { ObjectId } from "mongodb";
+import { ObjectId, type Document } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 import type { IOrderRepository, Order, OrderItem, OrderMaterial, CreateOrderDTO, UpdateOrderDTO, LegacyDeductionItem } from "../domain/types";
 import { getFinancialYear } from "@/lib/utils/financial-year";
+import { escapeRegex } from "@/shared/lib/pagination";
 
-function toEntity(doc: Record<string, unknown>, client?: Record<string, unknown> | null): Order {
+function toEntity(doc: Document, client?: Document | null): Order {
     const totalAmount = Number(doc.total_amount || doc.grand_total || 0);
     const totalPaid = Number(doc.total_paid || 0);
     const balanceDue = Number(doc.balance_due ?? (totalAmount - totalPaid));
@@ -150,6 +151,116 @@ export class MongoOrderRepository implements IOrderRepository {
         return docs.map((d) => toEntity(d as Record<string, unknown>, (d as Record<string, unknown>).clientDoc as Record<string, unknown> | null));
     }
 
+    async findPaginated(
+        userId: string,
+        filters?: {
+            clientId?: string;
+            restrictToOrderIds?: string[];
+            page?: number;
+            limit?: number;
+            sort?: string;
+            order?: "asc" | "desc";
+            q?: string;
+        }
+    ): Promise<{ items: Order[]; total: number }> {
+        const col = await this.ordersCol();
+        const matchStage: Record<string, unknown> = { userId };
+
+        if (filters?.clientId) {
+            matchStage.$or = [
+                { client_id: filters.clientId },
+                { customer_id: filters.clientId },
+            ];
+        }
+
+        const targetOrderIds = filters?.restrictToOrderIds;
+        if (targetOrderIds && targetOrderIds.length > 0) {
+            const convertedOrderIds: (ObjectId | string)[] = [];
+            for (const id of targetOrderIds) {
+                if (typeof id === "string" && ObjectId.isValid(id)) {
+                    convertedOrderIds.push(new ObjectId(id));
+                }
+                convertedOrderIds.push(String(id));
+            }
+            matchStage._id = { $in: convertedOrderIds };
+        }
+
+        if (filters?.q && filters.q.trim()) {
+            const safeQ = escapeRegex(filters.q.trim());
+            const searchOr = [
+                { product_name: { $regex: safeQ, $options: "i" } },
+                { notes: { $regex: safeQ, $options: "i" } },
+                { status: { $regex: safeQ, $options: "i" } },
+            ];
+            if (matchStage.$or) {
+                matchStage.$and = [
+                    { $or: matchStage.$or as Record<string, unknown>[] },
+                    { $or: searchOr },
+                ];
+                delete matchStage.$or;
+            } else {
+                matchStage.$or = searchOr;
+            }
+        }
+
+        const total = await col.countDocuments(matchStage);
+
+        const page = Math.max(1, filters?.page ?? 1);
+        const limit = Math.min(100, Math.max(1, filters?.limit ?? 25));
+
+        const sortField = filters?.sort === "totalAmount" || filters?.sort === "total_amount"
+            ? "total_amount"
+            : filters?.sort === "deliveryDate" || filters?.sort === "delivery_date"
+            ? "delivery_date"
+            : filters?.sort === "productName" || filters?.sort === "product_name"
+            ? "product_name"
+            : "createdAt";
+        const sortDir = filters?.order === "asc" ? 1 : -1;
+
+        const docs = await col.aggregate([
+            { $match: matchStage },
+            { $sort: { [sortField]: sortDir } },
+            { $skip: (page - 1) * limit },
+            { $limit: limit },
+            {
+                $addFields: {
+                    client_oid: {
+                        $cond: {
+                            if: { $and: [{ $ne: ["$client_id", null] }, { $ne: ["$client_id", ""] }] },
+                            then: {
+                                $convert: {
+                                    input: "$client_id",
+                                    to: "objectId",
+                                    onError: null,
+                                    onNull: null,
+                                },
+                            },
+                            else: {
+                                $cond: {
+                                    if: { $and: [{ $ne: ["$customer_id", null] }, { $ne: ["$customer_id", ""] }] },
+                                    then: {
+                                        $convert: {
+                                            input: "$customer_id",
+                                            to: "objectId",
+                                            onError: null,
+                                            onNull: null,
+                                        },
+                                    },
+                                    else: null,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+            { $lookup: { from: "clients", localField: "client_oid", foreignField: "_id", as: "clientArr" } },
+            { $addFields: { clientDoc: { $arrayElemAt: ["$clientArr", 0] } } },
+        ]).toArray();
+
+        const items = docs.map((d) => toEntity(d as Record<string, unknown>, (d as Record<string, unknown>).clientDoc as Record<string, unknown> | null));
+        return { items, total };
+    }
+
     async create(userId: string, data: CreateOrderDTO): Promise<Order> {
         const col = await this.ordersCol();
         const now = new Date();
@@ -213,7 +324,7 @@ export class MongoOrderRepository implements IOrderRepository {
                 { $set: fields },
                 { returnDocument: "after" },
             );
-            return result ? toEntity(result as unknown as Record<string, unknown>) : null;
+            return result ? toEntity(result) : null;
         } catch { return null; }
     }
 
@@ -245,7 +356,7 @@ export class MongoOrderRepository implements IOrderRepository {
                 { $set: fields },
                 { returnDocument: "after" },
             );
-            return result ? toEntity(result as unknown as Record<string, unknown>) : null;
+            return result ? toEntity(result) : null;
         } catch { return null; }
     }
 

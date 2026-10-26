@@ -2,7 +2,7 @@
  * Clients API — /api/v1/clients
  */
 
-import { type NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { withApiRoute } from "@/shared/middleware/with-api-route";
 import { withAuth, type AuthenticatedUser } from "@/shared/middleware/with-auth";
 import { withRateLimit } from "@/shared/middleware/rate-limiter";
@@ -13,12 +13,32 @@ import { assertCanCreate } from "@/lib/entitlements";
 import { getDb } from "@/lib/mongodb";
 import { enqueueTallyJob } from "@/services/tally/bridge/tallyBridgeService";
 import { buildClientLedgerXml } from "@/services/tally";
+import { paginationQuerySchema, buildPaginatedEnvelope } from "@/shared/lib/pagination";
 
 export const GET = withRateLimit(
     withApiRoute(
-        withAuth(async (_req: NextRequest, user: AuthenticatedUser) => {
+        withAuth(async (req: NextRequest, user: AuthenticatedUser) => {
+            const searchParams = req.nextUrl.searchParams;
+            const hasPagination = searchParams.has("page") || searchParams.has("limit") || searchParams.has("q") || searchParams.has("sort");
+
+            const ownerId = getDataOwnerId(user);
             const service = getClientService();
-            const items = await service.findAll(getDataOwnerId(user));
+
+            if (hasPagination) {
+                const parsed = paginationQuerySchema.safeParse({
+                    page: searchParams.get("page") ?? 1,
+                    limit: searchParams.get("limit") ?? 25,
+                    sort: searchParams.get("sort") ?? "name",
+                    order: searchParams.get("order") ?? "asc",
+                    q: searchParams.get("q") ?? undefined,
+                });
+
+                const query = parsed.success ? parsed.data : { page: 1, limit: 25, sort: "name", order: "asc" as const };
+                const { items, total } = await service.findPaginated(ownerId, query);
+                return NextResponse.json(buildPaginatedEnvelope(items, query.page, query.limit, total));
+            }
+
+            const items = await service.findAll(ownerId);
             return envelope.ok(items);
         }),
     ),

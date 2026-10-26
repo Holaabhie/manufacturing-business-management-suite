@@ -7,6 +7,7 @@
 
 import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
+import { escapeRegex } from "@/shared/lib/pagination";
 import type {
     IInventoryRepository,
     InventoryItem,
@@ -105,6 +106,58 @@ export class MongoInventoryRepository implements IInventoryRepository {
         return docs.map(toDomainEntity);
     }
 
+    async findPaginated(
+        userId: string,
+        options?: {
+            page?: number;
+            limit?: number;
+            sort?: string;
+            order?: "asc" | "desc";
+            q?: string;
+            category?: string;
+        }
+    ): Promise<{ items: InventoryItem[]; total: number }> {
+        const col = await this.collection();
+        const baseOwner = this.ownerFilter(userId);
+        const andConditions: Record<string, unknown>[] = [baseOwner];
+
+        if (options?.category && options.category.trim()) {
+            andConditions.push({ category: options.category.trim() });
+        }
+
+        if (options?.q && options.q.trim()) {
+            const safeQ = escapeRegex(options.q.trim());
+            andConditions.push({
+                $or: [
+                    { name: { $regex: safeQ, $options: "i" } },
+                    { item_name: { $regex: safeQ, $options: "i" } },
+                    { hsn_code: { $regex: safeQ, $options: "i" } },
+                    { unit: { $regex: safeQ, $options: "i" } },
+                ],
+            });
+        }
+
+        const filter = andConditions.length > 1 ? { $and: andConditions } : baseOwner;
+        const total = await col.countDocuments(filter);
+
+        const page = Math.max(1, options?.page ?? 1);
+        const limit = Math.min(100, Math.max(1, options?.limit ?? 25));
+
+        const sortField = options?.sort === "quantity" || options?.sort === "createdAt" || options?.sort === "updatedAt" || options?.sort === "purchase_cost_per_unit"
+            ? options.sort
+            : "name";
+        const sortDir = options?.order === "desc" ? -1 : 1;
+
+        const docs = await col
+            .find(filter)
+            .sort({ [sortField]: sortDir })
+            .skip((page - 1) * limit)
+            .limit(limit)
+            .toArray();
+
+        return { items: docs.map(toDomainEntity), total };
+    }
+
     async create(userId: string, data: CreateInventoryItemDTO): Promise<InventoryItem> {
         const col = await this.collection();
         const now = new Date();
@@ -170,7 +223,7 @@ export class MongoInventoryRepository implements IInventoryRepository {
             { returnDocument: "after" },
         );
 
-        return result ? toDomainEntity(result as unknown as InventoryDocument) : null;
+        return result ? toDomainEntity(result) : null;
     }
 
     async delete(id: string, userId: string): Promise<boolean> {
@@ -226,7 +279,7 @@ export class MongoInventoryRepository implements IInventoryRepository {
             { returnDocument: "after" },
         );
 
-        return result ? toDomainEntity(result as unknown as InventoryDocument) : null;
+        return result ? toDomainEntity(result) : null;
     }
 
     /**
@@ -262,7 +315,7 @@ export class MongoInventoryRepository implements IInventoryRepository {
             { returnDocument: "after" },
         );
 
-        return result ? toDomainEntity(result as unknown as InventoryDocument) : null;
+        return result ? toDomainEntity(result) : null;
     }
 }
 
