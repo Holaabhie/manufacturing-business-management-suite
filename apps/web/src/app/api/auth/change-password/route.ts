@@ -46,10 +46,10 @@ export async function POST(req: Request) {
             const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
             if (!isValid) {
                 logAuthEvent({
-                    organizationId: (user as any).organizationId || "",
+                    organizationId: user.organizationId || "",
                     userId: user._id as string,
                     userName: user.fullName || user.full_name || user.email,
-                    userRole: user.role as any,
+                    userRole: user.role === "Staff" ? "Staff" : "Admin",
                     action: "Failed password change — wrong current password",
                     actionType: "security",
                     ipAddress,
@@ -78,7 +78,7 @@ export async function POST(req: Request) {
         // ─── Hash & Update ──────────────────────────────────────────
         const passwordHash = await bcrypt.hash(newPassword, 12);
 
-        const updateFields: Record<string, any> = {
+        const updateFields: Record<string, unknown> = {
             passwordHash,
             passwordChangedAt: new Date(),
             updatedAt: new Date(),
@@ -100,9 +100,9 @@ export async function POST(req: Request) {
         const currentSessionId = jar.get(SESSION_COOKIE_NAME)?.value;
         if (currentSessionId) {
             // Remove all sessions except current one
-            await db.collection("sessions").deleteMany({
+            await db.collection<{ userId: string; _id: string }>("sessions").deleteMany({
                 userId: user._id as string,
-                _id: { $ne: currentSessionId } as any,
+                _id: { $ne: currentSessionId },
             });
         } else {
             // Fallback: destroy all sessions
@@ -111,10 +111,10 @@ export async function POST(req: Request) {
 
         // Audit log
         logAuthEvent({
-            organizationId: (user as any).organizationId || "",
+            organizationId: user.organizationId || "",
             userId: user._id as string,
             userName: user.fullName || user.full_name || user.email,
-            userRole: user.role as any,
+            userRole: user.role === "Staff" ? "Staff" : "Admin",
             action: "Password changed successfully",
             actionType: "security",
             ipAddress,
@@ -126,10 +126,11 @@ export async function POST(req: Request) {
             success: true,
             message: "Password changed successfully",
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[change-password] Error:", error);
+        const message = error instanceof Error ? error.message : "Failed to change password";
         return NextResponse.json(
-            { success: false, message: error.message || "Failed to change password" },
+            { success: false, message },
             { status: 500 }
         );
     }

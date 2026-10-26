@@ -1,6 +1,15 @@
 import { NextResponse } from "next/server";
 import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
+import { ObjectId } from "mongodb";
+
+interface LowStockItem {
+  _id: ObjectId | string;
+  name: string;
+  quantity: number;
+  min_stock_level?: number;
+  unit?: string;
+}
 
 export async function GET() {
   try {
@@ -13,7 +22,7 @@ export async function GET() {
     const userId = getDataOwnerId(user);
 
     const lowStock = await db
-      .collection("inventory")
+      .collection<LowStockItem>("inventory")
       .find({
         userId,
         $expr: { $lte: ["$quantity", "$min_stock_level"] },
@@ -21,7 +30,7 @@ export async function GET() {
       .limit(5)
       .toArray();
 
-    const formatted = lowStock.map((item: any) => ({
+    const formatted = lowStock.map((item) => ({
       id: item._id.toString(),
       name: item.name,
       quantity: item.quantity,
@@ -30,8 +39,9 @@ export async function GET() {
     }));
 
     return NextResponse.json(formatted);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching low stock:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Internal server error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

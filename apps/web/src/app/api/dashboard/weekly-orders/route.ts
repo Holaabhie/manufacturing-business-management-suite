@@ -4,6 +4,10 @@ import { getDb } from "@/lib/mongodb";
 
 export const dynamic = "force-dynamic";
 
+interface OrderDateDoc {
+  createdAt: string | Date;
+}
+
 /**
  * Returns orders grouped by day for the current ISO week (Monday to Sunday).
  * Response: { data: [{ day: "Mon", value: 3 }, { day: "Tue", value: 0 }, ...] }
@@ -34,7 +38,7 @@ export async function GET() {
 
     // Query orders within this ISO week
     const orders = await db
-      .collection("orders")
+      .collection<OrderDateDoc>("orders")
       .find({
         userId,
         createdAt: {
@@ -42,14 +46,14 @@ export async function GET() {
           $lte: sunday.toISOString(),
         },
       })
-      .project({ createdAt: 1 })
+      .project<OrderDateDoc>({ createdAt: 1 })
       .toArray();
 
     // Also try with Date objects in case createdAt is stored as Date
-    let ordersFromDates: any[] = [];
+    let ordersFromDates: OrderDateDoc[] = [];
     if (orders.length === 0) {
       ordersFromDates = await db
-        .collection("orders")
+        .collection<OrderDateDoc>("orders")
         .find({
           userId,
           createdAt: {
@@ -57,7 +61,7 @@ export async function GET() {
             $lte: sunday,
           },
         })
-        .project({ createdAt: 1 })
+        .project<OrderDateDoc>({ createdAt: 1 })
         .toArray();
     }
 
@@ -69,7 +73,7 @@ export async function GET() {
     dayNames.forEach((d) => (dayCounts[d] = 0));
 
     // Count orders per day
-    allOrders.forEach((order: any) => {
+    allOrders.forEach((order) => {
       const orderDate = new Date(order.createdAt);
       const jsDay = orderDate.getDay(); // 0 = Sunday
       // Map JS day to ISO day name
@@ -81,8 +85,9 @@ export async function GET() {
     const data = dayNames.map((d) => ({ day: d, value: dayCounts[d] || 0 }));
 
     return NextResponse.json({ data });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching weekly orders:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Error fetching weekly orders";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

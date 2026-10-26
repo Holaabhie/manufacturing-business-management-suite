@@ -3,6 +3,40 @@ import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
+interface MachineDoc {
+    _id: ObjectId;
+    machineName: string;
+    machineType?: string;
+    capacity?: string;
+    status?: string;
+}
+
+interface MachineEventDoc {
+    _id: ObjectId;
+    machineId: string;
+    event?: string;
+    newStatus?: string;
+    previousStatus?: string;
+    timestamp: Date | string;
+}
+
+interface ActiveProductionDoc {
+    _id: ObjectId;
+    machineId?: string;
+    batchNumber?: string;
+    orderProductName?: string;
+    progressPercent?: number;
+    operatorName?: string;
+}
+
+interface ActiveDowntimeDoc {
+    _id: ObjectId;
+    machineId: string;
+    reason?: string;
+    reportedAt?: string | Date;
+    reportedByName?: string;
+}
+
 /**
  * GET /api/machines/utilisation
  * 
@@ -25,7 +59,7 @@ export async function GET(request: Request) {
 
         // Fetch all machines for admin
         const machines = await db
-            .collection("machines")
+            .collection<MachineDoc>("machines")
             .find({ adminId })
             .toArray();
 
@@ -35,7 +69,7 @@ export async function GET(request: Request) {
 
         // Get today's machine events for duration calculation
         const todayEvents = await db
-            .collection("machineEvents")
+            .collection<MachineEventDoc>("machineEvents")
             .find({
                 adminId,
                 timestamp: { $gte: todayStart },
@@ -45,7 +79,7 @@ export async function GET(request: Request) {
 
         // Get active productions (to show which machine is running what)
         const activeProductions = await db
-            .collection("productions")
+            .collection<ActiveProductionDoc>("productions")
             .find({
                 userId: adminId,
                 status: { $in: ["pending", "in_progress", "running"] },
@@ -54,7 +88,7 @@ export async function GET(request: Request) {
 
         // Get active downtime reports
         const activeDowntime = await db
-            .collection("machineDowntime")
+            .collection<ActiveDowntimeDoc>("machineDowntime")
             .find({
                 adminId,
                 status: { $in: ["open", "acknowledged"] },
@@ -62,12 +96,12 @@ export async function GET(request: Request) {
             .toArray();
 
         // Build machine utilisation map
-        const utilisationData = machines.map((machine: any) => {
+        const utilisationData = machines.map((machine: MachineDoc) => {
             const machineId = machine._id.toString();
 
             // Calculate running time today from events
             const machineEvents = todayEvents.filter(
-                (e: any) => e.machineId === machineId
+                (e: MachineEventDoc) => e.machineId === machineId
             );
 
             let activeDurationMinutes = 0;
@@ -99,12 +133,12 @@ export async function GET(request: Request) {
 
             // Find active production for this machine
             const activeProduction = activeProductions.find(
-                (p: any) => p.machineId === machineId
+                (p: ActiveProductionDoc) => p.machineId === machineId
             );
 
             // Find active downtime
             const activeIssue = activeDowntime.find(
-                (d: any) => d.machineId === machineId
+                (d: ActiveDowntimeDoc) => d.machineId === machineId
             );
 
             // Determine current status
@@ -150,9 +184,9 @@ export async function GET(request: Request) {
         // Summary stats
         const summary = {
             total: machines.length,
-            running: utilisationData.filter((m: any) => m.currentStatus === "running").length,
-            idle: utilisationData.filter((m: any) => m.currentStatus === "idle" || m.currentStatus === "active").length,
-            maintenance: utilisationData.filter((m: any) => m.currentStatus === "maintenance").length,
+            running: utilisationData.filter((m) => m.currentStatus === "running").length,
+            idle: utilisationData.filter((m) => m.currentStatus === "idle" || m.currentStatus === "active").length,
+            maintenance: utilisationData.filter((m) => m.currentStatus === "maintenance").length,
         };
 
         return NextResponse.json({
@@ -160,9 +194,10 @@ export async function GET(request: Request) {
             summary,
             lastUpdated: new Date().toISOString(),
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error fetching machine utilisation:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Internal server error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
 
@@ -230,7 +265,7 @@ export async function POST(request: Request) {
         const now = new Date();
         const userName =
             user.fullName ||
-            (user as any).full_name ||
+            user.full_name ||
             user.email?.split("@")[0] ||
             "System";
 
@@ -267,8 +302,9 @@ export async function POST(request: Request) {
             newStatus,
             event: body.event,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error logging machine event:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Internal server error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

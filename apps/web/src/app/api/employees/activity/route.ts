@@ -1,6 +1,25 @@
 import { NextResponse } from "next/server";
-import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
+import { getSessionUser, getDataOwnerId, type MongoUserDoc, type SessionDoc } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
+
+interface ProgressAggResult {
+    _id: string;
+    updateCount: number;
+    lastUpdate: Date;
+    totalProduced: number;
+}
+
+interface MachineAggResult {
+    _id: string;
+    machineEventCount: number;
+    machinesUsed: string[];
+}
+
+interface AttendanceRecord {
+    userId: string;
+    autoMarked?: boolean;
+    firstActivityTime?: Date;
+}
 
 /**
  * GET /api/employees/activity
@@ -35,7 +54,7 @@ export async function GET(request: Request) {
 
         // Get all staff under this admin
         const staffUsers = await db
-            .collection("users")
+            .collection<MongoUserDoc>("users")
             .find(
                 { adminId, role: "Staff", status: "active" },
                 {
@@ -49,7 +68,7 @@ export async function GET(request: Request) {
         // Get today's production progress updates per employee
         const todaysProgressUpdates = await db
             .collection("productionProgress")
-            .aggregate([
+            .aggregate<ProgressAggResult>([
                 {
                     $match: {
                         timestamp: { $gte: todayStart },
@@ -82,7 +101,7 @@ export async function GET(request: Request) {
         // Get today's machine events per employee
         const todaysMachineEvents = await db
             .collection("machineEvents")
-            .aggregate([
+            .aggregate<MachineAggResult>([
                 {
                     $match: {
                         adminId,
@@ -101,7 +120,7 @@ export async function GET(request: Request) {
 
         // Get today's sessions for login time
         const todaysSessions = await db
-            .collection("sessions")
+            .collection<SessionDoc>("sessions")
             .find({
                 createdAt: { $gte: todayStart },
             })
@@ -110,7 +129,7 @@ export async function GET(request: Request) {
 
         // Check auto-attendance records
         const todaysAttendance = await db
-            .collection("attendance")
+            .collection<AttendanceRecord>("attendance")
             .find({
                 adminId,
                 date: {
@@ -120,23 +139,23 @@ export async function GET(request: Request) {
             .toArray();
 
         // Build employee activity map
-        const progressMap = new Map(
-            todaysProgressUpdates.map((p: any) => [p._id, p])
+        const progressMap = new Map<string, ProgressAggResult>(
+            todaysProgressUpdates.map((p) => [p._id, p])
         );
-        const machineMap = new Map(
-            todaysMachineEvents.map((m: any) => [m._id, m])
+        const machineMap = new Map<string, MachineAggResult>(
+            todaysMachineEvents.map((m) => [m._id, m])
         );
-        const sessionMap = new Map<string, any>();
+        const sessionMap = new Map<string, SessionDoc>();
         for (const session of todaysSessions) {
             if (!sessionMap.has(session.userId)) {
                 sessionMap.set(session.userId, session);
             }
         }
-        const attendanceMap = new Map(
-            todaysAttendance.map((a: any) => [a.userId, a])
+        const attendanceMap = new Map<string, AttendanceRecord>(
+            todaysAttendance.map((a) => [a.userId, a])
         );
 
-        const employeeActivities = staffUsers.map((staff: any) => {
+        const employeeActivities = staffUsers.map((staff) => {
             const staffId = staff._id.toString();
             const progress = progressMap.get(staffId);
             const machineActivity = machineMap.get(staffId);
@@ -173,10 +192,10 @@ export async function GET(request: Request) {
         // Summary
         const summary = {
             totalStaff: staffUsers.length,
-            activeToday: employeeActivities.filter((e: any) => e.status === "active").length,
-            idleToday: employeeActivities.filter((e: any) => e.status === "idle").length,
+            activeToday: employeeActivities.filter((e) => e.status === "active").length,
+            idleToday: employeeActivities.filter((e) => e.status === "idle").length,
             totalUpdatesToday: employeeActivities.reduce(
-                (sum: number, e: any) => sum + e.todayStats.updateCount,
+                (sum: number, e) => sum + e.todayStats.updateCount,
                 0
             ),
         };
@@ -186,8 +205,9 @@ export async function GET(request: Request) {
             summary,
             lastUpdated: new Date().toISOString(),
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error fetching employee activity:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Error fetching employee activity";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

@@ -5,6 +5,7 @@ import {
   destroySession,
   createSession,
   type UserDoc,
+  type MongoUserDoc,
 } from "@/lib/auth-session";
 
 /**
@@ -46,7 +47,7 @@ export async function POST(req: Request) {
     }
 
     // Verify the target is in the current user's linked accounts
-    const linkedIds: string[] = (currentUser as any).linkedAccountIds || [];
+    const linkedIds: string[] = currentUser.linkedAccountIds || [];
     if (!linkedIds.includes(targetUserId)) {
       return NextResponse.json(
         { error: "This account is not linked to your profile" },
@@ -57,8 +58,8 @@ export async function POST(req: Request) {
     // Fetch target user from DB
     const db = await getDb();
     const targetUser = await db
-      .collection<UserDoc>("users")
-      .findOne({ _id: targetUserId as any });
+      .collection<MongoUserDoc>("users")
+      .findOne({ _id: targetUserId });
 
     if (!targetUser) {
       return NextResponse.json(
@@ -97,7 +98,7 @@ export async function POST(req: Request) {
     });
 
     // Update last login on target user
-    await db.collection<UserDoc>("users").updateOne(
+    await db.collection<MongoUserDoc>("users").updateOne(
       { _id: targetUser._id },
       {
         $set: {
@@ -116,10 +117,11 @@ export async function POST(req: Request) {
         fullName: targetUser.fullName || targetUser.full_name,
       },
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("[switch-account] Error:", e);
+    const message = e instanceof Error ? e.message : "Failed to switch account";
     return NextResponse.json(
-      { error: e?.message ?? "Failed to switch account" },
+      { error: message },
       { status: 500 }
     );
   }

@@ -4,7 +4,7 @@ import { getDataOwnerId } from "@/lib/auth-session";
 import { withIdempotency } from "@/lib/with-idempotency";
 import { logDataOperation, getClientIp } from "@/lib/audit";
 import { getQuoteService, quoteStatusTransitionSchema } from "@/modules/quotes";
-import { ValidationError, NotFoundError, ConflictError } from "@/shared/lib/errors";
+import { ValidationError, NotFoundError, ConflictError, AppError } from "@/shared/lib/errors";
 
 const ALLOWED_ROLES = ["Owner", "Admin", "Manager", "Accountant"];
 
@@ -19,7 +19,6 @@ export const POST = withIdempotency(async (
         }
         const user = result.user;
         const tenantId = getDataOwnerId(user);
-        const userAny = user as any;
         const { id } = await params;
 
         const body = await request.json();
@@ -40,9 +39,9 @@ export const POST = withIdempotency(async (
         await logDataOperation({
             organizationId: tenantId,
             userId: String(user._id),
-            userName: userAny.fullName || userAny.name || user.email || "Unknown User",
-            userRole: (userAny.role === "Admin" || userAny.role === "Owner") ? "Admin" : "Staff",
-            userRoleDetail: userAny.role || user.role,
+            userName: user.fullName || user.email || "Unknown User",
+            userRole: (user.role === "Admin" || user.role === "Owner") ? "Admin" : "Staff",
+            userRoleDetail: user.role,
             action: `Changed status of quotation ${updated.quotation_number} from ${beforeQuote.status} to ${updated.status}`,
             actionType: "update",
             module: "quotes",
@@ -55,16 +54,16 @@ export const POST = withIdempotency(async (
         });
 
         return NextResponse.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
         if (error instanceof NotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 });
         }
-        if (error instanceof ConflictError || error.statusCode === 409) {
+        if (error instanceof ConflictError || (error instanceof AppError && error.statusCode === 409)) {
             return NextResponse.json({ error: error.message }, { status: 409 });
         }
         if (error instanceof ValidationError) {
             return NextResponse.json(
-                { error: error.message, errors: (error as any).errors || (error as any).fields },
+                { error: error.message, errors: error.fieldErrors },
                 { status: 400 }
             );
         }

@@ -63,6 +63,12 @@ const eslintConfig = [
       'src/app/api/payments/**',
       'src/app/api/production/**',
       'src/app/api/banking/**',
+      'src/app/api/auth/**',
+      'src/app/api/employees/**',
+      'src/app/api/dashboard/**',
+      'src/app/api/machines/**',
+      'src/app/api/staff/**',
+      'src/app/api/quotes/**',
     ],
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',

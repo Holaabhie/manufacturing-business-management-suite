@@ -3,6 +3,17 @@ import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
+interface MachineDoc {
+    _id: ObjectId;
+    machineName: string;
+    machineType?: string;
+    capacity?: string;
+    status?: string;
+    adminId: string;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
 // ─── GET: List all machines for the current admin ────────────────────
 export async function GET() {
     try {
@@ -15,12 +26,12 @@ export async function GET() {
 
         const db = await getDb();
         const machines = await db
-            .collection("machines")
+            .collection<MachineDoc>("machines")
             .find({ adminId })
             .sort({ createdAt: -1 })
             .toArray();
 
-        const formatted = machines.map((m: any) => ({
+        const formatted = machines.map((m) => ({
             id: m._id.toString(),
             machineName: m.machineName,
             machineType: m.machineType || "",
@@ -32,9 +43,10 @@ export async function GET() {
         }));
 
         return NextResponse.json(formatted);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error fetching machines:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Internal server error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
 
@@ -94,8 +106,9 @@ export async function POST(request: Request) {
             id: result.insertedId.toString(),
             ...machine,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error creating machine:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Internal server error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

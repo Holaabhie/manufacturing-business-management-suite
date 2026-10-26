@@ -2,6 +2,41 @@ import { NextResponse } from "next/server";
 import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 
+interface OrderActivityDoc {
+  _id: { toString(): string } | string;
+  product_name?: string;
+  clients?: { name?: string };
+  total_amount?: number;
+  createdAt: string | Date;
+}
+
+interface InventoryActivityDoc {
+  _id: { toString(): string } | string;
+  name?: string;
+  createdAt: string | Date;
+}
+
+interface ClientActivityDoc {
+  _id: { toString(): string } | string;
+  name?: string;
+  createdAt: string | Date;
+}
+
+interface PaymentActivityDoc {
+  _id: { toString(): string } | string;
+  clients?: { name?: string };
+  client_name?: string;
+  amount?: number;
+  createdAt: string | Date;
+}
+
+interface ProductionActivityDoc {
+  _id: { toString(): string } | string;
+  job_name?: string;
+  product_name?: string;
+  createdAt: string | Date;
+}
+
 export async function GET(req: Request) {
   try {
     const user = await getSessionUser();
@@ -24,7 +59,7 @@ export async function GET(req: Request) {
     const [orders, inventory, clients, payments, production] = await Promise.all([
       (!typeFilter || typeFilter === "order")
         ? db
-            .collection("orders")
+            .collection<OrderActivityDoc>("orders")
             .find({ userId })
             .sort({ createdAt: -1 })
             .limit(perCollection)
@@ -32,7 +67,7 @@ export async function GET(req: Request) {
         : Promise.resolve([]),
       (!typeFilter || typeFilter === "inventory")
         ? db
-            .collection("inventory")
+            .collection<InventoryActivityDoc>("inventory")
             .find({ userId })
             .sort({ createdAt: -1 })
             .limit(perCollection)
@@ -40,7 +75,7 @@ export async function GET(req: Request) {
         : Promise.resolve([]),
       (!typeFilter || typeFilter === "client")
         ? db
-            .collection("clients")
+            .collection<ClientActivityDoc>("clients")
             .find({ userId })
             .sort({ createdAt: -1 })
             .limit(perCollection)
@@ -48,7 +83,7 @@ export async function GET(req: Request) {
         : Promise.resolve([]),
       (!typeFilter || typeFilter === "payment")
         ? db
-            .collection("payments")
+            .collection<PaymentActivityDoc>("payments")
             .find({ userId })
             .sort({ createdAt: -1 })
             .limit(perCollection)
@@ -56,17 +91,17 @@ export async function GET(req: Request) {
         : Promise.resolve([]),
       (!typeFilter || typeFilter === "production")
         ? db
-            .collection("production_jobs")
+            .collection<ProductionActivityDoc>("production_jobs")
             .find({ userId })
             .sort({ createdAt: -1 })
             .limit(perCollection)
             .toArray()
-            .catch(() => []) // Collection may not exist
+            .catch(() => [] as ProductionActivityDoc[]) // Collection may not exist
         : Promise.resolve([]),
     ]);
 
     const activity = [
-      ...orders.map((o: any) => ({
+      ...orders.map((o) => ({
         type: "order",
         title: "Order created",
         subtitle: o.product_name || o.clients?.name || "",
@@ -76,7 +111,7 @@ export async function GET(req: Request) {
         href: "/dashboard/orders",
         createdAt: o.createdAt,
       })),
-      ...inventory.map((i: any) => ({
+      ...inventory.map((i) => ({
         type: "inventory",
         title: "Inventory updated",
         subtitle: i.name || "",
@@ -86,7 +121,7 @@ export async function GET(req: Request) {
         href: "/dashboard/inventory",
         createdAt: i.createdAt,
       })),
-      ...clients.map((c: any) => ({
+      ...clients.map((c) => ({
         type: "client",
         title: "Client added",
         subtitle: c.name || "",
@@ -96,7 +131,7 @@ export async function GET(req: Request) {
         href: "/dashboard/clients",
         createdAt: c.createdAt,
       })),
-      ...payments.map((p: any) => ({
+      ...payments.map((p) => ({
         type: "payment",
         title: "Payment received",
         subtitle: p.clients?.name || p.client_name || "",
@@ -106,7 +141,7 @@ export async function GET(req: Request) {
         href: "/dashboard/payments",
         createdAt: p.createdAt,
       })),
-      ...production.map((j: any) => ({
+      ...production.map((j) => ({
         type: "production",
         title: "Production job",
         subtitle: j.job_name || j.product_name || "",
@@ -121,8 +156,9 @@ export async function GET(req: Request) {
       .slice(0, limit);
 
     return NextResponse.json(activity);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching activity:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Internal server error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

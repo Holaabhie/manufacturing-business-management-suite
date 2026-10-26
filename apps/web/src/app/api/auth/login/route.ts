@@ -142,7 +142,7 @@ export async function POST(req: Request) {
         organizationId: user.organizationId || "",
         userId: user._id,
         userName: user.fullName || user.full_name || user.email,
-        userRole: user.role as any,
+        userRole: user.role === "Staff" ? "Staff" : "Admin",
         action: "Login attempt on locked account",
         actionType: "security",
         ipAddress,
@@ -163,14 +163,14 @@ export async function POST(req: Request) {
     }
 
     // ─── Password Verification ──────────────────────────────────
-    const ok = await bcrypt.compare(password, user.passwordHash);
+    const ok = user.passwordHash ? await bcrypt.compare(password, user.passwordHash) : false;
     if (!ok) {
       // Increment failed attempts for backstop (tracks distributed failed attempts)
       await incrementRateLimitMongo(backstopKey, "loginBackstop");
 
       const failedAttempts = (user.failedLoginAttempts || 0) + 1;
 
-      const updateFields: Record<string, any> = {
+      const updateFields: Record<string, unknown> = {
         failedLoginAttempts: failedAttempts,
       };
 
@@ -184,7 +184,7 @@ export async function POST(req: Request) {
         organizationId: user.organizationId || "",
         userId: user._id,
         userName: user.fullName || user.full_name || user.email,
-        userRole: user.role as any,
+        userRole: user.role === "Staff" ? "Staff" : "Admin",
         action: `Failed login attempt (${failedAttempts})`,
         actionType: "security",
         ipAddress,
@@ -208,8 +208,8 @@ export async function POST(req: Request) {
     if (loginType === "admin" && user.role === "Admin" && masterKey) {
       // Verify master key against organization
       if (user.organizationId) {
-        const org = await db.collection("organizations").findOne({
-          _id: user.organizationId as any,
+        const org = await db.collection<{ _id: string; masterKey?: string; settings?: { staffOtpRequired?: boolean } }>("organizations").findOne({
+          _id: user.organizationId,
         });
         if (org && org.masterKey) {
           const masterKeyValid = await bcrypt.compare(masterKey, org.masterKey);
@@ -254,8 +254,8 @@ export async function POST(req: Request) {
       // Check if org requires OTP for staff
       let otpRequired = false;
       if (user.organizationId) {
-        const org = await db.collection("organizations").findOne({
-          _id: user.organizationId as any,
+        const org = await db.collection<{ _id: string; masterKey?: string; settings?: { staffOtpRequired?: boolean } }>("organizations").findOne({
+          _id: user.organizationId,
         });
         otpRequired = org?.settings?.staffOtpRequired ?? false;
       }
@@ -277,7 +277,7 @@ export async function POST(req: Request) {
     const suspiciousResult = await detectSuspiciousLogin({
       userId: user._id,
       userName: user.fullName || user.full_name || user.email,
-      userRole: user.role as any,
+      userRole: user.role === "Staff" ? "Staff" : "Admin",
       organizationId: user.organizationId || "",
       ipAddress,
       userAgent,
@@ -298,11 +298,12 @@ export async function POST(req: Request) {
 
     // ─── Step-Up OTP Verification (triggered when backstop limit reached) ───
     if (backstopCheck.limited) {
-      const otpCode = parseResult.data.otp || (rawBody as any)?.otp;
+      const rawObj = (rawBody && typeof rawBody === "object") ? (rawBody as Record<string, unknown>) : null;
+      const otpCode = parseResult.data.otp || (typeof rawObj?.otp === "string" ? rawObj.otp : undefined);
 
       if (!otpCode) {
         // Step-up challenge: Password is correct, but OTP is required
-        const userPhone = user.phone || (user as any).phone_number;
+        const userPhone = user.phone || user.phone_number;
         const phoneHint = userPhone ? `***${userPhone.slice(-4)}` : null;
 
         return NextResponse.json(
@@ -325,7 +326,7 @@ export async function POST(req: Request) {
       }
 
       // User supplied OTP: verify it
-      const userPhone = user.phone || (user as any).phone_number;
+      const userPhone = user.phone || user.phone_number;
       if (!userPhone) {
         return NextResponse.json(
           {
@@ -385,7 +386,7 @@ export async function POST(req: Request) {
       organizationId: user.organizationId || "",
       userId: user._id,
       userName: user.fullName || user.full_name || user.email,
-      userRole: user.role as any,
+      userRole: user.role === "Staff" ? "Staff" : "Admin",
       action: "Logged in successfully",
       actionType: "login",
       ipAddress,
@@ -401,7 +402,7 @@ export async function POST(req: Request) {
       role: user.role,
       company_setup_complete: user.company_setup_complete,
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("[login] Error:", e);
     if (isDbUnavailableError(e)) {
       return NextResponse.json(
@@ -409,8 +410,9 @@ export async function POST(req: Request) {
         { status: 503 }
       );
     }
+    const message = e instanceof Error ? e.message : "Login failed";
     return NextResponse.json(
-      { success: false, message: e?.message ?? "Login failed" },
+      { success: false, message },
       { status: 500 }
     );
   }

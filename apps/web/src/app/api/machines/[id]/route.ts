@@ -2,6 +2,18 @@ import { NextResponse } from "next/server";
 import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { tenantFilter } from "@/lib/tenant-filter";
+
+interface MachineDoc {
+    _id: ObjectId;
+    machineName: string;
+    machineType?: string;
+    capacity?: string;
+    status: "active" | "inactive" | "maintenance";
+    adminId: string;
+    createdAt: Date;
+    updatedAt: Date;
+}
 
 // ─── PUT: Update a machine (Admin only) ──────────────────────────────
 export async function PUT(
@@ -26,10 +38,9 @@ export async function PUT(
         const db = await getDb();
         const adminId = getDataOwnerId(user);
 
-        const existing = await db.collection("machines").findOne({
-            _id: new ObjectId(id),
-            adminId,
-        });
+        const existing = await db.collection<MachineDoc>("machines").findOne(
+            tenantFilter(adminId, "machines", { _id: new ObjectId(id) })
+        );
 
         if (!existing) {
             return NextResponse.json(
@@ -38,7 +49,7 @@ export async function PUT(
             );
         }
 
-        const updates: any = { updatedAt: new Date() };
+        const updates: Partial<MachineDoc> & { updatedAt: Date } = { updatedAt: new Date() };
 
         if (body.machineName !== undefined) {
             const name = body.machineName.trim();
@@ -49,7 +60,7 @@ export async function PUT(
                 );
             }
             // Check duplicate (excluding current)
-            const dup = await db.collection("machines").findOne({
+            const dup = await db.collection<MachineDoc>("machines").findOne({
                 adminId,
                 machineName: name,
                 _id: { $ne: new ObjectId(id) },
@@ -76,16 +87,16 @@ export async function PUT(
         }
 
         const updateResult = await db
-            .collection("machines")
-            .updateOne({ _id: new ObjectId(id), adminId }, { $set: updates });
+            .collection<MachineDoc>("machines")
+            .updateOne(tenantFilter(adminId, "machines", { _id: new ObjectId(id) }), { $set: updates });
 
         if (updateResult.matchedCount === 0) {
             return NextResponse.json({ error: "Machine not found" }, { status: 404 });
         }
 
         const updated = await db
-            .collection("machines")
-            .findOne({ _id: new ObjectId(id), adminId });
+            .collection<MachineDoc>("machines")
+            .findOne(tenantFilter(adminId, "machines", { _id: new ObjectId(id) }));
 
         return NextResponse.json({
             id: updated!._id.toString(),
@@ -97,9 +108,10 @@ export async function PUT(
             createdAt: updated!.createdAt,
             updatedAt: updated!.updatedAt,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error updating machine:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Internal server error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
 
@@ -125,10 +137,9 @@ export async function DELETE(
         const db = await getDb();
         const adminId = getDataOwnerId(user);
 
-        const result = await db.collection("machines").deleteOne({
-            _id: new ObjectId(id),
-            adminId,
-        });
+        const result = await db.collection("machines").deleteOne(
+            tenantFilter(adminId, "machines", { _id: new ObjectId(id) })
+        );
 
         if (result.deletedCount === 0) {
             return NextResponse.json(
@@ -138,8 +149,9 @@ export async function DELETE(
         }
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error deleting machine:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Internal server error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

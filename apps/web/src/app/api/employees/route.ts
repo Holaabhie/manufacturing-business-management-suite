@@ -4,12 +4,14 @@ import crypto from "crypto";
 import { getDb } from "@/lib/mongodb";
 import { requireAdmin } from "@/lib/require-role";
 import { ROLE_PRESETS, type FlatPermissionMap as PermissionMap } from "@/lib/permissions";
+import type { Db } from "mongodb";
+import type { UserDoc, MongoUserDoc } from "@/lib/auth-session";
 import { logAudit, getClientIp } from "@/lib/audit";
 
 // ─── Generate unique Employee ID ─────────────────────────────────
-async function generateEmployeeId(db: any, adminId: string): Promise<string> {
+async function generateEmployeeId(db: Db, adminId: string): Promise<string> {
     // Find the highest existing employee number for this admin
-    const lastEmployee = await db.collection("users")
+    const lastEmployee = await db.collection<MongoUserDoc>("users")
         .find({
             $or: [
                 { adminId },
@@ -47,7 +49,7 @@ export async function GET() {
         const db = await getDb();
 
         // Fetch all staff linked to this admin
-        const staffUsers = await db.collection("users")
+        const staffUsers = await db.collection<MongoUserDoc>("users")
             .find(
                 { adminId, role: "Staff" },
                 { projection: { passwordHash: 0 } }
@@ -55,7 +57,7 @@ export async function GET() {
             .sort({ createdAt: -1 })
             .toArray();
 
-        const employees = staffUsers.map((user: any) => ({
+        const employees = staffUsers.map((user) => ({
             id: user._id.toString(),
             employeeId: user.employeeId || "—",
             fullName: user.fullName || user.full_name || "Unnamed",
@@ -75,9 +77,10 @@ export async function GET() {
         }));
 
         return NextResponse.json({ employees, total: employees.length });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[Employees API] GET error:", error);
-        return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Failed to fetch employees";
+        return NextResponse.json({ success: false, message }, { status: 500 });
     }
 }
 
@@ -153,7 +156,7 @@ export async function POST(request: Request) {
         }
 
         // ─── Create User Document ────────────────────────
-        const newEmployee: any = {
+        const newEmployee: UserDoc = {
             _id: userId,
             email: email || `${employeeId.toLowerCase()}@staff.local`,
             passwordHash,
@@ -167,7 +170,7 @@ export async function POST(request: Request) {
             designation,
             employeeId,
             adminId,
-            organizationId: (admin as any).organizationId || adminId,
+            organizationId: admin.organizationId || adminId,
             permissions,
             permissionTemplateId: body.customPermissions ? "custom" : permissionTemplate,
             status: "active",
@@ -179,14 +182,14 @@ export async function POST(request: Request) {
             invitedBy: adminId,
         };
 
-        await db.collection("users").insertOne(newEmployee);
+        await db.collection<MongoUserDoc>("users").insertOne(newEmployee);
 
         // ─── Audit Log ───────────────────────────────────
         const ipAddress = getClientIp(request);
         const userAgent = request.headers.get("user-agent") || undefined;
 
         logAudit({
-            organizationId: (admin as any).organizationId || adminId,
+            organizationId: admin.organizationId || adminId,
             userId: adminId,
             userName: admin.fullName || admin.full_name || admin.email,
             userRole: "Admin",
@@ -220,8 +223,9 @@ export async function POST(request: Request) {
                 createdAt: now.toISOString(),
             },
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[Employees API] POST error:", error);
-        return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Failed to create employee";
+        return NextResponse.json({ success: false, message }, { status: 500 });
     }
 }

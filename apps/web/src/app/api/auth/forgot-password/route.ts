@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
+import type { MongoUserDoc } from "@/lib/auth-session";
 import {
   checkRateLimitMongo,
   getHashedRateLimitKey,
@@ -67,7 +68,7 @@ export async function POST(req: Request) {
 
     // Query candidate phone formats across legacy phone and phone_number fields
     const candidateUsers = await db
-      .collection("users")
+      .collection<MongoUserDoc>("users")
       .find({
         $or: [
           { phone: { $in: phoneNorm.candidates } },
@@ -77,7 +78,7 @@ export async function POST(req: Request) {
       .toArray();
 
     const activeUsers = candidateUsers.filter(
-      (u: any) => u.status !== "inactive" && u.status !== "suspended"
+      (u) => u.status !== "inactive" && u.status !== "suspended"
     );
 
     // Requirement 8: If more than one ACTIVE account matches the phone: do not guess.
@@ -108,7 +109,7 @@ export async function POST(req: Request) {
     // if phone is verified; otherwise fail closed with generic response.
     if (!user.passwordHash) {
       const isPhoneVerified =
-        user.isPhoneVerified === true || (user as any).phoneVerified === true;
+        user.isPhoneVerified === true || user.phoneVerified === true;
       if (!isPhoneVerified) {
         console.warn(
           `[forgot-password] Unverified phone for OAuth account ${user.email}. Refusing OTP.`
@@ -140,7 +141,7 @@ export async function POST(req: Request) {
       success: true,
       message: "If an account exists with this phone number, an OTP has been sent.",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[forgot-password] Error:", error);
     return NextResponse.json(
       { error: "Failed to process request. Please try again later." },

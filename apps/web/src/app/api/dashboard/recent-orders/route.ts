@@ -2,6 +2,20 @@ import { NextResponse } from "next/server";
 import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 
+interface RecentOrderAggResult {
+  _id: { toString(): string } | string;
+  product_name?: string;
+  quantity?: number;
+  total_amount?: number;
+  status: string;
+  createdAt: string | Date;
+  client?: {
+    name?: string;
+    email?: string;
+    address?: string;
+  } | null;
+}
+
 export async function GET() {
   try {
     const user = await getSessionUser();
@@ -14,7 +28,7 @@ export async function GET() {
 
     const orders = await db
       .collection("orders")
-      .aggregate([
+      .aggregate<RecentOrderAggResult>([
         { $match: { userId } },
         { $sort: { createdAt: -1 } },
         { $limit: 6 },
@@ -53,7 +67,7 @@ export async function GET() {
       .toArray();
 
     // Transform to match expected format
-    const formatted = orders.map((o: any) => ({
+    const formatted = orders.map((o) => ({
       id: o._id.toString(),
       product_name: o.product_name,
       quantity: o.quantity,
@@ -64,8 +78,9 @@ export async function GET() {
     }));
 
     return NextResponse.json(formatted);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching recent orders:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Internal server error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

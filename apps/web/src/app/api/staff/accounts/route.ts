@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
+import { getSessionUser, getDataOwnerId, type UserDoc } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import bcrypt from "bcrypt";
@@ -28,7 +28,7 @@ export async function GET() {
         const db = await getDb();
 
         const staffAccounts = await db
-            .collection("users")
+            .collection<UserDoc>("users")
             .find(
                 { adminId },
                 {
@@ -40,7 +40,7 @@ export async function GET() {
             .sort({ createdAt: -1 })
             .toArray();
 
-        const formatted = staffAccounts.map((s: any) => ({
+        const formatted = staffAccounts.map((s) => ({
             id: s._id.toString(),
             fullName: s.fullName || s.full_name || "",
             email: s.email || "",
@@ -55,9 +55,10 @@ export async function GET() {
         }));
 
         return NextResponse.json(formatted);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error fetching staff accounts:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Internal server error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
 
@@ -127,7 +128,7 @@ export async function POST(request: Request) {
             employeeId: body.employeeId?.trim() || "",
             department: body.department?.trim() || "",
             phone: body.phone?.trim() || "",
-            organizationId: (user as any).organizationId || adminId,
+            organizationId: user.organizationId || adminId,
             permissions: body.permissions || null,
             firstLoginCompleted: false,
             subscription_tier: "starter" as const,
@@ -144,9 +145,10 @@ export async function POST(request: Request) {
             email: newStaff.email,
             role: newStaff.role,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error creating staff account:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Internal server error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
 
@@ -194,7 +196,7 @@ export async function PATCH(request: Request) {
         }
 
         const now = new Date();
-        const updates: any = { updatedAt: now };
+        const updates: Record<string, unknown> = { updatedAt: now };
 
         switch (body.action) {
             case "update":
@@ -256,8 +258,9 @@ export async function PATCH(request: Request) {
             action: body.action,
             staffId: body.staffId,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error updating staff account:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Internal server error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

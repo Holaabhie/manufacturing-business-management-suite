@@ -30,7 +30,7 @@ export async function GET() {
         }));
 
         return NextResponse.json({ sessions: safeSessions });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[sessions] GET error:", error);
         return NextResponse.json(
             { error: "Failed to fetch sessions" },
@@ -82,7 +82,7 @@ export async function DELETE(req: Request) {
             { error: "Provide sessionId or all:true" },
             { status: 400 }
         );
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[sessions] DELETE error:", error);
         return NextResponse.json(
             { error: "Failed to revoke session" },

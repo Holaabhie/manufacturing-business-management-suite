@@ -150,7 +150,7 @@ export async function POST(req: Request) {
       },
       createdAt: now,
       updatedAt: now,
-    } as any);
+    });
 
     // Create session (persistent for registration auto-login)
     await createSession(userId, {
@@ -175,7 +175,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ ok: true, success: true, company_setup_complete: false });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("[register] Error:", e);
     if (isDbUnavailableError(e)) {
       return NextResponse.json(
@@ -183,8 +183,9 @@ export async function POST(req: Request) {
         { status: 503 }
       );
     }
+    const message = e instanceof Error ? e.message : "Registration failed";
     return NextResponse.json(
-      { error: e?.message ?? "Registration failed", success: false },
+      { error: message, success: false },
       { status: 500 }
     );
   }

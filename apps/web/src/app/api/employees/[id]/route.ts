@@ -4,8 +4,8 @@ import { getDb } from "@/lib/mongodb";
 import { requireAdmin } from "@/lib/require-role";
 import { ROLE_PRESETS, EMPTY_PERMISSIONS, type FlatPermissionMap as PermissionMap } from "@/lib/permissions";
 import type { WithId } from "mongodb";
-import type { UserDoc } from "@/lib/auth-session";
-import { logAudit, logPermissionChange, getClientIp } from "@/lib/audit";
+import type { UserDoc, MongoUserDoc, SessionDoc } from "@/lib/auth-session";
+import { logAudit, logPermissionChange, getClientIp, type AuditEntry } from "@/lib/audit";
 import { destroyAllUserSessions } from "@/lib/auth-session";
 
 // ═════════════════════════════════════════════════════════════════
@@ -26,8 +26,8 @@ export async function GET(
         const adminId = admin._id.toString();
         const db = await getDb();
 
-        const employee = await db.collection("users").findOne(
-            { _id: id as any, adminId, role: "Staff" },
+        const employee = await db.collection<MongoUserDoc>("users").findOne(
+            { _id: id, adminId, role: "Staff" },
             { projection: { passwordHash: 0 } }
         );
 
@@ -36,14 +36,14 @@ export async function GET(
         }
 
         // Get recent activity from audit logs
-        const recentActivity = await db.collection("auditlogs")
+        const recentActivity = await db.collection<AuditEntry & { _id: string; timestamp: Date }>("auditlogs")
             .find({ userId: id })
             .sort({ timestamp: -1 })
             .limit(20)
             .toArray();
 
         // Get active sessions
-        const activeSessions = await db.collection("sessions")
+        const activeSessions = await db.collection<SessionDoc>("sessions")
             .find({ userId: id, expiresAt: { $gt: new Date() } })
             .sort({ lastActiveAt: -1 })
             .toArray();
@@ -71,18 +71,18 @@ export async function GET(
                 createdAt: employee.createdAt,
                 updatedAt: employee.updatedAt,
             },
-            recentActivity: recentActivity.map((a: any) => ({
-                id: a._id.toString(),
+            recentActivity: recentActivity.map((a) => ({
+                id: String(a._id),
                 action: a.action,
                 actionType: a.actionType,
                 module: a.module,
                 timestamp: a.timestamp,
                 ipAddress: a.ipAddress,
-                deviceType: a.deviceType,
-                browser: a.browser,
+                deviceType: (a as Record<string, unknown>).deviceType as string | undefined,
+                browser: (a as Record<string, unknown>).browser as string | undefined,
                 severity: a.severity,
             })),
-            activeSessions: activeSessions.map((s: any) => ({
+            activeSessions: activeSessions.map((s) => ({
                 id: s._id,
                 ipAddress: s.ipAddress || "Unknown",
                 userAgent: s.userAgent || "Unknown",
@@ -91,9 +91,10 @@ export async function GET(
                 createdAt: s.createdAt,
             })),
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[Employee Detail] GET error:", error);
-        return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Failed to fetch employee";
+        return NextResponse.json({ success: false, message }, { status: 500 });
     }
 }
 
@@ -119,8 +120,8 @@ export async function PUT(
         const ipAddress = getClientIp(request);
         const userAgent = request.headers.get("user-agent") || undefined;
 
-        const employee = await db.collection("users").findOne(
-            { _id: id as any, adminId, role: "Staff" }
+        const employee = await db.collection<MongoUserDoc>("users").findOne(
+            { _id: id, adminId, role: "Staff" }
         );
         if (!employee) {
             return NextResponse.json({ success: false, message: "Employee not found" }, { status: 404 });
@@ -132,8 +133,8 @@ export async function PUT(
         if (action === "toggle_status") {
             const newStatus = employee.status === "active" ? "inactive" : "active";
 
-            await db.collection("users").updateOne(
-                { _id: id as any, adminId },
+            await db.collection<MongoUserDoc>("users").updateOne(
+                { _id: id, adminId },
                 { $set: { status: newStatus, updatedAt: new Date() } }
             );
 
@@ -143,7 +144,7 @@ export async function PUT(
             }
 
             logAudit({
-                organizationId: (admin as any).organizationId || adminId,
+                organizationId: admin.organizationId || adminId,
                 userId: adminId,
                 userName: admin.fullName || admin.full_name || admin.email,
                 userRole: "Admin",
@@ -170,8 +171,8 @@ export async function PUT(
 
             const passwordHash = await bcrypt.hash(newPassword, 10);
 
-            await db.collection("users").updateOne(
-                { _id: id as any, adminId },
+            await db.collection<MongoUserDoc>("users").updateOne(
+                { _id: id, adminId },
                 {
                     $set: {
                         passwordHash,
@@ -187,12 +188,12 @@ export async function PUT(
             await destroyAllUserSessions(id);
 
             logAudit({
-                organizationId: (admin as any).organizationId || adminId,
+                organizationId: admin.organizationId || adminId,
                 userId: adminId,
                 userName: admin.fullName || admin.full_name || admin.email,
                 userRole: "Admin",
                 action: `Reset password for ${employee.fullName || employee.employeeId}`,
-                actionType: "security" as any,
+                actionType: "security",
                 module: "team",
                 resourceId: id,
                 resourceType: "employee",
@@ -217,7 +218,7 @@ export async function PUT(
 
             // Verify admin's own password if provided (security confirmation)
             if (adminPassword) {
-                const adminDoc = await db.collection("users").findOne({ _id: admin._id as any });
+                const adminDoc = await db.collection<MongoUserDoc>("users").findOne({ _id: admin._id });
                 if (!adminDoc?.passwordHash) {
                     return NextResponse.json(
                         { success: false, message: "Admin password verification failed" },
@@ -244,8 +245,8 @@ export async function PUT(
 
             const passwordHash = await bcrypt.hash(newPassword, 12);
 
-            await db.collection("users").updateOne(
-                { _id: id as any, adminId },
+            await db.collection<MongoUserDoc>("users").updateOne(
+                { _id: id, adminId },
                 {
                     $set: {
                         passwordHash,
@@ -262,12 +263,12 @@ export async function PUT(
             await destroyAllUserSessions(id);
 
             logAudit({
-                organizationId: (admin as any).organizationId || adminId,
+                organizationId: admin.organizationId || adminId,
                 userId: adminId,
                 userName: admin.fullName || admin.full_name || admin.email,
                 userRole: "Admin",
                 action: `Admin ${admin.fullName || admin.full_name || admin.email} changed password for Staff ${employee.fullName || employee.employeeId} at ${new Date().toISOString()}`,
-                actionType: "security" as any,
+                actionType: "security",
                 module: "team",
                 resourceId: id,
                 resourceType: "employee",
@@ -284,8 +285,8 @@ export async function PUT(
 
         // ─── Action: Unlock Account ──────────────────────
         if (action === "unlock_account") {
-            await db.collection("users").updateOne(
-                { _id: id as any, adminId },
+            await db.collection<MongoUserDoc>("users").updateOne(
+                { _id: id, adminId },
                 {
                     $set: {
                         failedLoginAttempts: 0,
@@ -296,12 +297,12 @@ export async function PUT(
             );
 
             logAudit({
-                organizationId: (admin as any).organizationId || adminId,
+                organizationId: admin.organizationId || adminId,
                 userId: adminId,
                 userName: admin.fullName || admin.full_name || admin.email,
                 userRole: "Admin",
                 action: `Unlocked account for ${employee.fullName || employee.employeeId}`,
-                actionType: "security" as any,
+                actionType: "security",
                 module: "team",
                 resourceId: id,
                 resourceType: "employee",
@@ -318,12 +319,12 @@ export async function PUT(
             await destroyAllUserSessions(id);
 
             logAudit({
-                organizationId: (admin as any).organizationId || adminId,
+                organizationId: admin.organizationId || adminId,
                 userId: adminId,
                 userName: admin.fullName || admin.full_name || admin.email,
                 userRole: "Admin",
                 action: `Terminated all sessions for ${employee.fullName || employee.employeeId}`,
-                actionType: "security" as any,
+                actionType: "security",
                 module: "team",
                 resourceId: id,
                 resourceType: "employee",
@@ -352,8 +353,8 @@ export async function PUT(
 
             const beforePermissions = employee.permissions || EMPTY_PERMISSIONS;
 
-            await db.collection("users").updateOne(
-                { _id: id as any, adminId },
+            await db.collection<MongoUserDoc>("users").updateOne(
+                { _id: id, adminId },
                 {
                     $set: {
                         permissions: newPermissions,
@@ -364,13 +365,13 @@ export async function PUT(
             );
 
             logPermissionChange({
-                organizationId: (admin as any).organizationId || adminId,
+                organizationId: admin.organizationId || adminId,
                 userId: adminId,
                 userName: admin.fullName || admin.full_name || admin.email,
                 targetUserId: id,
                 targetUserName: employee.fullName || employee.employeeId || "Staff",
-                beforePermissions: beforePermissions as any,
-                afterPermissions: newPermissions as any,
+                beforePermissions,
+                afterPermissions: newPermissions,
                 ipAddress,
                 userAgent,
             });
@@ -380,7 +381,7 @@ export async function PUT(
 
         // ─── Action: Update Profile ──────────────────────
         if (action === "update_profile") {
-            const updates: Record<string, any> = { updatedAt: new Date() };
+            const updates: Record<string, unknown> = { updatedAt: new Date() };
 
             if (body.fullName !== undefined) {
                 updates.fullName = body.fullName.trim();
@@ -390,7 +391,7 @@ export async function PUT(
                 const newEmail = body.email.trim().toLowerCase();
                 // Check uniqueness
                 if (newEmail && newEmail !== employee.email) {
-                    const existing = await db.collection("users").findOne({ email: newEmail, _id: { $ne: id as any } });
+                    const existing = await db.collection<MongoUserDoc>("users").findOne({ email: newEmail, _id: { $ne: id } });
                     if (existing) {
                         return NextResponse.json({ success: false, message: "Email already in use" }, { status: 409 });
                     }
@@ -401,13 +402,13 @@ export async function PUT(
             if (body.department !== undefined) updates.department = body.department.trim();
             if (body.designation !== undefined) updates.designation = body.designation.trim();
 
-            await db.collection("users").updateOne(
-                { _id: id as any, adminId },
+            await db.collection<MongoUserDoc>("users").updateOne(
+                { _id: id, adminId },
                 { $set: updates }
             );
 
             logAudit({
-                organizationId: (admin as any).organizationId || adminId,
+                organizationId: admin.organizationId || adminId,
                 userId: adminId,
                 userName: admin.fullName || admin.full_name || admin.email,
                 userRole: "Admin",
@@ -427,9 +428,10 @@ export async function PUT(
         }
 
         return NextResponse.json({ success: false, message: "Invalid action" }, { status: 400 });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[Employee Detail] PUT error:", error);
-        return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Failed to update employee";
+        return NextResponse.json({ success: false, message }, { status: 500 });
     }
 }
 
@@ -451,8 +453,8 @@ export async function DELETE(
         const adminId = admin._id.toString();
         const db = await getDb();
 
-        const employee = await db.collection("users").findOne(
-            { _id: id as any, adminId, role: "Staff" }
+        const employee = await db.collection<MongoUserDoc>("users").findOne(
+            { _id: id, adminId, role: "Staff" }
         );
         if (!employee) {
             return NextResponse.json({ success: false, message: "Employee not found" }, { status: 404 });
@@ -462,13 +464,13 @@ export async function DELETE(
         await destroyAllUserSessions(id);
 
         // Delete the user
-        await db.collection("users").deleteOne({ _id: id as any, adminId });
+        await db.collection<MongoUserDoc>("users").deleteOne({ _id: id, adminId });
 
         const ipAddress = getClientIp(request);
         const userAgent = request.headers.get("user-agent") || undefined;
 
         logAudit({
-            organizationId: (admin as any).organizationId || adminId,
+            organizationId: admin.organizationId || adminId,
             userId: adminId,
             userName: admin.fullName || admin.full_name || admin.email,
             userRole: "Admin",
@@ -483,8 +485,9 @@ export async function DELETE(
         });
 
         return NextResponse.json({ ok: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[Employee Detail] DELETE error:", error);
-        return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Failed to delete employee";
+        return NextResponse.json({ success: false, message }, { status: 500 });
     }
 }

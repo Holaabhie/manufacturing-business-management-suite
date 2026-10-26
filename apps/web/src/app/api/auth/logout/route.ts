@@ -16,10 +16,10 @@ export async function POST(req: Request) {
       const userAgent = req.headers.get("user-agent") || undefined;
 
       logAuthEvent({
-        organizationId: (user as any).organizationId || "",
+        organizationId: user.organizationId || "",
         userId: user._id as string,
         userName: user.fullName || user.full_name || user.email,
-        userRole: user.role as any,
+        userRole: user.role === "Staff" ? "Staff" : "Admin",
         action: "Logged out",
         actionType: "logout",
         ipAddress,

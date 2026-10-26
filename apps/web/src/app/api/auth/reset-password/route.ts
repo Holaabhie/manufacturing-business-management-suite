@@ -3,6 +3,7 @@ import crypto from "crypto";
 import bcrypt from "bcrypt";
 import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
+import type { MongoUserDoc } from "@/lib/auth-session";
 import {
   checkRateLimitMongo,
   getHashedRateLimitKey,
@@ -82,12 +83,12 @@ export async function POST(req: Request) {
     }
 
     // Find user
-    let user = null;
+    let user: MongoUserDoc | null = null;
     if (resetEntry.userId) {
-      user = await db.collection("users").findOne({ _id: resetEntry.userId as any });
+      user = await db.collection<MongoUserDoc>("users").findOne({ _id: resetEntry.userId });
     }
     if (!user) {
-      user = await db.collection("users").findOne({
+      user = await db.collection<MongoUserDoc>("users").findOne({
         $or: [
           { phone: { $in: phoneNorm.candidates } },
           { phone_number: { $in: phoneNorm.candidates } },
@@ -106,7 +107,7 @@ export async function POST(req: Request) {
     const passwordHash = await bcrypt.hash(newPassword, 12);
     const now = new Date();
 
-    await db.collection("users").updateOne(
+    await db.collection<MongoUserDoc>("users").updateOne(
       { _id: user._id },
       {
         $set: {
@@ -133,19 +134,19 @@ export async function POST(req: Request) {
     // Invalidate ALL sessions for this user (force re-login everywhere)
     const strId = String(user._id);
     const objId = ObjectId.isValid(strId) ? new ObjectId(strId) : null;
-    await db.collection("sessions").deleteMany({
+    await db.collection<{ userId: string | ObjectId }>("sessions").deleteMany({
       $or: [
         { userId: strId },
-        ...(objId ? [{ userId: objId as any }] : []),
+        ...(objId ? [{ userId: objId }] : []),
       ],
     });
 
     // Audit log
     logAuthEvent({
-      organizationId: (user as any).organizationId || "",
+      organizationId: user.organizationId || "",
       userId: String(user._id),
-      userName: (user as any).fullName || (user as any).email || phoneNorm.e164,
-      userRole: (user as any).role || "Admin",
+      userName: user.fullName || user.email || phoneNorm.e164,
+      userRole: user.role === "Staff" ? "Staff" : "Admin",
       action: "Password reset successfully via OTP",
       actionType: "security",
       ipAddress: ip,
@@ -170,7 +171,7 @@ export async function POST(req: Request) {
       success: true,
       message: "Password reset successfully",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[reset-password] Error:", error);
     return NextResponse.json(
       { error: "Failed to reset password. Please try again." },

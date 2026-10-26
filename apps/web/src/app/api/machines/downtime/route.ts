@@ -1,7 +1,29 @@
 import { NextResponse } from "next/server";
 import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
-import { ObjectId } from "mongodb";
+import { ObjectId, type Filter } from "mongodb";
+
+interface MachineDowntimeDoc {
+    _id: ObjectId;
+    machineId: string;
+    machineName: string;
+    reason: string;
+    description?: string;
+    photoUrl?: string | null;
+    status: string;
+    adminId: string;
+    reportedBy: string;
+    reportedByName: string;
+    reportedByRole: string;
+    reportedAt: Date | string;
+    acknowledgedAt?: Date | string | null;
+    acknowledgedBy?: string | null;
+    acknowledgedByName?: string | null;
+    resolvedAt?: Date | string | null;
+    resolvedBy?: string | null;
+    resolvedByName?: string | null;
+    resolution?: string | null;
+}
 
 /**
  * GET /api/machines/downtime
@@ -24,18 +46,18 @@ export async function GET(request: Request) {
 
         const db = await getDb();
 
-        const filter: any = { adminId };
+        const filter: Filter<MachineDowntimeDoc> = { adminId };
         if (status) filter.status = status;
         if (machineId) filter.machineId = machineId;
 
         const reports = await db
-            .collection("machineDowntime")
+            .collection<MachineDowntimeDoc>("machineDowntime")
             .find(filter)
             .sort({ reportedAt: -1 })
             .limit(100)
             .toArray();
 
-        const formatted = reports.map((r: any) => ({
+        const formatted = reports.map((r: MachineDowntimeDoc) => ({
             id: r._id.toString(),
             machineId: r.machineId,
             machineName: r.machineName,
@@ -55,9 +77,10 @@ export async function GET(request: Request) {
         }));
 
         return NextResponse.json(formatted);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error fetching downtime reports:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Internal server error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
 
@@ -125,7 +148,7 @@ export async function POST(request: Request) {
         const now = new Date();
         const userName =
             user.fullName ||
-            (user as any).full_name ||
+            user.full_name ||
             user.email?.split("@")[0] ||
             "System";
 
@@ -170,9 +193,10 @@ export async function POST(request: Request) {
             id: result.insertedId.toString(),
             ...report,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error creating downtime report:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Internal server error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
 
@@ -202,12 +226,12 @@ export async function PATCH(request: Request) {
 
         const userName =
             user.fullName ||
-            (user as any).full_name ||
+            user.full_name ||
             user.email?.split("@")[0] ||
             "System";
 
         const now = new Date();
-        const updates: any = {};
+        const updates: Partial<MachineDowntimeDoc> = {};
 
         // Verify report exists AND belongs to this tenant before any mutation
         const report = await db
@@ -265,8 +289,9 @@ export async function PATCH(request: Request) {
         );
 
         return NextResponse.json({ success: true, ...updates });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error updating downtime report:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Internal server error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

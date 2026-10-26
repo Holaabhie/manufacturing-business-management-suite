@@ -1,5 +1,6 @@
 import { NextResponse, after } from "next/server";
 import { getDb } from "@/lib/mongodb";
+import type { MongoUserDoc } from "@/lib/auth-session";
 import {
   checkRateLimitMongo,
   getHashedRateLimitKey,
@@ -39,11 +40,11 @@ export async function POST(req: Request) {
 
     // If phone not provided directly, lookup user by email or userId
     if (!rawPhone && (email || userId)) {
-      const query: any = {};
+      const query: Record<string, unknown> = {};
       if (email) query.email = email.toLowerCase();
       if (userId) query._id = userId;
 
-      const userDoc = await db.collection("users").findOne(query);
+      const userDoc = await db.collection<MongoUserDoc>("users").findOne(query);
       if (userDoc && (userDoc.phone || userDoc.phone_number)) {
         rawPhone = userDoc.phone || userDoc.phone_number;
       } else {
@@ -121,8 +122,8 @@ export async function POST(req: Request) {
             );
             // Record failure in metrics
             if (db) {
-              await db.collection("metrics").updateOne(
-                { _id: "sms_dispatch" as any },
+              await db.collection<{ _id: string; failures: number; lastFailureAt: Date; lastError?: string; updatedAt: Date; createdAt: Date }>("metrics").updateOne(
+                { _id: "sms_dispatch" },
                 {
                   $inc: { failures: 1 },
                   $set: { lastFailureAt: new Date(), lastError: verifResult.error, updatedAt: new Date() },
@@ -132,9 +133,10 @@ export async function POST(req: Request) {
               );
             }
           }
-        } catch (err: any) {
+        } catch (err: unknown) {
           const maskedPhone = `***${phoneNorm.e164.slice(-4)}`;
-          console.error(`[send-otp] Background dispatch error for phone ${maskedPhone}:`, err.message);
+          const errMsg = err instanceof Error ? err.message : String(err);
+          console.error(`[send-otp] Background dispatch error for phone ${maskedPhone}:`, errMsg);
         }
       };
 
@@ -157,11 +159,12 @@ export async function POST(req: Request) {
         ? "If an account exists with this phone number, an OTP has been sent."
         : "OTP sent successfully",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Send OTP error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Failed to send OTP";
     return NextResponse.json(
       {
-        error: error.message || "Failed to send OTP",
+        error: errorMessage,
       },
       { status: 500 }
     );

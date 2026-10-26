@@ -19,7 +19,7 @@ export async function POST() {
         }
 
         return NextResponse.json({ ok: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[refresh] Error:", error);
         return NextResponse.json(
             { error: "Failed to refresh session" },

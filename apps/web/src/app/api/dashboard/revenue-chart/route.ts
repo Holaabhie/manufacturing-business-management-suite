@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 
+interface RevenueOrderDoc {
+  createdAt: string | Date;
+  total_amount?: number;
+}
+
 export async function GET(request: Request) {
   try {
     const user = await getSessionUser();
@@ -15,13 +20,13 @@ export async function GET(request: Request) {
     const db = await getDb();
     const userId = getDataOwnerId(user);
 
-    const orders = await db.collection("orders").find({ userId }).toArray();
+    const orders = await db.collection<RevenueOrderDoc>("orders").find({ userId }).toArray();
 
     // Group by time range
     const grouped: Record<string, number> = {};
     const now = new Date();
 
-    orders.forEach((order: any) => {
+    orders.forEach((order) => {
       const orderDate = new Date(order.createdAt);
       let key: string;
 
@@ -45,8 +50,9 @@ export async function GET(request: Request) {
       .sort((a, b) => a.date.localeCompare(b.date));
 
     return NextResponse.json(chartData);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching revenue chart:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Error fetching revenue chart";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

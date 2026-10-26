@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
-import { createSession } from "@/lib/auth-session";
+import { createSession, type UserDoc, type MongoUserDoc } from "@/lib/auth-session";
 import {
   checkRateLimitMongo,
   getHashedRateLimitKey,
@@ -70,7 +70,7 @@ export async function POST(req: Request) {
     // OTP verified successfully!
     if (purpose === "forgot-password") {
       // Find matching user
-      const user = await db.collection("users").findOne({
+      const user = await db.collection<MongoUserDoc>("users").findOne({
         $or: [
           { phone: { $in: phoneNorm.candidates } },
           { phone_number: { $in: phoneNorm.candidates } },
@@ -98,10 +98,10 @@ export async function POST(req: Request) {
 
       if (user) {
         logAuthEvent({
-          organizationId: (user as any).organizationId || "",
+          organizationId: user.organizationId || "",
           userId: String(user._id),
-          userName: (user as any).fullName || (user as any).email || phoneNorm.e164,
-          userRole: (user as any).role || "Admin",
+          userName: user.fullName || user.email || phoneNorm.e164,
+          userRole: user.role === "Staff" ? "Staff" : "Admin",
           action: "OTP verified for password reset",
           actionType: "security",
           ipAddress: ip,
@@ -118,7 +118,7 @@ export async function POST(req: Request) {
     }
 
     if (purpose === "login") {
-      let user = await db.collection("users").findOne({
+      let user = await db.collection<MongoUserDoc>("users").findOne({
         $or: [
           { phone: { $in: phoneNorm.candidates } },
           { phone_number: { $in: phoneNorm.candidates } },
@@ -128,8 +128,9 @@ export async function POST(req: Request) {
       const now = new Date();
       if (!user) {
         const newId = crypto.randomUUID();
-        await db.collection("users").insertOne({
+        const newUser: UserDoc = {
           _id: newId,
+          email: "",
           phone: phoneNorm.e164,
           isPhoneVerified: true,
           role: "Staff",
@@ -140,11 +141,13 @@ export async function POST(req: Request) {
           lastActiveAt: now,
           createdAt: now,
           updatedAt: now,
-        } as any);
-        user = await db.collection("users").findOne({ _id: newId as unknown as ObjectId });
+        };
+        await db.collection<MongoUserDoc>("users").insertOne(newUser);
+        user = await db.collection<MongoUserDoc>("users").findOne({ _id: newId });
       } else {
-        await db.collection("users").updateOne(
-          { _id: user._id },
+        const userQueryId = ObjectId.isValid(user._id) ? new ObjectId(user._id) : user._id;
+        await db.collection<MongoUserDoc>("users").updateOne(
+          { _id: userQueryId },
           {
             $set: {
               isPhoneVerified: true,
@@ -162,7 +165,7 @@ export async function POST(req: Request) {
       }
 
       await createSession(String(user._id), {
-        organizationId: (user as any).organizationId,
+        organizationId: user.organizationId,
         role: user.role,
         ipAddress: ip,
         userAgent,
@@ -170,10 +173,10 @@ export async function POST(req: Request) {
       });
 
       logAuthEvent({
-        organizationId: (user as any).organizationId || "",
+        organizationId: user.organizationId || "",
         userId: String(user._id),
-        userName: (user as any).fullName || phoneNorm.e164,
-        userRole: user.role,
+        userName: user.fullName || phoneNorm.e164,
+        userRole: user.role === "Staff" ? "Staff" : "Admin",
         action: "Logged in via OTP",
         actionType: "login",
         ipAddress: ip,
@@ -187,14 +190,14 @@ export async function POST(req: Request) {
         user: {
           id: user._id,
           phone: user.phone,
-          fullName: (user as any).fullName,
+          fullName: user.fullName,
           role: user.role,
         },
       });
     }
 
     return NextResponse.json({ error: "Invalid purpose" }, { status: 400 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[verify-otp] Error:", error);
     return NextResponse.json(
       { error: "Failed to verify OTP. Please try again." },

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
-import { getSessionUser } from "@/lib/auth-session";
+import { getSessionUser, type UserDoc, type MongoUserDoc } from "@/lib/auth-session";
 import { isDbUnavailableError } from "@/lib/mongodb";
 import { resolvePermissions, type FlatPermissionMap } from "@/lib/permissions";
 import { getEffectiveTier } from "@/lib/entitlements";
@@ -26,8 +26,8 @@ export async function GET() {
       try {
         const { getDb } = await import("@/lib/mongodb");
         const db = await getDb();
-        const adminUser = await db.collection("users").findOne({
-          _id: ObjectId.isValid(user.adminId) ? new ObjectId(user.adminId) : (user.adminId as unknown as ObjectId),
+        const adminUser = await db.collection<MongoUserDoc>("users").findOne({
+          _id: ObjectId.isValid(user.adminId) ? new ObjectId(user.adminId) : user.adminId,
         });
         if (adminUser?.createdAt) {
           tenantCreatedAt = adminUser.createdAt;
@@ -63,11 +63,11 @@ export async function GET() {
         status: user.status,
         isActive: user.isActive !== false, // default true for existing users
         firstLoginCompleted: user.firstLoginCompleted,
-        company_setup_complete: (user as any).company_setup_complete,
+        company_setup_complete: user.company_setup_complete,
         otpDeliveryMethod: user.otpDeliveryMethod,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[me] Error:", error);
     if (isDbUnavailableError(error)) {
       return NextResponse.json(

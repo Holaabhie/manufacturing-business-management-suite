@@ -1,8 +1,53 @@
 import { NextResponse } from "next/server";
-import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
+import { getSessionUser, getDataOwnerId, type UserDoc, type MongoUserDoc } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
-import { ObjectId } from "mongodb";
+import { ObjectId, type Filter } from "mongodb";
 import { resolvePermissions, hasPermission, isOwnerRole } from "@/lib/permissions";
+
+interface DailyRevenueAggItem {
+    _id: number;
+    revenue?: number;
+}
+
+interface ProductionEfficiencyAggItem {
+    _id: number;
+    avgEfficiency?: number;
+}
+
+interface OrderStatusCountItem {
+    _id: string;
+    count: number;
+}
+
+interface TopProductAggItem {
+    _id: string;
+    units?: number;
+    revenue?: number;
+}
+
+interface InventoryBreakdownItem {
+    _id: string;
+    count: number;
+}
+
+interface ProductionQualityAggItem {
+    _id: number;
+    produced?: number;
+    rejected?: number;
+}
+
+interface TopClientAggItem {
+    name?: string;
+    totalRevenue?: number;
+    orderCount?: number;
+}
+
+interface MaterialAggItem {
+    _id: string;
+    materialId?: string | unknown;
+    quantity?: number;
+    unit?: string;
+}
 
 const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -71,7 +116,7 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const perms = resolvePermissions(user.role, (user as any).customPermissions);
+        const perms = resolvePermissions(user.role, user.customPermissions);
         if (!hasPermission(perms, "reports.view", isOwnerRole(user.role))) {
             return NextResponse.json({ error: "Forbidden: reports.view permission required" }, { status: 403 });
         }
@@ -79,13 +124,10 @@ export async function GET(request: Request) {
         const db = await getDb();
         const userId = getDataOwnerId(user);
 
-        let ownerDoc = null;
-        if (ObjectId.isValid(userId)) {
-            ownerDoc = await db.collection("users").findOne({ _id: new ObjectId(userId) });
-        }
-        if (!ownerDoc) {
-            ownerDoc = await db.collection("users").findOne({ _id: userId as unknown as ObjectId });
-        }
+        const ownerUserQuery: Filter<MongoUserDoc> = ObjectId.isValid(userId)
+            ? { $or: [{ _id: new ObjectId(userId) }, { _id: userId }] }
+            : { _id: userId };
+        const ownerDoc = await db.collection<MongoUserDoc>("users").findOne(ownerUserQuery);
 
         const earliestOrder = await db.collection("orders").findOne(
             { userId },
@@ -164,7 +206,7 @@ export async function GET(request: Request) {
             // Daily revenue in selected month
             db
                 .collection("orders")
-                .aggregate([
+                .aggregate<DailyRevenueAggItem>([
                     { $match: { userId, createdAt: { $gte: rangeStart, $lte: rangeEnd } } },
                     {
                         $group: {
@@ -179,7 +221,7 @@ export async function GET(request: Request) {
             // Last year same month daily revenue
             db
                 .collection("orders")
-                .aggregate([
+                .aggregate<DailyRevenueAggItem>([
                     { $match: { userId, createdAt: { $gte: lastYearStart, $lte: lastYearEnd } } },
                     {
                         $group: {
@@ -194,7 +236,7 @@ export async function GET(request: Request) {
             // Production efficiency in selected month
             db
                 .collection("productions")
-                .aggregate([
+                .aggregate<ProductionEfficiencyAggItem>([
                     { $match: { userId, createdAt: { $gte: rangeStart, $lte: rangeEnd }, status: { $ne: "closed" } } },
                     {
                         $group: {
@@ -209,7 +251,7 @@ export async function GET(request: Request) {
             // Order status distribution
             db
                 .collection("orders")
-                .aggregate([
+                .aggregate<OrderStatusCountItem>([
                     { $match: { userId, createdAt: { $gte: rangeStart, $lte: rangeEnd } } },
                     {
                         $addFields: {
@@ -236,7 +278,7 @@ export async function GET(request: Request) {
             // Top 5 products by revenue in selected month
             db
                 .collection("orders")
-                .aggregate([
+                .aggregate<TopProductAggItem>([
                     { $match: { userId, createdAt: { $gte: rangeStart, $lte: rangeEnd } } },
                     {
                         $group: {
@@ -253,7 +295,7 @@ export async function GET(request: Request) {
             // Inventory breakdown by unit type
             db
                 .collection("inventory")
-                .aggregate([
+                .aggregate<InventoryBreakdownItem>([
                     { $match: { userId } },
                     {
                         $group: {
@@ -349,7 +391,7 @@ export async function GET(request: Request) {
             // Production quality in selected month
             db
                 .collection("productions")
-                .aggregate([
+                .aggregate<ProductionQualityAggItem>([
                     { $match: { userId, createdAt: { $gte: rangeStart, $lte: rangeEnd } } },
                     {
                         $group: {
@@ -365,7 +407,7 @@ export async function GET(request: Request) {
             // Top 5 clients by revenue in selected month
             db
                 .collection("orders")
-                .aggregate([
+                .aggregate<TopClientAggItem>([
                     {
                         $match: {
                             userId,
@@ -437,7 +479,7 @@ export async function GET(request: Request) {
             // Material consumption breakdown in selected month
             db
                 .collection("order_inventory_items")
-                .aggregate([
+                .aggregate<MaterialAggItem>([
                     {
                         $match: {
                             userId,
@@ -537,9 +579,9 @@ export async function GET(request: Request) {
         ]);
 
         // ── 3. Fallback for material usage if order_inventory_items was empty ──
-        let materialsAgg = materialsAggRaw;
+        let materialsAgg: MaterialAggItem[] = materialsAggRaw;
         if (materialsAgg.length === 0) {
-            const orderMaterialsAgg = await db.collection("orders").aggregate([
+            const orderMaterialsAgg = await db.collection("orders").aggregate<MaterialAggItem>([
                 {
                     $match: {
                         userId,
@@ -565,8 +607,8 @@ export async function GET(request: Request) {
         }
 
         // Format material usage (% share and harmonious colors)
-        const totalMatQuantity = materialsAgg.reduce((sum: number, m: any) => sum + (m.quantity || 0), 0);
-        const materialUsage = materialsAgg.map((m: any, idx: number) => ({
+        const totalMatQuantity = materialsAgg.reduce((sum: number, m: MaterialAggItem) => sum + (m.quantity || 0), 0);
+        const materialUsage = materialsAgg.map((m: MaterialAggItem, idx: number) => ({
             materialId: m.materialId ? String(m.materialId) : m._id,
             name: m._id || "Other Material",
             quantity: Math.round((m.quantity || 0) * 10) / 10,
@@ -589,12 +631,12 @@ export async function GET(request: Request) {
 
         // ── 5. Format revenue trend (days of the month) ───────────
         const dailyRevMap: Record<number, number> = {};
-        dailyRevenueAgg.forEach((item: any) => {
+        dailyRevenueAgg.forEach((item: DailyRevenueAggItem) => {
             dailyRevMap[item._id] = item.revenue || 0;
         });
 
         const lastYearDailyMap: Record<number, number> = {};
-        lastYearDailyAgg.forEach((item: any) => {
+        lastYearDailyAgg.forEach((item: DailyRevenueAggItem) => {
             lastYearDailyMap[item._id] = item.revenue || 0;
         });
 
@@ -610,11 +652,11 @@ export async function GET(request: Request) {
 
         // ── 6. Format production efficiency ───────────────────────
         const prodEffMap: Record<number, number> = {};
-        productionEfficiencyAgg.forEach((item: any) => {
+        productionEfficiencyAgg.forEach((item: ProductionEfficiencyAggItem) => {
             prodEffMap[item._id] = item.avgEfficiency || 0;
         });
 
-        const productionData = productionEfficiencyAgg.map((item: any) => ({
+        const productionData = productionEfficiencyAgg.map((item: ProductionEfficiencyAggItem) => ({
             month: `${item._id} ${curMonthName}`,
             efficiency: Math.round(item.avgEfficiency || 0),
         }));
@@ -636,7 +678,7 @@ export async function GET(request: Request) {
         };
 
         const mergedStatus: Record<string, { value: number; color: string; name: string }> = {};
-        orderStatusCounts.forEach((s: any) => {
+        orderStatusCounts.forEach((s: OrderStatusCountItem) => {
             const name = statusNameMap[s._id] || s._id || "Other";
             const color = statusColorMap[s._id] || "#6B7280";
             if (mergedStatus[name]) {
@@ -653,15 +695,15 @@ export async function GET(request: Request) {
         }));
 
         // ── 8. Format top products ────────────────────────────────
-        const topProducts = topProductsAgg.map((p: any) => ({
+        const topProducts = topProductsAgg.map((p: TopProductAggItem) => ({
             name: p._id || "Unknown Product",
             units: p.units || 0,
             revenue: Math.round(p.revenue || 0),
         }));
 
         // ── 9. Format inventory breakdown ─────────────────────────
-        const totalInventoryItems = inventoryBreakdown.reduce((sum: number, cat: any) => sum + cat.count, 0);
-        const inventoryData = inventoryBreakdown.map((cat: any) => ({
+        const totalInventoryItems = inventoryBreakdown.reduce((sum: number, cat: InventoryBreakdownItem) => sum + cat.count, 0);
+        const inventoryData = inventoryBreakdown.map((cat: InventoryBreakdownItem) => ({
             category: cat._id || "Other",
             value: totalInventoryItems > 0 ? Math.round((cat.count / totalInventoryItems) * 100) : 0,
         }));
@@ -676,14 +718,14 @@ export async function GET(request: Request) {
         ];
 
         // ── 11. Format production quality ─────────────────────────
-        const productionQuality = productionQualityAgg.map((item: any) => ({
+        const productionQuality = productionQualityAgg.map((item: ProductionQualityAggItem) => ({
             month: `${item._id} ${curMonthName}`,
             produced: Math.round(item.produced || 0),
             rejected: Math.round(item.rejected || 0),
         }));
 
         // ── 12. Format top clients ────────────────────────────────
-        const topClients = topClientsAgg.map((c: any) => ({
+        const topClients = topClientsAgg.map((c: TopClientAggItem) => ({
             name: c.name || "Unknown Client",
             totalRevenue: Math.round(c.totalRevenue || 0),
             orderCount: c.orderCount || 0,
@@ -695,7 +737,7 @@ export async function GET(request: Request) {
         const completionRate = totalOrdersInMonth > 0 ? Math.round((completedOrdersInMonth / totalOrdersInMonth) * 100) : 0;
         const avgEfficiency =
             productionEfficiencyAgg.length > 0
-                ? Math.round(productionEfficiencyAgg.reduce((s: number, p: any) => s + (p.avgEfficiency || 0), 0) / productionEfficiencyAgg.length)
+                ? Math.round(productionEfficiencyAgg.reduce((s: number, p: ProductionEfficiencyAggItem) => s + (p.avgEfficiency || 0), 0) / productionEfficiencyAgg.length)
                 : 0;
 
         const inventoryTurnover =
@@ -726,8 +768,9 @@ export async function GET(request: Request) {
             productionQuality,
             topClients,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error fetching analytics:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Internal server error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

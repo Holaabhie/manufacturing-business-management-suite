@@ -54,8 +54,7 @@ export const POST = withIdempotency(async (request: NextRequest) => {
         }
         const user = result.user;
         const tenantId = getDataOwnerId(user);
-        const userAny = user as any;
-        const createdBy = userAny.fullName || userAny.name || user.email || String(user._id);
+        const createdBy = user.fullName || user.email || String(user._id);
 
         const body = await request.json();
         const svc = getQuoteService();
@@ -65,24 +64,24 @@ export const POST = withIdempotency(async (request: NextRequest) => {
         await logDataOperation({
             organizationId: tenantId,
             userId: String(user._id),
-            userName: userAny.fullName || userAny.name || user.email || "Unknown User",
-            userRole: (userAny.role === "Admin" || userAny.role === "Owner") ? "Admin" : "Staff",
-            userRoleDetail: userAny.role || user.role,
+            userName: user.fullName || user.email || "Unknown User",
+            userRole: (user.role === "Admin" || user.role === "Owner") ? "Admin" : "Staff",
+            userRoleDetail: user.role,
             action: `Created quotation ${quote.quotation_number}`,
             actionType: "create",
             module: "quotes",
             resourceId: quote.id,
             resourceType: "quotation",
-            afterState: quote as unknown as Record<string, unknown>,
+            afterState: quote,
             ipAddress: getClientIp(request),
             userAgent: request.headers.get("user-agent") || undefined,
         });
 
         return NextResponse.json(quote, { status: 201 });
-    } catch (error: any) {
+    } catch (error: unknown) {
         if (error instanceof ValidationError) {
             return NextResponse.json(
-                { error: error.message, errors: (error as any).errors || (error as any).fields },
+                { error: error.message, errors: error.fieldErrors },
                 { status: 400 }
             );
         }

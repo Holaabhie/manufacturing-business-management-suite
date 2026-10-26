@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import { getDb } from "@/lib/mongodb";
-import { getSessionUser, type UserDoc } from "@/lib/auth-session";
+import { getSessionUser, type UserDoc, type MongoUserDoc } from "@/lib/auth-session";
 
 /**
  * GET /api/auth/linked-accounts
@@ -15,16 +15,16 @@ export async function GET() {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
-    const linkedIds: string[] = (user as any).linkedAccountIds || [];
+    const linkedIds: string[] = user.linkedAccountIds || [];
     if (linkedIds.length === 0) {
       return NextResponse.json({ accounts: [], currentUserId: String(user._id) });
     }
 
     const db = await getDb();
     const linkedUsers = await db
-      .collection<UserDoc>("users")
+      .collection<MongoUserDoc>("users")
       .find(
-        { _id: { $in: linkedIds as any[] } },
+        { _id: { $in: linkedIds } },
         {
           projection: {
             _id: 1,
@@ -53,10 +53,11 @@ export async function GET() {
       accounts,
       currentUserId: String(user._id),
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("[linked-accounts GET] Error:", e);
+    const message = e instanceof Error ? e.message : "Failed to fetch linked accounts";
     return NextResponse.json(
-      { success: false, message: e?.message ?? "Failed to fetch linked accounts" },
+      { success: false, message },
       { status: 500 }
     );
   }
@@ -127,8 +128,7 @@ export async function POST(req: Request) {
     }
 
     // Check if already linked
-    const existingLinked: string[] =
-      (currentUser as any).linkedAccountIds || [];
+    const existingLinked: string[] = currentUser.linkedAccountIds || [];
     if (existingLinked.includes(String(targetUser._id))) {
       return NextResponse.json(
         { success: false, message: "This account is already linked" },
@@ -137,6 +137,12 @@ export async function POST(req: Request) {
     }
 
     // Verify password
+    if (!targetUser.passwordHash) {
+      return NextResponse.json(
+        { success: false, message: "Target account has no password set" },
+        { status: 400 }
+      );
+    }
     const passwordValid = await bcrypt.compare(
       password,
       targetUser.passwordHash
@@ -163,13 +169,13 @@ export async function POST(req: Request) {
     const currentId = String(currentUser._id);
 
     // Add bidirectional link
-    await db.collection<UserDoc>("users").updateOne(
+    await db.collection<MongoUserDoc>("users").updateOne(
       { _id: currentUser._id },
-      { $addToSet: { linkedAccountIds: targetId } as any }
+      { $addToSet: { linkedAccountIds: targetId } }
     );
-    await db.collection<UserDoc>("users").updateOne(
+    await db.collection<MongoUserDoc>("users").updateOne(
       { _id: targetUser._id },
-      { $addToSet: { linkedAccountIds: currentId } as any }
+      { $addToSet: { linkedAccountIds: currentId } }
     );
 
     return NextResponse.json({
@@ -182,10 +188,11 @@ export async function POST(req: Request) {
         avatar_url: targetUser.avatar_url || "",
       },
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("[linked-accounts POST] Error:", e);
+    const message = e instanceof Error ? e.message : "Failed to link account";
     return NextResponse.json(
-      { success: false, message: e?.message ?? "Failed to link account" },
+      { success: false, message },
       { status: 500 }
     );
   }

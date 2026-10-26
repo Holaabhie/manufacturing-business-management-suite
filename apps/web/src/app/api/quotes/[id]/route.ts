@@ -4,7 +4,7 @@ import { getDataOwnerId } from "@/lib/auth-session";
 import { withIdempotency } from "@/lib/with-idempotency";
 import { logDataOperation, getClientIp } from "@/lib/audit";
 import { getQuoteService } from "@/modules/quotes";
-import { ValidationError, NotFoundError, ConflictError } from "@/shared/lib/errors";
+import { ValidationError, NotFoundError, ConflictError, AppError } from "@/shared/lib/errors";
 
 const ALLOWED_ROLES = ["Owner", "Admin", "Manager", "Accountant"];
 
@@ -45,7 +45,6 @@ export const PATCH = withIdempotency(async (
         }
         const user = result.user;
         const tenantId = getDataOwnerId(user);
-        const userAny = user as any;
         const { id } = await params;
 
         const svc = getQuoteService();
@@ -58,32 +57,32 @@ export const PATCH = withIdempotency(async (
         await logDataOperation({
             organizationId: tenantId,
             userId: String(user._id),
-            userName: userAny.fullName || userAny.name || user.email || "Unknown User",
-            userRole: (userAny.role === "Admin" || userAny.role === "Owner") ? "Admin" : "Staff",
-            userRoleDetail: userAny.role || user.role,
+            userName: user.fullName || user.email || "Unknown User",
+            userRole: (user.role === "Admin" || user.role === "Owner") ? "Admin" : "Staff",
+            userRoleDetail: user.role,
             action: `Updated quotation ${updated.quotation_number}`,
             actionType: "update",
             module: "quotes",
             resourceId: id,
             resourceType: "quotation",
-            beforeState: beforeQuote as unknown as Record<string, unknown>,
-            afterState: updated as unknown as Record<string, unknown>,
+            beforeState: beforeQuote || undefined,
+            afterState: updated,
             ipAddress: getClientIp(request),
             userAgent: request.headers.get("user-agent") || undefined,
         });
 
         return NextResponse.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
         if (error instanceof NotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 });
         }
         if (error instanceof ValidationError) {
             return NextResponse.json(
-                { error: error.message, errors: (error as any).errors || (error as any).fields },
+                { error: error.message, errors: error.fieldErrors },
                 { status: 400 }
             );
         }
-        if (error instanceof ConflictError || error.statusCode === 409) {
+        if (error instanceof ConflictError || (error instanceof AppError && error.statusCode === 409)) {
             return NextResponse.json({ error: error.message }, { status: 409 });
         }
         console.error("Error updating quotation:", error);
@@ -102,7 +101,6 @@ export async function DELETE(
         }
         const user = result.user;
         const tenantId = getDataOwnerId(user);
-        const userAny = user as any;
         const { id } = await params;
 
         const svc = getQuoteService();
@@ -114,25 +112,25 @@ export async function DELETE(
         await logDataOperation({
             organizationId: tenantId,
             userId: String(user._id),
-            userName: userAny.fullName || userAny.name || user.email || "Unknown User",
-            userRole: (userAny.role === "Admin" || userAny.role === "Owner") ? "Admin" : "Staff",
-            userRoleDetail: userAny.role || user.role,
+            userName: user.fullName || user.email || "Unknown User",
+            userRole: (user.role === "Admin" || user.role === "Owner") ? "Admin" : "Staff",
+            userRoleDetail: user.role,
             action: `Deleted quotation ${beforeQuote.quotation_number}`,
             actionType: "delete",
             module: "quotes",
             resourceId: id,
             resourceType: "quotation",
-            beforeState: beforeQuote as unknown as Record<string, unknown>,
+            beforeState: beforeQuote || undefined,
             ipAddress: getClientIp(request),
             userAgent: request.headers.get("user-agent") || undefined,
         });
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
         if (error instanceof NotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 });
         }
-        if (error instanceof ConflictError || error.statusCode === 409) {
+        if (error instanceof ConflictError || (error instanceof AppError && error.statusCode === 409)) {
             return NextResponse.json({ error: error.message }, { status: 409 });
         }
         console.error("Error deleting quotation:", error);

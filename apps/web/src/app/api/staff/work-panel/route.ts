@@ -1,10 +1,49 @@
 import { NextResponse } from "next/server";
 import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { connectToDatabase } from "@/lib/mongodb";
-import { ObjectId } from "mongodb";
+import { ObjectId, type Filter } from "mongodb";
 import { sanitizeOrderForStaff } from "@/lib/sanitizeOrderForStaff";
 
 const EXCLUDED_STATUSES = ["delivered", "cancelled", "archived"];
+
+interface StaffOrderMaterial {
+    itemName?: string;
+    name?: string;
+    quantityRequired?: number | string;
+    quantity?: number | string;
+    unit?: string;
+}
+
+interface StaffOrderDoc {
+    _id: ObjectId | string;
+    client_id?: string | ObjectId | null;
+    client_name?: string;
+    clientName?: string;
+    order_number?: string;
+    orderNumber?: string;
+    product_name?: string;
+    productName?: string;
+    status?: string;
+    production_status?: string;
+    priority?: string;
+    due_date?: string | Date;
+    dueDate?: string | Date;
+    delivery_date?: string | Date;
+    createdAt?: string | Date;
+    created_at?: string | Date;
+    updatedAt?: string | Date;
+    updated_at?: string | Date;
+    quantity?: number | string;
+    unit?: string;
+    items?: unknown[];
+    order_items?: unknown[];
+    materials?: StaffOrderMaterial[];
+}
+
+interface StaffProductionDoc {
+    _id: ObjectId | string;
+    orderId?: string | ObjectId;
+}
 
 export async function GET() {
     try {
@@ -24,12 +63,12 @@ export async function GET() {
         tomorrow.setDate(tomorrow.getDate() + 1);
 
         const isStaff = user.role === "Staff";
-        let staffOrderFilter: Record<string, any> = {};
+        let staffOrderFilter: Filter<StaffOrderDoc> = {};
         const orderToProdMap = new Map<string, string>();
 
         if (isStaff) {
             const productions = await db
-                .collection("productions")
+                .collection<StaffProductionDoc>("productions")
                 .find({
                     userId: ownerId,
                     assignedStaff: String(user._id),
@@ -46,8 +85,8 @@ export async function GET() {
             const orderIds = [
                 ...new Set(
                     productions
-                        .map((p: any) => p.orderId)
-                        .filter((id: any) => id != null && String(id).trim() !== "")
+                        .map((p) => p.orderId)
+                        .filter((id): id is string | ObjectId => id != null && String(id).trim() !== "")
                 ),
             ];
 
@@ -82,7 +121,7 @@ export async function GET() {
             ...staffOrderFilter,
         };
 
-        const ordersCollection = db.collection("orders");
+        const ordersCollection = db.collection<StaffOrderDoc>("orders");
 
         // ─── Fetch assigned orders (most recent first) ──────────
         const assignedOrders = await ordersCollection
@@ -101,8 +140,8 @@ export async function GET() {
         const clientIds = [
             ...new Set(
                 allOrders
-                    .map((o: any) => o.client_id)
-                    .filter((id: any) => id != null && String(id).trim() !== "")
+                    .map((o) => o.client_id)
+                    .filter((id): id is string | ObjectId => id != null && String(id).trim() !== "")
             ),
         ];
         const clientObjectIds: ObjectId[] = [];
@@ -122,23 +161,23 @@ export async function GET() {
         }
 
         const pendingOrders = allOrders.filter(
-            (o: any) => {
+            (o) => {
                 const ps = o.production_status || o.status;
                 return ps === "pending" || ps === "processing" || ps === "in_progress";
             }
         );
         const completedOrders = allOrders.filter(
-            (o: any) => (o.production_status || o.status) === "completed"
+            (o) => (o.production_status || o.status) === "completed"
         );
 
         // Today's orders (created or updated today)
-        const todaysOrders = allOrders.filter((o: any) => {
-            const orderDate = new Date(o.updatedAt || o.updated_at || o.createdAt || o.created_at);
+        const todaysOrders = allOrders.filter((o) => {
+            const orderDate = new Date(o.updatedAt || o.updated_at || o.createdAt || o.created_at || 0);
             return orderDate >= today && orderDate < tomorrow;
         });
 
         // Build tasks from today's orders
-        const todaysTasks = todaysOrders.slice(0, 8).map((order: any) => {
+        const todaysTasks = todaysOrders.slice(0, 8).map((order) => {
             const ps = order.production_status || order.status;
             const orderIdStr = order._id.toString();
             const clientName = (order.client_id && clientMap.get(String(order.client_id))) || order.client_name || order.clientName || "Client";
@@ -155,14 +194,14 @@ export async function GET() {
                 type: ps === "dispatched" ? "packing" : ps === "processing" || ps === "in_progress" ? "production" : "order",
                 status: ps === "completed" || ps === "dispatched" ? "completed" : ps === "processing" || ps === "in_progress" ? "in_progress" : "pending",
                 priority: order.priority || "medium",
-                dueTime: order.due_date || order.dueDate || order.delivery_date ? new Date(order.due_date || order.dueDate || order.delivery_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : undefined,
+                dueTime: order.due_date || order.dueDate || order.delivery_date ? new Date(order.due_date || order.dueDate || order.delivery_date || 0).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : undefined,
                 orderDate: order.createdAt || order.created_at || null,
                 deliveryDate: order.delivery_date || order.due_date || order.dueDate || null,
                 quantity: Number(order.quantity || 0),
                 unit: order.unit || "kg",
                 productionStatus: ps,
                 materials: Array.isArray(order.materials)
-                    ? order.materials.map((m: any) => ({
+                    ? order.materials.map((m) => ({
                         itemName: m.itemName || m.name || "",
                         quantityRequired: Number(m.quantityRequired || m.quantity) || 0,
                         unit: m.unit || "kg",
@@ -180,7 +219,7 @@ export async function GET() {
         };
 
         // Format orders for response
-        const formattedOrders = assignedOrders.map((order: any) => {
+        const formattedOrders = assignedOrders.map((order) => {
             const orderIdStr = order._id.toString();
             const clientName = (order.client_id && clientMap.get(String(order.client_id))) || order.client_name || order.clientName || "—";
             const ps = order.production_status || order.status || "pending";
@@ -201,7 +240,7 @@ export async function GET() {
                 unit: order.unit || "kg",
                 items: order.items?.length || order.order_items?.length || 0,
                 materials: Array.isArray(order.materials)
-                    ? order.materials.map((m: any) => ({
+                    ? order.materials.map((m) => ({
                         itemName: m.itemName || m.name || "",
                         quantityRequired: Number(m.quantityRequired || m.quantity) || 0,
                         unit: m.unit || "kg",
@@ -219,7 +258,7 @@ export async function GET() {
             assignedOrders: sanitizedAssignedOrders,
             todaysTasks: sanitizedTasks,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[staff/work-panel] Error:", error);
         return NextResponse.json(
             { error: "Failed to fetch work panel data" },

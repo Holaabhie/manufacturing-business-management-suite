@@ -19,8 +19,7 @@ export const POST = withIdempotency(async (
         }
         const user = result.user;
         const tenantId = getDataOwnerId(user);
-        const userAny = user as any;
-        const createdBy = userAny.fullName || userAny.name || user.email || String(user._id);
+        const createdBy = user.fullName || user.email || String(user._id);
         const { id } = await params;
 
         const svc = getQuoteService();
@@ -30,21 +29,21 @@ export const POST = withIdempotency(async (
         await logDataOperation({
             organizationId: tenantId,
             userId: String(user._id),
-            userName: userAny.fullName || userAny.name || user.email || "Unknown User",
-            userRole: (userAny.role === "Admin" || userAny.role === "Owner") ? "Admin" : "Staff",
-            userRoleDetail: userAny.role || user.role,
+            userName: user.fullName || user.email || "Unknown User",
+            userRole: (user.role === "Admin" || user.role === "Owner") ? "Admin" : "Staff",
+            userRoleDetail: user.role,
             action: `Duplicated quotation ${id} into new quotation ${duplicatedQuote.quotation_number}`,
             actionType: "create",
             module: "quotes",
             resourceId: duplicatedQuote.id,
             resourceType: "quotation",
-            afterState: duplicatedQuote as unknown as Record<string, unknown>,
+            afterState: duplicatedQuote,
             ipAddress: getClientIp(request),
             userAgent: request.headers.get("user-agent") || undefined,
         });
 
         return NextResponse.json(duplicatedQuote, { status: 201 });
-    } catch (error: any) {
+    } catch (error: unknown) {
         if (error instanceof NotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 });
         }

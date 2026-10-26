@@ -161,8 +161,9 @@ export async function GET(request: Request) {
             totalQuantity: Math.round(totalQuantity * 10) / 10,
             materialUsage,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error fetching material analytics:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Internal server error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

@@ -41,9 +41,10 @@ export async function GET(req: NextRequest) {
         }
 
         return NextResponse.json({ success: true, widgets });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error fetching dashboard widgets:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Error fetching dashboard widgets";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
 
@@ -83,11 +84,12 @@ export async function POST(req: NextRequest) {
         }
 
         return NextResponse.json({ success: true, message: "Widget layout saved successfully" });
-    } catch (error: any) {
+    } catch (error: unknown) {
         if (error instanceof z.ZodError) {
             return NextResponse.json({ error: "Validation failed - invalid widget layout data" }, { status: 400 });
         }
         console.error("Error saving dashboard widgets:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Error saving dashboard widgets";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

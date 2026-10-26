@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
-import { getSessionUser } from "@/lib/auth-session";
+import { getSessionUser, type MongoUserDoc } from "@/lib/auth-session";
 
 /**
  * POST /api/auth/complete-setup
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
         }
 
         // ─── Build the update payload ──────────────────────────────
-        const updateFields: Record<string, any> = {
+        const updateFields: Record<string, unknown> = {
             firstLoginCompleted: true,
             status: "active",
             termsAcceptedAt: new Date(),
@@ -53,16 +53,17 @@ export async function POST(request: Request) {
 
         // ─── Update user document ──────────────────────────────────
         const db = await getDb();
-        await db.collection("users").updateOne(
-            { _id: user._id as any },
+        await db.collection<MongoUserDoc>("users").updateOne(
+            { _id: user._id },
             { $set: updateFields }
         );
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[complete-setup] Error:", error);
+        const message = error instanceof Error ? error.message : "Failed to complete setup";
         return NextResponse.json(
-            { error: error?.message ?? "Failed to complete setup" },
+            { error: message },
             { status: 500 }
         );
     }

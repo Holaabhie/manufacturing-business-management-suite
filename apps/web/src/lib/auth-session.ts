@@ -61,10 +61,16 @@ export interface CompanyDetails {
 export type UserDoc = {
   _id: string;
   email: string;
-  passwordHash: string;
+  passwordHash?: string;
   role: "Admin" | "Owner" | "Manager" | "Staff" | "Accountant";
   subscription_tier: "starter" | "pro";
   subscription_status?: string;
+  stripe_customer_id?: string;
+  stripe_subscription_id?: string | null;
+  subscription_current_period_end?: Date;
+  isPhoneVerified?: boolean;
+  phoneVerified?: boolean;
+  linkedAccountIds?: string[];
   plan_override?: {
     tier: "starter" | "pro";
     expires_at: Date | null;
@@ -93,6 +99,7 @@ export type UserDoc = {
   status?: "active" | "inactive" | "suspended" | "pending_setup";
   isActive?: boolean;
   firstLoginCompleted?: boolean;
+  tempPasswordActive?: boolean;
   company_setup_complete?: boolean;
   failedLoginAttempts?: number;
   lockedUntil?: Date;
@@ -103,6 +110,8 @@ export type UserDoc = {
   invitedBy?: string;
   invitationId?: string;
 };
+
+export type MongoUserDoc = Omit<UserDoc, "_id"> & { _id: ObjectId | string };
 
 export type SessionUser = WithId<UserDoc>;
 
@@ -269,11 +278,11 @@ export async function refreshSession(): Promise<{
 
   // Check if user still active
   const strUserId = String(session.userId);
-  const userQuery: Filter<UserDoc> = ObjectId.isValid(strUserId)
-    ? ({ $or: [{ _id: new ObjectId(strUserId) }, { _id: strUserId }] } as unknown as Filter<UserDoc>)
+  const userQuery: Filter<MongoUserDoc> = ObjectId.isValid(strUserId)
+    ? { $or: [{ _id: new ObjectId(strUserId) }, { _id: strUserId }] }
     : { _id: strUserId };
   const user = await db
-    .collection<UserDoc>("users")
+    .collection<MongoUserDoc>("users")
     .findOne(userQuery);
   if (!user || user.status === "inactive" || user.status === "suspended") {
     await db
@@ -328,13 +337,13 @@ export async function destroyAllUserSessions(userId: string) {
 /**
  * Get all active sessions for a user (for Admin session management).
  */
-export async function getUserSessions(userId: string): Promise<SessionDoc[]> {
+export async function getUserSessions(userId: string): Promise<WithId<SessionDoc>[]> {
   const db = await getDb();
   return db
     .collection<SessionDoc>("sessions")
     .find({ userId, expiresAt: { $gt: new Date() } })
     .sort({ lastActiveAt: -1 })
-    .toArray() as unknown as SessionDoc[];
+    .toArray();
 }
 
 // ─── Get Session User (with Sliding Window Renewal) ─────────────
@@ -492,17 +501,17 @@ async function getSessionUserById(
   }
 
   const strUserId = String(session.userId);
-  const userQuery: Filter<UserDoc> = ObjectId.isValid(strUserId)
-    ? ({ $or: [{ _id: new ObjectId(strUserId) }, { _id: strUserId }] } as unknown as Filter<UserDoc>)
+  const userQuery: Filter<MongoUserDoc> = ObjectId.isValid(strUserId)
+    ? { $or: [{ _id: new ObjectId(strUserId) }, { _id: strUserId }] }
     : { _id: strUserId };
-  const user = await db
-    .collection<UserDoc>("users")
+  const rawUser = await db
+    .collection<MongoUserDoc>("users")
     .findOne(userQuery);
 
   // Check if user is deactivated/suspended
   if (
-    user &&
-    (user.status === "inactive" || user.status === "suspended")
+    rawUser &&
+    (rawUser.status === "inactive" || rawUser.status === "suspended")
   ) {
     await db
       .collection<SessionDoc>("sessions")
@@ -512,6 +521,15 @@ async function getSessionUserById(
     jar.delete(REFRESH_COOKIE_NAME);
     return null;
   }
+
+  if (!rawUser) {
+    return null;
+  }
+
+  const user: WithId<UserDoc> = {
+    ...rawUser,
+    _id: String(rawUser._id),
+  };
 
   return user;
 }
