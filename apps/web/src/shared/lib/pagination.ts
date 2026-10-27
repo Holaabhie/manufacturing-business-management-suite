@@ -13,16 +13,52 @@ export function escapeRegex(input: string): string {
   return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+export const ORDER_SORT_FIELDS = [
+  "createdAt",
+  "totalAmount",
+  "total_amount",
+  "deliveryDate",
+  "delivery_date",
+  "productName",
+  "product_name",
+  "status",
+] as const;
+
+export const CLIENT_SORT_FIELDS = [
+  "createdAt",
+  "name",
+  "totalRevenue",
+  "outstandingBalance",
+  "city",
+] as const;
+
+export const INVENTORY_SORT_FIELDS = [
+  "createdAt",
+  "name",
+  "quantity",
+  "price",
+  "sku",
+  "category",
+] as const;
+
+export function isValidSortField(
+  sort: string | undefined,
+  whitelist: readonly string[]
+): boolean {
+  if (!sort) return true;
+  return whitelist.includes(sort);
+}
+
 /**
  * Common Zod validation schema for server-side paginated queries.
- * Coerces string query parameters into numbers and bounds limits safely.
+ * Coerces string query parameters into numbers, bounds limits safely, and caps q to 100 chars.
  */
 export const paginationQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(25),
   sort: z.string().optional(),
   order: z.enum(["asc", "desc"]).default("desc"),
-  q: z.string().optional(),
+  q: z.string().max(100, "Search query must not exceed 100 characters").optional(),
 });
 
 export type PaginationQuery = z.infer<typeof paginationQuerySchema>;
@@ -40,6 +76,20 @@ export interface PaginatedResponse<T> {
   success: boolean;
   data: T[];
   pagination: PaginationInfo;
+}
+
+export interface TruncatedResponse<T> {
+  success: boolean;
+  data: T[];
+  truncated: boolean;
+  total: number;
+}
+
+export interface PaginatedResult<T> {
+  data: T[];
+  pagination?: PaginationInfo;
+  truncated?: boolean;
+  total: number;
 }
 
 /**
@@ -66,5 +116,21 @@ export function buildPaginatedEnvelope<T>(
       hasNextPage: safePage < totalPages,
       hasPreviousPage: safePage > 1,
     },
+  };
+}
+
+/**
+ * Builds a capped response envelope for unpaginated queries (hard-capped at max 500).
+ */
+export function buildTruncatedEnvelope<T>(
+  data: T[],
+  total: number,
+  maxLimit: number = 500
+): TruncatedResponse<T> {
+  return {
+    success: true,
+    data: data.slice(0, maxLimit),
+    truncated: total > maxLimit,
+    total,
   };
 }

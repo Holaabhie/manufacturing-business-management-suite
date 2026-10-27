@@ -13,7 +13,13 @@ import { assertCanCreate } from "@/lib/entitlements";
 import { getDb } from "@/lib/mongodb";
 import { enqueueTallyJob } from "@/services/tally/bridge/tallyBridgeService";
 import { buildClientLedgerXml } from "@/services/tally";
-import { paginationQuerySchema, buildPaginatedEnvelope } from "@/shared/lib/pagination";
+import {
+    paginationQuerySchema,
+    buildPaginatedEnvelope,
+    buildTruncatedEnvelope,
+    CLIENT_SORT_FIELDS,
+    isValidSortField,
+} from "@/shared/lib/pagination";
 
 export const GET = withRateLimit(
     withApiRoute(
@@ -24,22 +30,47 @@ export const GET = withRateLimit(
             const ownerId = getDataOwnerId(user);
             const service = getClientService();
 
-            if (hasPagination) {
-                const parsed = paginationQuerySchema.safeParse({
-                    page: searchParams.get("page") ?? 1,
-                    limit: searchParams.get("limit") ?? 25,
-                    sort: searchParams.get("sort") ?? "name",
-                    order: searchParams.get("order") ?? "asc",
-                    q: searchParams.get("q") ?? undefined,
-                });
-
-                const query = parsed.success ? parsed.data : { page: 1, limit: 25, sort: "name", order: "asc" as const };
-                const { items, total } = await service.findPaginated(ownerId, query);
-                return NextResponse.json(buildPaginatedEnvelope(items, query.page, query.limit, total));
+            const rawSort = searchParams.get("sort") || undefined;
+            if (rawSort && !isValidSortField(rawSort, CLIENT_SORT_FIELDS)) {
+                return NextResponse.json(
+                    { success: false, error: `Invalid sort field '${rawSort}'. Whitelisted: ${CLIENT_SORT_FIELDS.join(", ")}` },
+                    { status: 400 }
+                );
             }
 
-            const items = await service.findAll(ownerId);
-            return envelope.ok(items);
+            const parsed = paginationQuerySchema.safeParse({
+                page: searchParams.get("page") ?? 1,
+                limit: searchParams.get("limit") ?? (hasPagination ? 25 : 500),
+                sort: rawSort ?? "name",
+                order: searchParams.get("order") ?? "asc",
+                q: searchParams.get("q") ?? undefined,
+            });
+
+            if (!parsed.success) {
+                return NextResponse.json(
+                    { success: false, error: parsed.error.issues[0]?.message || "Invalid query parameters" },
+                    { status: 400 }
+                );
+            }
+
+            const query = parsed.data;
+            const { items, total } = await service.findPaginated(ownerId, {
+                ...query,
+                limit: hasPagination ? query.limit : 500,
+            });
+
+            if (hasPagination) {
+                return NextResponse.json(buildPaginatedEnvelope(items, query.page, query.limit, total), {
+                    headers: { "X-Total-Count": String(total) },
+                });
+            }
+
+            return NextResponse.json(buildTruncatedEnvelope(items, total, 500), {
+                headers: {
+                    "X-Total-Count": String(total),
+                    "X-Truncated": String(total > 500),
+                },
+            });
         }),
     ),
     { tier: "read" },
@@ -57,7 +88,7 @@ export const POST = withRateLimit(
             const item = await service.create(organizationId, body);
 
             // Tally Sync Queue (Skip if sample data)
-            if (!(item as any).is_sample && !body.is_sample) {
+            if (!(item as { is_sample?: boolean }).is_sample && !body.is_sample) {
                 const isConfigured = Boolean(item.gstin && item.state);
                 const initialStatus = isConfigured ? "pending" : "not_configured";
 
@@ -80,7 +111,7 @@ export const POST = withRateLimit(
                         sourceRef: { entityType: "client", entityId: item.id },
                         priority: 10,
                     });
-                } catch (err: any) {
+                } catch (err: unknown) {
                     console.error("[TallySync] Failed to enqueue client ledger sync job:", err);
                 }
             }

@@ -22,7 +22,13 @@ import { getInventoryService } from "@/modules/inventory";
 import type { InventoryItem } from "@/modules/inventory";
 import { getDataOwnerId } from "@/lib/auth-session";
 import { assertCanCreate } from "@/lib/entitlements";
-import { paginationQuerySchema, buildPaginatedEnvelope } from "@/shared/lib/pagination";
+import {
+    paginationQuerySchema,
+    buildPaginatedEnvelope,
+    buildTruncatedEnvelope,
+    INVENTORY_SORT_FIELDS,
+    isValidSortField,
+} from "@/shared/lib/pagination";
 
 // ─── Response Mapper: Domain Entity → Frontend snake_case format ──
 // The frontend expects snake_case fields (purchase_cost_per_unit, min_stock_level, etc.)
@@ -60,23 +66,50 @@ export const GET = withRateLimit(
             const ownerId = getDataOwnerId(user);
             const service = getInventoryService();
 
-            if (hasPagination) {
-                const parsed = paginationQuerySchema.safeParse({
-                    page: searchParams.get("page") ?? 1,
-                    limit: searchParams.get("limit") ?? 25,
-                    sort: searchParams.get("sort") ?? "name",
-                    order: searchParams.get("order") ?? "asc",
-                    q: searchParams.get("q") ?? undefined,
-                });
-
-                const query = parsed.success ? parsed.data : { page: 1, limit: 25, sort: "name", order: "asc" as const };
-                const category = searchParams.get("category") || undefined;
-                const { items, total } = await service.findPaginated(ownerId, { ...query, category });
-                return NextResponse.json(buildPaginatedEnvelope(items.map(toApiResponse), query.page, query.limit, total));
+            const rawSort = searchParams.get("sort") || undefined;
+            if (rawSort && !isValidSortField(rawSort, INVENTORY_SORT_FIELDS)) {
+                return NextResponse.json(
+                    { success: false, error: `Invalid sort field '${rawSort}'. Whitelisted: ${INVENTORY_SORT_FIELDS.join(", ")}` },
+                    { status: 400 }
+                );
             }
 
-            const items = await service.findAll(ownerId);
-            return envelope.ok(items.map(toApiResponse));
+            const parsed = paginationQuerySchema.safeParse({
+                page: searchParams.get("page") ?? 1,
+                limit: searchParams.get("limit") ?? (hasPagination ? 25 : 500),
+                sort: rawSort ?? "name",
+                order: searchParams.get("order") ?? "asc",
+                q: searchParams.get("q") ?? undefined,
+            });
+
+            if (!parsed.success) {
+                return NextResponse.json(
+                    { success: false, error: parsed.error.issues[0]?.message || "Invalid query parameters" },
+                    { status: 400 }
+                );
+            }
+
+            const query = parsed.data;
+            const category = searchParams.get("category") || undefined;
+            const { items, total } = await service.findPaginated(ownerId, {
+                ...query,
+                limit: hasPagination ? query.limit : 500,
+                category,
+            });
+            const mapped = items.map(toApiResponse);
+
+            if (hasPagination) {
+                return NextResponse.json(buildPaginatedEnvelope(mapped, query.page, query.limit, total), {
+                    headers: { "X-Total-Count": String(total) },
+                });
+            }
+
+            return NextResponse.json(buildTruncatedEnvelope(mapped, total, 500), {
+                headers: {
+                    "X-Total-Count": String(total),
+                    "X-Truncated": String(total > 500),
+                },
+            });
         }),
     ),
     { tier: "read" },
