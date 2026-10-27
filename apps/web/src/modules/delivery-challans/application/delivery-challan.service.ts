@@ -18,6 +18,7 @@ import {
 } from "@/shared/lib/errors";
 import { generateSequentialChallanNumber } from "../infrastructure/delivery-challan-sequence";
 import { getCurrentFinancialYear } from "@/lib/invoice/utils";
+import { getOrderDisplayNumber } from "@/lib/order-utils";
 
 function getTodayIST(): string {
     return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
@@ -85,14 +86,116 @@ export class DeliveryChallanService {
         return order;
     }
 
+    private async populateLinkedOrders(challans: DeliveryChallan[], tenantId: string): Promise<DeliveryChallan[]> {
+        if (!challans || challans.length === 0) return challans;
+
+        const searchIds: any[] = [];
+        for (const c of challans) {
+            if (c.order_id && typeof c.order_id === "string" && c.order_id.trim()) {
+                const rawId = c.order_id.trim();
+                if (ObjectId.isValid(rawId)) {
+                    searchIds.push(new ObjectId(rawId));
+                    searchIds.push(rawId);
+                } else {
+                    searchIds.push(rawId);
+                }
+            }
+        }
+
+        if (searchIds.length === 0) {
+            return challans.map((c) => ({ ...c, order: null }));
+        }
+
+        try {
+            const db = await getDb();
+            const orderDocs = await db.collection("orders").find({
+                _id: { $in: searchIds },
+                $or: [
+                    { organizationId: tenantId },
+                    { userId: tenantId },
+                    { tenantId: tenantId },
+                ],
+            }).toArray();
+
+            // Collect client IDs if client snapshot is missing
+            const clientIdsToFetch: any[] = [];
+            for (const doc of orderDocs) {
+                if (!doc.client?.name && doc.client_id) {
+                    const cId = String(doc.client_id).trim();
+                    if (ObjectId.isValid(cId)) {
+                        clientIdsToFetch.push(new ObjectId(cId));
+                        clientIdsToFetch.push(cId);
+                    } else {
+                        clientIdsToFetch.push(cId);
+                    }
+                }
+            }
+
+            const clientDocMap = new Map<string, string>();
+            if (clientIdsToFetch.length > 0) {
+                const clientDocs = await db.collection("clients").find({
+                    _id: { $in: clientIdsToFetch },
+                    $or: [
+                        { organizationId: tenantId },
+                        { userId: tenantId },
+                        { tenantId: tenantId },
+                    ],
+                }).toArray();
+
+                for (const cd of clientDocs) {
+                    const cName = String(cd.name || cd.company || cd.clientName || "");
+                    clientDocMap.set(String(cd._id), cName);
+                    if (cd.id) clientDocMap.set(String(cd.id), cName);
+                }
+            }
+
+            // Map orderId -> populated order info
+            const populatedOrderMap = new Map<string, { id: string; orderNumber: string; clientName?: string; date?: string | null; totalAmount?: number | null }>();
+
+            for (const doc of orderDocs) {
+                const idStr = String(doc._id);
+                const orderNum = getOrderDisplayNumber(doc);
+                let clientName = doc.client?.name || doc.clientName;
+                if (!clientName && doc.client_id) {
+                    clientName = clientDocMap.get(String(doc.client_id)) || "";
+                }
+
+                const orderInfo = {
+                    id: idStr,
+                    orderNumber: orderNum,
+                    clientName: clientName || undefined,
+                    date: doc.orderDate || doc.createdAt ? new Date(doc.orderDate || doc.createdAt).toISOString() : null,
+                    totalAmount: doc.totalAmount != null ? Number(doc.totalAmount) : null,
+                };
+
+                populatedOrderMap.set(idStr, orderInfo);
+                if (doc.id) populatedOrderMap.set(String(doc.id), orderInfo);
+            }
+
+            return challans.map((c) => {
+                if (!c.order_id) return { ...c, order: null };
+                const found = populatedOrderMap.get(String(c.order_id).trim()) || null;
+                return {
+                    ...c,
+                    order: found,
+                };
+            });
+        } catch (err) {
+            console.error("Failed to batch populate orders for challans:", err);
+            return challans.map((c) => ({ ...c, order: null }));
+        }
+    }
+
     async findAll(userId: string): Promise<DeliveryChallan[]> {
-        return this.repo.findAll(userId);
+        const challans = await this.repo.findAll(userId);
+        return this.populateLinkedOrders(challans, userId);
     }
 
     async findById(id: string, userId: string): Promise<DeliveryChallan> {
         const challan = await this.repo.findById(id, userId);
         if (!challan) throw new NotFoundError("DeliveryChallan", id);
-        return challan;
+        const [enriched] = await this.populateLinkedOrders([challan], userId);
+        return enriched;
     }
 
     async create(userId: string, createdBy: string, input: unknown): Promise<ChallanWithWarnings> {

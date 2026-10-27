@@ -37,10 +37,10 @@ export async function GET(request: NextRequest) {
         });
 
         return NextResponse.json({ success: true, ...result });
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error("[Reminders API] GET /logs error:", err);
         return NextResponse.json(
-            { error: err?.message || "Failed to fetch reminder logs" },
+            { error: (err as Error)?.message || "Failed to fetch reminder logs" },
             { status: 500 }
         );
     }

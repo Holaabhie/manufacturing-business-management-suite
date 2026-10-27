@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx';
  */
 export interface ExportSheetDef {
   sheetName: string;
-  data: any[];
+  data: Record<string, unknown>[];
   columns: { header: string; key: string }[];
 }
 
@@ -13,9 +13,9 @@ export interface ExportSheetDef {
  * Formats a generic array of objects to only include the specified columns 
  * and maps the keys to the provided headers.
  */
-function prepareDataForExport(data: any[], columns: ExportSheetDef['columns']) {
+function prepareDataForExport(data: Record<string, unknown>[], columns: ExportSheetDef['columns']) {
   return data.map((item) => {
-    const formattedItem: Record<string, any> = {};
+    const formattedItem: Record<string, unknown> = {};
     columns.forEach((col) => {
       // Handle nested keys if needed (e.g., 'user.name'), though simple keys are typical
       formattedItem[col.header] = item[col.key];
@@ -35,7 +35,7 @@ function prepareDataForExport(data: any[], columns: ExportSheetDef['columns']) {
 export function exportToExcel(
   filename: string,
   sheetName: string,
-  data: any[],
+  data: Record<string, unknown>[],
   columns: ExportSheetDef['columns']
 ) {
   const formattedData = prepareDataForExport(data, columns);

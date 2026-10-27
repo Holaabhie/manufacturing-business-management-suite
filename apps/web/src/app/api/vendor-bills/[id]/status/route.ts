@@ -18,7 +18,6 @@ export const POST = withIdempotency(
             }
             const user = result.user;
             const tenantId = getDataOwnerId(user);
-            const userAny = user as any;
             const { id } = await context.params;
 
             const body = await request.json();
@@ -31,21 +30,21 @@ export const POST = withIdempotency(
             await logDataOperation({
                 organizationId: tenantId,
                 userId: String(user._id),
-                userName: userAny.fullName || userAny.name || user.email || "Unknown User",
-                userRole: (userAny.role === "Admin" || userAny.role === "Owner") ? "Admin" : "Staff",
-            userRoleDetail: userAny.role || user.role,
+                userName: user.fullName || user.fullName || user.email || "Unknown User",
+                userRole: (user.role === "Admin" || user.role === "Owner") ? "Admin" : "Staff",
+            userRoleDetail: user.role || user.role,
                 action: `Updated status of vendor bill ${updated.bill_number} to ${status}${void_reason ? ` (Reason: ${void_reason})` : ""}`,
                 actionType: "update",
                 module: "vendor_bills",
                 resourceId: updated.id,
                 resourceType: "vendor_bill",
-                afterState: updated as unknown as Record<string, unknown>,
+                afterState: updated,
                 ipAddress: getClientIp(request),
                 userAgent: request.headers.get("user-agent") || undefined,
             });
 
             return NextResponse.json(updated);
-        } catch (error: any) {
+        } catch (error: unknown) {
             if (error instanceof ZodError) {
                 return NextResponse.json(
                     { error: error.issues?.[0]?.message || "Validation failed", details: error.issues },
@@ -58,8 +57,9 @@ export const POST = withIdempotency(
                     { status: error.statusCode }
                 );
             }
-            if (error.statusCode) {
-                return NextResponse.json({ error: error.message }, { status: error.statusCode });
+            const statusCode = (error as { statusCode?: number })?.statusCode;
+            if (statusCode) {
+                return NextResponse.json({ error: (error as Error).message }, { status: statusCode });
             }
             console.error("Error updating vendor bill status:", error);
             return NextResponse.json({ error: "Failed to update vendor bill status" }, { status: 500 });

@@ -26,15 +26,16 @@ export async function GET(request: NextRequest) {
         const poSummary = await svc.getPoSummary(poId.trim(), tenantId);
 
         return NextResponse.json(poSummary);
-    } catch (error: any) {
+    } catch (error: unknown) {
         if (error instanceof AppError) {
-            return NextResponse.json(
-                { error: error.message, code: error.code, details: error.details },
-                { status: error.statusCode }
-            );
-        }
-        if (error.statusCode) {
-            return NextResponse.json({ error: error.message }, { status: error.statusCode });
+                return NextResponse.json(
+                    { error: error.message, code: error.code, details: error.details },
+                    { status: error.statusCode }
+                );
+            }
+        const statusCode = (error as { statusCode?: number })?.statusCode;
+            if (statusCode) {
+            return NextResponse.json({ error: (error as Error).message }, { status: statusCode });
         }
         console.error("Error fetching PO summary:", error);
         return NextResponse.json({ error: "Failed to fetch PO summary" }, { status: 500 });

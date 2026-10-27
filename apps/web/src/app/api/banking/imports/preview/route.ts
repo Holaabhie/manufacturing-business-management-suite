@@ -113,7 +113,7 @@ export const POST = withRateLimit(
       }
       if (error instanceof AppError) {
         return NextResponse.json(
-          { error: error.message, code: error.code, details: error.details },
+          { error: (error as Error).message, code: error.code, details: error.details },
           { status: error.statusCode }
         );
       }

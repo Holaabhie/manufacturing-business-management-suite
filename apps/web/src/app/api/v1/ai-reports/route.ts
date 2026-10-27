@@ -11,6 +11,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 
+export const maxDuration = 60;
+
 const SYSTEM_PROMPT = `You are **IND Manager Smart Reports AI** — a data analyst for manufacturing businesses.
 
 Your job is to analyze business data and return STRUCTURED reports.

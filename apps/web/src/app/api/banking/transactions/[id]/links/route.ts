@@ -37,7 +37,7 @@ export async function GET(
     return NextResponse.json({ links });
   } catch (error: unknown) {
     if (error instanceof AppError) {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+      return NextResponse.json({ error: (error as Error).message }, { status: error.statusCode });
     }
     console.error("Error fetching transaction links:", error);
     return NextResponse.json({ error: "Failed to fetch transaction links" }, { status: 500 });
@@ -105,7 +105,7 @@ export const POST = withIdempotency(
         module: "banking",
         resourceId: id,
         resourceType: "bank_match_link",
-        afterState: { links: createdLinks } as unknown as Record<string, unknown>,
+        afterState: { links: createdLinks },
         ipAddress: getClientIp(request),
         userAgent: request.headers.get("user-agent") || undefined,
       });
@@ -123,7 +123,7 @@ export const POST = withIdempotency(
           ? ((error as Record<string, unknown>).metadata as Record<string, unknown>)
           : {};
         return NextResponse.json(
-          { error: error.message, ...(error.details || {}), ...metadata },
+          { error: (error as Error).message, ...(error.details || {}), ...metadata },
           { status: error.statusCode }
         );
       }

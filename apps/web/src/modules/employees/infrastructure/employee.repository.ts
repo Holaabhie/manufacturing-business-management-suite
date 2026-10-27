@@ -96,7 +96,7 @@ export class MongoEmployeeRepository implements IEmployeeRepository {
         let permissions: PermissionMap;
         const template = data.permissionTemplate || "operations";
         if (data.customPermissions) {
-            permissions = data.customPermissions as unknown as PermissionMap;
+            permissions = data.customPermissions as PermissionMap;
         } else if (DEFAULT_TEMPLATES[template]) {
             permissions = DEFAULT_TEMPLATES[template].permissions;
         } else {

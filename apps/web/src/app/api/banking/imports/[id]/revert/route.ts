@@ -51,8 +51,8 @@ export async function POST(
       module: "banking",
       resourceId: reverted.id,
       resourceType: "bank_statement_import",
-      beforeState: existing as unknown as Record<string, unknown>,
-      afterState: reverted as unknown as Record<string, unknown>,
+      beforeState: existing,
+      afterState: reverted,
       ipAddress: getClientIp(request),
       userAgent: request.headers.get("user-agent") || undefined,
     });
@@ -67,7 +67,7 @@ export async function POST(
     }
     if (error instanceof AppError) {
       return NextResponse.json(
-        { error: error.message, code: error.code, details: error.details },
+        { error: (error as Error).message, code: error.code, details: error.details },
         { status: error.statusCode }
       );
     }

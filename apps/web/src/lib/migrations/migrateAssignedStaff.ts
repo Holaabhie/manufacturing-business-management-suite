@@ -33,7 +33,7 @@ export async function migrateAssignedStaffIds() {
 
         for (const doc of broken) {
             try {
-                const fixedIds = (doc.assignedStaff as any[])
+                const fixedIds = (doc.assignedStaff as Array<string | ObjectId>)
                     .filter((id) => ObjectId.isValid(String(id)))
                     .map((id) => new ObjectId(String(id)));
 

@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { IOSBadge } from "@/components/ui/ios/IOSBadge";
+import { LinkedDocChip } from "@/components/ui/LinkedDocChip";
 import { useFormatters } from "@/hooks/useFormatters";
 import type { DeliveryChallan, ChallanStatus } from "@/modules/delivery-challans/domain/types";
 
@@ -274,8 +275,16 @@ export function ChallanDetailModal({
                   {challan.ship_to_address || challan.consignee.address || "-"}
                 </div>
                 {challan.order_id && (
-                  <div className="pt-2 text-xs text-blue-600 dark:text-blue-400 font-medium">
-                    {t("orderLinked")}: {challan.order_id}
+                  <div className="pt-2 flex flex-col gap-1">
+                    <span className="text-[11px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">
+                      {t("orderLinked")}
+                    </span>
+                    <LinkedDocChip
+                      type="order"
+                      doc={challan.order}
+                      partyName={challan.order?.clientName || challan.consignee?.name}
+                      href="/dashboard/orders"
+                    />
                   </div>
                 )}
               </div>

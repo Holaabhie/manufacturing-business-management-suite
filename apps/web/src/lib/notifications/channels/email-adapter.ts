@@ -108,6 +108,7 @@ export class EmailAdapter implements ChannelAdapter {
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f7;margin:0;padding:32px 16px">
 <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:16px;padding:32px;border:1px solid #e5e5ea">
+<div style="margin-bottom:24px"><img src="https://indmanager.in/brand/ind-manager-logo-full-light-theme.png" alt="Ind Manager" height="28" style="height:28px;width:auto;display:block;border:0" /></div>
 <h2 style="margin:0 0 16px;color:#1d1d1f;font-size:18px">${subject || "Notification"}</h2>
 ${lines}
 <hr style="border:none;border-top:1px solid #e5e5ea;margin:24px 0">

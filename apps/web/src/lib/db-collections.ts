@@ -14,9 +14,10 @@ export async function ensureCollections() {
     async function ensure(name: string, validator: object) {
         try {
             await db.createCollection(name, { validator });
-        } catch (err: any) {
+        } catch (err: unknown) {
             // Collection already exists — update the validator
-            if (err.codeName === "NamespaceExists" || err.code === 48) {
+            const mongoErr = err as { codeName?: string; code?: number };
+            if (mongoErr.codeName === "NamespaceExists" || mongoErr.code === 48) {
                 await db.command({ collMod: name, validator });
             } else {
                 throw err;

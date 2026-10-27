@@ -32,10 +32,10 @@ export async function POST() {
       priceId: proPrice.id,
       message: 'Stripe products configured successfully',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error setting up Stripe:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to setup Stripe products' },
+      { error: (error as Error).message || 'Failed to setup Stripe products' },
       { status: 500 }
     );
   }
@@ -57,10 +57,10 @@ export async function GET() {
       priceId: proPrice?.id || null,
       productId: proProduct.id,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching Stripe setup:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch Stripe setup' },
+      { error: (error as Error).message || 'Failed to fetch Stripe setup' },
       { status: 500 }
     );
   }

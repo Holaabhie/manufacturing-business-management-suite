@@ -18,10 +18,13 @@ import {
     Clock,
     AlertCircle,
     Info,
+    ExternalLink,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
+import { LinkedDocChip } from "@/components/ui/LinkedDocChip";
 import type { VendorBill, VendorBillPayment } from "@/modules/vendor-bills/domain/types";
 import { RecordVendorBillPaymentModal } from "./RecordVendorBillPaymentModal";
 
@@ -41,7 +44,25 @@ export function BillDetailModal({
     onRefresh,
 }: BillDetailModalProps) {
     const t = useTranslations("vendorBills");
+    const router = useRouter();
     const [portalMounted, setPortalMounted] = useState(false);
+
+    const formatDisplayDate = (dateStr?: string | Date | null): string => {
+        if (!dateStr) return "-";
+        try {
+            const str = typeof dateStr === "string" ? dateStr : dateStr.toISOString();
+            const d = new Date(str.includes("T") ? str : `${str}T00:00:00.000Z`);
+            if (isNaN(d.getTime())) return String(dateStr);
+            return d.toLocaleDateString("en-IN", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+                timeZone: "Asia/Kolkata",
+            });
+        } catch {
+            return String(dateStr);
+        }
+    };
 
     useEffect(() => {
         setPortalMounted(true);
@@ -308,7 +329,7 @@ export function BillDetailModal({
                                     )}
                                 </div>
                                 <p className="text-xs text-[var(--muted-foreground)]">
-                                    {bill ? `${bill.vendor.name} • Inv #${bill.vendor_invoice_number}` : "Loading..."}
+                                    {bill ? `${bill.vendor.name} • ${t("invoiceHash")}${bill.vendor_invoice_number}` : t("loadingFallback")}
                                 </p>
                             </div>
                         </div>
@@ -336,7 +357,7 @@ export function BillDetailModal({
                                         <Ban className="w-4 h-4 shrink-0 mt-0.5" />
                                         <div>
                                             <div className="font-bold">{t("billVoided")}</div>
-                                            <div>Reason: {bill.void_reason || "None specified"}</div>
+                                            <div>{t("lblReason")}: {bill.void_reason || t("noneSpecified")}</div>
                                         </div>
                                     </div>
                                 )}
@@ -364,7 +385,7 @@ export function BillDetailModal({
                                         )}
                                         {bill.vendor.phone && (
                                             <div className="text-xs text-[var(--muted-foreground)]">
-                                                Phone: {bill.vendor.phone}
+                                                {t("lblPhone")}: {bill.vendor.phone}
                                             </div>
                                         )}
                                     </div>
@@ -377,35 +398,46 @@ export function BillDetailModal({
                                         </div>
                                         <div className="grid grid-cols-2 gap-2 text-xs">
                                             <div>
-                                                <span className="text-[var(--muted-foreground)] block">Vendor Inv #:</span>
+                                                <span className="text-[var(--muted-foreground)] block">{t("thVendorInvoice")}:</span>
                                                 <span className="font-semibold text-[var(--foreground)]">
                                                     {bill.vendor_invoice_number}
                                                 </span>
                                             </div>
                                             <div>
-                                                <span className="text-[var(--muted-foreground)] block">Supply Type:</span>
+                                                <span className="text-[var(--muted-foreground)] block">{t("supplyType")}:</span>
                                                 <span className="font-semibold text-[var(--foreground)]">
-                                                    {bill.supply_type === "intra" ? "Intra-state (CGST+SGST)" : "Inter-state (IGST)"}
+                                                    {bill.supply_type === "intra" ? t("supplyTypeIntra") : t("supplyTypeInter")}
                                                 </span>
                                             </div>
                                             <div>
-                                                <span className="text-[var(--muted-foreground)] block">Bill Date:</span>
+                                                <span className="text-[var(--muted-foreground)] block">{t("billDate")}:</span>
                                                 <span className="font-semibold text-[var(--foreground)]">
-                                                    {bill.bill_date}
+                                                    {formatDisplayDate(bill.bill_date)}
                                                 </span>
                                             </div>
                                             <div>
-                                                <span className="text-[var(--muted-foreground)] block">Due Date:</span>
+                                                <span className="text-[var(--muted-foreground)] block">{t("dueDate")}:</span>
                                                 <span className="font-semibold text-[var(--foreground)]">
-                                                    {bill.due_date}
+                                                    {formatDisplayDate(bill.due_date)}
                                                 </span>
                                             </div>
                                             {bill.purchase_order_id && (
-                                                <div className="col-span-2 pt-1 border-t border-[var(--border)]/50">
-                                                    <span className="text-[var(--muted-foreground)] block">Linked PO:</span>
-                                                    <span className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
-                                                        {bill.purchase_order_id}
-                                                    </span>
+                                                <div className="col-span-2 pt-2 border-t border-[var(--border)]/50">
+                                                    <span className="text-[var(--muted-foreground)] block text-xs mb-1.5">{t("linkedPo")}:</span>
+                                                    <LinkedDocChip
+                                                        type="po"
+                                                        doc={bill.purchase_order}
+                                                        partyName={bill.purchase_order?.supplierName}
+                                                        date={bill.purchase_order?.date}
+                                                        amount={bill.purchase_order?.totalAmount}
+                                                        onClick={() => {
+                                                            if (bill.purchase_order?.id || bill.purchase_order_id) {
+                                                                onClose();
+                                                                router.push(`/dashboard/purchasing?poId=${bill.purchase_order?.id || bill.purchase_order_id}`);
+                                                            }
+                                                        }}
+                                                        notFoundText="PO not available"
+                                                    />
                                                 </div>
                                             )}
                                         </div>
@@ -415,21 +447,21 @@ export function BillDetailModal({
                                 {/* Items Table */}
                                 <div className="rounded-xl border border-[var(--border)] bg-[var(--card)]/50 overflow-hidden">
                                     <div className="px-4 py-3 border-b border-[var(--border)] text-xs font-semibold text-[var(--foreground)]">
-                                        Items & Tax Breakdown
+                                        {t("itemsTaxBreakdown")}
                                     </div>
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-left text-xs">
                                             <thead className="bg-[var(--muted)]/50 text-[var(--muted-foreground)] uppercase tracking-wider text-[10px]">
                                                 <tr>
-                                                    <th className="p-2.5">Item</th>
-                                                    <th className="p-2.5">HSN</th>
-                                                    <th className="p-2.5 text-right">Qty</th>
-                                                    <th className="p-2.5 text-right">Rate</th>
-                                                    <th className="p-2.5 text-right">Disc</th>
-                                                    <th className="p-2.5 text-right">Taxable</th>
+                                                    <th className="p-2.5">{t("thItem")}</th>
+                                                    <th className="p-2.5">{t("colHsnShort")}</th>
+                                                    <th className="p-2.5 text-right">{t("colQty")}</th>
+                                                    <th className="p-2.5 text-right">{t("colRate")}</th>
+                                                    <th className="p-2.5 text-right">{t("thDisc")}</th>
+                                                    <th className="p-2.5 text-right">{t("thTaxable")}</th>
                                                     <th className="p-2.5 text-right">GST %</th>
-                                                    <th className="p-2.5 text-right">Tax</th>
-                                                    <th className="p-2.5 text-right">Total</th>
+                                                    <th className="p-2.5 text-right">{t("thTax")}</th>
+                                                    <th className="p-2.5 text-right">{t("colTotal")}</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-[var(--border)]">
@@ -477,29 +509,29 @@ export function BillDetailModal({
                                             {bill.supply_type === "intra" ? (
                                                 <>
                                                     <div className="flex justify-between">
-                                                        <span>CGST Total:</span>
+                                                        <span>{t("cgstTotal")}:</span>
                                                         <span>₹{bill.cgst_total.toFixed(2)}</span>
                                                     </div>
                                                     <div className="flex justify-between">
-                                                        <span>SGST Total:</span>
+                                                        <span>{t("sgstTotal")}:</span>
                                                         <span>₹{bill.sgst_total.toFixed(2)}</span>
                                                     </div>
                                                 </>
                                             ) : (
                                                 <div className="flex justify-between">
-                                                    <span>IGST Total:</span>
+                                                    <span>{t("igstTotal")}:</span>
                                                     <span>₹{bill.igst_total.toFixed(2)}</span>
                                                 </div>
                                             )}
                                             <div className="flex justify-between font-semibold text-[var(--foreground)] pt-1 border-t border-[var(--border)]">
-                                                <span>Total GST:</span>
+                                                <span>{t("totalTax")}:</span>
                                                 <span>₹{bill.total_tax.toFixed(2)}</span>
                                             </div>
                                         </div>
 
                                         {bill.notes && (
                                             <div className="pt-2 border-t border-[var(--border)] text-xs">
-                                                <span className="text-[var(--muted-foreground)] block font-medium">Notes:</span>
+                                                <span className="text-[var(--muted-foreground)] block font-medium">{t("lblNotes")}:</span>
                                                 <span className="text-[var(--foreground)]">{bill.notes}</span>
                                             </div>
                                         )}
@@ -580,7 +612,7 @@ export function BillDetailModal({
                                                         <th className="p-2.5">{t("thPaymentMode")}</th>
                                                         <th className="p-2.5">{t("thReference")}</th>
                                                         <th className="p-2.5 text-right">{t("thPaymentAmount")}</th>
-                                                        <th className="p-2.5 text-center">Status</th>
+                                                        <th className="p-2.5 text-center">{t("thStatus")}</th>
                                                         <th className="p-2.5 text-right">{t("thActions")}</th>
                                                     </tr>
                                                 </thead>
@@ -593,7 +625,7 @@ export function BillDetailModal({
                                                                 p.voided && "opacity-50 line-through bg-rose-500/5"
                                                             )}
                                                         >
-                                                            <td className="p-2.5">{p.payment_date}</td>
+                                                            <td className="p-2.5">{formatDisplayDate(p.payment_date)}</td>
                                                             <td className="p-2.5 font-medium">{p.payment_mode}</td>
                                                             <td className="p-2.5 font-mono text-[var(--muted-foreground)]">
                                                                 {p.reference || "—"}
@@ -604,11 +636,11 @@ export function BillDetailModal({
                                                             <td className="p-2.5 text-center">
                                                                 {p.voided ? (
                                                                     <span className="text-[10px] text-rose-500 font-semibold uppercase">
-                                                                        Voided
+                                                                        {t("statusVoided")}
                                                                     </span>
                                                                 ) : (
                                                                     <span className="text-[10px] text-emerald-500 font-semibold uppercase">
-                                                                        Active
+                                                                        {t("statusActive")}
                                                                     </span>
                                                                 )}
                                                             </td>
@@ -709,7 +741,7 @@ export function BillDetailModal({
                                             className="px-3 py-1.5 text-xs font-medium rounded-xl border border-[var(--border)] hover:bg-[var(--muted)] text-[var(--foreground)] transition-colors flex items-center gap-1.5"
                                         >
                                             <Edit3 className="w-3.5 h-3.5" />
-                                            <span>Edit Due Date/Notes</span>
+                                            <span>{t("btnEditDueDateNotes")}</span>
                                         </button>
 
                                         {balance > 0 && (
@@ -732,12 +764,12 @@ export function BillDetailModal({
                     {isEditOpenFields && bill && bill.status === "Open" && (
                         <div className="p-4 border-t border-[var(--border)] bg-[var(--muted)]/50 space-y-3">
                             <div className="text-xs font-semibold text-[var(--foreground)]">
-                                Edit Open Bill (Only Due Date and Notes permitted)
+                                {t("editOpenBillNotice")}
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                     <label className="text-[10px] text-[var(--muted-foreground)] font-medium mb-1 block">
-                                        Due Date *
+                                        {t("dueDate")} *
                                     </label>
                                     <input
                                         type="date"
@@ -749,13 +781,13 @@ export function BillDetailModal({
                                 </div>
                                 <div>
                                     <label className="text-[10px] text-[var(--muted-foreground)] font-medium mb-1 block">
-                                        Notes
+                                        {t("lblNotes")}
                                     </label>
                                     <input
                                         type="text"
                                         value={editNotes}
                                         onChange={(e) => setEditNotes(e.target.value)}
-                                        placeholder="Add notes..."
+                                        placeholder={t("addNotesPlaceholder")}
                                         className="w-full px-3 py-1.5 text-xs rounded-lg border border-[var(--border)] bg-[var(--card)]"
                                     />
                                 </div>
@@ -766,7 +798,7 @@ export function BillDetailModal({
                                     onClick={() => setIsEditOpenFields(false)}
                                     className="px-3 py-1 text-xs rounded-lg border border-[var(--border)] text-[var(--foreground)]"
                                 >
-                                    Cancel
+                                    {t("cancel")}
                                 </button>
                                 <button
                                     type="button"
@@ -774,7 +806,7 @@ export function BillDetailModal({
                                     disabled={isSavingOpenFields}
                                     className="px-3 py-1 text-xs font-semibold rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50"
                                 >
-                                    {isSavingOpenFields ? "Saving..." : "Save Changes"}
+                                    {isSavingOpenFields ? t("saving") : t("btnSaveChanges")}
                                 </button>
                             </div>
                         </div>
@@ -875,7 +907,7 @@ export function BillDetailModal({
                                 rows={3}
                                 value={voidPaymentReason}
                                 onChange={(e) => setVoidPaymentReason(e.target.value)}
-                                placeholder="State why this payment is being voided..."
+                                placeholder={t("voidPaymentReasonPlaceholder")}
                                 className="w-full px-3 py-2 text-xs rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-1 focus:ring-rose-500"
                                 autoFocus
                             />
@@ -895,7 +927,7 @@ export function BillDetailModal({
                                 disabled={isVoidingPayment || !voidPaymentReason.trim()}
                                 className="px-4 py-1.5 text-xs font-semibold rounded-xl bg-rose-500 text-white hover:bg-rose-600 transition-colors disabled:opacity-50"
                             >
-                                {isVoidingPayment ? t("saving") : "Void Payment"}
+                                {isVoidingPayment ? t("saving") : t("btnVoidPayment")}
                             </button>
                         </div>
                     </div>

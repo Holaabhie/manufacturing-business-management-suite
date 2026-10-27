@@ -181,9 +181,10 @@ export async function hasPermission(
     permission: string
 ): Promise<boolean> {
     try {
+        if (!ObjectId.isValid(userId)) return false;
         const db = await getDb();
         const user = await db.collection("users").findOne({
-            _id: ObjectId.isValid(userId) ? new ObjectId(userId) : userId as any,
+            _id: new ObjectId(userId),
         });
 
         if (!user) return false;
@@ -203,10 +204,10 @@ export async function hasPermission(
         if (existingPerms) {
             // Navigate dot-notation: "invoices.create" → permissions.invoices.create
             const parts = permission.split(".");
-            let current: any = existingPerms;
+            let current: unknown = existingPerms;
             for (const part of parts) {
-                if (current && typeof current === "object" && part in current) {
-                    current = current[part];
+                if (current && typeof current === "object" && part in (current as Record<string, unknown>)) {
+                    current = (current as Record<string, unknown>)[part];
                 } else {
                     current = undefined;
                     break;
@@ -264,7 +265,7 @@ function getDefaultPermission(role: string, permission: string): boolean {
  */
 export function getBusinessId(user: WithId<UserDoc>): string {
     // Try new IND Manager field first
-    const bizId = (user as any).businessId;
+    const bizId = (user as WithId<UserDoc> & { businessId?: ObjectId | string }).businessId;
     if (bizId) return String(bizId);
 
     // Fall back to existing organization pattern

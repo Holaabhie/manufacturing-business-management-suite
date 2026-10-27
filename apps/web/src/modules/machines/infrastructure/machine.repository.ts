@@ -102,7 +102,7 @@ export class MongoMachineRepository implements IMachineRepository {
                 { returnDocument: "after" },
             );
 
-            return result ? toDomainEntity(result as unknown as MachineDocument) : null;
+            return result ? toDomainEntity(result) : null;
         } catch {
             return null;
         }

@@ -292,16 +292,24 @@ export function EnterpriseDataTable<TData, TValue>({
                                     const isSortable = header.column.getCanSort();
                                     const sortDirection = header.column.getIsSorted();
 
+                                    const meta = header.column.columnDef.meta as any;
+                                    const isRightAligned = meta?.align === "right";
+
                                     return (
                                         <TableHead
                                             key={header.id}
                                             className={cn(
-                                                "text-xs font-semibold",
-                                                isSortable && "cursor-pointer select-none hover:bg-muted"
+                                                "text-xs font-semibold px-3 py-2.5",
+                                                isSortable && "cursor-pointer select-none hover:bg-muted",
+                                                isRightAligned && "text-right",
+                                                meta?.headerClassName
                                             )}
                                             onClick={isSortable ? header.column.getToggleSortingHandler() : undefined}
                                         >
-                                            <div className="flex items-center gap-1">
+                                            <div className={cn(
+                                                "flex items-center gap-1",
+                                                isRightAligned && "justify-end text-right"
+                                            )}>
                                                 {header.isPlaceholder
                                                     ? null
                                                     : flexRender(
@@ -309,7 +317,7 @@ export function EnterpriseDataTable<TData, TValue>({
                                                         header.getContext()
                                                     )}
                                                 {isSortable && (
-                                                    <span className="ml-1">
+                                                    <span className="ml-1 shrink-0">
                                                         {sortDirection === "asc" ? (
                                                             <ArrowUp className="h-3 w-3" />
                                                         ) : sortDirection === "desc" ? (
@@ -326,46 +334,59 @@ export function EnterpriseDataTable<TData, TValue>({
                             </TableRow>
                         ))}
                     </TableHeader>
-                    <TableBody>
-                        {isLoading ? (
-                            // Loading state
-                            Array.from({ length: 5 }).map((_, idx) => (
+                    {isLoading ? (
+                        <TableBody>
+                            {Array.from({ length: 5 }).map((_, idx) => (
                                 <TableRow key={idx}>
                                     {columns.map((_, colIdx) => (
-                                        <TableCell key={colIdx}>
+                                        <TableCell key={colIdx} className="px-3 py-2">
                                             <div className="h-4 bg-muted rounded shimmer" />
                                         </TableCell>
                                     ))}
                                 </TableRow>
-                            ))
-                        ) : table.getRowModel().rows?.length ? (
-                            <motion.tbody
-                                variants={variantsStaggerContainer}
-                                initial="hidden"
-                                animate="visible"
-                            >
-                                {table.getRowModel().rows.map((row) => (
-                                    <motion.tr
-                                        key={row.id}
-                                        variants={variantsStaggerItem}
-                                        className={cn(
-                                            "border-b transition-colors hover:bg-muted/50",
-                                            row.getIsSelected() && "bg-primary/5"
-                                        )}
-                                        data-state={row.getIsSelected() && "selected"}
-                                    >
-                                        {row.getVisibleCells().map((cell) => (
-                                            <TableCell key={cell.id} className="text-sm">
+                            ))}
+                        </TableBody>
+                    ) : table.getRowModel().rows?.length ? (
+                        <motion.tbody
+                            data-slot="table-body"
+                            className="[&_tr:last-child]:border-0"
+                            variants={variantsStaggerContainer}
+                            initial="hidden"
+                            animate="visible"
+                        >
+                            {table.getRowModel().rows.map((row) => (
+                                <motion.tr
+                                    key={row.id}
+                                    variants={variantsStaggerItem}
+                                    className={cn(
+                                        "border-b transition-colors hover:bg-muted/50",
+                                        row.getIsSelected() && "bg-primary/5"
+                                    )}
+                                    data-state={row.getIsSelected() && "selected"}
+                                >
+                                    {row.getVisibleCells().map((cell) => {
+                                        const cellMeta = cell.column.columnDef.meta as any;
+                                        const isCellRight = cellMeta?.align === "right";
+                                        return (
+                                            <TableCell
+                                                key={cell.id}
+                                                className={cn(
+                                                    "text-sm px-3 py-2",
+                                                    isCellRight && "text-right",
+                                                    cellMeta?.cellClassName
+                                                )}
+                                            >
                                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                             </TableCell>
-                                        ))}
-                                    </motion.tr>
-                                ))}
-                            </motion.tbody>
-                        ) : (
-                            // Empty state
+                                        );
+                                    })}
+                                </motion.tr>
+                            ))}
+                        </motion.tbody>
+                    ) : (
+                        <TableBody>
                             <TableRow>
-                                <TableCell colSpan={columns.length} className="h-48">
+                                <TableCell colSpan={columns.length} className="h-48 px-3 py-2">
                                     <div className="flex flex-col items-center justify-center text-center py-8">
                                         <div className="w-16 h-16 bg-muted rounded-xl flex items-center justify-center mb-4">
                                             <Search className="h-8 w-8 text-muted-foreground/50" />
@@ -382,8 +403,8 @@ export function EnterpriseDataTable<TData, TValue>({
                                     </div>
                                 </TableCell>
                             </TableRow>
-                        )}
-                    </TableBody>
+                        </TableBody>
+                    )}
                 </Table>
             </div>
 

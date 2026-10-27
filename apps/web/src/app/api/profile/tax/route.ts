@@ -1,3 +1,4 @@
+import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
@@ -16,10 +17,10 @@ export async function GET() {
     }
 
     const db = await getDb();
-    const orgId = (user as any).organizationId || String(user._id);
+    const orgId = user.organizationId || String(user._id);
 
     const profile = await db.collection("companyprofiles").findOne({ organizationId: orgId });
-    const userDoc = await db.collection("users").findOne({ _id: user._id as any });
+    const userDoc = await db.collection("users").findOne({ _id: (ObjectId.isValid(String(user._id)) ? new ObjectId(String(user._id)) : String(user._id)) as unknown as ObjectId });
 
     const taxSettings = {
       gstin: profile?.gst_number || userDoc?.company_details?.gstin || "",
@@ -34,9 +35,9 @@ export async function GET() {
     };
 
     return NextResponse.json({ tax: taxSettings });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching tax settings:", error);
-    return NextResponse.json({ error: error.message || "Failed to fetch tax settings" }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message || "Failed to fetch tax settings" }, { status: 500 });
   }
 }
 
@@ -74,7 +75,7 @@ export async function PATCH(request: Request) {
     const reverseChargeLiable = Boolean(body.reverse_charge_liable);
 
     const db = await getDb();
-    const orgId = (user as any).organizationId || String(user._id);
+    const orgId = user.organizationId || String(user._id);
     const now = new Date();
 
     const updateFields = {
@@ -99,7 +100,7 @@ export async function PATCH(request: Request) {
 
     // Keep legacy users.company_details in sync
     await db.collection("users").updateOne(
-      { _id: user._id as any },
+      { _id: (ObjectId.isValid(String(user._id)) ? new ObjectId(String(user._id)) : String(user._id)) as unknown as ObjectId },
       {
         $set: {
           "company_details.gstin": cleanGstin,
@@ -123,8 +124,8 @@ export async function PATCH(request: Request) {
         reverse_charge_liable: reverseChargeLiable,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating tax settings:", error);
-    return NextResponse.json({ error: error.message || "Failed to update tax settings" }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message || "Failed to update tax settings" }, { status: 500 });
   }
 }

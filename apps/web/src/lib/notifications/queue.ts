@@ -67,7 +67,7 @@ export async function dequeueJobs(
   const jobs: DeliveryJobDoc[] = [];
 
   for (let i = 0; i < batchSize; i++) {
-    const job = await db.collection("notification_jobs").findOneAndUpdate(
+    const job = await db.collection<DeliveryJobDoc>("notification_jobs").findOneAndUpdate(
       {
         status: { $in: ["pending", "failed"] },
         nextRetryAt: { $lte: now },
@@ -92,7 +92,7 @@ export async function dequeueJobs(
     );
 
     if (!job) break; // No more jobs available
-    jobs.push(job as unknown as DeliveryJobDoc);
+    jobs.push(job);
   }
 
   return jobs;

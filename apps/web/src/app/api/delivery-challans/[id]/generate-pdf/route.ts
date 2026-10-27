@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/require-role";
-import { getDataOwnerId } from "@/lib/auth-session";
+import { getDataOwnerId, type UserDoc } from "@/lib/auth-session";
+import type { WithId } from "mongodb";
 import { getDeliveryChallanService } from "@/modules/delivery-challans";
 import { buildDeliveryChallanHTML, type CompanyPDFInfo } from "@/lib/delivery-challans/challan-pdf-template";
 import { getDb } from "@/lib/mongodb";
@@ -11,7 +12,7 @@ export const maxDuration = 30;
 
 const ALLOWED_ROLES = ["Owner", "Admin", "Manager", "Accountant"];
 
-async function handleGeneratePDF(id: string, user: any, format?: string | null) {
+async function handleGeneratePDF(id: string, user: WithId<UserDoc>, format?: string | null) {
     const tenantId = getDataOwnerId(user);
     const svc = getDeliveryChallanService();
     const challan = await svc.findById(id, tenantId);
@@ -26,7 +27,7 @@ async function handleGeneratePDF(id: string, user: any, format?: string | null) 
     });
 
     const company: CompanyPDFInfo = {
-        companyName: profile?.company_name || profile?.trade_name || user.name || "Business Enterprise",
+        companyName: profile?.company_name || profile?.trade_name || user.fullName || "Business Enterprise",
         address: [
             profile?.reg_address_line_1,
             profile?.reg_city,
@@ -64,7 +65,7 @@ async function handleGeneratePDF(id: string, user: any, format?: string | null) 
         const safeNumber = challan.challan_number.replace(/[^a-zA-Z0-9\-_]/g, "_");
         const filename = `Delivery_Challan_${safeNumber}.pdf`;
 
-        return new NextResponse(pdfBytes as unknown as BodyInit, {
+        return new NextResponse(Buffer.from(pdfBytes), {
             status: 200,
             headers: {
                 "Content-Type": "application/pdf",
@@ -91,15 +92,15 @@ export async function POST(
 ) {
     try {
         const result = await requireRole(ALLOWED_ROLES);
-        if (result.error) {
-            return NextResponse.json({ error: result.error }, { status: result.status });
+        if (result.error || !result.user) {
+            return NextResponse.json({ error: result.error || "Unauthorized" }, { status: result.status || 401 });
         }
         const { id } = await params;
         const format = request.nextUrl.searchParams.get("format");
         return await handleGeneratePDF(id, result.user, format);
     } catch (error) {
         if (error instanceof NotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 });
+            return NextResponse.json({ error: (error as Error).message }, { status: 404 });
         }
         console.error("Error generating delivery challan PDF:", error);
         return NextResponse.json({ error: "Failed to generate delivery challan PDF" }, { status: 500 });
@@ -112,15 +113,15 @@ export async function GET(
 ) {
     try {
         const result = await requireRole(ALLOWED_ROLES);
-        if (result.error) {
-            return NextResponse.json({ error: result.error }, { status: result.status });
+        if (result.error || !result.user) {
+            return NextResponse.json({ error: result.error || "Unauthorized" }, { status: result.status || 401 });
         }
         const { id } = await params;
         const format = request.nextUrl.searchParams.get("format");
         return await handleGeneratePDF(id, result.user, format);
     } catch (error) {
         if (error instanceof NotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 });
+            return NextResponse.json({ error: (error as Error).message }, { status: 404 });
         }
         console.error("Error generating delivery challan PDF:", error);
         return NextResponse.json({ error: "Failed to generate delivery challan PDF" }, { status: 500 });

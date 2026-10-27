@@ -21,8 +21,7 @@ export const POST = withIdempotency(
             }
             const user = result.user;
             const tenantId = getDataOwnerId(user);
-            const userAny = user as any;
-            const userName = userAny.fullName || userAny.name || user.email || String(user._id);
+            const userName = user.fullName || user.fullName || user.email || String(user._id);
             const { id, paymentId } = await context.params;
 
             const body = await request.json();
@@ -35,21 +34,21 @@ export const POST = withIdempotency(
             await logDataOperation({
                 organizationId: tenantId,
                 userId: String(user._id),
-                userName: userAny.fullName || userAny.name || user.email || "Unknown User",
-                userRole: (userAny.role === "Admin" || userAny.role === "Owner") ? "Admin" : "Staff",
-            userRoleDetail: userAny.role || user.role,
+                userName: user.fullName || user.fullName || user.email || "Unknown User",
+                userRole: (user.role === "Admin" || user.role === "Owner") ? "Admin" : "Staff",
+            userRoleDetail: user.role || user.role,
                 action: `Voided payment ${paymentId} of ₹${voidResult.payment.amount} for vendor bill ${id} (Reason: ${void_reason})`,
                 actionType: "update",
                 module: "vendor_bills",
                 resourceId: paymentId,
                 resourceType: "vendor_bill_payment",
-                afterState: voidResult.payment as unknown as Record<string, unknown>,
+                afterState: voidResult.payment,
                 ipAddress: getClientIp(request),
                 userAgent: request.headers.get("user-agent") || undefined,
             });
 
             return NextResponse.json(voidResult);
-        } catch (error: any) {
+        } catch (error: unknown) {
             if (error instanceof ZodError) {
                 return NextResponse.json(
                     { error: error.issues?.[0]?.message || "Validation failed", details: error.issues },
@@ -62,8 +61,9 @@ export const POST = withIdempotency(
                     { status: error.statusCode }
                 );
             }
-            if (error.statusCode) {
-                return NextResponse.json({ error: error.message }, { status: error.statusCode });
+            const statusCode = (error as { statusCode?: number })?.statusCode;
+            if (statusCode) {
+                return NextResponse.json({ error: (error as Error).message }, { status: statusCode });
             }
             console.error("Error voiding bill payment:", error);
             return NextResponse.json({ error: "Failed to void payment" }, { status: 500 });

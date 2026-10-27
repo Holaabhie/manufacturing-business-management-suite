@@ -99,7 +99,7 @@ export interface EmployeeActionPayload {
     action: EmployeeAction;
     // For update_permissions
     templateId?: string;
-    permissions?: PermissionMap;
+    permissions?: PermissionMap | Record<string, Record<string, boolean>>;
     // For update_profile
     fullName?: string;
     email?: string;

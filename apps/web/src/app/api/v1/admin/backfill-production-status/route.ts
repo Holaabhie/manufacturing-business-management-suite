@@ -26,8 +26,9 @@ export async function POST(req: NextRequest) {
         }
 
         // Only admin/owner can run backfill
-        const role = (user as any).role || "";
-        if (role !== "admin" && role !== "owner" && role !== "Admin" && role !== "Owner") {
+        const role = user.role || "";
+        const lowerRole = role.toLowerCase();
+        if (lowerRole !== "admin" && lowerRole !== "owner") {
             return NextResponse.json({ error: "Admin access required" }, { status: 403 });
         }
 
@@ -103,8 +104,8 @@ export async function POST(req: NextRequest) {
                 noProductionRecords: noProduction,
             },
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[backfill-production-status] Error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: (error as Error).message }, { status: 500 });
     }
 }

@@ -30,7 +30,7 @@ export async function GET() {
       .sort({ updatedAt: -1 })
       .toArray();
 
-    const formatted = notes.map((n: any, index: number) => ({
+    const formatted = notes.map((n: { _id: { toString(): string }; [key: string]: unknown }, index: number) => ({
       id: n._id.toString(),
       title: n.title,
       body: n.body,
@@ -40,9 +40,9 @@ export async function GET() {
     }));
 
     return NextResponse.json(formatted);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching notes:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }
 
@@ -84,8 +84,8 @@ export async function POST(request: Request) {
       createdAt: note!.createdAt,
       updatedAt: note!.updatedAt,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating note:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }

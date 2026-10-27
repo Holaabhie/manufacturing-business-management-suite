@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
         const safeNumber = invoiceData.invoiceNumber.replace(/[^a-zA-Z0-9\-_]/g, "_");
         const filename = `Invoice_${safeNumber}.pdf`;
 
-        return new NextResponse(pdfBytes as unknown as BodyInit, {
+        return new NextResponse(Buffer.from(pdfBytes), {
             status: 200,
             headers: {
                 "Content-Type": "application/pdf",

@@ -28,7 +28,7 @@ export async function GET() {
 
     // No saved preferences — return null so client uses defaults
     return NextResponse.json({ modules: null });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[user/modules GET] Error:", error);
     return NextResponse.json(
       { error: "Failed to load module preferences" },
@@ -76,7 +76,7 @@ export async function PUT(req: Request) {
     );
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[user/modules PUT] Error:", error);
     return NextResponse.json(
       { error: "Failed to save module preferences" },

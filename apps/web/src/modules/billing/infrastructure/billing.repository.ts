@@ -1,9 +1,9 @@
-import { ObjectId } from "mongodb";
+import { ObjectId, type Document } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 import type { IBillingRepository, Bill, CreateBillDTO, UpdateBillDTO } from "../domain/types";
 import { getFinancialYear } from "@/lib/utils/financial-year";
 
-function toEntity(doc: Record<string, unknown>): Bill {
+function toEntity(doc: Document): Bill {
     const rawItems = (doc.items as Record<string, unknown>[]) || [];
     // Normalize each item to ensure gstRate, unit, hsnCode are always present
     const items: Bill["items"] = rawItems.map((item) => ({
@@ -52,7 +52,7 @@ export class MongoBillingRepository implements IBillingRepository {
         try {
             const c = await this.col();
             const doc = await c.findOne({ _id: new ObjectId(id), userId });
-            return doc ? toEntity(doc as Record<string, unknown>) : null;
+            return doc ? toEntity(doc) : null;
         } catch { return null; }
     }
 
@@ -128,7 +128,7 @@ export class MongoBillingRepository implements IBillingRepository {
                 { $set: fields },
                 { returnDocument: "after" },
             );
-            return result ? toEntity(result as unknown as Record<string, unknown>) : null;
+            return result ? toEntity(result) : null;
         } catch { return null; }
     }
 

@@ -16,8 +16,8 @@ export interface IAuditLog extends Document {
     resourceType?: string;     // Type: "order", "inventory_item", "user", etc.
 
     // State tracking (for edits)
-    beforeState?: Record<string, unknown>;
-    afterState?: Record<string, unknown>;
+    beforeState?: Record<string, unknown> | object;
+    afterState?: Record<string, unknown> | object;
 
     // Request context
     ipAddress?: string;
@@ -38,6 +38,7 @@ const AuditLogSchema = new Schema<IAuditLog>({
     organizationId: {
         type: String,
         required: true,
+        default: 'unassigned',
         index: true,
     },
     userId: {

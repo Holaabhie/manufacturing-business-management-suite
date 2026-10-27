@@ -1,3 +1,4 @@
+import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
@@ -24,7 +25,7 @@ export async function GET() {
             .collection("users")
             .find({
                 $or: [
-                    { _id: dataOwnerId as any },
+                    { _id: (ObjectId.isValid(dataOwnerId) ? new ObjectId(dataOwnerId) : dataOwnerId) as unknown as ObjectId },
                     { adminId: dataOwnerId },
                     { organizationId: user.organizationId, ...(user.organizationId ? {} : { _id: { $exists: false } }) },
                 ],
@@ -52,8 +53,8 @@ export async function GET() {
             .sort({ createdAt: -1 })
             .toArray();
 
-        const formattedMembers = members.map((m: any) => {
-            const resolved = resolvePermissions(m.role, m.customPermissions);
+        const formattedMembers = members.map((m: Record<string, unknown>) => {
+            const resolved = resolvePermissions(m.role as string | null | undefined, m.customPermissions as Record<string, boolean> | null | undefined);
             return {
                 id: String(m._id),
                 fullName: m.fullName || m.full_name || "Unknown",
@@ -73,7 +74,7 @@ export async function GET() {
             };
         });
 
-        const formattedInvitations = invitations.map((inv: any) => ({
+        const formattedInvitations = invitations.map((inv: Record<string, unknown>) => ({
             id: String(inv._id),
             email: inv.email,
             role: inv.role,
@@ -87,8 +88,8 @@ export async function GET() {
             members: formattedMembers,
             pendingInvitations: formattedInvitations,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[team GET] Error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: (error as Error).message }, { status: 500 });
     }
 }

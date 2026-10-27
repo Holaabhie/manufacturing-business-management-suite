@@ -22,6 +22,8 @@ import {
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
+import { LinkedDocChip } from "@/components/ui/LinkedDocChip";
+import { getOrderDisplayNumber } from "@/lib/order-utils";
 import type { Quotation, QuoteStatus } from "@/modules/quotes/domain/types";
 import { ConvertLinePickerModal } from "./ConvertLinePickerModal";
 
@@ -180,52 +182,65 @@ export function QuoteDetailModal({
           className="relative w-full h-[100dvh] max-h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-4xl bg-[var(--background)] border-t sm:border border-[var(--border)] rounded-none sm:rounded-[20px] shadow-2xl flex flex-col overflow-hidden z-10"
         >
           {/* Header Toolbar */}
-          <div className="px-5 py-3.5 border-b border-[var(--border)] flex flex-wrap items-center justify-between gap-3 shrink-0 bg-[var(--card)]">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-500">
-                <FileText className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-mono text-sm font-bold text-[var(--foreground)]">
-                    {quote.quotation_number}
-                  </span>
-                  <span
-                    className={cn(
-                      "px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider",
-                      statusStyles[quote.status]
-                    )}
-                  >
-                    {t(`status${quote.status}` as any) || quote.status}
-                  </span>
-                  {isFullyConverted && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30">
-                      {t("badgeConverted")}
-                    </span>
-                  )}
-                  {isPartiallyConverted && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border tracking-wider bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30">
-                      {t("badgePartiallyConverted", { converted: convertedCount, total: totalLines })}
-                    </span>
-                  )}
+          <div className="px-4 sm:px-5 py-3 border-b border-[var(--border)] shrink-0 bg-[var(--card)] flex flex-col gap-2.5">
+            {/* Row 1: Left = Icon + Quote Number + Status, Right = Fixed Close (X) button */}
+            <div className="flex items-center justify-between gap-3 w-full">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-500 shrink-0">
+                  <FileText className="w-5 h-5" />
                 </div>
-                <p className="text-xs text-[var(--muted-foreground)]">
-                  {t("detailTitle")}
-                </p>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-mono text-sm font-bold text-[var(--foreground)] truncate">
+                      {quote.quotation_number}
+                    </span>
+                    <span
+                      className={cn(
+                        "px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider shrink-0",
+                        statusStyles[quote.status]
+                      )}
+                    >
+                      {t(`status${quote.status}` as any) || quote.status}
+                    </span>
+                    {isFullyConverted && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30 shrink-0">
+                        {t("badgeConverted")}
+                      </span>
+                    )}
+                    {isPartiallyConverted && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border tracking-wider bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30 shrink-0">
+                        {t("badgePartiallyConverted", { converted: convertedCount, total: totalLines })}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-[var(--muted-foreground)] truncate">
+                    {t("detailTitle")}
+                  </p>
+                </div>
               </div>
+
+              {/* Close (X) button: Fixed at top-right, 40px tap target, shrink-0 */}
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close"
+                className="w-10 h-10 flex items-center justify-center rounded-xl text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)] transition-colors shrink-0 -mr-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            <div className="flex items-center gap-2">
+            {/* Row 2: Action Buttons (Convert, Download, Duplicate, Edit, Delete) - Horizontally scrollable on mobile */}
+            <div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden w-full py-0.5 shrink-0">
               {canConvert && (
                 <button
                   type="button"
                   onClick={handleConvertClick}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition-colors cursor-pointer shrink-0 whitespace-nowrap"
                   title={t("actionConvertToOrder")}
                 >
-                  <ShoppingCart className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">{t("actionConvertToOrder")}</span>
-                  <span className="sm:hidden">Convert</span>
+                  <ShoppingCart className="w-3.5 h-3.5 shrink-0" />
+                  <span>{t("actionConvertToOrder")}</span>
                 </button>
               )}
 
@@ -233,11 +248,11 @@ export function QuoteDetailModal({
                 type="button"
                 onClick={handleDownloadPdf}
                 disabled={downloadingPdf}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-[var(--border)] hover:bg-[var(--muted)] text-[var(--foreground)] transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-[var(--border)] hover:bg-[var(--muted)] text-[var(--foreground)] transition-colors shrink-0 whitespace-nowrap"
                 title={t("actionDownloadPdf")}
               >
-                {downloadingPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                <span className="hidden sm:inline">PDF</span>
+                {downloadingPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" /> : <Download className="w-3.5 h-3.5 shrink-0" />}
+                <span>PDF</span>
               </button>
 
               <button
@@ -246,11 +261,11 @@ export function QuoteDetailModal({
                   onClose();
                   onDuplicate(quote);
                 }}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-[var(--border)] hover:bg-[var(--muted)] text-[var(--foreground)] transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-[var(--border)] hover:bg-[var(--muted)] text-[var(--foreground)] transition-colors shrink-0 whitespace-nowrap"
                 title={t("actionDuplicate")}
               >
-                <Copy className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">{t("actionDuplicate")}</span>
+                <Copy className="w-3.5 h-3.5 shrink-0" />
+                <span>{t("actionDuplicate")}</span>
               </button>
 
               <button
@@ -259,11 +274,11 @@ export function QuoteDetailModal({
                   onClose();
                   onEdit(quote);
                 }}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors shrink-0 whitespace-nowrap"
                 title={t("actionEdit")}
               >
-                <Edit2 className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">{t("actionEdit")}</span>
+                <Edit2 className="w-3.5 h-3.5 shrink-0" />
+                <span>{t("actionEdit")}</span>
               </button>
 
               <button
@@ -272,18 +287,11 @@ export function QuoteDetailModal({
                   onClose();
                   onDelete(quote);
                 }}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg text-red-500 hover:bg-red-500/10 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-red-500 hover:bg-red-500/10 border border-red-500/20 transition-colors shrink-0 whitespace-nowrap"
                 title={t("actionDelete")}
               >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-
-              <button
-                type="button"
-                onClick={onClose}
-                className="p-1.5 rounded-lg text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)] transition-colors ml-1"
-              >
-                <X className="w-5 h-5" />
+                <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                <span>{t("actionDelete")}</span>
               </button>
             </div>
           </div>
@@ -375,9 +383,9 @@ export function QuoteDetailModal({
               <div className="sm:text-right space-y-1 text-xs">
                 <div>
                   <span className="text-[var(--muted-foreground)]">{t("thDate")}: </span>
-                  <strong className="text-[var(--foreground)] font-mono">
+                  <strong className="text-[var(--foreground)] tabular-nums">
                     {new Date(quote.quotation_date).toLocaleDateString("en-IN", {
-                      day: "numeric",
+                      day: "2-digit",
                       month: "short",
                       year: "numeric",
                     })}
@@ -385,9 +393,9 @@ export function QuoteDetailModal({
                 </div>
                 <div>
                   <span className="text-[var(--muted-foreground)]">{t("thValidUntil")}: </span>
-                  <strong className="text-[var(--foreground)] font-mono">
+                  <strong className="text-[var(--foreground)] tabular-nums">
                     {new Date(quote.valid_until).toLocaleDateString("en-IN", {
-                      day: "numeric",
+                      day: "2-digit",
                       month: "short",
                       year: "numeric",
                     })}
@@ -402,128 +410,222 @@ export function QuoteDetailModal({
               </div>
             </div>
 
-            {/* Line items table */}
-            <div className="rounded-xl border border-[var(--border)] overflow-hidden">
-              <table className="w-full text-xs">
-                <thead className="bg-[var(--muted)]/70 text-[var(--muted-foreground)] border-b border-[var(--border)]">
-                  <tr>
-                    <th className="py-2.5 pl-3 text-left w-8">#</th>
-                    <th className="py-2.5 text-left">{t("colItem")}</th>
-                    <th className="py-2.5 text-center w-20">{t("colHsn")}</th>
-                    <th className="py-2.5 text-center w-20">{t("colQty")}</th>
-                    <th className="py-2.5 text-right w-24">{t("colRate")}</th>
-                    <th className="py-2.5 text-right w-20">{t("colDiscount")}</th>
-                    <th className="py-2.5 text-right w-20">GST</th>
-                    <th className="py-2.5 pr-3 text-right w-28">{t("colTotal")}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border)]">
-                  {quote.items.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-[var(--muted)]/30">
-                      <td className="py-2.5 pl-3 text-[var(--muted-foreground)] font-mono">
-                        {idx + 1}
-                      </td>
-                      <td className="py-2.5 font-medium text-[var(--foreground)]">
-                        <div>
-                          <span>{item.description}</span>
-                          {(() => {
-                            const convertedEntry = quote.converted_lines?.find(
-                              (cl) => cl.line_index === idx && cl.order_id !== null
-                            );
-                            if (convertedEntry?.order_id) {
-                              return (
-                                <div className="mt-1">
-                                  <a
-                                    href={`/dashboard/orders/${convertedEntry.order_id}/edit`}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:underline"
-                                  >
-                                    <CheckCircle2 className="w-3 h-3" />
-                                    <span>{t("convertedToOrder")} #{convertedEntry.order_id.slice(-6)}</span>
-                                    <ExternalLink className="w-2.5 h-2.5 ml-0.5 opacity-70" />
-                                  </a>
-                                </div>
-                              );
-                            }
-                            return null;
-                          })()}
+            {/* Line items - Mobile Stacked Cards (<640px) */}
+            <div className="sm:hidden space-y-3">
+              {quote.items.map((item, idx) => {
+                const convertedEntry = quote.converted_lines?.find(
+                  (cl) => cl.line_index === idx && cl.order_id !== null
+                );
+                return (
+                  <div
+                    key={idx}
+                    className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-3.5 space-y-2.5 text-xs shadow-sm"
+                  >
+                    {/* Top row: #1 Item description */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-1.5 min-w-0 flex-1">
+                        <span className="text-[var(--muted-foreground)] font-semibold shrink-0">
+                          #{idx + 1}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-[var(--foreground)] break-words leading-snug">
+                            {item.description}
+                          </p>
+                          {convertedEntry?.order_id && (
+                            <div className="mt-1" onClick={(e) => e.stopPropagation()}>
+                              <LinkedDocChip
+                                type="order"
+                                docNumber={getOrderDisplayNumber(convertedEntry.order_id)}
+                                secondaryText={t("convertedToOrder")}
+                                href={`/dashboard/orders/${convertedEntry.order_id}/edit`}
+                              />
+                            </div>
+                          )}
                         </div>
-                      </td>
-                      <td className="py-2.5 text-center font-mono text-[var(--muted-foreground)]">
-                        {item.hsn_sac || "—"}
-                      </td>
-                      <td className="py-2.5 text-center font-mono">
-                        {item.qty} {item.unit}
-                      </td>
-                      <td className="py-2.5 text-right font-mono">
-                        ₹{item.rate.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                      </td>
-                      <td className="py-2.5 text-right font-mono text-amber-500">
-                        {item.discount > 0 ? `₹${item.discount.toLocaleString("en-IN")}` : "—"}
-                      </td>
-                      <td className="py-2.5 text-right font-mono text-[var(--muted-foreground)]">
-                        {item.gst_rate}%
-                      </td>
-                      <td className="py-2.5 pr-3 text-right font-bold font-mono text-[var(--foreground)]">
+                      </div>
+                    </div>
+
+                    {/* Second row: HSN/SAC chip */}
+                    {item.hsn_sac ? (
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[var(--muted)] text-[11px] font-medium text-[var(--muted-foreground)] border border-[var(--border)]">
+                          HSN/SAC: {item.hsn_sac}
+                        </span>
+                      </div>
+                    ) : null}
+
+                    {/* 2-3 col mini grid: Qty · Rate · Disc · GST */}
+                    <div className="grid grid-cols-2 xs:grid-cols-4 gap-2 pt-2 border-t border-[var(--border)]/60 text-[11px]">
+                      <div>
+                        <span className="text-[var(--muted-foreground)] block text-[10px] uppercase font-medium">{t("colQty")}</span>
+                        <span className="font-semibold text-[var(--foreground)] tabular-nums">
+                          {item.qty} {item.unit}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[var(--muted-foreground)] block text-[10px] uppercase font-medium">{t("colRate")}</span>
+                        <span className="font-semibold text-[var(--foreground)] tabular-nums">
+                          ₹{item.rate.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[var(--muted-foreground)] block text-[10px] uppercase font-medium">{t("colDiscount")}</span>
+                        <span className="font-semibold text-amber-500 tabular-nums">
+                          {item.discount > 0 ? `₹${item.discount.toLocaleString("en-IN")}` : "₹0"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[var(--muted-foreground)] block text-[10px] uppercase font-medium">GST</span>
+                        <span className="font-semibold text-[var(--foreground)] tabular-nums">
+                          {item.gst_rate}%
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Line total right-aligned in bold */}
+                    <div className="pt-2 border-t border-[var(--border)] flex items-center justify-between text-xs">
+                      <span className="text-[var(--muted-foreground)] font-medium">{t("colTotal")}</span>
+                      <span className="font-bold text-[var(--foreground)] tabular-nums text-sm">
                         ₹{item.line_total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                      </td>
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Line items - Desktop Table (>=640px) */}
+            <div className="hidden sm:block rounded-xl border border-[var(--border)] overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs min-w-[650px]">
+                  <thead className="bg-[var(--muted)]/70 text-[var(--muted-foreground)] border-b border-[var(--border)]">
+                    <tr>
+                      <th className="py-2.5 pl-3 text-left w-10">#</th>
+                      <th className="py-2.5 text-left min-w-[180px]">{t("colItem")}</th>
+                      <th className="py-2.5 text-center w-24">{t("colHsn")}</th>
+                      <th className="py-2.5 text-center w-24">{t("colQty")}</th>
+                      <th className="py-2.5 text-right w-28">{t("colRate")}</th>
+                      <th className="py-2.5 text-right w-24">{t("colDiscount")}</th>
+                      <th className="py-2.5 text-right w-20">GST</th>
+                      <th className="py-2.5 pr-3 text-right w-32">{t("colTotal")}</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border)]">
+                    {quote.items.map((item, idx) => (
+                      <tr key={idx} className="hover:bg-[var(--muted)]/30">
+                        <td className="py-2.5 pl-3 text-[var(--muted-foreground)] font-medium">
+                          {idx + 1}
+                        </td>
+                        <td className="py-2.5 font-medium text-[var(--foreground)]">
+                          <div>
+                            <span className="break-words">{item.description}</span>
+                            {(() => {
+                              const convertedEntry = quote.converted_lines?.find(
+                                (cl) => cl.line_index === idx && cl.order_id !== null
+                              );
+                              if (convertedEntry?.order_id) {
+                                return (
+                                  <div className="mt-1" onClick={(e) => e.stopPropagation()}>
+                                    <LinkedDocChip
+                                      type="order"
+                                      docNumber={getOrderDisplayNumber(convertedEntry.order_id)}
+                                      secondaryText={t("convertedToOrder")}
+                                      href={`/dashboard/orders/${convertedEntry.order_id}/edit`}
+                                    />
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
+                        </td>
+                        <td className="py-2.5 text-center text-[var(--muted-foreground)]">
+                          {item.hsn_sac || "—"}
+                        </td>
+                        <td className="py-2.5 text-center tabular-nums">
+                          {item.qty} {item.unit}
+                        </td>
+                        <td className="py-2.5 text-right tabular-nums">
+                          ₹{item.rate.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="py-2.5 text-right tabular-nums text-amber-500">
+                          {item.discount > 0 ? `₹${item.discount.toLocaleString("en-IN")}` : "—"}
+                        </td>
+                        <td className="py-2.5 text-right tabular-nums text-[var(--muted-foreground)]">
+                          {item.gst_rate}%
+                        </td>
+                        <td className="py-2.5 pr-3 text-right font-bold tabular-nums text-[var(--foreground)]">
+                          ₹{item.line_total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {/* Financial Summary */}
-            <div className="flex justify-end">
-              <div className="w-full sm:w-80 rounded-xl bg-[var(--muted)]/40 border border-[var(--border)] p-4 space-y-2 text-xs">
-                <div className="flex justify-between text-[var(--muted-foreground)]">
-                  <span>{t("subtotal")}</span>
-                  <span className="font-mono">
-                    ₹{quote.subtotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                  </span>
-                </div>
+            {(() => {
+              const itemSumCgst = quote.items.reduce((acc, it) => acc + (it.cgst || 0), 0);
+              const itemSumSgst = quote.items.reduce((acc, it) => acc + (it.sgst || 0), 0);
+              const itemSumIgst = quote.items.reduce((acc, it) => acc + (it.igst || 0), 0);
+              const displayCgst = quote.cgst_amount > 0 ? quote.cgst_amount : itemSumCgst;
+              const displaySgst = quote.sgst_amount > 0 ? quote.sgst_amount : itemSumSgst;
+              const displayIgst = quote.igst_amount > 0 ? quote.igst_amount : itemSumIgst;
 
-                {quote.total_discount > 0 && (
-                  <div className="flex justify-between text-amber-500">
-                    <span>{t("totalDiscount")}</span>
-                    <span className="font-mono">
-                      - ₹{quote.total_discount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                )}
-
-                {quote.is_igst ? (
-                  <div className="flex justify-between text-[var(--muted-foreground)]">
-                    <span>IGST</span>
-                    <span className="font-mono">
-                      ₹{quote.igst_amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex justify-between text-[var(--muted-foreground)]">
-                      <span>CGST</span>
-                      <span className="font-mono">
-                        ₹{quote.cgst_amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+              return (
+                <div className="flex justify-end">
+                  <div className="w-full sm:w-80 rounded-xl bg-[var(--muted)]/40 border border-[var(--border)] p-4 space-y-2 text-xs">
+                    <div className="flex justify-between items-center text-[var(--muted-foreground)]">
+                      <span>{t("subtotal")}</span>
+                      <span className="tabular-nums text-right font-medium text-[var(--foreground)]">
+                        ₹{quote.subtotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                       </span>
                     </div>
-                    <div className="flex justify-between text-[var(--muted-foreground)]">
-                      <span>SGST</span>
-                      <span className="font-mono">
-                        ₹{quote.sgst_amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+
+                    {quote.total_discount > 0 && (
+                      <div className="flex justify-between items-center text-amber-500">
+                        <span>{t("totalDiscount")}</span>
+                        <span className="tabular-nums text-right font-medium">
+                          - ₹{quote.total_discount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    )}
+
+                    {quote.is_igst ? (
+                      <div className="flex justify-between items-center text-[var(--muted-foreground)]">
+                        <span>IGST</span>
+                        <span className="tabular-nums text-right font-medium text-[var(--foreground)]">
+                          ₹{displayIgst.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex justify-between items-center text-[var(--muted-foreground)]">
+                          <span>CGST</span>
+                          <span className="tabular-nums text-right font-medium text-[var(--foreground)]">
+                            ₹{displayCgst.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-[var(--muted-foreground)]">
+                          <span>SGST</span>
+                          <span className="tabular-nums text-right font-medium text-[var(--foreground)]">
+                            ₹{displaySgst.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      </>
+                    )}
+
+                    <div className="pt-2 border-t border-[var(--border)] flex justify-between items-center text-base font-bold text-[var(--foreground)]">
+                      <span>{t("grandTotal")}</span>
+                      <span className="tabular-nums text-right text-blue-500 font-bold">
+                        ₹{quote.grand_total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                       </span>
                     </div>
-                  </>
-                )}
-
-                <div className="pt-2 border-t border-[var(--border)] flex justify-between text-base font-bold text-[var(--foreground)]">
-                  <span>{t("grandTotal")}</span>
-                  <span className="font-mono text-blue-500">
-                    ₹{quote.grand_total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                  </span>
+                  </div>
                 </div>
-              </div>
-            </div>
+              );
+            })()}
 
             {/* Notes & Terms */}
             {(quote.notes || quote.terms) && (

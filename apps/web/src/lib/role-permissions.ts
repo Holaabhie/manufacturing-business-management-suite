@@ -201,8 +201,8 @@ export function isRouteReadOnly(
 export function filterNavigationByRole<
     T extends {
         label: string;
-        items: Array<{ name: string; href: string; icon: any; badge?: number; [key: string]: any }>;
-        [key: string]: any;
+        items: Array<{ name: string; href: string; icon: unknown; badge?: number; [key: string]: unknown }>;
+        [key: string]: unknown;
     }
 >(
     navigationGroups: T[],
@@ -231,7 +231,7 @@ export function filterNavigationByRole<
  * Enhanced: Uses granular permissions when available.
  */
 export function filterMobileNavByRole<
-    T extends { name: string; href: string; icon: any; isMore?: boolean; [key: string]: any }
+    T extends { name: string; href: string; icon: unknown; isMore?: boolean; [key: string]: unknown }
 >(
     mobileNavItems: T[],
     rawRole: UserRole | null,

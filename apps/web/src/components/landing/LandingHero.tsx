@@ -2,7 +2,7 @@
 
 import React, { useRef } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { BrandLogo } from "@/components/BrandLogo";
 import { motion, useMotionValue, useSpring, useTransform, type Variants } from "framer-motion";
 import {
   Zap,
@@ -336,15 +336,12 @@ function InteractiveMockup() {
           {/* Sidebar */}
           <div className="w-[110px] sm:w-[120px] flex-shrink-0 border-r border-border bg-muted/20 flex flex-col py-3 px-2 gap-0.5">
             <div className="px-2 mb-2">
-              <div className="w-5 h-5 rounded-[5px] overflow-hidden">
-                <Image
-                  src="/icons/icon-512.png"
-                  alt=""
-                  width={20}
-                  height={20}
-                  className="w-full h-full object-cover"
-                />
-              </div>
+              <BrandLogo
+                variant="icon"
+                width={20}
+                height={20}
+                className="w-5 h-5 object-contain"
+              />
             </div>
             {MOCKUP_SIDEBAR.map((item) => (
               <div

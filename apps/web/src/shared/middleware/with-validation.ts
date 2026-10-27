@@ -66,7 +66,7 @@ export function withValidation<T>(
             const fieldErrors: FieldError[] = result.error.issues.map((issue) => ({
                 field: issue.path.join(".") || "body",
                 message: issue.message,
-                received: (issue as unknown as Record<string, unknown>).received,
+                received: "received" in issue ? issue.received : undefined,
             }));
             throw new ValidationError(fieldErrors);
         }

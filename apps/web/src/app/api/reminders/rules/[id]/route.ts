@@ -44,7 +44,7 @@ export async function PATCH(
 
         // Audit log
         await logAudit({
-            organizationId: (auth.user as any).organizationId || tenantId,
+            organizationId: auth.user.organizationId || tenantId,
             userId: String(auth.user._id),
             userName: auth.user.fullName || auth.user.full_name || auth.user.email || "User",
             userRole: auth.user.role === "Admin" ? "Admin" : "Staff",
@@ -54,16 +54,16 @@ export async function PATCH(
             module: "reminders",
             resourceId: updatedRule.id,
             resourceType: "reminder_rule",
-            beforeState: existingRule as any,
-            afterState: updatedRule as any,
+            beforeState: existingRule as unknown as Record<string, unknown>,
+            afterState: updatedRule as unknown as Record<string, unknown>,
             severity: "info",
         });
 
         return NextResponse.json({ success: true, rule: updatedRule });
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error("[Reminders API] PATCH /rules/[id] error:", err);
         return NextResponse.json(
-            { error: err?.message || "Failed to update reminder rule" },
+            { error: (err as Error)?.message || "Failed to update reminder rule" },
             { status: 500 }
         );
     }
@@ -95,7 +95,7 @@ export async function DELETE(
 
         // Audit log
         await logAudit({
-            organizationId: (auth.user as any).organizationId || tenantId,
+            organizationId: auth.user.organizationId || tenantId,
             userId: String(auth.user._id),
             userName: auth.user.fullName || auth.user.full_name || auth.user.email || "User",
             userRole: auth.user.role === "Admin" ? "Admin" : "Staff",
@@ -105,15 +105,15 @@ export async function DELETE(
             module: "reminders",
             resourceId: existingRule.id,
             resourceType: "reminder_rule",
-            beforeState: existingRule as any,
+            beforeState: existingRule as unknown as Record<string, unknown>,
             severity: "info",
         });
 
         return NextResponse.json({ success: true });
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error("[Reminders API] DELETE /rules/[id] error:", err);
         return NextResponse.json(
-            { error: err?.message || "Failed to delete reminder rule" },
+            { error: (err as Error)?.message || "Failed to delete reminder rule" },
             { status: 500 }
         );
     }

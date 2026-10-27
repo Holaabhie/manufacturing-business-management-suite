@@ -24,9 +24,9 @@ export async function GET() {
     return NextResponse.json({
       counts: { clients, inventory, orders, total },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error counting sample data:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }
 
@@ -117,9 +117,9 @@ export async function POST() {
         orders: orderDocs.length,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error inserting sample data:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }
 
@@ -149,8 +149,8 @@ export async function DELETE() {
         orders: orders.deletedCount,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error removing sample data:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }

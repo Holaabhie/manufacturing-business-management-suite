@@ -95,7 +95,7 @@ export function NotificationFeedItem({
             <>
               <p
                 className={cn(
-                  "text-[13px] leading-[1.4] tracking-[-0.01em]",
+                  "text-[13px] leading-[1.4] tracking-[-0.01em] line-clamp-2 break-words",
                   notification.isRead
                     ? "font-normal text-[#6B7280] dark:text-white/50"
                     : "font-medium text-[#111827] dark:text-[#F8FAFC]"
@@ -105,7 +105,7 @@ export function NotificationFeedItem({
               </p>
               <p
                 className={cn(
-                  "text-[12px] mt-[2px] overflow-hidden text-ellipsis whitespace-nowrap",
+                  "text-[12px] mt-[2px] line-clamp-2 break-words",
                   notification.isRead
                     ? "text-[#9CA3AF] dark:text-white/30"
                     : "text-[#6B7280] dark:text-white/40"

@@ -16,6 +16,8 @@ import {
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
+import { SearchableSelectPanel } from "@/components/ui/SearchableSelectPanel";
+import { getOrderDisplayNumber } from "@/lib/order-utils";
 import type { DeliveryChallan, ChallanItem, ChallanPurpose } from "@/modules/delivery-challans/domain/types";
 
 interface CreateChallanModalProps {
@@ -148,25 +150,7 @@ export function CreateChallanModal({
     };
   }, [open]);
 
-  // Click outside listener for dropdowns
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        clientDropdownRef.current &&
-        !clientDropdownRef.current.contains(event.target as Node)
-      ) {
-        setClientDropdownOpen(false);
-      }
-      if (
-        orderDropdownRef.current &&
-        !orderDropdownRef.current.contains(event.target as Node)
-      ) {
-        setOrderDropdownOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+
 
   // Fetch order summary if order_id changes
   const fetchOrderSummary = useCallback(async (orderId: string) => {
@@ -501,43 +485,45 @@ export function CreateChallanModal({
                     <ChevronDown className="w-4 h-4 text-[var(--muted-foreground)]" />
                   </button>
 
-                  {clientDropdownOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-1 z-30 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-xl max-h-56 overflow-y-auto p-1">
-                      <div className="p-1.5 border-b border-[var(--border)]">
-                        <input
-                          type="text"
-                          value={clientSearch}
-                          onChange={(e) => setClientSearch(e.target.value)}
-                          placeholder={t("clientSearch")}
-                          className="w-full px-2.5 py-1 text-xs rounded-md bg-[var(--muted)] border-none focus:outline-none"
-                          autoFocus
-                        />
-                      </div>
-                      <div className="py-1">
-                        {clients
-                          .filter((c) =>
-                            c.name?.toLowerCase().includes(clientSearch.toLowerCase())
-                          )
-                          .map((client) => (
-                            <button
-                              key={client.id || client._id}
-                              type="button"
-                              onClick={() => handleSelectClient(client)}
-                              className="w-full text-left px-3 py-2 rounded-lg text-xs hover:bg-[var(--muted)] transition-colors flex flex-col"
-                            >
-                              <span className="font-semibold text-[var(--foreground)]">
-                                {client.name}
-                              </span>
-                              {client.gstin && (
-                                <span className="text-[10px] font-mono text-[var(--muted-foreground)]">
-                                  GSTIN: {client.gstin}
-                                </span>
-                              )}
-                            </button>
-                          ))}
-                      </div>
+                  <SearchableSelectPanel
+                    open={clientDropdownOpen}
+                    onClose={() => setClientDropdownOpen(false)}
+                    triggerRef={clientDropdownRef}
+                  >
+                    <div className="p-1.5 border-b border-[var(--surface-popover-border)] sticky top-0 bg-[var(--surface-popover)] z-10">
+                      <input
+                        type="text"
+                        value={clientSearch}
+                        onChange={(e) => setClientSearch(e.target.value)}
+                        placeholder={t("clientSearch")}
+                        className="w-full px-2.5 py-1 text-xs rounded-md bg-[var(--muted)] border-none focus:outline-none"
+                        autoFocus
+                      />
                     </div>
-                  )}
+                    <div className="py-1">
+                      {clients
+                        .filter((c) =>
+                          c.name?.toLowerCase().includes(clientSearch.toLowerCase())
+                        )
+                        .map((client) => (
+                          <button
+                            key={client.id || client._id}
+                            type="button"
+                            onClick={() => handleSelectClient(client)}
+                            className="w-full text-left px-3 py-2 rounded-lg text-xs hover:bg-[var(--muted)] transition-colors flex flex-col"
+                          >
+                            <span className="font-semibold text-[var(--foreground)]">
+                              {client.name}
+                            </span>
+                            {client.gstin && (
+                              <span className="text-[10px] font-mono text-[var(--muted-foreground)]">
+                                GSTIN: {client.gstin}
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                    </div>
+                  </SearchableSelectPanel>
                 </div>
 
                 {/* Optional Order Link Picker */}
@@ -555,44 +541,46 @@ export function CreateChallanModal({
                   >
                     <span className={formData.order_id ? "text-[var(--foreground)] font-medium" : "text-[var(--muted-foreground)]"}>
                       {formData.order_id
-                        ? `Order: ${formData.order_id}`
+                        ? (orderSummary?.order_number ? `Order #${orderSummary.order_number}` : `Order #${getOrderDisplayNumber(formData.order_id)}`)
                         : (formData.client_id ? t("linkOrderPlaceholder") : "Select a client first")}
                     </span>
                     <ChevronDown className="w-4 h-4 text-[var(--muted-foreground)]" />
                   </button>
 
-                  {orderDropdownOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-1 z-30 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-xl max-h-56 overflow-y-auto p-1">
-                      <div className="py-1">
+                  <SearchableSelectPanel
+                    open={orderDropdownOpen}
+                    onClose={() => setOrderDropdownOpen(false)}
+                    triggerRef={orderDropdownRef}
+                  >
+                    <div className="py-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData((prev) => ({ ...prev, order_id: null }));
+                          setOrderSummary(null);
+                          setOrderDropdownOpen(false);
+                        }}
+                        className="w-full text-left px-3 py-1.5 rounded-lg text-xs text-[var(--muted-foreground)] hover:bg-[var(--muted)] transition-colors"
+                      >
+                        (No order link)
+                      </button>
+                      {availableOrders.map((ord) => (
                         <button
+                          key={ord.id || ord._id}
                           type="button"
-                          onClick={() => {
-                            setFormData((prev) => ({ ...prev, order_id: null }));
-                            setOrderSummary(null);
-                            setOrderDropdownOpen(false);
-                          }}
-                          className="w-full text-left px-3 py-1.5 rounded-lg text-xs text-[var(--muted-foreground)] hover:bg-[var(--muted)] transition-colors"
+                          onClick={() => handleSelectOrder(ord)}
+                          className="w-full text-left px-3 py-2 rounded-lg text-xs hover:bg-[var(--muted)] transition-colors flex flex-col"
                         >
-                          (No order link)
+                          <span className="font-semibold text-[var(--foreground)]">
+                            #{getOrderDisplayNumber(ord)} — {ord.product_name}
+                          </span>
+                          <span className="text-[10px] text-[var(--muted-foreground)]">
+                            Qty: {ord.quantity} {ord.unit || "pcs"}
+                          </span>
                         </button>
-                        {availableOrders.map((ord) => (
-                          <button
-                            key={ord.id || ord._id}
-                            type="button"
-                            onClick={() => handleSelectOrder(ord)}
-                            className="w-full text-left px-3 py-2 rounded-lg text-xs hover:bg-[var(--muted)] transition-colors flex flex-col"
-                          >
-                            <span className="font-semibold text-[var(--foreground)]">
-                              #{ord.order_number || ord.orderId || ord.id || ord._id} — {ord.product_name}
-                            </span>
-                            <span className="text-[10px] text-[var(--muted-foreground)]">
-                              Qty: {ord.quantity} {ord.unit || "pcs"}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
+                      ))}
                     </div>
-                  )}
+                  </SearchableSelectPanel>
                 </div>
 
                 {/* Consignee Address */}

@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ candidates });
   } catch (error: unknown) {
     if (error instanceof AppError) {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+      return NextResponse.json({ error: (error as Error).message }, { status: error.statusCode });
     }
     console.error("Error searching candidate payments:", error);
     return NextResponse.json({ error: "Failed to search candidate payments" }, { status: 500 });

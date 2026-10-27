@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
         const db = await getDb();
 
         // 1. Vendor verification & lookup (scoped strictly to tenant)
-        let vendorQuery: any = { userId: tenantId };
+        let vendorQuery: Record<string, unknown> = { userId: tenantId };
         if (ObjectId.isValid(vendorId)) {
             vendorQuery.$or = [{ _id: new ObjectId(vendorId) }, { _id: vendorId }];
         } else {
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
             debitPaise: number;
             creditPaise: number;
             refId: string;
-            createdAt?: any;
+            createdAt?: unknown;
         }
 
         const periodTransactions: InternalTx[] = [];
@@ -174,8 +174,8 @@ export async function GET(request: NextRequest) {
             if (a.type !== b.type) {
                 return a.type === "Bill" ? -1 : 1;
             }
-            const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-            const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            const timeA = a.createdAt ? new Date(a.createdAt as string | number | Date).getTime() : 0;
+            const timeB = b.createdAt ? new Date(b.createdAt as string | number | Date).getTime() : 0;
             if (timeA !== timeB) return timeA - timeB;
             return a.refId.localeCompare(b.refId);
         });
@@ -225,7 +225,7 @@ export async function GET(request: NextRequest) {
         };
 
         return NextResponse.json(response);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error generating vendor statement:", error);
         return NextResponse.json({ error: "Failed to generate vendor statement" }, { status: 500 });
     }

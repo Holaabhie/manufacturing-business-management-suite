@@ -717,8 +717,36 @@ export class VendorBillService {
         const bill = await this.repo.findById(id, tenantId);
         if (!bill) return null;
         const payments = await this.repo.findPaymentsByBillId(id, tenantId);
+        const enriched = this.enrichBill(bill, payments);
+
+        if (enriched.purchase_order_id) {
+            try {
+                const db = await getDb();
+                const poDoc = await db.collection("purchase_orders").findOne(makeIdFilter(enriched.purchase_order_id, tenantId));
+                if (poDoc) {
+                    const resolvedPoNumber = poDoc.poNumber || poDoc.po_number;
+                    if (resolvedPoNumber && String(resolvedPoNumber).trim()) {
+                        enriched.purchase_order = {
+                            id: String(poDoc._id),
+                            poNumber: String(resolvedPoNumber).trim(),
+                            supplierName: String(poDoc.vendorName || enriched.vendor?.name || ""),
+                            date: poDoc.createdAt ? new Date(poDoc.createdAt).toISOString() : null,
+                            totalAmount: Number(poDoc.totalAmount || 0),
+                        };
+                    } else {
+                        enriched.purchase_order = null;
+                    }
+                } else {
+                    enriched.purchase_order = null;
+                }
+            } catch (err) {
+                console.error("Failed to populate purchase order for bill:", err);
+                enriched.purchase_order = null;
+            }
+        }
+
         return {
-            bill: this.enrichBill(bill, payments),
+            bill: enriched,
             payments,
         };
     }

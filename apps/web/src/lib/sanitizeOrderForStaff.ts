@@ -123,9 +123,9 @@ const SENSITIVE_ITEM_KEYS: readonly string[] = [
 /**
  * Sanitizes a single material object to ensure no cost or rate is leaked.
  */
-function sanitizeMaterial(mat: any): any {
+function sanitizeMaterial(mat: unknown): unknown {
     if (!mat || typeof mat !== "object") return mat;
-    const clean = { ...mat };
+    const clean: Record<string, unknown> = { ...(mat as Record<string, unknown>) };
     for (const key of SENSITIVE_MATERIAL_KEYS) {
         delete clean[key];
     }
@@ -135,9 +135,9 @@ function sanitizeMaterial(mat: any): any {
 /**
  * Sanitizes a single order item (sales order item) to strip pricing.
  */
-function sanitizeOrderItem(item: any): any {
+function sanitizeOrderItem(item: unknown): unknown {
     if (!item || typeof item !== "object") return item;
-    const clean = { ...item };
+    const clean: Record<string, unknown> = { ...(item as Record<string, unknown>) };
     for (const key of SENSITIVE_ITEM_KEYS) {
         delete clean[key];
     }
@@ -148,20 +148,21 @@ function sanitizeOrderItem(item: any): any {
  * Sanitizes an order object or an array of orders for Staff users.
  * Returns a new object/array with every financial field removed.
  */
-export function sanitizeOrderForStaff<T>(data: T): T {
+export function sanitizeOrderForStaff<T>(data: T): T;
+export function sanitizeOrderForStaff(data: unknown): unknown {
     if (!data) return data;
 
     if (Array.isArray(data)) {
-        return data.map((item) => sanitizeSingleOrder(item)) as unknown as T;
+        return data.map((item) => sanitizeSingleOrder(item));
     }
 
-    return sanitizeSingleOrder(data) as unknown as T;
+    return sanitizeSingleOrder(data);
 }
 
-function sanitizeSingleOrder(order: any): any {
+function sanitizeSingleOrder(order: unknown): unknown {
     if (!order || typeof order !== "object") return order;
 
-    const sanitized = { ...order };
+    const sanitized: Record<string, unknown> = { ...(order as Record<string, unknown>) };
 
     // Strip top-level sensitive fields
     for (const key of SENSITIVE_TOP_LEVEL_KEYS) {
@@ -183,7 +184,7 @@ function sanitizeSingleOrder(order: any): any {
 
     // Sanitize client info (ensure no financial info inside client object)
     if (sanitized.client && typeof sanitized.client === "object") {
-        const cleanClient = { ...sanitized.client };
+        const cleanClient: Record<string, unknown> = { ...(sanitized.client as Record<string, unknown>) };
         delete cleanClient.credit_limit;
         delete cleanClient.creditLimit;
         delete cleanClient.balance;
@@ -193,7 +194,7 @@ function sanitizeSingleOrder(order: any): any {
     }
 
     if (sanitized.clients && typeof sanitized.clients === "object") {
-        const cleanClients = { ...sanitized.clients };
+        const cleanClients: Record<string, unknown> = { ...(sanitized.clients as Record<string, unknown>) };
         delete cleanClients.credit_limit;
         delete cleanClients.creditLimit;
         delete cleanClients.balance;

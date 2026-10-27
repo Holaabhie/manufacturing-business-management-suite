@@ -27,7 +27,7 @@ export async function GET(
         return NextResponse.json(challan);
     } catch (error) {
         if (error instanceof NotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 });
+            return NextResponse.json({ error: (error as Error).message }, { status: 404 });
         }
         console.error("Error fetching delivery challan:", error);
         return NextResponse.json({ error: "Failed to fetch delivery challan" }, { status: 500 });
@@ -45,7 +45,6 @@ export const PATCH = withIdempotency(async (
         }
         const user = result.user;
         const tenantId = getDataOwnerId(user);
-        const userAny = user as any;
         const { id } = await params;
 
         const svc = getDeliveryChallanService();
@@ -58,33 +57,33 @@ export const PATCH = withIdempotency(async (
         await logDataOperation({
             organizationId: tenantId,
             userId: String(user._id),
-            userName: userAny.fullName || userAny.name || user.email || "Unknown User",
-            userRole: (userAny.role === "Admin" || userAny.role === "Owner") ? "Admin" : "Staff",
-            userRoleDetail: userAny.role || user.role,
+            userName: user.fullName || user.fullName || user.email || "Unknown User",
+            userRole: (user.role === "Admin" || user.role === "Owner") ? "Admin" : "Staff",
+            userRoleDetail: user.role || user.role,
             action: `Updated delivery challan ${updated.challan_number}`,
             actionType: "update",
             module: "delivery_challans",
             resourceId: id,
             resourceType: "delivery_challan",
-            beforeState: beforeChallan as unknown as Record<string, unknown>,
-            afterState: updated as unknown as Record<string, unknown>,
+            beforeState: beforeChallan || undefined,
+            afterState: updated,
             ipAddress: getClientIp(request),
             userAgent: request.headers.get("user-agent") || undefined,
         });
 
         return NextResponse.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
         if (error instanceof NotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 });
+            return NextResponse.json({ error: (error as Error).message }, { status: 404 });
         }
         if (error instanceof ValidationError) {
             return NextResponse.json(
-                { error: error.message, errors: (error as any).errors || (error as any).fields },
+                { error: (error as Error).message, errors: (error as { errors?: unknown; fields?: unknown }).errors || (error as { errors?: unknown; fields?: unknown }).fields },
                 { status: 400 }
             );
         }
-        if (error instanceof ConflictError || error.statusCode === 409) {
-            return NextResponse.json({ error: error.message }, { status: 409 });
+        if (error instanceof ConflictError || (error as { statusCode?: number })?.statusCode === 409) {
+            return NextResponse.json({ error: (error as Error).message }, { status: 409 });
         }
         console.error("Error updating delivery challan:", error);
         return NextResponse.json({ error: "Failed to update delivery challan" }, { status: 500 });
@@ -102,7 +101,6 @@ export async function DELETE(
         }
         const user = result.user;
         const tenantId = getDataOwnerId(user);
-        const userAny = user as any;
         const { id } = await params;
 
         const svc = getDeliveryChallanService();
@@ -114,26 +112,26 @@ export async function DELETE(
         await logDataOperation({
             organizationId: tenantId,
             userId: String(user._id),
-            userName: userAny.fullName || userAny.name || user.email || "Unknown User",
-            userRole: (userAny.role === "Admin" || userAny.role === "Owner") ? "Admin" : "Staff",
-            userRoleDetail: userAny.role || user.role,
+            userName: user.fullName || user.fullName || user.email || "Unknown User",
+            userRole: (user.role === "Admin" || user.role === "Owner") ? "Admin" : "Staff",
+            userRoleDetail: user.role || user.role,
             action: `Deleted delivery challan ${beforeChallan.challan_number}`,
             actionType: "delete",
             module: "delivery_challans",
             resourceId: id,
             resourceType: "delivery_challan",
-            beforeState: beforeChallan as unknown as Record<string, unknown>,
+            beforeState: beforeChallan || undefined,
             ipAddress: getClientIp(request),
             userAgent: request.headers.get("user-agent") || undefined,
         });
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
         if (error instanceof NotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 });
+            return NextResponse.json({ error: (error as Error).message }, { status: 404 });
         }
-        if (error instanceof ConflictError || error.statusCode === 409) {
-            return NextResponse.json({ error: error.message }, { status: 409 });
+        if (error instanceof ConflictError || (error as { statusCode?: number })?.statusCode === 409) {
+            return NextResponse.json({ error: (error as Error).message }, { status: 409 });
         }
         console.error("Error deleting delivery challan:", error);
         return NextResponse.json({ error: "Failed to delete delivery challan" }, { status: 500 });

@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
 import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
-import { isOwnerRole, hasPermission, resolvePermissions, type FlatPermissionMap } from "@/lib/permissions";
+import {
+    isOwnerRole,
+    hasPermission,
+    resolvePermissions,
+    type FlatPermissionMap,
+    getCallerRoleRank,
+    getTargetRoleRank,
+    ALL_PERMISSION_KEYS
+} from "@/lib/permissions";
 
 /**
  * POST /api/team/invite
@@ -14,6 +22,15 @@ export async function POST(request: Request) {
         const user = await getSessionUser();
         if (!user) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        // Validate caller role rank strictly (fail-closed for invalid/corrupted roles)
+        const callerRank = getCallerRoleRank(user.role);
+        if (callerRank === -1) {
+            return NextResponse.json(
+                { error: "Forbidden - Your user account role is unrecognized or invalid" },
+                { status: 403 }
+            );
         }
 
         // Check permission: Owner or team.invite
@@ -42,6 +59,46 @@ export async function POST(request: Request) {
                 { error: `Invalid role. Must be one of: ${validRoles.join(", ")}` },
                 { status: 400 }
             );
+        }
+
+        // Non-owners cannot invite users with role equal to or higher than their own (e.g. Manager cannot invite Owner or Manager)
+        if (!isOwner) {
+            const targetRank = getTargetRoleRank(role);
+            if (role === "Owner" || callerRank <= targetRank) {
+                return NextResponse.json(
+                    { error: "Forbidden - You cannot invite a user with a role equal to or higher than your own" },
+                    { status: 403 }
+                );
+            }
+        }
+
+        // Privilege delegation check: non-owners cannot grant permissions they do not possess
+        if (customPermissions !== undefined && customPermissions !== null) {
+            if (typeof customPermissions !== "object" || Array.isArray(customPermissions)) {
+                return NextResponse.json(
+                    { error: "Invalid customPermissions format" },
+                    { status: 400 }
+                );
+            }
+            for (const key of Object.keys(customPermissions)) {
+                if (!ALL_PERMISSION_KEYS.includes(key)) {
+                    return NextResponse.json(
+                        { error: `Invalid permission key '${key}'` },
+                        { status: 400 }
+                    );
+                }
+            }
+            if (!isOwner) {
+                const callerPermissions = resolvePermissions(user.role, user.customPermissions as FlatPermissionMap);
+                for (const [key, val] of Object.entries(customPermissions)) {
+                    if (val === true && !callerPermissions[key]) {
+                        return NextResponse.json(
+                            { error: `Forbidden - You cannot grant permission '${key}' which you do not possess` },
+                            { status: 403 }
+                        );
+                    }
+                }
+            }
         }
 
         const db = await getDb();
@@ -109,6 +166,9 @@ export async function POST(request: Request) {
                         subject: `You're invited to join ${user.company_details?.companyName || "the team"} on IND Manager`,
                         html: `
                             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 560px; margin: 0 auto; padding: 32px;">
+                                <div style="margin-bottom: 24px;">
+                                    <img src="https://indmanager.in/brand/ind-manager-logo-full-light-theme.png" alt="Ind Manager" height="28" style="height: 28px; width: auto; display: block; border: 0;" />
+                                </div>
                                 <h2 style="color: #1a1a1a; margin-bottom: 16px;">You're invited!</h2>
                                 <p style="color: #4a4a4a; font-size: 16px; line-height: 1.6;">
                                     <strong>${invitation.invitedByName}</strong> has invited you to join as <strong>${role}</strong> on IND Manager.
@@ -150,8 +210,8 @@ export async function POST(request: Request) {
             },
             emailSent,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[team/invite POST] Error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: (error as Error).message }, { status: 500 });
     }
 }

@@ -190,12 +190,12 @@ async function executeTool(
         ],
       });
 
-      const formatted = pendingOrders.map((o: any) => {
+      const formatted = pendingOrders.map((o: Record<string, unknown>) => {
         const totalAmount = Number(o.total_amount || 0);
         const totalPaid = Number(o.total_paid || 0);
         const balanceDue = Number(o.balance_due ?? (totalAmount - totalPaid));
         return {
-          id: o._id.toString(),
+          id: String(o._id),
           product_name: o.product_name,
           quantity: o.quantity,
           unit: o.unit || "kg",
@@ -208,12 +208,12 @@ async function executeTool(
           delivery_date: o.delivery_date || null,
           priority: o.priority || "normal",
           created_at: o.createdAt,
-          client_name: o.client?.name || "Walk-in",
+          client_name: (o.client as Record<string, unknown> | undefined)?.name || "Walk-in",
         };
       });
 
       const totalOutstanding = formatted.reduce(
-        (sum: number, o: any) => sum + Math.max(0, o.balance_due),
+        (sum: number, o: { balance_due: number }) => sum + Math.max(0, o.balance_due),
         0
       );
 
@@ -227,7 +227,7 @@ async function executeTool(
 
     case "get_orders": {
       const limit = Math.min(Math.max(Number(args.limit) || 20, 1), 50);
-      const matchFilter: Record<string, any> = { userId: ownerId };
+      const matchFilter: Record<string, unknown> = { userId: ownerId };
 
       if (args.status && typeof args.status === "string") {
         matchFilter.status = args.status;
@@ -296,12 +296,12 @@ async function executeTool(
         ])
         .toArray();
 
-      const formatted = orders.map((o: any) => {
+      const formatted = orders.map((o: Record<string, unknown>) => {
         const totalAmount = Number(o.total_amount || 0);
         const totalPaid = Number(o.total_paid || 0);
         const balanceDue = Number(o.balance_due ?? (totalAmount - totalPaid));
         return {
-          id: o._id.toString(),
+          id: String(o._id),
           product_name: o.product_name,
           quantity: o.quantity,
           unit: o.unit || "kg",
@@ -314,7 +314,7 @@ async function executeTool(
           delivery_date: o.delivery_date || null,
           priority: o.priority || "normal",
           created_at: o.createdAt,
-          client_name: o.client?.name || "Walk-in",
+          client_name: (o.client as Record<string, unknown> | undefined)?.name || "Walk-in",
         };
       });
 
@@ -385,7 +385,7 @@ async function executeTool(
 
       return {
         order: {
-          id: o._id.toString(),
+          id: String(o._id),
           product_name: o.product_name,
           quantity: o.quantity,
           unit: o.unit || "kg",
@@ -409,8 +409,8 @@ async function executeTool(
           created_at: o.createdAt,
           processed_at: o.processedAt || null,
           completed_at: o.completedAt || null,
-          client_name: o.client?.[0]?.name || "Walk-in",
-          client_phone: o.client?.[0]?.phone || null,
+          client_name: (o.client as Array<Record<string, unknown>> | undefined)?.[0]?.name || "Walk-in",
+          client_phone: (o.client as Array<Record<string, unknown>> | undefined)?.[0]?.phone || null,
         },
       };
     }
@@ -521,7 +521,7 @@ export async function POST(req: NextRequest) {
     // Map client history (role: "assistant" -> "model") and take last N items
     const validHistory = (Array.isArray(history) ? history : [])
       .filter(
-        (msg: any) =>
+        (msg: { role?: string; content?: string }) =>
           msg &&
           typeof msg.content === "string" &&
           (msg.role === "user" || msg.role === "assistant")

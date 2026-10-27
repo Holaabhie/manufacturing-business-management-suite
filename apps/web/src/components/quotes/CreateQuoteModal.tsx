@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
+import { SearchableSelectPanel } from "@/components/ui/SearchableSelectPanel";
 import type { Quotation, QuoteItem } from "@/modules/quotes/domain/types";
 
 interface CompanyInfo {
@@ -213,18 +214,7 @@ export function CreateQuoteModal({
     }
   }, [selectedClient, companyInfo]);
 
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (clientDropdownRef.current && !clientDropdownRef.current.contains(e.target as Node)) {
-        setClientDropdownOpen(false);
-      }
-    };
-    if (clientDropdownOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [clientDropdownOpen]);
+
 
   // Line item manipulation
   const addItem = () => {
@@ -496,53 +486,55 @@ export function CreateQuoteModal({
                     <ChevronDown className="w-4 h-4 text-[var(--muted-foreground)]" />
                   </button>
 
-                  {clientDropdownOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-1 z-30 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-xl max-h-56 overflow-y-auto p-1">
-                      <div className="p-1.5 border-b border-[var(--border)]">
-                        <input
-                          type="text"
-                          value={clientSearch}
-                          onChange={(e) => setClientSearch(e.target.value)}
-                          placeholder={t("clientSearch")}
-                          className="w-full px-2.5 py-1 text-xs rounded-md bg-[var(--muted)] border-none focus:outline-none"
-                          autoFocus
-                        />
-                      </div>
-                      <div className="py-1">
-                        {clients
-                          .filter((c) =>
-                            c.name.toLowerCase().includes(clientSearch.toLowerCase())
-                          )
-                          .map((client) => (
-                            <button
-                              key={client.id || client._id}
-                              type="button"
-                              onClick={() => {
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  clientId: client.id || client._id,
-                                  clientName: client.name,
-                                  clientAddress: client.address || "",
-                                  clientGSTIN: client.gstin || "",
-                                  clientPhone: client.phone || "",
-                                  clientEmail: client.email || "",
-                                }));
-                                setClientDropdownOpen(false);
-                                setClientSearch("");
-                              }}
-                              className="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-blue-500/10 hover:text-blue-500 transition-colors flex items-center justify-between"
-                            >
-                              <span className="font-semibold">{client.name}</span>
-                              {client.gstin && (
-                                <span className="text-[10px] text-[var(--muted-foreground)] font-mono">
-                                  {client.gstin}
-                                </span>
-                              )}
-                            </button>
-                          ))}
-                      </div>
+                  <SearchableSelectPanel
+                    open={clientDropdownOpen}
+                    onClose={() => setClientDropdownOpen(false)}
+                    triggerRef={clientDropdownRef}
+                  >
+                    <div className="p-1.5 border-b border-[var(--surface-popover-border)] sticky top-0 bg-[var(--surface-popover)] z-10">
+                      <input
+                        type="text"
+                        value={clientSearch}
+                        onChange={(e) => setClientSearch(e.target.value)}
+                        placeholder={t("clientSearch")}
+                        className="w-full px-2.5 py-1 text-xs rounded-md bg-[var(--muted)] border-none focus:outline-none"
+                        autoFocus
+                      />
                     </div>
-                  )}
+                    <div className="py-1">
+                      {clients
+                        .filter((c) =>
+                          c.name.toLowerCase().includes(clientSearch.toLowerCase())
+                        )
+                        .map((client) => (
+                          <button
+                            key={client.id || client._id}
+                            type="button"
+                            onClick={() => {
+                              setFormData((prev) => ({
+                                ...prev,
+                                clientId: client.id || client._id,
+                                clientName: client.name,
+                                clientAddress: client.address || "",
+                                clientGSTIN: client.gstin || "",
+                                clientPhone: client.phone || "",
+                                clientEmail: client.email || "",
+                              }));
+                              setClientDropdownOpen(false);
+                              setClientSearch("");
+                            }}
+                            className="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-blue-500/10 hover:text-blue-500 transition-colors flex items-center justify-between"
+                          >
+                            <span className="font-semibold">{client.name}</span>
+                            {client.gstin && (
+                              <span className="text-[10px] text-[var(--muted-foreground)] font-mono">
+                                {client.gstin}
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                    </div>
+                  </SearchableSelectPanel>
                 </div>
 
                 <div>

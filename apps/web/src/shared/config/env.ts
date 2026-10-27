@@ -103,14 +103,15 @@ function validateEnv(): Env {
         console.error(formatted);
         console.error("═══════════════════════════════════════════");
 
-        // In development, log but don't crash (allow partial configs)
-        if (process.env.NODE_ENV !== "production") {
-            console.warn("⚠️  Running with invalid env vars (dev mode). Some features may fail.");
+        // In development or build phase, log but don't crash (allow partial configs during build)
+        const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
+        if (process.env.NODE_ENV !== "production" || isBuildPhase) {
+            console.warn("⚠️  Running with fallback env vars (dev/build phase). Some features may fail without real credentials.");
             // Return a partially-valid env by coercing what we can
             return envSchema.parse({
                 ...process.env,
                 // Provide fallback for required fields
-                MONGODB_URI: process.env.MONGODB_URI || "mongodb://localhost:27017",
+                MONGODB_URI: process.env.MONGODB_URI || "mongodb://build-placeholder:27017/ind_manager",
             });
         }
 

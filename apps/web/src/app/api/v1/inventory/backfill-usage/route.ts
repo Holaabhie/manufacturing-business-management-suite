@@ -163,7 +163,7 @@ export const GET = withRateLimit(
                         }
 
                         // Push the usage history entry
-                        await db.collection<{ usageHistory: Record<string, unknown>[] }>("inventory").updateOne(
+                        await db.collection<{ usageHistory?: Record<string, unknown>[]; updatedAt?: Date }>("inventory").updateOne(
                             { _id: new ObjectId(inventoryItemId), userId: ownerId },
                             {
                                 $push: {
@@ -177,7 +177,7 @@ export const GET = withRateLimit(
                                         status: String(order.status || "processing"),
                                         usedAt: order.updatedAt || order.createdAt || new Date(),
                                     },
-                                } as unknown as Record<string, unknown>,
+                                },
                                 $set: { updatedAt: new Date() },
                             }
                         );

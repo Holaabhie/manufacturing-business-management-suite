@@ -17,7 +17,7 @@ export async function GET() {
       .sort({ date: -1, createdAt: -1 })
       .toArray();
 
-    const formatted = expenses.map((e: any) => ({
+    const formatted = expenses.map((e: { _id: { toString(): string }; [key: string]: unknown }) => ({
       id: e._id.toString(),
       date: e.date,
       category: e.category,
@@ -28,9 +28,9 @@ export async function GET() {
     }));
 
     return NextResponse.json(formatted);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching expenses:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }
 
@@ -69,8 +69,8 @@ export async function POST(request: Request) {
       createdAt: expense!.createdAt,
       updatedAt: expense!.updatedAt,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating expense:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }

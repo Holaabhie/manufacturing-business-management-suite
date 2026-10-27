@@ -27,10 +27,10 @@ export async function PUT(
         const updated = await service.updateVendor(id, getDataOwnerId(user), body);
 
         return NextResponse.json({ success: true, data: updated });
-    } catch (error: any) {
-        const status = error.statusCode || 500;
+    } catch (error: unknown) {
+        const status = (error as { statusCode?: number }).statusCode || 500;
         return NextResponse.json(
-            { error: error.message, details: error.details },
+            { error: (error as Error).message, details: (error as { details?: unknown }).details },
             { status },
         );
     }
@@ -52,8 +52,8 @@ export async function DELETE(
         await service.deleteVendor(id, getDataOwnerId(user));
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
-        const status = error.statusCode || 500;
-        return NextResponse.json({ error: error.message }, { status });
+    } catch (error: unknown) {
+        const status = (error as { statusCode?: number }).statusCode || 500;
+        return NextResponse.json({ error: (error as Error).message }, { status });
     }
 }

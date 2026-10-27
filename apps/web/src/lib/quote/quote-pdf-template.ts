@@ -19,11 +19,11 @@ Handlebars.registerHelper("formatNumber", (n: number) => formatNumber(n));
 Handlebars.registerHelper("formatDate", (dateStr: string) => formatDate(dateStr));
 Handlebars.registerHelper("amountInWords", (amount: number) => numberToWords(amount));
 
-Handlebars.registerHelper("ifEqual", function (this: any, a: any, b: any, options: any) {
+Handlebars.registerHelper("ifEqual", function (this: unknown, a: unknown, b: unknown, options: Handlebars.HelperOptions) {
     return a === b ? options.fn(this) : options.inverse(this);
 });
 
-Handlebars.registerHelper("ifGt", function (this: any, a: number, b: number, options: any) {
+Handlebars.registerHelper("ifGt", function (this: unknown, a: number, b: number, options: Handlebars.HelperOptions) {
     return a > b ? options.fn(this) : options.inverse(this);
 });
 
@@ -34,7 +34,7 @@ Handlebars.registerHelper("multiply", (a: number, b: number) => {
 Handlebars.registerHelper("add", (a: number, b: number) => (a || 0) + (b || 0));
 Handlebars.registerHelper("inc", (n: number) => (n || 0) + 1);
 
-Handlebars.registerHelper("isEven", function (this: any, index: number, options: any) {
+Handlebars.registerHelper("isEven", function (this: unknown, index: number, options: Handlebars.HelperOptions) {
     return index % 2 === 0 ? options.fn(this) : options.inverse(this);
 });
 

@@ -159,7 +159,7 @@ export async function migrateProductionObjectIds(): Promise<MigrationReport> {
             // ── 2. assignmentLogs[] ─────────────────────────────
             if (Array.isArray(doc.assignmentLogs) && doc.assignmentLogs.length > 0) {
                 let logsModified = false;
-                const fixedLogs = doc.assignmentLogs.map((log: any, idx: number) => {
+                const fixedLogs = doc.assignmentLogs.map((log: Record<string, unknown>, idx: number) => {
                     const fixedLog = { ...log };
 
                     // 2a. assignedBy
@@ -213,7 +213,7 @@ export async function migrateProductionObjectIds(): Promise<MigrationReport> {
             // ── 4. productionAssignments[].operatorId ───────────
             if (Array.isArray(doc.productionAssignments) && doc.productionAssignments.length > 0) {
                 let assignmentsModified = false;
-                const fixedAssignments = doc.productionAssignments.map((pa: any, idx: number) => {
+                const fixedAssignments = doc.productionAssignments.map((pa: Record<string, unknown>, idx: number) => {
                     const fixedPa = { ...pa };
 
                     if (isObjectIdValue(pa.operatorId)) {
@@ -263,13 +263,14 @@ export async function migrateProductionObjectIds(): Promise<MigrationReport> {
 
                 report.totalFixed++;
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             report.totalFailed++;
+            const errMsg = err instanceof Error ? err.message : String(err);
             report.failedRecords.push({
                 docId,
-                error: err.message || String(err),
+                error: errMsg,
             });
-            console.error(`[ERR] Failed to process doc ${docId}:`, err.message);
+            console.error(`[ERR] Failed to process doc ${docId}:`, errMsg);
         }
     }
 
@@ -321,8 +322,9 @@ export async function migrateProductionObjectIds(): Promise<MigrationReport> {
                 entries: report.backupLog,
             });
             console.log("  ✅ Backup log saved to _migration_backups collection");
-        } catch (backupErr: any) {
-            console.error("  ⚠️  Failed to save backup log:", backupErr.message);
+        } catch (backupErr: unknown) {
+            const errStr = backupErr instanceof Error ? backupErr.message : String(backupErr);
+            console.error("  ⚠️  Failed to save backup log:", errStr);
         }
     }
 

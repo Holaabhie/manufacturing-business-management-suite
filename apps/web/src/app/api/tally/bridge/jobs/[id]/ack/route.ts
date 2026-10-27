@@ -35,9 +35,10 @@ export const POST = withRateLimit(
         let auth;
         try {
             auth = await authenticateDeviceToken(token);
-        } catch (err: any) {
-            if (err?.statusCode && err?.code) {
-                return envelope.error(err.message, err.statusCode, err.code);
+        } catch (err: unknown) {
+            const bridgeErr = err as { statusCode?: number; code?: string; message: string };
+            if (bridgeErr?.statusCode && bridgeErr?.code) {
+                return envelope.error(bridgeErr.message, bridgeErr.statusCode, bridgeErr.code);
             }
             throw err;
         }

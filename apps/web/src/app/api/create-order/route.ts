@@ -5,13 +5,22 @@ import { getDb } from '@/lib/mongodb';
 
 import { PLANS, type PlanId } from '@/lib/razorpay/plans';
 
+interface CreateOrderRequestBody {
+  plan?: string;
+  currency?: string;
+  receipt?: string;
+  notes?: Record<string, string>;
+  amount?: number | string;
+  userId?: string;
+}
+
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    let body: any = {};
+    let body: CreateOrderRequestBody = {};
     try {
-      body = await request.json();
+      body = (await request.json()) as CreateOrderRequestBody;
     } catch {
       return NextResponse.json(
         { error: 'Invalid JSON request body' },
@@ -46,7 +55,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Optional user session context
-    let currentUser: any = null;
+    let currentUser: Record<string, unknown> | null = null;
     try {
       currentUser = await getSessionUser();
     } catch {
@@ -95,15 +104,22 @@ export async function POST(request: NextRequest) {
       currency: order.currency,
       receipt: order.receipt,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in /api/create-order:', error);
+
+    const err = error as {
+      statusCode?: number;
+      status?: number;
+      error?: { code?: string; description?: string };
+      message?: string;
+    } | null;
 
     // Check for Razorpay authentication failures (invalid credentials)
     if (
-      error?.statusCode === 401 ||
-      error?.status === 401 ||
-      error?.error?.code === 'BAD_REQUEST_ERROR' && error?.error?.description?.toLowerCase().includes('auth') ||
-      error?.message?.toLowerCase().includes('credentials missing')
+      err?.statusCode === 401 ||
+      err?.status === 401 ||
+      (err?.error?.code === 'BAD_REQUEST_ERROR' && err?.error?.description?.toLowerCase().includes('auth')) ||
+      err?.message?.toLowerCase().includes('credentials missing')
     ) {
       return NextResponse.json(
         { error: 'Razorpay authentication failed: Invalid or missing API credentials' },
@@ -112,17 +128,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Check for client validation error (e.g. minimum amount)
-    if (error?.statusCode === 400 || error?.status === 400) {
+    if (err?.statusCode === 400 || err?.status === 400) {
       return NextResponse.json(
-        { error: error.message || 'Bad Request' },
+        { error: err?.message || 'Bad Request' },
         { status: 400 }
       );
     }
 
     // Standard Razorpay API / Server Error
     const description =
-      error?.error?.description ||
-      error?.message ||
+      err?.error?.description ||
+      err?.message ||
       'Failed to create Razorpay order';
 
     return NextResponse.json(

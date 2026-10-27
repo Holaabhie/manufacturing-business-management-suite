@@ -194,7 +194,7 @@ export function MaterialsStep({ inventory, productName, onMaterialsChange, initi
                                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                         <Select value={mat.inventoryId} onValueChange={(v) => updateMaterial(idx, "inventoryId", v)}>
-                                            <SelectTrigger className="h-9 bg-card/50" style={{ borderColor: "rgba(99,102,241,0.15)" }}>
+                                            <SelectTrigger className="h-9 bg-[var(--surface-popover)]" style={{ borderColor: "rgba(99,102,241,0.15)" }}>
                                                 <SelectValue placeholder={t("selectMaterialPlaceholder")} />
                                             </SelectTrigger>
                                             <SelectContent className="max-h-[220px] overflow-y-auto scrollbar-thin">
@@ -234,7 +234,7 @@ export function MaterialsStep({ inventory, productName, onMaterialsChange, initi
                                 </div>
                                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                                     <div style={{ width: 90, flexShrink: 0 }}>
-                                        <NumericInput className="h-9 bg-card/50 font-semibold text-center rounded-lg"
+                                        <NumericInput className="h-9 bg-[var(--surface-popover)] font-semibold text-center rounded-lg"
                                             style={{ borderColor: warning ? "rgba(248,113,113,0.5)" : "rgba(99,102,241,0.15)" }}
                                             value={mat.quantityUsed || ""} placeholder="0"
                                             onValueChange={(v) => updateMaterial(idx, "quantityUsed", v)}

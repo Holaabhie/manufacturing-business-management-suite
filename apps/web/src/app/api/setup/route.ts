@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth-session";
+import { getSessionUser, type UserDoc, type MongoUserDoc } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
@@ -180,8 +180,8 @@ export async function POST(req: Request) {
     );
 
     // Update user profile — mark setup complete + save owner name
-    const userQueryId = ObjectId.isValid(userId) ? new ObjectId(userId) : (userId as unknown as ObjectId);
-    await db.collection("users").updateOne(
+    const userQueryId = ObjectId.isValid(userId) ? new ObjectId(userId) : userId;
+    await db.collection<MongoUserDoc>("users").updateOne(
       { _id: userQueryId },
       {
         $set: {
@@ -195,10 +195,10 @@ export async function POST(req: Request) {
     );
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[setup] Error:", error);
     return NextResponse.json(
-      { error: error?.message ?? "Setup failed" },
+      { error: (error as Error)?.message ?? "Setup failed" },
       { status: 500 }
     );
   }

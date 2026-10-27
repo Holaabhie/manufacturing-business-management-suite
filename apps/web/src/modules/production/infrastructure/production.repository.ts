@@ -1,9 +1,9 @@
-import { ObjectId } from "mongodb";
+import { ObjectId, type Document } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 import type { IProductionRepository, Production, CreateProductionDTO, UpdateProductionDTO, ActivityLogEntry, ProductionMaterial } from "../domain/types";
 import { getFinancialYear } from "@/lib/utils/financial-year";
 
-function toEntity(doc: Record<string, unknown>): Production {
+function toEntity(doc: Document): Production {
     return {
         id: String(doc._id),
         userId: String(doc.userId || ""),
@@ -44,7 +44,7 @@ export class MongoProductionRepository implements IProductionRepository {
         try {
             const c = await this.col();
             const doc = await c.findOne({ _id: new ObjectId(id), userId });
-            return doc ? toEntity(doc as Record<string, unknown>) : null;
+            return doc ? toEntity(doc) : null;
         } catch { return null; }
     }
 
@@ -112,7 +112,7 @@ export class MongoProductionRepository implements IProductionRepository {
                 { $set: fields },
                 { returnDocument: "after" },
             );
-            return result ? toEntity(result as unknown as Record<string, unknown>) : null;
+            return result ? toEntity(result) : null;
         } catch { return null; }
     }
 

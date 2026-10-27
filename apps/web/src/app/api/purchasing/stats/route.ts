@@ -57,8 +57,8 @@ export async function GET() {
                 totalOrders: (counts["Pending"] ?? 0) + (counts["Ordered"] ?? 0) + (counts["Received"] ?? 0),
             },
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error fetching purchasing stats:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: (error as Error).message }, { status: 500 });
     }
 }

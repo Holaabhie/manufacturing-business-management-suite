@@ -81,7 +81,7 @@ export const POST = withIdempotency(async (request: NextRequest) => {
     } catch (error: unknown) {
         if (error instanceof ValidationError) {
             return NextResponse.json(
-                { error: error.message, errors: error.fieldErrors },
+                { error: (error as Error).message, errors: error.fieldErrors },
                 { status: 400 }
             );
         }

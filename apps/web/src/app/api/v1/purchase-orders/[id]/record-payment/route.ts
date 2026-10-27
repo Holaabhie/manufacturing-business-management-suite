@@ -145,9 +145,9 @@ export async function POST(
                 updatedAt: result.updatedAt,
             },
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error recording payment:", error);
-        const status = error.statusCode || 500;
-        return NextResponse.json({ error: error.message }, { status });
+        const status = (error as { statusCode?: number })?.statusCode || 500;
+        return NextResponse.json({ error: (error as Error).message }, { status });
     }
 }

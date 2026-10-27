@@ -215,20 +215,29 @@ export async function checkRateLimitMongo(
         const now = new Date();
         const expiresAt = new Date(now.getTime() + config.windowMs);
 
+interface RateLimitDocument {
+    _id: string;
+    count: number;
+    expiresAt: Date;
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
         // Try to increment existing active window
-        const updated = await db.collection("rate_limits").findOneAndUpdate(
-            { _id: key as any, expiresAt: { $gt: now } },
+        const col = db.collection<RateLimitDocument>("rate_limits");
+        const updated = await col.findOneAndUpdate(
+            { _id: key, expiresAt: { $gt: now } },
             { $inc: { count: 1 } },
             { returnDocument: "after" }
         );
 
-        let doc: any = updated;
+        let doc = updated;
 
         if (!doc) {
             // Window expired or first request — upsert a new window
             try {
-                await db.collection("rate_limits").updateOne(
-                    { _id: key as any },
+                await col.updateOne(
+                    { _id: key },
                     {
                         $set: { count: 1, expiresAt, updatedAt: now },
                         $setOnInsert: { createdAt: now },
@@ -241,8 +250,8 @@ export async function checkRateLimitMongo(
                     retryAfterMs: 0,
                 };
             } catch {
-                doc = await db.collection("rate_limits").findOneAndUpdate(
-                    { _id: key as any },
+                doc = await col.findOneAndUpdate(
+                    { _id: key },
                     { $inc: { count: 1 } },
                     { returnDocument: "after" }
                 );
@@ -279,6 +288,14 @@ export async function checkRateLimitMongo(
  * Check if a rate limit key has exceeded its limit WITHOUT incrementing the counter.
  * Used for backstop checks before verifying credentials.
  */
+export interface RateLimitDocument {
+    _id: string;
+    count: number;
+    expiresAt: Date | string;
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
 export async function isRateLimitedMongo(
     key: string,
     type: RateLimitType
@@ -292,8 +309,8 @@ export async function isRateLimitedMongo(
     try {
         const { getDb } = await import("@/lib/mongodb");
         const db = await getDb();
-        const doc = await db.collection("rate_limits").findOne({
-            _id: key as any,
+        const doc = await db.collection<RateLimitDocument>("rate_limits").findOne({
+            _id: key,
             expiresAt: { $gt: now },
         });
 
@@ -330,14 +347,15 @@ export async function incrementRateLimitMongo(
     try {
         const { getDb } = await import("@/lib/mongodb");
         const db = await getDb();
-        const updated = await db.collection("rate_limits").findOneAndUpdate(
-            { _id: key as any, expiresAt: { $gt: now } },
+        const col = db.collection<RateLimitDocument>("rate_limits");
+        const updated = await col.findOneAndUpdate(
+            { _id: key, expiresAt: { $gt: now } },
             { $inc: { count: 1 } }
         );
 
         if (!updated) {
-            await db.collection("rate_limits").updateOne(
-                { _id: key as any },
+            await col.updateOne(
+                { _id: key },
                 {
                     $set: { count: 1, expiresAt, updatedAt: now },
                     $setOnInsert: { createdAt: now },
@@ -363,7 +381,7 @@ export async function resetRateLimitMongo(key: string): Promise<void> {
     try {
         const { getDb } = await import("@/lib/mongodb");
         const db = await getDb();
-        await db.collection("rate_limits").deleteOne({ _id: key as any });
+        await db.collection<RateLimitDocument>("rate_limits").deleteOne({ _id: key });
     } catch {}
     store.delete(key);
 }

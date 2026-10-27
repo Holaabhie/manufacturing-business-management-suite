@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
         const db = await getDb();
 
         // 1. Client verification & lookup (scoped to tenant)
-        let clientQuery: any = { userId: tenantId };
+        let clientQuery: Record<string, unknown> = { userId: tenantId };
         if (ObjectId.isValid(clientId)) {
             clientQuery.$or = [{ _id: new ObjectId(clientId) }, { _id: clientId }];
         } else {
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
         const clientObjId = ObjectId.isValid(clientStrId) ? new ObjectId(clientStrId) : null;
 
         // 2. Fetch all tenant orders matching this client
-        const clientMatchConditions: any[] = [
+        const clientMatchConditions: Record<string, unknown>[] = [
             { client_id: clientStrId },
             { clientId: clientStrId },
             { customer_id: clientStrId },
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
             .toArray();
 
         // 3. Fetch all tenant payments matching this client (legacy payments collection ONLY)
-        const paymentMatchConditions: any[] = [
+        const paymentMatchConditions: Record<string, unknown>[] = [
             { client_id: clientStrId },
             { clientId: clientStrId },
         ];
@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
             debitPaise: number;
             creditPaise: number;
             refId: string;
-            createdAt?: any;
+            createdAt?: unknown;
         }
 
         const periodTransactions: InternalTx[] = [];
@@ -247,8 +247,8 @@ export async function GET(request: NextRequest) {
             if (a.type !== b.type) {
                 return a.type === "Order" ? -1 : 1;
             }
-            const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-            const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            const timeA = a.createdAt ? new Date(a.createdAt as string | number | Date).getTime() : 0;
+            const timeB = b.createdAt ? new Date(b.createdAt as string | number | Date).getTime() : 0;
             if (timeA !== timeB) return timeA - timeB;
             return a.refId.localeCompare(b.refId);
         });
@@ -298,7 +298,7 @@ export async function GET(request: NextRequest) {
         };
 
         return NextResponse.json(response);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error generating client statement:", error);
         return NextResponse.json({ error: "Failed to generate statement of account" }, { status: 500 });
     }

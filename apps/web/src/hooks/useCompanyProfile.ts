@@ -34,7 +34,7 @@ export function useCompanyProfile() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/profile/company");
+      const res = await fetch("/api/profile/company", { cache: "no-store" });
       if (res.status === 401) {
         // Not authenticated (yet) — treat as "no profile", not an error.
         // This happens during initial load before auth session bridges.

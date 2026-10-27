@@ -45,25 +45,25 @@ export function VendorBillsDrilldownDialog({
             case "days1_30":
                 return (
                     <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 whitespace-nowrap">
-                        1–30d ({days}d)
+                        {t("badge1_30d", { days })}
                     </span>
                 );
             case "days31_60":
                 return (
                     <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20 whitespace-nowrap">
-                        31–60d ({days}d)
+                        {t("badge31_60d", { days })}
                     </span>
                 );
             case "days61_90":
                 return (
                     <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 whitespace-nowrap">
-                        61–90d ({days}d)
+                        {t("badge61_90d", { days })}
                     </span>
                 );
             case "days90Plus":
                 return (
                     <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20 whitespace-nowrap">
-                        90+d ({days}d)
+                        {t("badge90PlusD", { days })}
                     </span>
                 );
         }
@@ -202,7 +202,7 @@ export function VendorBillsDrilldownDialog({
 
                                         {bill.tdsAmount && bill.tdsAmount > 0 ? (
                                             <div className="text-[11px] text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md">
-                                                TDS {bill.tdsSection ? `(Sec ${bill.tdsSection})` : ""}: ₹{bill.tdsAmount.toLocaleString("en-IN")}
+                                                TDS {bill.tdsSection ? t("tdsSectionSuffix", { sec: bill.tdsSection }) : ""}: ₹{bill.tdsAmount.toLocaleString("en-IN")}
                                             </div>
                                         ) : null}
                                     </div>

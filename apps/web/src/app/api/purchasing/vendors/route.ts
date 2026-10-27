@@ -21,9 +21,9 @@ export async function GET() {
         const vendors = await service.findAllVendors(getDataOwnerId(user));
 
         return NextResponse.json({ success: true, data: vendors });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error fetching vendors:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: (error as Error).message }, { status: 500 });
     }
 }
 
@@ -40,11 +40,11 @@ export async function POST(request: Request) {
         const vendor = await service.createVendor(getDataOwnerId(user), body);
 
         return NextResponse.json({ success: true, data: vendor }, { status: 201 });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error creating vendor:", error);
-        const status = error.statusCode || 500;
+        const status = (error as { statusCode?: number }).statusCode || 500;
         return NextResponse.json(
-            { error: error.message, details: error.details },
+            { error: (error as Error).message, details: (error as { details?: unknown }).details },
             { status },
         );
     }

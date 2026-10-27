@@ -24,7 +24,7 @@ export async function GET(
       .sort({ createdAt: 1 })
       .toArray();
 
-    const formatted = materials.map((m: any) => ({
+    const formatted = materials.map((m: { _id: { toString(): string }; [key: string]: unknown }) => ({
       id: m._id.toString(),
       name: m.name,
       type: m.type,
@@ -35,9 +35,9 @@ export async function GET(
     }));
 
     return NextResponse.json(formatted);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching client materials:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }
 
@@ -70,8 +70,8 @@ export async function POST(
       id: material!._id.toString(),
       ...material,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating client material:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }

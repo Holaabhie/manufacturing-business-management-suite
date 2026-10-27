@@ -25,7 +25,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 // ── GET: Fetch a single template ──
 export const GET = withRateLimit(
   withApiRoute(
-    withAuth(async (_request: NextRequest, user: AuthenticatedUser, context?: RouteContext) => {
+    withAuth(async (_request: NextRequest, user: AuthenticatedUser, context: RouteContext) => {
       const { id } = await context!.params;
       const db = await getDb();
       const ownerId = getDataOwnerId(user);
@@ -59,7 +59,7 @@ export const GET = withRateLimit(
         createdAt: template.createdAt,
         updatedAt: template.updatedAt,
       });
-    }) as any,
+    }),
   ),
   { tier: "read" },
 );
@@ -67,7 +67,7 @@ export const GET = withRateLimit(
 // ── PATCH: Update template fields ──
 export const PATCH = withRateLimit(
   withApiRoute(
-    withAuth(async (request: NextRequest, user: AuthenticatedUser, context?: RouteContext) => {
+    withAuth(async (request: NextRequest, user: AuthenticatedUser, context: RouteContext) => {
       // Admin-only: Staff cannot update templates
       const adminCheck = await requireAdmin();
       if (adminCheck.error) {
@@ -138,7 +138,7 @@ export const PATCH = withRateLimit(
         version: result.version || 1,
         updatedAt: result.updatedAt,
       });
-    }) as any,
+    }),
   ),
   { tier: "write" },
 );
@@ -146,7 +146,7 @@ export const PATCH = withRateLimit(
 // ── DELETE: Remove a template ──
 export const DELETE = withRateLimit(
   withApiRoute(
-    withAuth(async (_request: NextRequest, user: AuthenticatedUser, context?: RouteContext) => {
+    withAuth(async (_request: NextRequest, user: AuthenticatedUser, context: RouteContext) => {
       // Admin-only: Staff cannot delete templates
       const adminCheck = await requireAdmin();
       if (adminCheck.error) {
@@ -170,7 +170,7 @@ export const DELETE = withRateLimit(
       }
 
       return envelope.ok({ deleted: true, id });
-    }) as any,
+    }),
   ),
   { tier: "write" },
 );
@@ -178,7 +178,7 @@ export const DELETE = withRateLimit(
 // ── POST: Preview rendered template ──
 export const POST = withRateLimit(
   withApiRoute(
-    withAuth(async (request: NextRequest, user: AuthenticatedUser, context?: RouteContext) => {
+    withAuth(async (request: NextRequest, user: AuthenticatedUser, context: RouteContext) => {
       const { id } = await context!.params;
       const db = await getDb();
       const ownerId = getDataOwnerId(user);
@@ -190,7 +190,7 @@ export const POST = withRateLimit(
 
       const template = await db
         .collection<NotificationTemplateDoc>("notification_templates")
-        .findOne({ _id: new ObjectId(id) as any, userId: ownerId });
+        .findOne({ _id: new ObjectId(id), userId: ownerId });
 
       if (!template) {
         return envelope.error("Template not found", 404, "NOT_FOUND");
@@ -216,7 +216,7 @@ export const POST = withRateLimit(
         previews,
         variables: template.variables || [],
       });
-    }) as any,
+    }),
   ),
   { tier: "read" },
 );

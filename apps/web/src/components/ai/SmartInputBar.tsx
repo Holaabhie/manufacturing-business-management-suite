@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import { Send, Sparkles } from "lucide-react";
+import { Send, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
@@ -12,6 +12,8 @@ interface SmartInputBarProps {
   onSubmit: (value: string) => void;
   isLoading: boolean;
   placeholder?: string;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
 export function SmartInputBar({
@@ -20,17 +22,19 @@ export function SmartInputBar({
   onSubmit,
   isLoading,
   placeholder,
+  onFocus,
+  onBlur,
 }: SmartInputBarProps) {
   const t = useTranslations("assistant");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const resolvedPlaceholder = placeholder ?? t("inputPlaceholder");
 
-  // Auto-resize textarea
+  // Auto-resize textarea (min 1 line ~24px, max 4 lines ~112px)
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height =
-        Math.min(textareaRef.current.scrollHeight, 140) + "px";
+      const scrollH = textareaRef.current.scrollHeight;
+      textareaRef.current.style.height = `${Math.min(Math.max(scrollH, 24), 112)}px`;
     }
   }, [value]);
 
@@ -42,7 +46,13 @@ export function SmartInputBar({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    const isMobile =
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 639px)").matches;
+
+    // On desktop: Enter sends, Shift+Enter creates a new line
+    // On mobile: Enter creates a new line, send button sends
+    if (!isMobile && e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       if (value.trim() && !isLoading) {
         onSubmit(value.trim());
@@ -50,68 +60,59 @@ export function SmartInputBar({
     }
   };
 
+  const canSubmit = Boolean(value.trim()) && !isLoading;
+
   return (
-    <div className="w-full flex-shrink-0">
-      <form onSubmit={handleSubmit} className="max-w-[900px] mx-auto">
-        <div className="ai-input-bar flex items-end gap-3">
+    <div className="w-full">
+      <form onSubmit={handleSubmit} className="w-full">
+        <div
+          className={cn(
+            "flex items-end gap-2.5 p-2 rounded-2xl border border-border bg-card/95 backdrop-blur-xl shadow-xs transition-all duration-200",
+            "focus-within:ring-2 focus-within:ring-primary/25 focus-within:border-primary"
+          )}
+        >
           {/* Textarea */}
           <textarea
             ref={textareaRef}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
+            onFocus={onFocus}
+            onBlur={onBlur}
             placeholder={resolvedPlaceholder}
             rows={1}
             disabled={isLoading}
             className={cn(
-              "flex-1 min-h-[24px] max-h-[140px]",
+              "flex-1 bg-transparent border-0 outline-none resize-none leading-relaxed",
+              "text-[16px] text-foreground placeholder:text-muted-foreground/60",
+              "min-h-[26px] max-h-[112px] py-1 px-1.5 scrollbar-hide",
               "disabled:opacity-50"
             )}
-            style={{ maxHeight: 140 }}
           />
 
-          {/* Send button */}
+          {/* 40px Circular Send button */}
           <motion.button
             type="submit"
-            disabled={isLoading || !value.trim()}
-            whileTap={{ scale: 0.92 }}
+            disabled={!canSubmit}
+            whileTap={{ scale: canSubmit ? 0.92 : 1 }}
+            aria-label={t("btnSend", { defaultValue: "Send" } as any)}
             className={cn(
-              "flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center text-white",
-              "transition-all duration-200",
-              value.trim()
-                ? "bg-primary shadow-sm hover:bg-primary/90"
-                : "bg-muted text-muted-foreground",
-              "disabled:opacity-30 disabled:cursor-not-allowed"
+              "w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-all duration-150",
+              canSubmit
+                ? "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 cursor-pointer"
+                : "bg-muted text-muted-foreground/40 cursor-not-allowed opacity-40"
             )}
           >
             {isLoading ? (
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-              >
-                <Sparkles className="h-4 w-4" />
-              </motion.div>
+              <Loader2 className="h-4 w-4 animate-spin text-primary-foreground" />
             ) : (
               <Send className="h-4 w-4" />
             )}
           </motion.button>
         </div>
-
-        {/* Hints (desktop only to preserve mobile screen real estate) */}
-        <div className="hidden sm:flex items-center justify-center gap-3 mt-2">
-          <span className="text-[10px] text-[var(--ai-text-tertiary)]">
-            {t("inputHintPress")}
-            <kbd className="px-1.5 py-0.5 bg-gray-100 dark:bg-white/5 rounded text-[9px] border border-gray-200 dark:border-white/8 font-mono">
-              Enter
-            </kbd>
-            {t("inputHintToSend")}
-            <kbd className="px-1.5 py-0.5 bg-gray-100 dark:bg-white/5 rounded text-[9px] border border-gray-200 dark:border-white/8 font-mono">
-              Shift+Enter
-            </kbd>
-            {t("inputHintForNewline")}
-          </span>
-        </div>
       </form>
     </div>
   );
 }
+
+export default SmartInputBar;

@@ -14,10 +14,8 @@ export async function GET() {
         const user = result.user;
 
         const dataOwnerId = getDataOwnerId(user);
-        const idMatches: any[] = [dataOwnerId, user._id];
-        if (ObjectId.isValid(dataOwnerId)) {
-            idMatches.push(new ObjectId(dataOwnerId));
-        }
+        const ownerOid = ObjectId.isValid(dataOwnerId) ? new ObjectId(dataOwnerId) : null;
+        const userOid = ObjectId.isValid(String(user._id)) ? new ObjectId(String(user._id)) : null;
 
         const db = await getDb();
         const users = await db
@@ -25,8 +23,9 @@ export async function GET() {
             .find({
                 $or: [
                     { adminId: dataOwnerId },
-                    { _id: { $in: idMatches } }
-                ]
+                    { _id: (userOid || user._id) as unknown as ObjectId },
+                    ...(ownerOid ? [{ _id: ownerOid }] : []),
+                ],
             }, {
                 projection: {
                     passwordHash: 0 // Never return password
@@ -46,8 +45,8 @@ export async function GET() {
                 updatedAt: user.updatedAt,
             }))
         );
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error fetching users:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: (error as Error).message }, { status: 500 });
     }
 }

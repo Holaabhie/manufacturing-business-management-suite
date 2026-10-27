@@ -19,8 +19,7 @@ export const POST = withIdempotency(async (
         }
         const user = result.user;
         const tenantId = getDataOwnerId(user);
-        const userAny = user as any;
-        const createdBy = userAny.fullName || userAny.name || user.email || String(user._id);
+        const createdBy = user.fullName || user.fullName || user.email || String(user._id);
         const { id } = await params;
 
         const svc = getDeliveryChallanService();
@@ -30,23 +29,23 @@ export const POST = withIdempotency(async (
         await logDataOperation({
             organizationId: tenantId,
             userId: String(user._id),
-            userName: userAny.fullName || userAny.name || user.email || "Unknown User",
-            userRole: (userAny.role === "Admin" || userAny.role === "Owner") ? "Admin" : "Staff",
-            userRoleDetail: userAny.role || user.role,
+            userName: user.fullName || user.fullName || user.email || "Unknown User",
+            userRole: (user.role === "Admin" || user.role === "Owner") ? "Admin" : "Staff",
+            userRoleDetail: user.role || user.role,
             action: `Duplicated delivery challan ${id} into new challan ${duplicatedChallan.challan_number}`,
             actionType: "create",
             module: "delivery_challans",
             resourceId: duplicatedChallan.id,
             resourceType: "delivery_challan",
-            afterState: duplicatedChallan as unknown as Record<string, unknown>,
+            afterState: duplicatedChallan,
             ipAddress: getClientIp(request),
             userAgent: request.headers.get("user-agent") || undefined,
         });
 
         return NextResponse.json(duplicatedChallan, { status: 201 });
-    } catch (error: any) {
+    } catch (error: unknown) {
         if (error instanceof NotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 });
+            return NextResponse.json({ error: (error as Error).message }, { status: 404 });
         }
         console.error("Error duplicating delivery challan:", error);
         return NextResponse.json({ error: "Failed to duplicate delivery challan" }, { status: 500 });

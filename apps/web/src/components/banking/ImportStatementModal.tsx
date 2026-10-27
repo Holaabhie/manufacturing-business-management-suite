@@ -23,14 +23,16 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type {
-  BankAccount,
-  BankStatementImport,
-  CsvMapping,
-  PreviewResult,
-  AmountMode,
-  DateFormat,
+import {
+  type BankAccount,
+  type BankStatementImport,
+  type CsvMapping,
+  type PreviewResult,
+  type AmountMode,
+  type DateFormat,
+  MAX_FILE_SIZE_BYTES,
 } from "@/modules/banking/domain/types";
+import { generateId } from "@/lib/uuid";
 
 interface ImportStatementModalProps {
   isOpen: boolean;
@@ -110,7 +112,7 @@ export function ImportStatementModal({
       toast.error(t("errInvalidCsv"));
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > MAX_FILE_SIZE_BYTES) {
       toast.error(t("supportedCsvNote"));
       return;
     }
@@ -183,7 +185,7 @@ export function ImportStatementModal({
 
     setIsCommitting(true);
     try {
-      const idempotencyKey = crypto.randomUUID();
+      const idempotencyKey = generateId();
       const formData = new FormData();
       formData.append("file", selectedFile);
       formData.append("bank_account_id", selectedAccountId);

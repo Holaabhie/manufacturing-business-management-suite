@@ -11,10 +11,23 @@ import { z } from "zod";
 export const createVendorSchema = z.object({
     name: z.string().min(1, "Vendor name is required").max(200).trim(),
     contactPerson: z.string().min(1, "Contact person is required").max(200).trim(),
-    phone: z.string().min(1, "Phone is required").max(50).trim(),
-    email: z.string().email("Invalid email").max(200).optional().or(z.literal("")),
+    phone: z.string()
+        .trim()
+        .transform((val) => val.replace(/[\s\-]/g, ""))
+        .refine((val) => /^(?:\+91|91|0)?[6-9]\d{9}$/.test(val), {
+            message: "Please enter a valid 10-digit mobile number",
+        }),
+    email: z.string().trim().email("Invalid email").max(200).optional().or(z.literal("")),
     address: z.string().max(500).optional().default(""),
-    gstin: z.string().max(20).optional().default(""),
+    gstin: z.string()
+        .trim()
+        .optional()
+        .default("")
+        .refine(
+            (val) => !val || /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(val.toUpperCase()),
+            { message: "Invalid 15-character GSTIN format" }
+        )
+        .transform((val) => (val ? val.toUpperCase() : "")),
     notes: z.string().max(1000).optional().default(""),
 });
 

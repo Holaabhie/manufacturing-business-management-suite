@@ -89,7 +89,7 @@ export async function POST(
         return await handleGeneratePDF(id, result.user);
     } catch (error) {
         if (error instanceof NotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 });
+            return NextResponse.json({ error: (error as Error).message }, { status: 404 });
         }
         console.error("Error generating quote PDF:", error);
         return NextResponse.json({ error: "Failed to generate quotation PDF" }, { status: 500 });
@@ -109,7 +109,7 @@ export async function GET(
         return await handleGeneratePDF(id, result.user);
     } catch (error) {
         if (error instanceof NotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 });
+            return NextResponse.json({ error: (error as Error).message }, { status: 404 });
         }
         console.error("Error generating quote PDF:", error);
         return NextResponse.json({ error: "Failed to generate quotation PDF" }, { status: 500 });

@@ -34,18 +34,21 @@ export function StatementDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
                 fullScreenMobile
-                className="max-w-4xl w-full p-0 overflow-hidden rounded-2xl flex flex-col md:max-h-[90vh]"
+                className="max-w-4xl w-full p-0 overflow-hidden rounded-t-[24px] md:rounded-2xl flex flex-col h-[100dvh] md:h-auto max-h-[100dvh] md:max-h-[90vh]"
             >
-                <DialogHeader className="p-4 sm:p-5 border-b border-[var(--border)] shrink-0 bg-[var(--card)]">
-                    <DialogTitle className="text-base sm:text-lg font-bold text-[var(--foreground)]">
-                        {t("title")} {clientName ? `— ${clientName}` : ""}
+                {/* Drag Handle on Mobile */}
+                <div className="w-10 h-1 rounded-full bg-[var(--muted-foreground)]/25 mx-auto mt-2.5 mb-0.5 md:hidden shrink-0" />
+
+                <DialogHeader className="p-4 sm:p-5 border-b border-[var(--border)] shrink-0 bg-[var(--card)] pr-12">
+                    <DialogTitle className="text-base sm:text-lg font-bold text-[var(--foreground)] truncate">
+                        {clientName || t("title")}
                     </DialogTitle>
-                    <DialogDescription className="sr-only">
+                    <DialogDescription className="text-[12px] text-[var(--muted-foreground)] mt-0.5">
                         {t("title")}
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="flex-1 overflow-y-auto p-3 sm:p-5 min-h-0 scrollbar-hide">
+                <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
                     <ClientStatement
                         clientId={clientId}
                         clientName={clientName}

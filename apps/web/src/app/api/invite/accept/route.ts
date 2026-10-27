@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
                 expiresAt: invitation.expiresAt,
             },
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[invite/accept GET] Error:", error);
         return NextResponse.json({ error: "server_error", message: "Something went wrong" }, { status: 500 });
     }
@@ -174,7 +174,6 @@ export async function POST(request: NextRequest) {
         const now = new Date();
         const newUser = {
             email: invitation.email.toLowerCase().trim(),
-            phone: "", // Will be set in profile later
             fullName: fullName.trim(),
             passwordHash,
             role: invitation.role || "Staff",
@@ -224,7 +223,7 @@ export async function POST(request: NextRequest) {
             success: true,
             redirect: "/dashboard",
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[invite/accept POST] Error:", error);
         return NextResponse.json({ error: "server_error", message: "Something went wrong" }, { status: 500 });
     }

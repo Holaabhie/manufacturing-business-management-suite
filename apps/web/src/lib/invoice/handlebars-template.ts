@@ -17,8 +17,8 @@
  */
 
 import Handlebars from "handlebars";
-import type { InvoicePayload, InvoiceStatus } from "./types";
-import { formatINR, formatNumber, formatDate, numberToWords, calculateLineItemTax } from "./utils";
+import type { InvoicePayload, InvoiceStatus, TaxType } from "./types";
+import { formatINR, formatNumber, formatDate, numberToWords, calculateLineItemTax, calculateInvoiceTotals } from "./utils";
 
 // ─── Register Handlebars Helpers ──────────────────────────────
 
@@ -27,11 +27,11 @@ Handlebars.registerHelper("formatNum", (n: number) => formatNumber(n));
 Handlebars.registerHelper("formatDate", (dateStr: string) => formatDate(dateStr));
 Handlebars.registerHelper("amountInWords", (amount: number) => numberToWords(amount));
 
-Handlebars.registerHelper("ifEqual", function (this: any, a: any, b: any, options: any) {
+Handlebars.registerHelper("ifEqual", function (this: unknown, a: unknown, b: unknown, options: Handlebars.HelperOptions) {
     return a === b ? options.fn(this) : options.inverse(this);
 });
 
-Handlebars.registerHelper("ifGt", function (this: any, a: number, b: number, options: any) {
+Handlebars.registerHelper("ifGt", function (this: unknown, a: number, b: number, options: Handlebars.HelperOptions) {
     return a > b ? options.fn(this) : options.inverse(this);
 });
 
@@ -43,7 +43,7 @@ Handlebars.registerHelper("add", (a: number, b: number) => (a || 0) + (b || 0));
 
 Handlebars.registerHelper("inc", (n: number) => (n || 0) + 1);
 
-Handlebars.registerHelper("isEven", function (this: any, index: number, options: any) {
+Handlebars.registerHelper("isEven", function (this: unknown, index: number, options: Handlebars.HelperOptions) {
     return index % 2 === 0 ? options.fn(this) : options.inverse(this);
 });
 
@@ -848,19 +848,18 @@ export function buildInvoiceHTMLHandlebars(data: InvoicePayload): string {
     const template = getCompiledTemplate();
 
     // Determine tax type
-    const taxTypeResolved: string = data.taxType ||
+    const taxTypeResolved: TaxType = (data.taxType as TaxType) ||
         (data.igstAmount > 0 ? "IGST" : "CGST_SGST");
 
     // Compute per-line-item tax
     const computedItems = data.items.map(item =>
-        calculateLineItemTax(item, taxTypeResolved as any)
+        calculateLineItemTax(item, taxTypeResolved)
     );
 
     // Compute totals
     let computedTotals = data.totals;
     if (!computedTotals) {
-        const { calculateInvoiceTotals } = require("./utils");
-        computedTotals = calculateInvoiceTotals(data.items, taxTypeResolved as any);
+        computedTotals = calculateInvoiceTotals(data.items, taxTypeResolved);
     }
 
     // Determine bank details (from bankDetails object or company fields)

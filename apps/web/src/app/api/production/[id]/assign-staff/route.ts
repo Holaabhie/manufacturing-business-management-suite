@@ -69,10 +69,10 @@ export async function PATCH(
 
         // --- VALIDATION 4: verify all IDs are real staff users ---
         const queryIds = uniqueIds.map((id) =>
-            ObjectId.isValid(id) ? new ObjectId(id) : (id as unknown as ObjectId)
+            ObjectId.isValid(id) ? new ObjectId(id) : id
         );
         const staffUsers = await db
-            .collection("users")
+            .collection<{ _id: ObjectId | string; role: string; fullName?: string; full_name?: string; email?: string }>("users")
             .find({
                 _id: { $in: queryIds },
                 role: "Staff",

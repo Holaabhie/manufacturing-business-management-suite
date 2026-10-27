@@ -21,6 +21,7 @@ import { useTranslations } from "next-intl";
 import { useAppLocale } from "@/components/LocaleProvider";
 import { playCompletionSound } from "@/hooks/useCompletionSound";
 import { cn } from "@/lib/utils";
+import { SearchableSelectPanel } from "@/components/ui/SearchableSelectPanel";
 
 // ─── Types ─────────────────────────────────────────────────
 interface BillItem {
@@ -228,6 +229,7 @@ export default function CreateInvoiceModal({
   const [submitting, setSubmitting] = useState(false);
 
   const clientDropdownRef = useRef<HTMLDivElement>(null);
+  const importButtonRef = useRef<HTMLButtonElement>(null);
   const formScrollRef = useRef<HTMLDivElement>(null);
 
   // ─── Lock body scroll while modal is open ──────────────
@@ -276,19 +278,6 @@ export default function CreateInvoiceModal({
     },
     [formData.billDate]
   );
-
-  // ─── Close dropdown on outside click ──────────────────
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (clientDropdownRef.current && !clientDropdownRef.current.contains(e.target as Node)) {
-        setClientDropdownOpen(false);
-      }
-    };
-    if (clientDropdownOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [clientDropdownOpen]);
 
   // ─── Line Item CRUD ────────────────────────────────────
   const addItem = () => {
@@ -747,55 +736,57 @@ export default function CreateInvoiceModal({
                           )}
                         />
                       </button>
-                      {clientDropdownOpen && (
-                        <div className="absolute z-50 mt-1 w-full rounded-[8px] bg-white dark:bg-[#161B27] border border-[rgba(15,23,42,0.06)] dark:border-[rgba(148,163,184,0.10)] shadow-xl overflow-hidden">
-                          <div className="p-2 border-b border-[rgba(15,23,42,0.06)] dark:border-[rgba(148,163,184,0.08)]">
-                            <input
-                              type="text"
-                              placeholder={t("clientSearchPlaceholder")}
-                              value={clientSearch}
-                              onChange={(e) => setClientSearch(e.target.value)}
-                              className={cn(inputClasses, "h-[32px] text-[11px]")}
-                              autoFocus
-                            />
-                          </div>
-                          <div className="max-h-[180px] overflow-y-auto">
-                            {clients
-                              .filter((c) =>
-                                c.name?.toLowerCase().includes(clientSearch.toLowerCase())
-                              )
-                              .map((c) => (
-                                <button
-                                  key={c.id}
-                                  type="button"
-                                  onClick={() => {
-                                    setFormData((prev) => ({ ...prev, client_id: c.id }));
-                                    setClientDropdownOpen(false);
-                                    setClientSearch("");
-                                  }}
-                                  className={cn(
-                                    "w-full text-left px-3 py-2 text-[12px] transition-colors duration-100",
-                                    formData.client_id === c.id
-                                      ? "bg-blue-500/10 text-blue-400 font-medium"
-                                      : "text-[#0F172A] dark:text-[#F1F5F9] hover:bg-blue-500/5"
-                                  )}
-                                >
-                                  <div className="font-medium">{c.name}</div>
-                                  {c.phone && (
-                                    <div className="text-[10px] text-[#94A3B8]">{c.phone}</div>
-                                  )}
-                                </button>
-                              ))}
-                            {clients.filter((c) =>
-                              c.name?.toLowerCase().includes(clientSearch.toLowerCase())
-                            ).length === 0 && (
-                              <div className="px-3 py-3 text-[11px] text-[#94A3B8] text-center">
-                                {t("noClientsFound")}
-                              </div>
-                            )}
-                          </div>
+                      <SearchableSelectPanel
+                        open={clientDropdownOpen}
+                        onClose={() => setClientDropdownOpen(false)}
+                        triggerRef={clientDropdownRef}
+                      >
+                        <div className="p-1.5 border-b border-[var(--surface-popover-border)] sticky top-0 bg-[var(--surface-popover)] z-10">
+                          <input
+                            type="text"
+                            placeholder={t("clientSearchPlaceholder")}
+                            value={clientSearch}
+                            onChange={(e) => setClientSearch(e.target.value)}
+                            className="w-full px-2.5 py-1 text-xs rounded-md bg-[var(--muted)] border-none focus:outline-none"
+                            autoFocus
+                          />
                         </div>
-                      )}
+                        <div className="py-1">
+                          {clients
+                            .filter((c) =>
+                              c.name?.toLowerCase().includes(clientSearch.toLowerCase())
+                            )
+                            .map((c) => (
+                              <button
+                                key={c.id}
+                                type="button"
+                                onClick={() => {
+                                  setFormData((prev) => ({ ...prev, client_id: c.id }));
+                                  setClientDropdownOpen(false);
+                                  setClientSearch("");
+                                }}
+                                className={cn(
+                                  "w-full text-left px-3 py-2 text-[12px] transition-colors duration-100 rounded-lg",
+                                  formData.client_id === c.id
+                                    ? "bg-blue-500/10 text-blue-400 font-medium"
+                                    : "text-[#0F172A] dark:text-[#F1F5F9] hover:bg-blue-500/5"
+                                )}
+                              >
+                                <div className="font-medium">{c.name}</div>
+                                {c.phone && (
+                                  <div className="text-[10px] text-[#94A3B8]">{c.phone}</div>
+                                )}
+                              </button>
+                            ))}
+                          {clients.filter((c) =>
+                            c.name?.toLowerCase().includes(clientSearch.toLowerCase())
+                          ).length === 0 && (
+                            <div className="px-3 py-3 text-[11px] text-[#94A3B8] text-center">
+                              {t("noClientsFound")}
+                            </div>
+                          )}
+                        </div>
+                      </SearchableSelectPanel>
                     </div>
 
                     {/* Auto-filled fields */}
@@ -930,6 +921,7 @@ export default function CreateInvoiceModal({
                   title={t("secLineItems")}
                   headerRight={
                     <button
+                      ref={importButtonRef}
                       type="button"
                       onClick={() => {
                         if (!formData.client_id) {
@@ -946,8 +938,14 @@ export default function CreateInvoiceModal({
                   }
                 >
                   {/* Import Dropdown */}
-                  {importDropdownOpen && formData.client_id && (
-                    <div className="mb-3 bg-white/50 dark:bg-[rgba(15,17,25,0.7)] border border-[rgba(15,23,42,0.06)] dark:border-[rgba(148,163,184,0.10)] rounded-lg p-2 max-h-[160px] overflow-y-auto">
+                  <SearchableSelectPanel
+                    open={importDropdownOpen && Boolean(formData.client_id)}
+                    onClose={() => setImportDropdownOpen(false)}
+                    triggerRef={importButtonRef}
+                    align="right"
+                    minWidth={280}
+                  >
+                    <div className="py-1">
                       {clientOrders.length === 0 ? (
                         <p className="text-[11px] text-[#94A3B8] text-center py-3">
                           {t("noOrdersForClient")}
@@ -975,7 +973,7 @@ export default function CreateInvoiceModal({
                         })
                       )}
                     </div>
-                  )}
+                  </SearchableSelectPanel>
 
                   {/* Items Table */}
                   {formData.items.length === 0 ? (

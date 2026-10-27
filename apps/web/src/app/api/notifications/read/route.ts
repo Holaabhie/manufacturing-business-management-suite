@@ -5,7 +5,7 @@ import { getDb } from "@/lib/mongodb";
 export const dynamic = "force-dynamic";
 
 let indexEnsured = false;
-async function ensureIndex(db: any) {
+async function ensureIndex(db: { collection: (name: string) => { createIndex: (fields: Record<string, number>, opts?: Record<string, unknown>) => Promise<unknown> } }) {
   if (indexEnsured) return;
   try {
     await db.collection("notification_reads").createIndex({ userId: 1 }, { unique: true });

@@ -1,4 +1,4 @@
-import { ObjectId } from "mongodb";
+import { ObjectId, type Document } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 import type { IQuoteRepository, Quotation, QuoteItem, CreateQuoteDTO, UpdateQuoteDTO, QuoteStatus } from "../domain/types";
 import { getFinancialYear } from "@/lib/utils/financial-year";
@@ -16,7 +16,7 @@ function isQuoteExpired(validUntil: string, rawStatus: string): boolean {
     }
 }
 
-function toEntity(doc: Record<string, unknown>): Quotation {
+function toEntity(doc: Document): Quotation {
     const rawItems = (doc.items as Record<string, unknown>[]) || [];
     const items: QuoteItem[] = rawItems.map((item) => ({
         item_id: item.item_id ? String(item.item_id) : undefined,
@@ -54,6 +54,22 @@ function toEntity(doc: Record<string, unknown>): Quotation {
     const rawStatus = String(doc.status || "Draft") as QuoteStatus;
     const computedStatus: QuoteStatus = isQuoteExpired(validUntil, rawStatus) ? "Expired" : rawStatus;
 
+    const sumCgst = items.reduce((acc, it) => acc + (it.cgst || 0), 0);
+    const sumSgst = items.reduce((acc, it) => acc + (it.sgst || 0), 0);
+    const sumIgst = items.reduce((acc, it) => acc + (it.igst || 0), 0);
+
+    const rawCgst = doc.cgst_amount ?? doc.cgstAmount;
+    const rawSgst = doc.sgst_amount ?? doc.sgstAmount;
+    const rawIgst = doc.igst_amount ?? doc.igstAmount;
+
+    const cgstAmount = rawCgst !== undefined && rawCgst !== null && Number(rawCgst) > 0 ? Number(rawCgst) : sumCgst;
+    const sgstAmount = rawSgst !== undefined && rawSgst !== null && Number(rawSgst) > 0 ? Number(rawSgst) : sumSgst;
+    const igstAmount = rawIgst !== undefined && rawIgst !== null && Number(rawIgst) > 0 ? Number(rawIgst) : sumIgst;
+
+    const isIgst = doc.is_igst !== undefined && doc.is_igst !== null
+        ? Boolean(doc.is_igst)
+        : (doc.isIGST !== undefined && doc.isIGST !== null ? Boolean(doc.isIGST) : (igstAmount > 0 && cgstAmount === 0));
+
     return {
         id: String(doc._id),
         userId: String(doc.userId || ""),
@@ -70,12 +86,12 @@ function toEntity(doc: Record<string, unknown>): Quotation {
         items,
         subtotal: Number(doc.subtotal || 0),
         total_discount: Number(doc.total_discount ?? doc.totalDiscount ?? 0),
-        total_tax: Number(doc.total_tax ?? doc.totalTax ?? 0),
+        total_tax: Number(doc.total_tax ?? doc.totalTax ?? (sumCgst + sumSgst + sumIgst)),
         grand_total: Number(doc.grand_total ?? doc.grandTotal ?? doc.totalAmount ?? 0),
-        cgst_amount: Number(doc.cgst_amount ?? doc.cgstAmount ?? 0),
-        sgst_amount: Number(doc.sgst_amount ?? doc.sgstAmount ?? 0),
-        igst_amount: Number(doc.igst_amount ?? doc.igstAmount ?? 0),
-        is_igst: Boolean(doc.is_igst ?? doc.isIGST ?? false),
+        cgst_amount: cgstAmount,
+        sgst_amount: sgstAmount,
+        igst_amount: igstAmount,
+        is_igst: isIgst,
         terms: String(doc.terms || ""),
         notes: String(doc.notes || ""),
         status: computedStatus,
@@ -218,7 +234,7 @@ export class MongoQuoteRepository implements IQuoteRepository {
                 { returnDocument: "after" }
             );
 
-            return result ? toEntity(result as unknown as Record<string, unknown>) : null;
+            return result ? toEntity(result) : null;
         } catch {
             return null;
         }
@@ -264,7 +280,7 @@ export class MongoQuoteRepository implements IQuoteRepository {
                 { returnDocument: "after" }
             );
 
-            return result ? toEntity(result as unknown as Record<string, unknown>) : null;
+            return result ? toEntity(result) : null;
         } catch {
             return null;
         }
@@ -294,7 +310,7 @@ export class MongoQuoteRepository implements IQuoteRepository {
                 }
             );
 
-            return result ? { quote: toEntity(result as unknown as Record<string, unknown>), statusChangedToAccepted: isSent } : null;
+            return result ? { quote: toEntity(result), statusChangedToAccepted: isSent } : null;
         } catch {
             return null;
         }

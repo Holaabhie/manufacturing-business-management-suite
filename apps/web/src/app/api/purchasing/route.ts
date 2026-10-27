@@ -1,3 +1,4 @@
+type PurchasingItemCandidate = { inventoryItemId?: string; inventoryId?: string; materialName?: string; quantity?: number; unit?: string; unitPrice?: number; unitCost?: number; [key: string]: unknown };
 /**
  * Purchasing API — /api/purchasing
  * ─────────────────────────────────────────────────────────
@@ -26,9 +27,9 @@ export async function GET() {
         const orders = await service.findAllOrders(getDataOwnerId(user));
 
         return NextResponse.json({ success: true, data: orders });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error fetching purchase orders:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: (error as Error).message }, { status: 500 });
     }
 }
 
@@ -51,7 +52,7 @@ export async function POST(request: Request) {
             const userId = getDataOwnerId(user);
             const db = await getDb();
 
-            const candidateOps = body.items.filter((i: any) => {
+            const candidateOps = body.items.filter((i: PurchasingItemCandidate) => {
                 const hasId = i.inventoryItemId && typeof i.inventoryItemId === "string";
                 const hasName = i.materialName && typeof i.materialName === "string" && String(i.materialName).trim().length > 0;
                 const qty = Number(i.quantity);
@@ -119,13 +120,13 @@ export async function POST(request: Request) {
                 const db = await getDb();
 
                 const ops = body.items
-                    .filter((i: any) => {
+                    .filter((i: PurchasingItemCandidate) => {
                         const hasId = i.inventoryItemId && typeof i.inventoryItemId === "string";
                         const hasName = i.materialName && typeof i.materialName === "string" && String(i.materialName).trim().length > 0;
                         const qty = Number(i.quantity);
                         return (hasId || hasName) && qty > 0;
                     })
-                    .map((i: any) => {
+                    .map((i: PurchasingItemCandidate) => {
                         // Prefer ObjectId match; fall back to trimmed name + userId
                         const trimmedName = String(i.materialName || "").trim();
                         const validObjectId = i.inventoryItemId && ObjectId.isValid(i.inventoryItemId);
@@ -194,11 +195,12 @@ export async function POST(request: Request) {
             { success: true, data: order, inventorySynced },
             { status: 201 },
         );
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error creating purchase order:", error);
-        const status = error.statusCode || 500;
+        const err = error as { statusCode?: number; details?: unknown; message?: string };
+        const status = err.statusCode || 500;
         return NextResponse.json(
-            { error: error.message, details: error.details },
+            { error: (error as Error).message, details: (error as { details?: unknown }).details },
             { status },
         );
     }

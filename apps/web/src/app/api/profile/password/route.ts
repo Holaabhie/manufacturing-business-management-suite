@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth-session";
+import { getSessionUser, type UserDoc, type MongoUserDoc } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import bcrypt from "bcrypt";
@@ -21,15 +21,16 @@ export async function PUT(request: Request) {
     const db = await getDb();
     const passwordHash = await bcrypt.hash(newPassword, 10);
 
-    const userQueryId = ObjectId.isValid(user._id) ? new ObjectId(user._id) : (user._id as unknown as ObjectId);
-    await db.collection("users").updateOne(
+    const userQueryId = ObjectId.isValid(user._id) ? new ObjectId(user._id) : user._id;
+    await db.collection<MongoUserDoc>("users").updateOne(
       { _id: userQueryId },
       { $set: { passwordHash, updatedAt: new Date() } }
     );
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating password:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Failed to update password";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

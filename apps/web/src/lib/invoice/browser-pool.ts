@@ -21,30 +21,57 @@ const DEFAULT_CONFIG: BrowserPoolConfig = {
     pageTimeoutMs: parseInt(process.env.PDF_PAGE_TIMEOUT_MS || "30000", 10),
 };
 
+// Retained flags: --no-sandbox, --disable-setuid-sandbox, and --disable-dev-shm-usage are required
+// specifically for serverless/containerized runtimes (Vercel/Docker) without user namespaces.
 const LAUNCH_ARGS = [
     "--no-sandbox",
     "--disable-setuid-sandbox",
     "--disable-dev-shm-usage",
     "--disable-gpu",
-    "--disable-web-security",
     "--font-render-hinting=none",
     "--disable-features=TranslateUI",
     "--hide-scrollbars",
     "--mute-audio",
 ];
 
+// ─── Browser and Page structural types ─────────────────────────
+
+interface RequestLike {
+    url: () => string;
+    continue: () => void;
+    abort: () => void;
+}
+
+interface PageLike {
+    setDefaultTimeout: (timeout: number) => void;
+    setJavaScriptEnabled: (enabled: boolean) => Promise<void>;
+    setRequestInterception: (enabled: boolean) => Promise<void>;
+    on: (event: string, handler: (req: RequestLike) => void) => void;
+    setContent: (html: string, options?: Record<string, unknown>) => Promise<void>;
+    evaluateHandle: (fn: () => unknown) => Promise<unknown>;
+    pdf: (options?: Record<string, unknown>) => Promise<Uint8Array | Buffer>;
+    close: () => Promise<void>;
+}
+
+interface BrowserLike {
+    isConnected: () => boolean;
+    close: () => Promise<void>;
+    newPage: () => Promise<PageLike>;
+    on?: (event: string, handler: () => void) => void;
+}
+
 // ─── Singleton Browser Pool ───────────────────────────────────
 
-let browserInstance: any = null;
+let browserInstance: BrowserLike | null = null;
 let activePageCount = 0;
 let isLaunching = false;
-let launchPromise: Promise<any> | null = null;
+let launchPromise: Promise<BrowserLike> | null = null;
 
 /**
  * Get or create a shared browser instance.
  * Uses @sparticuz/chromium on serverless, standard puppeteer locally.
  */
-async function getBrowser(config: BrowserPoolConfig = DEFAULT_CONFIG): Promise<any> {
+async function getBrowser(config: BrowserPoolConfig = DEFAULT_CONFIG): Promise<BrowserLike> {
     // Return existing healthy browser
     if (browserInstance && browserInstance.isConnected()) {
         return browserInstance;
@@ -74,6 +101,7 @@ async function getBrowser(config: BrowserPoolConfig = DEFAULT_CONFIG): Promise<a
             let chromiumArgs = [...LAUNCH_ARGS];
 
             try {
+                // @ts-ignore — optional serverless dependency (Vercel/Lambda)
                 const chromium = await import(/* webpackIgnore: true */ "@sparticuz/chromium");
                 executablePath = await chromium.default.executablePath();
                 chromiumArgs = chromium.default.args;
@@ -83,8 +111,29 @@ async function getBrowser(config: BrowserPoolConfig = DEFAULT_CONFIG): Promise<a
                 console.log("[browser-pool] Using standard puppeteer");
             }
 
-            const puppeteer = await import(/* webpackIgnore: true */ "puppeteer");
-            const launchOptions: any = {
+            let puppeteer: { default?: { launch: (opts: Record<string, unknown>) => Promise<BrowserLike> }; launch?: (opts: Record<string, unknown>) => Promise<BrowserLike> };
+            try {
+                // @ts-ignore
+                puppeteer = await import(/* webpackIgnore: true */ "puppeteer");
+            } catch {
+                // @ts-ignore
+                puppeteer = await import(/* webpackIgnore: true */ "puppeteer-core");
+            }
+
+            if (!executablePath && process.env.PUPPETEER_EXECUTABLE_PATH) {
+                executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+            } else if (!executablePath && process.platform === "win32") {
+                const fs = await import("fs");
+                const defaultChrome = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+                const defaultEdge = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
+                if (fs.existsSync(defaultChrome)) {
+                    executablePath = defaultChrome;
+                } else if (fs.existsSync(defaultEdge)) {
+                    executablePath = defaultEdge;
+                }
+            }
+
+            const launchOptions: Record<string, unknown> = {
                 headless: true,
                 args: chromiumArgs,
                 defaultViewport: {
@@ -97,10 +146,15 @@ async function getBrowser(config: BrowserPoolConfig = DEFAULT_CONFIG): Promise<a
                 launchOptions.executablePath = executablePath;
             }
 
-            browserInstance = await puppeteer.default.launch(launchOptions);
+            const launchFn = puppeteer.default?.launch || puppeteer.launch;
+            if (!launchFn) {
+                throw new Error("Puppeteer launch function not found");
+            }
+            const launched = await launchFn.call(puppeteer.default || puppeteer, launchOptions);
+            browserInstance = launched;
 
             // Auto-reconnect on disconnect
-            browserInstance.on("disconnected", () => {
+            browserInstance?.on?.("disconnected", () => {
                 console.warn("[browser-pool] Browser disconnected, will reconnect on next request");
                 browserInstance = null;
                 activePageCount = 0;
@@ -113,7 +167,11 @@ async function getBrowser(config: BrowserPoolConfig = DEFAULT_CONFIG): Promise<a
         }
     })();
 
-    return launchPromise;
+    const result = await launchPromise;
+    if (!result) {
+        throw new Error("Failed to initialize browser pool instance");
+    }
+    return result;
 }
 
 // ─── Public API ───────────────────────────────────────────────
@@ -144,7 +202,7 @@ export async function generatePDFFromHTML(
     }
 
     const browser = await getBrowser(config);
-    let page: any = null;
+    let page: PageLike | null = null;
     activePageCount++;
 
     try {
@@ -153,6 +211,35 @@ export async function generatePDFFromHTML(
         // Set page timeout
         const timeout = options.timeout ?? config.pageTimeoutMs;
         page.setDefaultTimeout(timeout);
+
+        // Disable JavaScript execution for security (invoice/quote/challan templates do not require client JS)
+        await page.setJavaScriptEnabled(false);
+
+        // Strict request interception: allow only Google Fonts and data/about URIs. Block all private/internal network access.
+        await page.setRequestInterception(true);
+        const ALLOWED_EXTERNAL_HOSTS = new Set(["fonts.googleapis.com", "fonts.gstatic.com"]);
+
+        page.on("request", (req: RequestLike) => {
+            try {
+                const urlStr = req.url();
+                if (urlStr.startsWith("data:") || urlStr.startsWith("about:")) {
+                    req.continue();
+                    return;
+                }
+                const parsed = new URL(urlStr);
+                if (
+                    (parsed.protocol === "http:" || parsed.protocol === "https:") &&
+                    ALLOWED_EXTERNAL_HOSTS.has(parsed.hostname.toLowerCase())
+                ) {
+                    req.continue();
+                    return;
+                }
+                // Abort all other requests (including internal/private network requests and redirects)
+                req.abort();
+            } catch {
+                req.abort();
+            }
+        });
 
         // Set content and wait for network + DOM
         await page.setContent(html, {
@@ -164,7 +251,7 @@ export async function generatePDFFromHTML(
         if (options.waitForFonts !== false) {
             try {
                 await page.evaluateHandle(() =>
-                    (document as any).fonts?.ready || Promise.resolve(),
+                    (document as unknown as { fonts?: { ready?: Promise<unknown> } }).fonts?.ready || Promise.resolve(),
                 );
                 // Small stabilization delay for font rendering
                 await new Promise(resolve => setTimeout(resolve, 300));
@@ -214,9 +301,10 @@ export async function generatePDFWithRetry(
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
             return await generatePDFFromHTML(html, options);
-        } catch (error: any) {
-            lastError = error;
-            console.warn(`[browser-pool] PDF generation attempt ${attempt + 1} failed:`, error.message);
+        } catch (error: unknown) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            lastError = err;
+            console.warn(`[browser-pool] PDF generation attempt ${attempt + 1} failed:`, err.message);
 
             if (attempt < maxRetries) {
                 // Wait before retry

@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
         ]);
 
         return NextResponse.json({ bills, summary });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error fetching vendor bills:", error);
         return NextResponse.json({ error: "Failed to fetch vendor bills" }, { status: 500 });
     }
@@ -50,8 +50,7 @@ export const POST = withIdempotency(
             }
             const user = result.user;
             const tenantId = getDataOwnerId(user);
-            const userAny = user as any;
-            const createdBy = userAny.fullName || userAny.name || user.email || String(user._id);
+            const createdBy = user.fullName || user.fullName || user.email || String(user._id);
 
             const body = await request.json();
             const svc = getVendorBillService();
@@ -61,21 +60,21 @@ export const POST = withIdempotency(
             await logDataOperation({
                 organizationId: tenantId,
                 userId: String(user._id),
-                userName: userAny.fullName || userAny.name || user.email || "Unknown User",
-                userRole: (userAny.role === "Admin" || userAny.role === "Owner") ? "Admin" : "Staff",
-            userRoleDetail: userAny.role || user.role,
+                userName: user.fullName || user.fullName || user.email || "Unknown User",
+                userRole: (user.role === "Admin" || user.role === "Owner") ? "Admin" : "Staff",
+            userRoleDetail: user.role || user.role,
                 action: `Created vendor bill ${bill.bill_number}`,
                 actionType: "create",
                 module: "vendor_bills",
                 resourceId: bill.id,
                 resourceType: "vendor_bill",
-                afterState: bill as unknown as Record<string, unknown>,
+                afterState: bill,
                 ipAddress: getClientIp(request),
                 userAgent: request.headers.get("user-agent") || undefined,
             });
 
             return NextResponse.json(bill, { status: 201 });
-        } catch (error: any) {
+        } catch (error: unknown) {
             if (error instanceof ZodError) {
                 return NextResponse.json(
                     { error: error.issues?.[0]?.message || "Validation failed", details: error.issues },
@@ -88,8 +87,9 @@ export const POST = withIdempotency(
                     { status: error.statusCode }
                 );
             }
-            if (error.statusCode) {
-                return NextResponse.json({ error: error.message }, { status: error.statusCode });
+            const statusCode = (error as { statusCode?: number })?.statusCode;
+            if (statusCode) {
+                return NextResponse.json({ error: (error as Error).message }, { status: statusCode });
             }
             console.error("Error creating vendor bill:", error);
             return NextResponse.json({ error: "Failed to create vendor bill" }, { status: 500 });

@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
 
         let excludedDraftCount = 0;
         let excludedVoidCount = 0;
-        const openBills: any[] = [];
+        const openBills: (Record<string, unknown> & { _id?: unknown; id?: unknown; bill_number?: string; vendor_invoice_number?: string; bill_date?: string | Date; vendor_id?: string; vendor?: Record<string, unknown>; tds?: { amount?: number; section?: string } })[] = [];
 
         for (const bill of allBills) {
             if (bill.status === "Draft") {
@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
 
         const vendorAccumulator = new Map<string, VendorAccumulator>();
 
-        const getAccumulator = (vendorId: string, billVendorSnapshot?: any): VendorAccumulator => {
+        const getAccumulator = (vendorId: string, billVendorSnapshot?: { name?: string; phone?: string; gstin?: string; address?: string }): VendorAccumulator => {
             let acc = vendorAccumulator.get(vendorId);
             if (!acc) {
                 const vendorInfo = vendorMap.get(vendorId);
@@ -135,7 +135,7 @@ export async function GET(request: NextRequest) {
                 };
                 vendorAccumulator.set(vendorId, acc);
             }
-            return acc;
+            return acc!;
         };
 
         let totalOpenBillsCount = 0;
@@ -144,7 +144,7 @@ export async function GET(request: NextRequest) {
             const billId = String(bill._id || bill.id);
             const payablePaise = typeof bill.payable_paise === "number"
                 ? bill.payable_paise
-                : Math.round((bill.payable_amount || 0) * 100);
+                : Math.round((Number(bill.payable_amount) || 0) * 100);
 
             const paidPaise = paymentsByBillId.get(billId) || 0;
             const balancePaise = payablePaise - paidPaise;
@@ -156,7 +156,7 @@ export async function GET(request: NextRequest) {
 
             totalOpenBillsCount++;
 
-            const dueDateStr = toKolkataDateString(bill.due_date) || toKolkataDateString(bill.bill_date) || asOf;
+            const dueDateStr = toKolkataDateString(bill.due_date as string | Date) || toKolkataDateString(bill.bill_date as string | Date) || asOf;
             const daysPastDue = differenceInDays(asOf, dueDateStr);
 
             let bucket: AgingBucket;
@@ -281,7 +281,7 @@ export async function GET(request: NextRequest) {
         };
 
         return NextResponse.json(response);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error generating payables aging:", error);
         return NextResponse.json({ error: "Failed to generate payables aging report" }, { status: 500 });
     }

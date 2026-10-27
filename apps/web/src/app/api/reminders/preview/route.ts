@@ -32,10 +32,10 @@ export async function POST(request: NextRequest) {
         const previewResult = await service.previewReminders(tenantId, asOf);
 
         return NextResponse.json({ success: true, ...previewResult });
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error("[Reminders API] POST /preview error:", err);
         return NextResponse.json(
-            { error: err?.message || "Failed to generate reminder preview" },
+            { error: (err as Error)?.message || "Failed to generate reminder preview" },
             { status: 500 }
         );
     }

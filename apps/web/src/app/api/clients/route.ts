@@ -18,7 +18,7 @@ export async function GET() {
       .sort({ name: 1 })
       .toArray();
 
-    const formatted = clients.map((c: any) => ({
+    const formatted = clients.map((c: { _id: { toString(): string }; [key: string]: unknown }) => ({
       id: c._id.toString(),
       name: c.name,
       company: c.company || "",
@@ -31,9 +31,9 @@ export async function GET() {
     }));
 
     return NextResponse.json(formatted);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching clients:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }
 
@@ -67,8 +67,8 @@ export async function POST(request: Request) {
       id: client!._id.toString(),
       ...client,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating client:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }

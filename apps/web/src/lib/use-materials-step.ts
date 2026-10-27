@@ -124,14 +124,14 @@ export function useMaterialsStep(productName: string, inventory: InventoryItem[]
         ]);
     }, []);
 
-    const updateMaterial = useCallback((index: number, field: string, value: any) => {
+    const updateMaterial = useCallback((index: number, field: string, value: unknown) => {
         setMaterials((prev) => {
             const updated = [...prev];
             if (field === "inventoryId") {
                 const item = liveInventory.find((i) => i.id === value);
                 if (item) {
                     updated[index] = {
-                        inventoryId: value, name: item.name, quantityUsed: 0,
+                        inventoryId: String(value), name: item.name, quantityUsed: 0,
                         unit: item.unit, availableStock: item.quantity,
                         unitCost: item.purchase_cost_per_unit || 0,
                     };
@@ -140,7 +140,7 @@ export function useMaterialsStep(productName: string, inventory: InventoryItem[]
                 updated[index] = { ...updated[index], quantityUsed: Number(value) || 0 };
                 checkStock(index, Number(value) || 0);
             } else {
-                (updated[index] as any)[field] = value;
+                updated[index] = { ...updated[index], [field]: value };
             }
             return updated;
         });

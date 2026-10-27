@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ summary });
   } catch (error: unknown) {
     if (error instanceof AppError) {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+      return NextResponse.json({ error: (error as Error).message }, { status: error.statusCode });
     }
     console.error("Error fetching reconciliation summary:", error);
     return NextResponse.json({ error: "Failed to fetch reconciliation summary" }, { status: 500 });

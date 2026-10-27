@@ -24,12 +24,13 @@
  *   sanitizeMongoInput({ email: { $regex: ".*" } })
  *   // → { email: {} }
  */
-export function sanitizeMongoInput<T>(input: T): T {
+export function sanitizeMongoInput<T>(input: T): T;
+export function sanitizeMongoInput(input: unknown): unknown {
     if (input === null || input === undefined) return input;
     if (typeof input !== "object") return input;
 
     if (Array.isArray(input)) {
-        return input.map(sanitizeMongoInput) as unknown as T;
+        return input.map(sanitizeMongoInput);
     }
 
     const cleaned: Record<string, unknown> = {};
@@ -44,7 +45,7 @@ export function sanitizeMongoInput<T>(input: T): T {
         cleaned[key] = typeof value === "object" ? sanitizeMongoInput(value) : value;
     }
 
-    return cleaned as T;
+    return cleaned;
 }
 
 // ─── String Sanitizer ───────────────────────────────────────────

@@ -1,6 +1,18 @@
 import { MongoClient, type Db } from "mongodb";
 import mongoose from "mongoose";
 
+function assertMongoClient(client: unknown): asserts client is MongoClient {
+  if (!client || typeof client !== "object" || !("db" in client)) {
+    throw new DbUnavailableError("Underlying MongoClient is invalid or unavailable.");
+  }
+}
+
+function assertDb(db: unknown): asserts db is Db {
+  if (!db || typeof db !== "object" || !("collection" in db)) {
+    throw new DbUnavailableError("Underlying Db is invalid or unavailable.");
+  }
+}
+
 // ─── Environment validation ────────────────────────────────────
 const uri = process.env.MONGODB_URI;
 const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
@@ -108,9 +120,10 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
   // 3. Connect fresh and store RESOLVED connection & client
   try {
     const conn = await mongoose.connect(resolvedUri, mongoOpts);
-    const client = conn.connection.getClient() as unknown as MongoClient;
+    const rawClient: unknown = conn.connection.getClient();
+    assertMongoClient(rawClient);
     cached.conn = conn;
-    cached.client = client;
+    cached.client = rawClient;
     return conn;
   } catch (err) {
     // On failure: close any partial connection and clear cache immediately
@@ -134,12 +147,14 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
 export async function getDb(): Promise<Db> {
   try {
     const conn = await connectToDatabase();
-    const db = conn.connection.db as unknown as Db;
+    const db = conn.connection.db;
     if (!db) {
       const dbName = process.env.MONGODB_DB ?? "ind_manager";
-      const client = conn.connection.getClient() as unknown as MongoClient;
-      return client.db(dbName);
+      const rawClient: unknown = conn.connection.getClient();
+      assertMongoClient(rawClient);
+      return rawClient.db(dbName);
     }
+    assertDb(db);
     return db;
   } catch (err) {
     throw new DbUnavailableError(
@@ -154,7 +169,9 @@ export async function getDb(): Promise<Db> {
  */
 export async function getMongoClient(): Promise<MongoClient> {
   const conn = await connectToDatabase();
-  return conn.connection.getClient() as unknown as MongoClient;
+  const rawClient: unknown = conn.connection.getClient();
+  assertMongoClient(rawClient);
+  return rawClient;
 }
 
 // Export lazy promise for any consumer needing Promise<MongoClient>

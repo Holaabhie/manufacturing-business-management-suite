@@ -12,6 +12,7 @@
 
 import { createHash, randomBytes } from "node:crypto";
 import { getDb } from "@/lib/mongodb";
+import type { WithId } from "mongodb";
 import type { ITallyBridgeDevice } from "@/models/TallyBridgeDevice";
 import {
     RETRY_BACKOFF_MS,
@@ -58,7 +59,7 @@ export function generateDeviceToken(): string {
 export interface AuthenticatedDevice {
     deviceId: string;
     organizationId: string;
-    device: ITallyBridgeDevice;
+    device: WithId<ITallyBridgeDevice>;
 }
 
 /**
@@ -93,7 +94,7 @@ export async function authenticateDeviceToken(
     return {
         deviceId: device._id.toString(),
         organizationId: device.organizationId,
-        device: device as unknown as ITallyBridgeDevice,
+        device,
     };
 }
 

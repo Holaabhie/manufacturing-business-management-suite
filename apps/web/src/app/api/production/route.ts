@@ -107,9 +107,9 @@ export async function POST(request: Request) {
         if (operatorIdsRaw.length > 0) {
             const operatorQueryIds = operatorIdsRaw
                 .filter((id): id is string => Boolean(id))
-                .map((id) => (ObjectId.isValid(id) ? new ObjectId(id) : (id as unknown as ObjectId)));
+                .map((id) => (ObjectId.isValid(id) ? new ObjectId(id) : id));
 
-            const staffUsers = await db.collection("users").find({
+            const staffUsers = await db.collection<{ _id: ObjectId | string; role: string }>("users").find({
                 _id: { $in: operatorQueryIds },
                 role: "Staff",
             }).toArray();

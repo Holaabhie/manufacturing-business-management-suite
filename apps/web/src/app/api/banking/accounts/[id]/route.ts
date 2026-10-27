@@ -42,8 +42,8 @@ export async function PATCH(
       module: "banking",
       resourceId: updated.id,
       resourceType: "bank_account",
-      beforeState: existing as unknown as Record<string, unknown>,
-      afterState: updated as unknown as Record<string, unknown>,
+      beforeState: existing,
+      afterState: updated,
       ipAddress: getClientIp(request),
       userAgent: request.headers.get("user-agent") || undefined,
     });
@@ -58,7 +58,7 @@ export async function PATCH(
     }
     if (error instanceof AppError) {
       return NextResponse.json(
-        { error: error.message, code: error.code, details: error.details },
+        { error: (error as Error).message, code: error.code, details: error.details },
         { status: error.statusCode }
       );
     }
@@ -100,7 +100,7 @@ export async function DELETE(
       module: "banking",
       resourceId: existing.id,
       resourceType: "bank_account",
-      beforeState: existing as unknown as Record<string, unknown>,
+      beforeState: existing,
       ipAddress: getClientIp(request),
       userAgent: request.headers.get("user-agent") || undefined,
     });
@@ -109,7 +109,7 @@ export async function DELETE(
   } catch (error: unknown) {
     if (error instanceof AppError) {
       return NextResponse.json(
-        { error: error.message, code: error.code, details: error.details },
+        { error: (error as Error).message, code: error.code, details: error.details },
         { status: error.statusCode }
       );
     }

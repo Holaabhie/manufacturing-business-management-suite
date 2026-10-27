@@ -105,8 +105,6 @@ const UserSchema = new Schema<IUser>({
   },
   phone: {
     type: String,
-    required: true,
-    unique: true,
     trim: true
   },
   password: {
@@ -270,7 +268,13 @@ const UserSchema = new Schema<IUser>({
 
 // Indexes for efficient querying
 UserSchema.index({ email: 1 });
-UserSchema.index({ phone: 1 });
+UserSchema.index(
+  { phone: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { phone: { $type: "string", $gt: "" } },
+  }
+);
 UserSchema.index({ googleId: 1 });
 UserSchema.index({ microsoftId: 1 });
 UserSchema.index({ organizationId: 1, role: 1 });
@@ -278,8 +282,5 @@ UserSchema.index({ organizationId: 1, status: 1 });
 UserSchema.index({ organizationId: 1, employeeId: 1 });
 UserSchema.index({ organizationId: 1, department: 1 });
 UserSchema.index({ isActive: 1 });
-
-// Compound index for account linking
-UserSchema.index({ email: 1, phone: 1 }, { unique: true, sparse: true });
 
 export const User = models.User || model<IUser>('User', UserSchema);

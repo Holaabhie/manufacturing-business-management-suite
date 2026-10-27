@@ -29,28 +29,10 @@ interface BusinessContext {
 const CHAT_STORAGE_KEY = "ind_manager_chat_history_v2";
 const TYPING_SPEED_MS = 16;
 
-const WELCOME_MESSAGE: Message = {
-  id: "welcome",
-  role: "assistant",
-  content: `**Welcome to AI Assistant**
-
-I'm your intelligent business advisor. Here's how I can help:
-
-• **📊 Analytics** — Revenue insights, growth trends, profit margins
-• **📦 Inventory** — Stock levels, restocking alerts, usage patterns
-• **👥 Clients** — Customer profiles, payment history, top accounts
-• **💰 Payments** — Outstanding amounts, collection rates, cash flow
-• **📋 Orders** — Status tracking, delivery schedules, bottlenecks
-• **🏭 Production** — Efficiency metrics, capacity planning
-
-Ask me anything about your business and I'll provide data-backed insights.`,
-  timestamp: new Date().toISOString(),
-};
-
 // ─── Hook ────────────────────────────────────────────────────
 export function useAIChat() {
   const t = useTranslations("assistant");
-  const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [businessContext, setBusinessContext] = useState<BusinessContext | null>(null);
   const [isContextLoaded, setIsContextLoaded] = useState(false);
@@ -64,8 +46,16 @@ export function useAIChat() {
       const saved = localStorage.getItem(CHAT_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved) as Message[];
-        if (parsed.length > 0) {
-          const restored = parsed.map((m) => ({
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Filter out any legacy or duplicated welcome messages
+          const cleaned = parsed.filter(
+            (m) =>
+              m &&
+              m.id !== "welcome" &&
+              !m.content?.includes("Welcome to AI Assistant") &&
+              !m.content?.includes("intelligent business advisor")
+          );
+          const restored = cleaned.map((m) => ({
             ...m,
             isLoading: false,
             isTyping: false,
@@ -85,9 +75,19 @@ export function useAIChat() {
     if (!historyLoaded) return;
     try {
       const toSave = messages
-        .filter((m) => !m.isLoading)
+        .filter(
+          (m) =>
+            !m.isLoading &&
+            m.id !== "welcome" &&
+            !m.content?.includes("Welcome to AI Assistant")
+        )
         .map(({ id, role, content, timestamp, isError, errorMessage }) => ({
-          id, role, content, timestamp, isError, errorMessage,
+          id,
+          role,
+          content,
+          timestamp,
+          isError,
+          errorMessage,
         }));
       localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(toSave));
     } catch {
@@ -192,7 +192,7 @@ export function useAIChat() {
 
       try {
         const history = messages
-          .filter((m) => m.id !== "welcome" && !m.isLoading && !m.isError)
+          .filter((m) => !m.isLoading && !m.isError)
           .map((m) => ({ role: m.role, content: m.content }));
 
         const res = await fetch("/api/assistant/chat", {
@@ -205,17 +205,38 @@ export function useAIChat() {
           }),
         });
 
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
 
         if (!res.ok || !data.success) {
-          const errMsg = data.error || t("failedToGetResponse");
-          if (errMsg.toLowerCase().includes("not configured") || errMsg.toLowerCase().includes("api key")) {
+          const errCode = data?.error?.code || "";
+          const errText =
+            typeof data?.error === "string"
+              ? data.error
+              : data?.error?.message || "";
+
+          if (
+            errCode === "AI_NOT_CONFIGURED" ||
+            errCode === "INVALID_API_KEY" ||
+            errText.toLowerCase().includes("not configured") ||
+            errText.toLowerCase().includes("api key")
+          ) {
             setAiNotConfigured(true);
             setMessages((prev) => prev.filter((m) => m.id !== loadingId));
             setIsLoading(false);
             return;
           }
-          throw new Error(errMsg);
+
+          let friendlyMsg = t("genericError");
+          if (
+            res.status === 429 ||
+            res.status === 503 ||
+            errCode === "RATE_LIMIT" ||
+            errCode === "SERVICE_UNAVAILABLE"
+          ) {
+            friendlyMsg = t("aiBusy");
+          }
+
+          throw new Error(friendlyMsg);
         }
 
         const responseId = (Date.now() + 2).toString();
@@ -235,8 +256,11 @@ export function useAIChat() {
         });
         startTypingAnimation(responseId, data.response);
       } catch (error: unknown) {
-        const errorMsg = error instanceof Error ? error.message : t("genericError");
-        toast.error(errorMsg);
+        const friendlyError =
+          error instanceof Error && error.message
+            ? error.message
+            : t("genericError");
+
         setMessages((prev) => {
           const filtered = prev.filter((m) => m.id !== loadingId);
           return [
@@ -244,11 +268,11 @@ export function useAIChat() {
             {
               id: (Date.now() + 2).toString(),
               role: "assistant" as const,
-              content: `⚠️ **${t("errorPrefix")}:** ${errorMsg}`,
-              displayedContent: `⚠️ **${t("errorPrefix")}:** ${errorMsg}`,
+              content: friendlyError,
+              displayedContent: friendlyError,
               timestamp: new Date().toISOString(),
               isError: true,
-              errorMessage: errorMsg,
+              errorMessage: friendlyError,
             },
           ];
         });
@@ -256,7 +280,7 @@ export function useAIChat() {
         setIsLoading(false);
       }
     },
-    [isLoading, messages, businessContext, startTypingAnimation]
+    [isLoading, messages, businessContext, startTypingAnimation, t]
   );
 
   // ─── Retry ───────────────────────────────────────────────
@@ -265,9 +289,9 @@ export function useAIChat() {
     if (!lastUserMsg) return;
     setMessages((prev) => {
       const lastErr = [...prev].reverse().find((m) => m.isError);
-      return lastErr ? prev.filter((m) => m.id !== lastErr.id && m.id !== lastUserMsg.id) : prev;
+      return prev.filter((m) => m.id !== lastErr?.id && m.id !== lastUserMsg.id);
     });
-    setTimeout(() => sendMessage(lastUserMsg.content), 100);
+    setTimeout(() => sendMessage(lastUserMsg.content), 50);
   }, [messages, sendMessage]);
 
   // ─── Clear ───────────────────────────────────────────────
@@ -276,13 +300,7 @@ export function useAIChat() {
       clearInterval(typingIntervalRef.current);
       typingIntervalRef.current = null;
     }
-    const fresh: Message = {
-      ...WELCOME_MESSAGE,
-      id: Date.now().toString(),
-      timestamp: new Date().toISOString(),
-      displayedContent: WELCOME_MESSAGE.content,
-    };
-    setMessages([fresh]);
+    setMessages([]);
     localStorage.removeItem(CHAT_STORAGE_KEY);
     toast.success("Chat history cleared");
   }, []);

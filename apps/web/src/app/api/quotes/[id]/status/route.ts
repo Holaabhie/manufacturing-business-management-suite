@@ -56,14 +56,14 @@ export const POST = withIdempotency(async (
         return NextResponse.json(updated);
     } catch (error: unknown) {
         if (error instanceof NotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 });
+            return NextResponse.json({ error: (error as Error).message }, { status: 404 });
         }
         if (error instanceof ConflictError || (error instanceof AppError && error.statusCode === 409)) {
-            return NextResponse.json({ error: error.message }, { status: 409 });
+            return NextResponse.json({ error: (error as Error).message }, { status: 409 });
         }
         if (error instanceof ValidationError) {
             return NextResponse.json(
-                { error: error.message, errors: error.fieldErrors },
+                { error: (error as Error).message, errors: error.fieldErrors },
                 { status: 400 }
             );
         }

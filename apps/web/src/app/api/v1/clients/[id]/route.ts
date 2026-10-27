@@ -39,10 +39,10 @@ export const PUT = withRateLimit(
             const item = await service.update(id, organizationId, body);
 
             // Tally Sync Queue (Skip if sample data)
-            if (oldClient && !(item as any).is_sample && !body.is_sample) {
+            if (oldClient && !(item as { is_sample?: boolean }).is_sample && !body.is_sample) {
                 const relevantFields: (keyof typeof body)[] = ["name", "gstin", "state", "address", "phone", "email"];
                 const hasRelevantChange = relevantFields.some(
-                    (f) => body[f] !== undefined && body[f] !== (oldClient as any)[f],
+                    (f) => (body as Record<string, unknown>)[f as string] !== undefined && (body as Record<string, unknown>)[f as string] !== (oldClient as unknown as Record<string, unknown>)[f as string],
                 );
 
                 if (hasRelevantChange) {
@@ -67,7 +67,7 @@ export const PUT = withRateLimit(
                             sourceRef: { entityType: "client", entityId: item.id },
                             priority: 10,
                         });
-                    } catch (err: any) {
+                    } catch (err: unknown) {
                         console.error("[TallySync] Failed to enqueue client ledger sync job on update:", err);
                     }
                 }

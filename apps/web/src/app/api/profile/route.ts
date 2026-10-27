@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth-session";
+import { getSessionUser, type UserDoc, type MongoUserDoc } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { getEffectiveTier } from "@/lib/entitlements";
@@ -26,9 +26,10 @@ export async function GET() {
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching profile:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Failed to fetch profile";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -42,25 +43,28 @@ export async function PUT(request: Request) {
     const body = await request.json();
     const db = await getDb();
 
-    const updateData: any = {
+    const updateData: Partial<UserDoc> = {
       updatedAt: new Date(),
     };
 
-    if (body.full_name !== undefined) updateData.full_name = body.full_name;
-    if (body.phone_number !== undefined) updateData.phone_number = body.phone_number;
-    if (body.notification_preferences !== undefined) updateData.notification_preferences = body.notification_preferences;
-    if (body.avatar_url !== undefined) updateData.avatar_url = body.avatar_url;
+    if (typeof body.full_name === "string") updateData.full_name = body.full_name;
+    if (typeof body.phone_number === "string") updateData.phone_number = body.phone_number;
+    if (body.notification_preferences && typeof body.notification_preferences === "object") {
+      updateData.notification_preferences = body.notification_preferences as Record<string, unknown>;
+    }
+    if (typeof body.avatar_url === "string") updateData.avatar_url = body.avatar_url;
 
-    const userQueryId = ObjectId.isValid(user._id) ? new ObjectId(user._id) : (user._id as unknown as ObjectId);
-    await db.collection("users").updateOne(
+    const userQueryId = ObjectId.isValid(user._id) ? new ObjectId(user._id) : user._id;
+    await db.collection<MongoUserDoc>("users").updateOne(
       { _id: userQueryId },
       { $set: updateData }
     );
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating profile:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Failed to update profile";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

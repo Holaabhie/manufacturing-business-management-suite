@@ -111,7 +111,11 @@ export async function GET(request: NextRequest) {
             const amountPaise = Math.round(rawAmount * 100);
             const rawDate =
                 order.order_date ?? order.orderDate ?? order.createdAt ?? order.created_at;
-            const orderDateStr = toKolkataDateString(rawDate) || asOf;
+            const parsedOrderDateStr = toKolkataDateString(rawDate);
+            if (parsedOrderDateStr && parsedOrderDateStr > asOf) {
+                continue;
+            }
+            const orderDateStr = parsedOrderDateStr || asOf;
 
             // Due date: order.payment_due_date if present, else order date + DEFAULT_CREDIT_DAYS (30)
             const rawDueDate = order.payment_due_date ?? order.paymentDueDate;
@@ -164,6 +168,14 @@ export async function GET(request: NextRequest) {
 
             const rawAmount = payment.amount;
             if (typeof rawAmount !== "number" || isNaN(rawAmount) || !isFinite(rawAmount)) {
+                continue;
+            }
+
+            // Exclude payments recorded strictly after asOf
+            const rawPaymentDate =
+                payment.payment_date ?? payment.paymentDate ?? payment.date ?? payment.createdAt ?? payment.created_at;
+            const parsedPaymentDateStr = toKolkataDateString(rawPaymentDate);
+            if (parsedPaymentDateStr && parsedPaymentDateStr > asOf) {
                 continue;
             }
             const paymentAmountPaise = Math.round(rawAmount * 100);
@@ -369,7 +381,7 @@ export async function GET(request: NextRequest) {
         };
 
         return NextResponse.json(resultResponse);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error generating receivables aging:", error);
         return NextResponse.json({ error: "Failed to generate receivables aging report" }, { status: 500 });
     }

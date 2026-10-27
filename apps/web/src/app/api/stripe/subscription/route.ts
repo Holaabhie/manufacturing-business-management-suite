@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
-import { getSessionUser } from '@/lib/auth-session';
+import { getSessionUser, type UserDoc, type MongoUserDoc } from '@/lib/auth-session';
 import { getDb } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 
@@ -14,8 +14,8 @@ export async function GET(request: NextRequest) {
     }
 
     const db = await getDb();
-    const userQueryId = ObjectId.isValid(user._id) ? new ObjectId(user._id) : (user._id as unknown as ObjectId);
-    const profile = await db.collection("users").findOne({ _id: userQueryId });
+    const userQueryId = ObjectId.isValid(user._id) ? new ObjectId(user._id) : user._id;
+    const profile = await db.collection<MongoUserDoc>("users").findOne({ _id: userQueryId });
 
     if (!profile) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
@@ -38,10 +38,10 @@ export async function GET(request: NextRequest) {
       stripeCustomerId: profile.stripe_customer_id,
       cancelAtPeriodEnd: stripeSubscription?.cancel_at_period_end || false,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching subscription:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch subscription' },
+      { error: (error as Error).message || 'Failed to fetch subscription' },
       { status: 500 }
     );
   }

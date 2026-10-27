@@ -45,7 +45,7 @@ export const POST = withIdempotency(async (
         return NextResponse.json(duplicatedQuote, { status: 201 });
     } catch (error: unknown) {
         if (error instanceof NotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 });
+            return NextResponse.json({ error: (error as Error).message }, { status: 404 });
         }
         console.error("Error duplicating quotation:", error);
         return NextResponse.json({ error: "Failed to duplicate quotation" }, { status: 500 });

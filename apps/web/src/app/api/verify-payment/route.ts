@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    let body: any = {};
+    let body: Record<string, unknown> = {};
     try {
       body = await request.json();
     } catch {
@@ -19,9 +19,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Support both snake_case (Razorpay standard) and camelCase payload formats
-    const orderId = body.order_id || body.razorpay_order_id || body.orderId;
-    const paymentId = body.payment_id || body.razorpay_payment_id || body.paymentId;
-    const signature = body.razorpay_signature || body.signature;
+    const orderId = String(body.order_id || body.razorpay_order_id || body.orderId || '');
+    const paymentId = String(body.payment_id || body.razorpay_payment_id || body.paymentId || '');
+    const signature = String(body.razorpay_signature || body.signature || '');
 
     // Validate presence of required fields
     if (!orderId || !paymentId || !signature) {
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       const db = await getDb();
       if (db) {
         // Identify current session user
-        let currentUser: any = null;
+        let currentUser: Record<string, unknown> | null = null;
         try {
           currentUser = await getSessionUser();
         } catch {}
@@ -215,10 +215,11 @@ export async function POST(request: NextRequest) {
       payment_id: paymentId,
       subscription_activated: updatedSubscription,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in /api/verify-payment:', error);
+    const message = error instanceof Error ? error.message : 'Internal server error verifying payment';
     return NextResponse.json(
-      { error: error.message || 'Internal server error verifying payment' },
+      { error: message },
       { status: 500 }
     );
   }

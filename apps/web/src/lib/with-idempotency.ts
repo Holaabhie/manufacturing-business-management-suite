@@ -57,16 +57,20 @@ async function defaultGetUserId(request: NextRequest): Promise<string> {
     return `anon_${ip}`;
 }
 
+export type RouteHandlerContext = {
+    params?: Promise<Record<string, string | string[]>> | Record<string, string | string[]>;
+};
+
 /**
  * Wrap a Next.js API route handler with idempotency protection.
  */
-export function withIdempotency(
-    handler: (request: NextRequest, context: any) => Promise<NextResponse>,
+export function withIdempotency<TContext = RouteHandlerContext>(
+    handler: (request: NextRequest, context: TContext) => Promise<NextResponse>,
     options: IdempotencyOptions = {},
 ) {
     const { required = false, getUserId = defaultGetUserId } = options;
 
-    return async function idempotentHandler(request: NextRequest, context?: any): Promise<NextResponse> {
+    return async function idempotentHandler(request: NextRequest, context: TContext): Promise<NextResponse> {
         const idempotencyKey = request.headers.get("idempotency-key");
 
         // ── No key provided ─────────────────────────────────

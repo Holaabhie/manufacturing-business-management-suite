@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { ObjectId, type WithId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
-import { getDataOwnerId, type UserDoc } from "@/lib/auth-session";
+import { getDataOwnerId, type UserDoc, type MongoUserDoc } from "@/lib/auth-session";
 import { PLAN_LIMITS, type PlanLimits } from "./limits";
 
 export { PLAN_LIMITS, STARTER_LIMIT, type PlanLimits } from "./limits";
@@ -15,8 +15,8 @@ export { PLAN_LIMITS, STARTER_LIMIT, type PlanLimits } from "./limits";
  * - Never throws.
  */
 export async function resolveTenantOwner(
-    user: WithId<UserDoc> | UserDoc
-): Promise<WithId<UserDoc> | UserDoc | null> {
+    user: WithId<UserDoc> | UserDoc | MongoUserDoc
+): Promise<WithId<UserDoc> | UserDoc | MongoUserDoc | null> {
     try {
         const rawAdminId = user.adminId;
         const hasAdminId =
@@ -31,14 +31,15 @@ export async function resolveTenantOwner(
         const planOwnerId = String(rawAdminId).trim();
         const db = await getDb();
 
-        const orConditions: any[] = [{ _id: planOwnerId }];
-        if (ObjectId.isValid(planOwnerId)) {
-            orConditions.push({ _id: new ObjectId(planOwnerId) });
+        const queryId = ObjectId.isValid(planOwnerId) ? new ObjectId(planOwnerId) : null;
+        if (!queryId) {
+            console.warn(`[entitlements] Invalid planOwnerId for user ${user._id}: ${planOwnerId}`);
+            return user;
         }
 
         const ownerDoc = await db
-            .collection<UserDoc>("users")
-            .findOne({ $or: orConditions });
+            .collection<MongoUserDoc>("users")
+            .findOne({ _id: queryId });
 
         if (!ownerDoc) {
             console.warn(
@@ -124,7 +125,7 @@ export async function assertCanCreate(
         const userIds = ownerIdOid ? [ownerIdStr, ownerIdOid] : [ownerIdStr];
         const db = await getDb();
 
-        let filter: Record<string, any>;
+        let filter: Record<string, unknown>;
         if (resource === "inventory") {
             filter = {
                 $or: [
@@ -160,11 +161,12 @@ export async function assertCanCreate(
         }
 
         return null;
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error(`[entitlements] Error checking limit for ${resource}:`, error);
         // Fail closed or propagate? In case of DB error, let the route handler handle it or return 500
+        const message = error instanceof Error ? error.message : "Internal server error";
         return NextResponse.json(
-            { error: error?.message || "Internal server error" },
+            { error: message },
             { status: 500 }
         );
     }

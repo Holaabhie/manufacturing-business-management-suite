@@ -15,7 +15,8 @@ export async function POST(
     }
 
     const { ownerId } = await params;
-    if (!ownerId || !ObjectId.isValid(ownerId)) {
+    const cleanOwnerId = typeof ownerId === "string" ? ownerId.trim() : "";
+    if (!cleanOwnerId) {
       return NextResponse.json({ error: "Invalid owner ID" }, { status: 400 });
     }
 
@@ -47,9 +48,14 @@ export async function POST(
       }
     }
 
+    const idQuery: Record<string, unknown>[] = [{ _id: cleanOwnerId }];
+    if (ObjectId.isValid(cleanOwnerId)) {
+      idQuery.push({ _id: new ObjectId(cleanOwnerId) });
+    }
+
     const db = await getDb();
     const targetUser = await db.collection("users").findOne({
-      _id: new ObjectId(ownerId),
+      $or: idQuery,
     });
 
     // Target must exist, have role in ['Admin', 'Owner'], and have NO adminId
@@ -71,8 +77,8 @@ export async function POST(
     };
 
     await db.collection("users").updateOne(
-      { _id: new ObjectId(ownerId) },
-      { $set: { plan_override: overrideData } }
+      { _id: targetUser._id },
+      { $set: { plan_override: overrideData, subscription_tier: tier } }
     );
 
     // Audit log without platform admin's identity or reason text
@@ -95,9 +101,9 @@ export async function POST(
         effective_tier: tier,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in POST /api/platform/tenants/[ownerId]/override:", error);
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message || "Internal server error" }, { status: 500 });
   }
 }
 
@@ -112,13 +118,20 @@ export async function DELETE(
     }
 
     const { ownerId } = await params;
-    if (!ownerId || !ObjectId.isValid(ownerId)) {
+    const cleanOwnerId = typeof ownerId === "string" ? ownerId.trim() : "";
+    if (!cleanOwnerId) {
       return NextResponse.json({ error: "Invalid owner ID" }, { status: 400 });
+    }
+
+
+    const idQuery: Record<string, unknown>[] = [{ _id: cleanOwnerId }];
+    if (ObjectId.isValid(cleanOwnerId)) {
+      idQuery.push({ _id: new ObjectId(cleanOwnerId) });
     }
 
     const db = await getDb();
     const targetUser = await db.collection("users").findOne({
-      _id: new ObjectId(ownerId),
+      $or: idQuery,
     });
 
     if (
@@ -132,7 +145,7 @@ export async function DELETE(
     }
 
     await db.collection("users").updateOne(
-      { _id: new ObjectId(ownerId) },
+      { _id: targetUser._id },
       { $unset: { plan_override: "" } }
     );
 
@@ -153,8 +166,8 @@ export async function DELETE(
       success: true,
       message: "Plan override removed",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in DELETE /api/platform/tenants/[ownerId]/override:", error);
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message || "Internal server error" }, { status: 500 });
   }
 }

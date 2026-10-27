@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { getReminderService, DEFAULT_CRON_ORDER_LIMIT } from "@/modules/reminders";
 
+export const maxDuration = 60;
+
 function isAuthorized(request: NextRequest): boolean {
     const cronSecret = process.env.CRON_SECRET;
     if (!cronSecret) return false;
@@ -53,11 +55,13 @@ export async function POST(request: NextRequest) {
             success: true,
             summary,
         });
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error("[Cron Payment Reminders] Error:", err);
         return NextResponse.json(
-            { error: err?.message || "Internal server error" },
+            { error: (err as Error)?.message || "Internal server error" },
             { status: 500 }
         );
     }
 }
+
+export const GET = POST;

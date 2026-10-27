@@ -19,14 +19,16 @@ import type {
 } from "../domain/types";
 import type { CandidateFilterInput } from "../domain/schemas";
 
-function buildIdQuery(id: string, userId: string): Filter<Document> {
+type BaseDoc = Document & { _id: ObjectId | string; userId?: string };
+
+function buildIdQuery(id: string, userId: string): Filter<BaseDoc> {
   if (ObjectId.isValid(id)) {
     return {
-      _id: { $in: [new ObjectId(id), id as unknown as ObjectId] },
+      _id: { $in: [new ObjectId(id), id] },
       userId,
     };
   }
-  return { _id: id as unknown as ObjectId, userId };
+  return { _id: id, userId };
 }
 
 function toAccountEntity(doc: Document): BankAccount {
@@ -157,35 +159,35 @@ function toLinkEntity(doc: Document): BankMatchLink {
 
 export class MongoBankingRepository {
   private async accountsCol() {
-    return (await getDb()).collection<Document>("bank_accounts");
+    return (await getDb()).collection<BaseDoc>("bank_accounts");
   }
 
   private async importsCol() {
-    return (await getDb()).collection<Document>("bank_statement_imports");
+    return (await getDb()).collection<BaseDoc>("bank_statement_imports");
   }
 
   private async transactionsCol() {
-    return (await getDb()).collection<Document>("bank_transactions");
+    return (await getDb()).collection<BaseDoc>("bank_transactions");
   }
 
   private async matchLinksCol() {
-    return (await getDb()).collection<Document>("bank_match_links");
+    return (await getDb()).collection<BaseDoc>("bank_match_links");
   }
 
   private async paymentsCol() {
-    return (await getDb()).collection<Document>("payments");
+    return (await getDb()).collection<BaseDoc>("payments");
   }
 
   private async vendorBillPaymentsCol() {
-    return (await getDb()).collection<Document>("vendor_bill_payments");
+    return (await getDb()).collection<BaseDoc>("vendor_bill_payments");
   }
 
   private async clientsCol() {
-    return (await getDb()).collection<Document>("clients");
+    return (await getDb()).collection<BaseDoc>("clients");
   }
 
   private async vendorsCol() {
-    return (await getDb()).collection<Document>("vendors");
+    return (await getDb()).collection<BaseDoc>("vendors");
   }
 
   constructor() {
@@ -202,7 +204,7 @@ export class MongoBankingRepository {
       created_at: account.created_at || new Date(),
       updated_at: account.updated_at || new Date(),
     };
-    await col.insertOne(docToInsert as unknown as Document);
+    await col.insertOne(docToInsert);
     return account;
   }
 
@@ -277,7 +279,7 @@ export class MongoBankingRepository {
       _id: importDoc.id,
       created_at: importDoc.created_at || new Date(),
     };
-    await col.insertOne(docToInsert as unknown as Document);
+    await col.insertOne(docToInsert);
     return importDoc;
   }
 
@@ -382,7 +384,7 @@ export class MongoBankingRepository {
     }));
 
     try {
-      const res = await col.insertMany(docsToInsert as unknown as Document[], { ordered: false });
+      const res = await col.insertMany(docsToInsert, { ordered: false });
       return {
         inserted: res.insertedCount,
         skippedDuplicates: preSkipped + (toInsert.length - res.insertedCount),
@@ -928,7 +930,7 @@ export class MongoBankingRepository {
     });
 
     try {
-      await matchLinksCol.insertMany(docsToInsert as unknown as Document[], { ordered: true });
+      await matchLinksCol.insertMany(docsToInsert, { ordered: true });
       return docsToInsert.map(toLinkEntity);
     } catch (err: unknown) {
       // 3. Roll back the $inc on error
@@ -1081,7 +1083,7 @@ export class MongoBankingRepository {
         reverted: { $ne: true },
         excluded: null,
         allocated_paise: allocated,
-      } as Filter<Document>,
+      },
       {
         $set: {
           variance: {
@@ -1140,7 +1142,7 @@ export class MongoBankingRepository {
         .find({
           _id: {
             $in: clientIds.map((cid: unknown) =>
-              (ObjectId.isValid(String(cid)) ? new ObjectId(String(cid)) : cid) as unknown as ObjectId
+              ObjectId.isValid(String(cid)) ? new ObjectId(String(cid)) : String(cid)
             ),
           },
         })
@@ -1218,7 +1220,7 @@ export class MongoBankingRepository {
         .find({
           _id: {
             $in: vendorIds.map((vid: unknown) =>
-              (ObjectId.isValid(String(vid)) ? new ObjectId(String(vid)) : vid) as unknown as ObjectId
+              ObjectId.isValid(String(vid)) ? new ObjectId(String(vid)) : String(vid)
             ),
           },
         })
@@ -1325,7 +1327,7 @@ export class MongoBankingRepository {
         .find({
           _id: {
             $in: clientIds.map((cid: unknown) =>
-              (ObjectId.isValid(String(cid)) ? new ObjectId(String(cid)) : cid) as unknown as ObjectId
+              ObjectId.isValid(String(cid)) ? new ObjectId(String(cid)) : String(cid)
             ),
           },
         })
@@ -1407,7 +1409,7 @@ export class MongoBankingRepository {
         .find({
           _id: {
             $in: vendorIds.map((vid: unknown) =>
-              (ObjectId.isValid(String(vid)) ? new ObjectId(String(vid)) : vid) as unknown as ObjectId
+              ObjectId.isValid(String(vid)) ? new ObjectId(String(vid)) : String(vid)
             ),
           },
         })

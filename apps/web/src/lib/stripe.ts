@@ -1,7 +1,45 @@
 import Stripe from 'stripe';
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-10-29.clover',
+let _stripeInstance: Stripe | null = null;
+
+function getStripe(): Stripe {
+  if (_stripeInstance) {
+    return _stripeInstance;
+  }
+
+  const key = process.env.STRIPE_SECRET_KEY;
+  const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
+
+  if (!key) {
+    if (isBuildPhase) {
+      _stripeInstance = new Stripe('sk_test_placeholder_build', {
+        apiVersion: '2025-10-29.clover',
+      });
+      return _stripeInstance;
+    }
+
+    throw new Error(
+      "FATAL: STRIPE_SECRET_KEY environment variable is not set. " +
+      "Stripe operations cannot be performed without a valid secret key. " +
+      "Set STRIPE_SECRET_KEY in your environment variables to use Stripe integration."
+    );
+  }
+
+  _stripeInstance = new Stripe(key, {
+    apiVersion: '2025-10-29.clover',
+  });
+  return _stripeInstance;
+}
+
+export const stripe = new Proxy({} as Stripe, {
+  get(_target, prop) {
+    const instance = getStripe();
+    const value = Reflect.get(instance, prop);
+    if (typeof value === 'function') {
+      return value.bind(instance);
+    }
+    return value;
+  },
 });
 
 export const SUBSCRIPTION_TIERS = {

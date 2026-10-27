@@ -27,7 +27,7 @@ export async function GET(
         return NextResponse.json(quote);
     } catch (error) {
         if (error instanceof NotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 });
+            return NextResponse.json({ error: (error as Error).message }, { status: 404 });
         }
         console.error("Error fetching quotation:", error);
         return NextResponse.json({ error: "Failed to fetch quotation" }, { status: 500 });
@@ -74,16 +74,16 @@ export const PATCH = withIdempotency(async (
         return NextResponse.json(updated);
     } catch (error: unknown) {
         if (error instanceof NotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 });
+            return NextResponse.json({ error: (error as Error).message }, { status: 404 });
         }
         if (error instanceof ValidationError) {
             return NextResponse.json(
-                { error: error.message, errors: error.fieldErrors },
+                { error: (error as Error).message, errors: error.fieldErrors },
                 { status: 400 }
             );
         }
         if (error instanceof ConflictError || (error instanceof AppError && error.statusCode === 409)) {
-            return NextResponse.json({ error: error.message }, { status: 409 });
+            return NextResponse.json({ error: (error as Error).message }, { status: 409 });
         }
         console.error("Error updating quotation:", error);
         return NextResponse.json({ error: "Failed to update quotation" }, { status: 500 });
@@ -128,10 +128,10 @@ export async function DELETE(
         return NextResponse.json({ success: true });
     } catch (error: unknown) {
         if (error instanceof NotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 });
+            return NextResponse.json({ error: (error as Error).message }, { status: 404 });
         }
         if (error instanceof ConflictError || (error instanceof AppError && error.statusCode === 409)) {
-            return NextResponse.json({ error: error.message }, { status: 409 });
+            return NextResponse.json({ error: (error as Error).message }, { status: 409 });
         }
         console.error("Error deleting quotation:", error);
         return NextResponse.json({ error: "Failed to delete quotation" }, { status: 500 });

@@ -26,9 +26,9 @@ export async function GET(
         const order = await service.findOrderById(id, getDataOwnerId(user));
 
         return NextResponse.json({ success: true, data: order });
-    } catch (error: any) {
-        const status = error.statusCode || 500;
-        return NextResponse.json({ error: error.message }, { status });
+    } catch (error: unknown) {
+        const status = (error as { statusCode?: number }).statusCode || 500;
+        return NextResponse.json({ error: (error as Error).message }, { status });
     }
 }
 
@@ -49,10 +49,10 @@ export async function PATCH(
         const updated = await service.updateOrderStatus(id, getDataOwnerId(user), body);
 
         return NextResponse.json({ success: true, data: updated });
-    } catch (error: any) {
-        const status = error.statusCode || 500;
+    } catch (error: unknown) {
+        const status = (error as { statusCode?: number }).statusCode || 500;
         return NextResponse.json(
-            { error: error.message, details: error.details },
+            { error: (error as Error).message, details: (error as { details?: unknown }).details },
             { status },
         );
     }
@@ -74,8 +74,8 @@ export async function DELETE(
         await service.deleteOrder(id, getDataOwnerId(user));
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
-        const status = error.statusCode || 500;
-        return NextResponse.json({ error: error.message }, { status });
+    } catch (error: unknown) {
+        const status = (error as { statusCode?: number }).statusCode || 500;
+        return NextResponse.json({ error: (error as Error).message }, { status });
     }
 }

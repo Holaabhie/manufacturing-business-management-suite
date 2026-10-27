@@ -1,9 +1,12 @@
+import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 import { getSessionUser, type CompanyDetails } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 
 // Re-export for convenience
 export type { CompanyDetails };
+
+const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
 
 // GET - Fetch company details from companyprofiles collection
 export async function GET() {
@@ -16,17 +19,19 @@ export async function GET() {
         const db = await getDb();
 
         // Resolve organizationId — same logic as /api/setup
-        const orgId = (user as any).organizationId || String(user._id);
+        const orgId = user.organizationId || String(user._id);
 
         // Query companyprofiles (the canonical source, written by /api/setup)
         const profile = await db.collection("companyprofiles").findOne({ organizationId: orgId });
 
         if (!profile) {
             // User hasn't completed /setup yet — valid state
-            return NextResponse.json({ company: null });
+            return NextResponse.json({ company: null }, {
+                headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
+            });
         }
 
-// Map companyprofiles snake_case fields → CompanyProfile camelCase fields
+        // Map companyprofiles snake_case fields → CompanyProfile camelCase fields
         // expected by useCompanyProfile hook consumers
         const company: CompanyDetails & { tally_company_name?: string } = {
             companyName: profile.company_name || profile.trade_name || "",
@@ -43,10 +48,12 @@ export async function GET() {
             tally_company_name: profile.tally_company_name || "",
         };
 
-        return NextResponse.json({ company });
-    } catch (error: any) {
+        return NextResponse.json({ company }, {
+            headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
+        });
+    } catch (error: unknown) {
         console.error("Error fetching company details:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: (error as Error).message }, { status: 500 });
     }
 }
 
@@ -102,8 +109,21 @@ export async function PUT(request: Request) {
             );
         }
 
-        const orgId = (user as any).organizationId || String(user._id);
+        const orgId = user.organizationId || String(user._id);
         const existingProfile = await db.collection("companyprofiles").findOne({ organizationId: orgId });
+
+        // Validate and clean GSTIN if provided
+        let cleanGstin = existingProfile?.gst_number || "";
+        if (body.gstin !== undefined) {
+            const rawGstin = String(body.gstin).trim().toUpperCase();
+            if (rawGstin && !GSTIN_REGEX.test(rawGstin)) {
+                return NextResponse.json(
+                    { error: "Invalid GSTIN format (e.g. 24ABCDE1234F1Z5)" },
+                    { status: 400 }
+                );
+            }
+            cleanGstin = rawGstin;
+        }
 
         const isTallyOnly = trimmedTallyCompanyName !== undefined && body.companyName === undefined;
 
@@ -124,9 +144,7 @@ export async function PUT(request: Request) {
             logoUrl: body.logoUrl !== undefined
                 ? body.logoUrl
                 : (existingProfile?.logoUrl || existingProfile?.logo_url || ""),
-            gstin: body.gstin !== undefined
-                ? (body.gstin?.trim() || "").toUpperCase()
-                : (existingProfile?.gst_number || ""),
+            gstin: cleanGstin,
             pan: body.pan !== undefined
                 ? (body.pan?.trim() || "").toUpperCase()
                 : (existingProfile?.pan_number || existingProfile?.pan || ""),
@@ -169,7 +187,7 @@ export async function PUT(request: Request) {
         } else {
             // Standard full update
             const addressParts = companyDetails.address.split(",").map(s => s.trim());
-            const profileSet: Record<string, any> = {
+            const profileSet: Record<string, unknown> = {
                 company_name: companyDetails.companyName,
                 trade_name: companyDetails.companyName,
                 primary_phone: companyDetails.phone,
@@ -197,7 +215,7 @@ export async function PUT(request: Request) {
 
             // Update users collection (legacy field for backward compatibility)
             await db.collection("users").updateOne(
-                { _id: user._id as any },
+                { _id: (ObjectId.isValid(String(user._id)) ? new ObjectId(String(user._id)) : String(user._id)) as unknown as ObjectId },
                 {
                     $set: {
                         company_details: companyDetails,
@@ -211,8 +229,8 @@ export async function PUT(request: Request) {
             success: true,
             company: companyDetails,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error updating company details:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: (error as Error).message }, { status: 500 });
     }
 }

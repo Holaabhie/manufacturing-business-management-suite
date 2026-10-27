@@ -16,36 +16,34 @@ export async function GET(req: NextRequest) {
     const db = await getDb();
 
     // Query for owners: no adminId, role in ['Admin', 'Owner']
-    const filter: Record<string, any> = {
-      $and: [
-        {
-          $or: [
-            { adminId: { $exists: false } },
-            { adminId: null },
-            { adminId: "" },
-          ],
-        },
-        {
-          role: { $in: ["Admin", "Owner"] },
-        },
-      ],
-    };
+    const andList: Record<string, unknown>[] = [
+      {
+        $or: [
+          { adminId: { $exists: false } },
+          { adminId: null },
+          { adminId: "" },
+        ],
+      },
+      {
+        role: { $in: ["Admin", "Owner"] },
+      },
+    ];
 
     if (emailParam && emailParam.trim()) {
       const escapedEmail = emailParam.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      filter.$and.push({ email: { $regex: escapedEmail, $options: "i" } });
+      andList.push({ email: { $regex: escapedEmail, $options: "i" } });
     }
 
     const owners = await db
       .collection("users")
-      .find(filter)
+      .find({ $and: andList })
       .limit(20)
       .toArray();
 
     const data = await Promise.all(
       owners.map(async (doc) => {
         const ownerId = doc._id.toString();
-        const effectiveTier = await getEffectiveTier(doc as any);
+        const effectiveTier = await getEffectiveTier(doc as unknown as Parameters<typeof getEffectiveTier>[0]);
 
         const [inventoryCount, ordersCount, clientsCount, usersCount] = await Promise.all([
           db.collection("inventory").countDocuments({
@@ -88,8 +86,8 @@ export async function GET(req: NextRequest) {
     );
 
     return NextResponse.json({ success: true, data });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in GET /api/platform/tenants:", error);
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message || "Internal server error" }, { status: 500 });
   }
 }

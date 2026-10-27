@@ -87,8 +87,8 @@ export async function createIdempotencyKey(params: {
             updatedAt: now,
         });
         return true;
-    } catch (err: any) {
-        if (err.code === 11000) {
+    } catch (err: unknown) {
+        if ((err as { code?: number })?.code === 11000) {
             // Duplicate key — another request got there first
             return false;
         }

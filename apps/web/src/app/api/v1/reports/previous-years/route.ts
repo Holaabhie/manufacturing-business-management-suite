@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
 
+export const maxDuration = 30;
+
 /**
  * GET /api/v1/reports/previous-years?fy=2024-25&section=orders
  *
@@ -31,7 +33,18 @@ export async function GET(req: NextRequest) {
         const ownerId = getDataOwnerId(user);
         const filter = { userId: ownerId, financial_year: fy };
 
-        const result: Record<string, any> = { financialYear: fy };
+        interface PreviousYearsReportResult {
+            financialYear: string;
+            orders?: Record<string, unknown>[];
+            productions?: Record<string, unknown>[];
+            bills?: Record<string, unknown>[];
+            payments?: Record<string, unknown>[];
+            inventoryUsage?: Record<string, unknown>[];
+            summary?: Record<string, number>;
+            [key: string]: unknown;
+        }
+
+        const result: PreviousYearsReportResult = { financialYear: fy };
 
         // ─── Orders ─────────────────────────────────────────
         if (!section || section === "orders") {
@@ -40,7 +53,7 @@ export async function GET(req: NextRequest) {
                 .sort({ createdAt: -1 })
                 .toArray();
 
-            result.orders = orders.map((o: any) => ({
+            result.orders = orders.map((o: { _id: { toString(): string }; [key: string]: unknown }) => ({
                 id: o._id.toString(),
                 product_name: o.product_name,
                 quantity: o.quantity,
@@ -63,7 +76,7 @@ export async function GET(req: NextRequest) {
                 .sort({ createdAt: -1 })
                 .toArray();
 
-            result.productions = productions.map((p: any) => ({
+            result.productions = productions.map((p: { _id: { toString(): string }; [key: string]: unknown }) => ({
                 id: p._id.toString(),
                 batchNumber: p.batchNumber,
                 orderProductName: p.orderProductName,
@@ -85,7 +98,7 @@ export async function GET(req: NextRequest) {
                 .sort({ created_at: -1 })
                 .toArray();
 
-            result.bills = bills.map((b: any) => ({
+            result.bills = bills.map((b: { _id: { toString(): string }; [key: string]: unknown }) => ({
                 id: b._id.toString(),
                 billNumber: b.billNumber,
                 billDate: b.billDate,
@@ -103,7 +116,7 @@ export async function GET(req: NextRequest) {
                 .sort({ createdAt: -1 })
                 .toArray();
 
-            result.payments = payments.map((p: any) => ({
+            result.payments = payments.map((p: { _id: { toString(): string }; [key: string]: unknown }) => ({
                 id: p._id.toString(),
                 amount: p.amount,
                 payment_date: p.payment_date,
@@ -120,7 +133,7 @@ export async function GET(req: NextRequest) {
                 .sort({ createdAt: -1 })
                 .toArray();
 
-            result.inventoryUsage = usageRecords.map((u: any) => ({
+            result.inventoryUsage = usageRecords.map((u: { _id: { toString(): string }; [key: string]: unknown }) => ({
                 id: u._id.toString(),
                 order_id: u.order_id,
                 inventory_id: u.inventory_id,
@@ -135,7 +148,7 @@ export async function GET(req: NextRequest) {
                 .sort({ createdAt: -1 })
                 .toArray();
 
-            result.batchTraceability = batchUsage.map((m: any) => ({
+            result.batchTraceability = batchUsage.map((m: { _id: { toString(): string }; [key: string]: unknown }) => ({
                 id: m._id.toString(),
                 productionJobId: m.productionJobId,
                 inventoryItemId: m.inventoryItemId,
@@ -152,15 +165,15 @@ export async function GET(req: NextRequest) {
             totalProductions: result.productions?.length ?? 0,
             totalBills: result.bills?.length ?? 0,
             totalPayments: result.payments?.length ?? 0,
-            totalRevenue: (result.orders || []).reduce((sum: number, o: any) => sum + Number(o.total_amount || 0), 0),
-            totalBilled: (result.bills || []).reduce((sum: number, b: any) => sum + Number(b.totalAmount || 0), 0),
-            totalPaid: (result.payments || []).reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0),
-            totalMaterialDeducted: (result.inventoryUsage || []).reduce((sum: number, u: any) => sum + Number(u.quantity_deducted || 0), 0),
+            totalRevenue: (result.orders || []).reduce((sum: number, o: Record<string, unknown>) => sum + Number(o.total_amount || 0), 0),
+            totalBilled: (result.bills || []).reduce((sum: number, b: Record<string, unknown>) => sum + Number(b.totalAmount || 0), 0),
+            totalPaid: (result.payments || []).reduce((sum: number, p: Record<string, unknown>) => sum + Number(p.amount || 0), 0),
+            totalMaterialDeducted: (result.inventoryUsage || []).reduce((sum: number, u: Record<string, unknown>) => sum + Number(u.quantity_deducted || 0), 0),
         };
 
         return NextResponse.json(result);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[reports/previous-years] Error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: (error as Error).message }, { status: 500 });
     }
 }

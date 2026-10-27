@@ -182,90 +182,29 @@
 /* ============================================
    4 · TEXT INPUTS & SELECTS INSIDE GLASS 
    ============================================ */
-[data-slot="dialog-content"] input[type="text"],
-[data-slot="dialog-content"] input[type="email"],
-[data-slot="dialog-content"] input[type="number"],
-[data-slot="dialog-content"] input[type="password"],
-[data-slot="dialog-content"] input[type="search"],
-[data-slot="dialog-content"] input[type="tel"],
-[data-slot="dialog-content"] input[type="url"],
-[data-slot="dialog-content"] input[type="date"],
-[data-slot="dialog-content"] textarea,
-[data-slot="dialog-content"] select,
-[data-slot="sheet-content"] input[type="text"],
-[data-slot="sheet-content"] input[type="email"],
-[data-slot="sheet-content"] input[type="number"],
-[data-slot="sheet-content"] input[type="password"],
-[data-slot="sheet-content"] input[type="search"],
-[data-slot="sheet-content"] input[type="tel"],
-[data-slot="sheet-content"] input[type="url"],
-[data-slot="sheet-content"] input[type="date"],
-[data-slot="sheet-content"] textarea,
-[data-slot="sheet-content"] select,
-[data-slot="drawer-content"] input[type="text"],
-[data-slot="drawer-content"] input[type="email"],
-[data-slot="drawer-content"] input[type="number"],
-[data-slot="drawer-content"] input[type="password"],
-[data-slot="drawer-content"] input[type="search"],
-[data-slot="drawer-content"] input[type="tel"],
-[data-slot="drawer-content"] input[type="url"],
-[data-slot="drawer-content"] input[type="date"],
-[data-slot="drawer-content"] textarea,
-[data-slot="drawer-content"] select,
-[data-slot="alert-dialog-content"] input,
-[data-slot="alert-dialog-content"] textarea,
-[data-slot="alert-dialog-content"] select,
-.glass-modal input,
-.glass-modal textarea,
-.glass-modal select {
-  background: var(--glass-input-bg) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  border: 1.5px solid var(--glass-border-active) !important;
-  border-radius: var(--glass-radius-input) !important;
-  color: var(--g-text-primary) !important;
-  box-shadow: 0 0 0 3px rgba(99, 210, 255, 0.10) !important;
-  font-family: var(--font-glass) !important;
+:where([data-slot="dialog-content"], [data-slot="sheet-content"], [data-slot="drawer-content"], [data-slot="alert-dialog-content"], .glass-modal)
+  :where(input[type="text"], input[type="email"], input[type="number"], input[type="password"], input[type="search"], input[type="tel"], input[type="url"], input[type="date"], input:not([type]), textarea, select):not([data-bare], .field-bare, [data-bare] *, .field-bare *) {
+  background: var(--glass-input-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius-input);
+  color: var(--g-text-primary);
+  font-family: var(--font-glass);
 }
 
-[data-slot="dialog-content"] input:focus,
-[data-slot="dialog-content"] textarea:focus,
-[data-slot="dialog-content"] select:focus,
-[data-slot="sheet-content"] input:focus,
-[data-slot="sheet-content"] textarea:focus,
-[data-slot="sheet-content"] select:focus,
-[data-slot="drawer-content"] input:focus,
-[data-slot="drawer-content"] textarea:focus,
-[data-slot="drawer-content"] select:focus,
-[data-slot="alert-dialog-content"] input:focus,
-[data-slot="alert-dialog-content"] textarea:focus,
-[data-slot="alert-dialog-content"] select:focus,
-.glass-modal input:focus,
-.glass-modal textarea:focus,
-.glass-modal select:focus {
-  border-color: var(--g-accent-blue) !important;
-  box-shadow: 0 0 0 2px rgba(0, 102, 214, 0.12) !important;
-  outline: none !important;
+:where([data-slot="dialog-content"], [data-slot="sheet-content"], [data-slot="drawer-content"], [data-slot="alert-dialog-content"], .glass-modal)
+  :where(input, textarea, select):not([data-bare], .field-bare, [data-bare] *, .field-bare *):focus-visible {
+  border-color: var(--g-accent-blue);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
+  outline: none;
 }
 
-.dark [data-slot="dialog-content"] input:focus,
-.dark [data-slot="dialog-content"] textarea:focus,
-.dark [data-slot="dialog-content"] select:focus,
-.dark [data-slot="sheet-content"] input:focus,
-.dark [data-slot="sheet-content"] textarea:focus,
-.dark [data-slot="sheet-content"] select:focus,
-.dark [data-slot="drawer-content"] input:focus,
-.dark [data-slot="drawer-content"] textarea:focus,
-.dark [data-slot="drawer-content"] select:focus,
-.dark [data-slot="alert-dialog-content"] input:focus,
-.dark [data-slot="alert-dialog-content"] textarea:focus,
-.dark [data-slot="alert-dialog-content"] select:focus,
-.dark .glass-modal input:focus,
-.dark .glass-modal textarea:focus,
-.dark .glass-modal select:focus {
-  border-color: var(--g-accent-blue) !important;
-  box-shadow: 0 0 0 2px rgba(99, 210, 255, 0.15) !important;
-  outline: none !important;
+.dark :where([data-slot="dialog-content"], [data-slot="sheet-content"], [data-slot="drawer-content"], [data-slot="alert-dialog-content"], .glass-modal)
+  :where(input, textarea, select):not([data-bare], .field-bare, [data-bare] *, .field-bare *):focus-visible {
+  border-color: var(--g-accent-blue);
+  box-shadow: 0 0 0 3px rgba(99, 210, 255, 0.20);
+  outline: none;
 }
 
 /* Command Palette search input exemption: fully borderless and boxless */
@@ -460,13 +399,13 @@
 [data-slot="popover-content"],
 [data-slot="select-content"],
 [data-slot="command"] {
-  background: var(--glass-bg) !important;
-  backdrop-filter: var(--glass-blur) !important;
-  -webkit-backdrop-filter: var(--glass-blur) !important;
-  border: 1px solid var(--glass-border) !important;
-  box-shadow: var(--glass-shadow) !important;
-  border-radius: var(--glass-radius-card) !important;
-  color: var(--g-text-primary) !important;
+  background: var(--surface-popover) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid var(--surface-popover-border) !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  border-radius: 12px !important;
+  color: var(--foreground) !important;
   font-family: var(--font-glass) !important;
   z-index: 2000 !important;
 }
@@ -482,8 +421,8 @@
 [data-slot="context-menu-radio-item"]:focus,
 [data-slot="select-item"]:focus,
 [data-slot="command-item"][data-selected="true"] {
-  background: rgba(255, 255, 255, 0.10) !important;
-  color: var(--g-text-primary) !important;
+  background: var(--muted) !important;
+  color: var(--foreground) !important;
 }
 
 /* Active / selected items */

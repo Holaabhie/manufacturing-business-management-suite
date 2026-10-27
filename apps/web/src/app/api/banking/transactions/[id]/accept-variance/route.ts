@@ -69,7 +69,7 @@ export const POST = withIdempotency(
         module: "banking",
         resourceId: id,
         resourceType: "bank_transaction",
-        afterState: tx as unknown as Record<string, unknown>,
+        afterState: tx,
         ipAddress: getClientIp(request),
         userAgent: request.headers.get("user-agent") || undefined,
       });
@@ -83,7 +83,7 @@ export const POST = withIdempotency(
         );
       }
       if (error instanceof AppError) {
-        return NextResponse.json({ error: error.message }, { status: error.statusCode });
+        return NextResponse.json({ error: (error as Error).message }, { status: error.statusCode });
       }
       console.error("Error accepting variance:", error);
       return NextResponse.json({ error: "Failed to accept variance" }, { status: 500 });

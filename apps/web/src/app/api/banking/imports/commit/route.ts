@@ -130,7 +130,7 @@ export const POST = withRateLimit(
           module: "banking",
           resourceId: importDoc.id,
           resourceType: "bank_statement_import",
-          afterState: importDoc as unknown as Record<string, unknown>,
+          afterState: importDoc,
           ipAddress: getClientIp(request),
           userAgent: request.headers.get("user-agent") || undefined,
         });
@@ -145,7 +145,7 @@ export const POST = withRateLimit(
         }
         if (error instanceof AppError) {
           return NextResponse.json(
-            { error: error.message, code: error.code, details: error.details },
+            { error: (error as Error).message, code: error.code, details: error.details },
             { status: error.statusCode }
           );
         }

@@ -44,6 +44,13 @@ export interface DeliveryChallan {
     created_at: string;
     updated_at: string;
     financial_year: string;
+    order?: {
+        id: string;
+        orderNumber: string;
+        clientName?: string;
+        date?: string | null;
+        totalAmount?: number | null;
+    } | null;
 }
 
 export interface CreateDeliveryChallanDTO {

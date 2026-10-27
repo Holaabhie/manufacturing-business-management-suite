@@ -100,7 +100,7 @@ export const PATCH = withRateLimit(
                                 `ORD-${id.slice(-6).toUpperCase()}`
                             );
 
-                            await db.collection<{ quantity: number; usageHistory: Record<string, unknown>[] }>("inventory").updateOne(
+                            await db.collection<{ quantity: number; usageHistory?: Record<string, unknown>[]; updatedAt?: Date }>("inventory").updateOne(
                                 { _id: new ObjectId(inventoryItemId), userId: ownerId },
                                 {
                                     $inc: { quantity: -deductAmount },
@@ -115,7 +115,7 @@ export const PATCH = withRateLimit(
                                             status: "processing",
                                             usedAt: new Date(),
                                         },
-                                    } as unknown as Record<string, unknown>,
+                                    },
                                     $set: { updatedAt: new Date() },
                                 },
                             );

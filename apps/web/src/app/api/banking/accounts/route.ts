@@ -62,7 +62,7 @@ export const POST = withIdempotency(
         module: "banking",
         resourceId: account.id,
         resourceType: "bank_account",
-        afterState: account as unknown as Record<string, unknown>,
+        afterState: account,
         ipAddress: getClientIp(request),
         userAgent: request.headers.get("user-agent") || undefined,
       });
@@ -77,7 +77,7 @@ export const POST = withIdempotency(
       }
       if (error instanceof AppError) {
         return NextResponse.json(
-          { error: error.message, code: error.code, details: error.details },
+          { error: (error as Error).message, code: error.code, details: error.details },
           { status: error.statusCode }
         );
       }

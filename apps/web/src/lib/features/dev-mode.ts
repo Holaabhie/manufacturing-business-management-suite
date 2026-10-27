@@ -14,13 +14,13 @@
 // We check for NEXT_PHASE to prevent this from running during build.
 if (
   typeof process !== 'undefined' &&
-  process.env.NODE_ENV === 'production' &&
-  process.env.DEV_MODE === 'true' &&
+  (process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL)) &&
+  (process.env.DEV_MODE === 'true' || process.env.NEXT_PUBLIC_DEV_MODE === 'true') &&
   process.env.NEXT_PHASE !== 'phase-production-build'
 ) {
   throw new Error(
-    '🚨 FATAL: DEV_MODE must not be true in production!\n' +
-    'Set DEV_MODE=false or remove it from your production environment variables.\n' +
+    '🚨 FATAL: DEV_MODE must not be true in production or on Vercel!\n' +
+    'Set DEV_MODE=false and NEXT_PUBLIC_DEV_MODE=false or remove them from your environment variables.\n' +
     'The application will not start until this is fixed.'
   );
 }
@@ -30,20 +30,21 @@ let hasWarnedDevMode = false;
 
 /**
  * Check if the application is running in dev mode.
- * Works on both server (process.env) and client (NEXT_PUBLIC_ prefix).
+ * Strictly disabled in production and on Vercel.
+ * On server, ONLY process.env.DEV_MODE can enable it (never NEXT_PUBLIC_).
  */
 export function isDevMode(): boolean {
+  if (typeof process !== 'undefined' && (process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL))) {
+    return false;
+  }
+
   // Server-side check
-  if (typeof process !== 'undefined' && process.env.DEV_MODE === 'true') {
-    return true;
+  if (typeof window === 'undefined') {
+    return typeof process !== 'undefined' && process.env.DEV_MODE === 'true';
   }
 
-  // Client-side check (NEXT_PUBLIC_ prefix makes it available in browser)
-  if (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_DEV_MODE === 'true') {
-    return true;
-  }
-
-  return false;
+  // Client-side check (browser UI only)
+  return typeof process !== 'undefined' && process.env.NEXT_PUBLIC_DEV_MODE === 'true';
 }
 
 /**

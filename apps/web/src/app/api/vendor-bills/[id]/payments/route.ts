@@ -26,7 +26,7 @@ export async function GET(
         const payments = await repo.findPaymentsByBillId(id, tenantId);
 
         return NextResponse.json(payments);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error fetching bill payments:", error);
         return NextResponse.json({ error: "Failed to fetch bill payments" }, { status: 500 });
     }
@@ -41,8 +41,7 @@ export const POST = withIdempotency(
             }
             const user = result.user;
             const tenantId = getDataOwnerId(user);
-            const userAny = user as any;
-            const recordedBy = userAny.fullName || userAny.name || user.email || String(user._id);
+            const recordedBy = user.fullName || user.fullName || user.email || String(user._id);
             const { id } = await context.params;
 
             const body = await request.json();
@@ -53,21 +52,21 @@ export const POST = withIdempotency(
             await logDataOperation({
                 organizationId: tenantId,
                 userId: String(user._id),
-                userName: userAny.fullName || userAny.name || user.email || "Unknown User",
-                userRole: (userAny.role === "Admin" || userAny.role === "Owner") ? "Admin" : "Staff",
-            userRoleDetail: userAny.role || user.role,
+                userName: user.fullName || user.fullName || user.email || "Unknown User",
+                userRole: (user.role === "Admin" || user.role === "Owner") ? "Admin" : "Staff",
+            userRoleDetail: user.role || user.role,
                 action: `Recorded payment of ₹${paymentResult.payment.amount} for vendor bill ${id} (${paymentResult.payment.payment_mode})`,
                 actionType: "create",
                 module: "vendor_bills",
                 resourceId: paymentResult.payment.id,
                 resourceType: "vendor_bill_payment",
-                afterState: paymentResult.payment as unknown as Record<string, unknown>,
+                afterState: paymentResult.payment,
                 ipAddress: getClientIp(request),
                 userAgent: request.headers.get("user-agent") || undefined,
             });
 
             return NextResponse.json(paymentResult, { status: 201 });
-        } catch (error: any) {
+        } catch (error: unknown) {
             if (error instanceof ZodError) {
                 return NextResponse.json(
                     { error: error.issues?.[0]?.message || "Validation failed", details: error.issues },
@@ -80,10 +79,11 @@ export const POST = withIdempotency(
                     { status: error.statusCode }
                 );
             }
-            if (error.statusCode) {
+            const err = error as { statusCode?: number; remainingBalance?: unknown; message?: string };
+            if (err?.statusCode) {
                 return NextResponse.json(
-                    { error: error.message, remainingBalance: error.remainingBalance },
-                    { status: error.statusCode }
+                    { error: err.message || "Failed to record payment", remainingBalance: err.remainingBalance },
+                    { status: err.statusCode }
                 );
             }
             console.error("Error recording vendor bill payment:", error);

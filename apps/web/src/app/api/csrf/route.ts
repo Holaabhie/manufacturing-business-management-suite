@@ -11,7 +11,7 @@ export async function GET() {
     try {
         const token = await ensureCsrfToken();
         return NextResponse.json({ csrfToken: token });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[csrf] Error:", error);
         return NextResponse.json(
             { error: "Failed to generate CSRF token" },

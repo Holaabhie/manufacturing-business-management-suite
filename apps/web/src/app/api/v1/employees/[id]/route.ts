@@ -61,7 +61,7 @@ export const PUT = withRateLimit(
                 logAudit({
                     organizationId,
                     userId: adminId,
-                    userName: user.fullName || user.full_name || user.email,
+                    userName: user.fullName || user.full_name || user.email || "Admin",
                     userRole: "Admin",
                     action: `Employee action: ${action} on ${id}`,
                     actionType: ["reset_password", "terminate_sessions", "unlock_account"].includes(action)
@@ -98,7 +98,7 @@ export const DELETE = withRateLimit(
                 logAudit({
                     organizationId,
                     userId: adminId,
-                    userName: user.fullName || user.full_name || user.email,
+                    userName: user.fullName || user.full_name || user.email || "Admin",
                     userRole: "Admin",
                     action: `Permanently deleted employee ${deleted.fullName} (${deleted.employeeId})`,
                     actionType: "delete",

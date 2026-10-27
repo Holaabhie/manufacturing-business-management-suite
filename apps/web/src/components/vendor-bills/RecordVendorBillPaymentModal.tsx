@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { VendorBill, VendorBillPayment, BillPaymentMode } from "@/modules/vendor-bills/domain/types";
+import { generateId } from "@/lib/uuid";
 
 interface RecordVendorBillPaymentModalProps {
     open: boolean;
@@ -107,7 +108,7 @@ export function RecordVendorBillPaymentModal({
 
         setIsSubmitting(true);
         try {
-            const idempotencyKey = crypto.randomUUID();
+            const idempotencyKey = generateId();
             const res = await fetch(`/api/vendor-bills/${bill.id}/payments`, {
                 method: "POST",
                 headers: {
@@ -189,7 +190,7 @@ export function RecordVendorBillPaymentModal({
                         <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
                             <div>
                                 <div className="text-[11px] text-emerald-700 dark:text-emerald-300 font-medium">
-                                    Outstanding Balance
+                                    {t("outstandingBalance")}
                                 </div>
                                 <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
                                     ₹{balance.toFixed(2)}
@@ -200,7 +201,7 @@ export function RecordVendorBillPaymentModal({
                                 onClick={() => setAmount(Math.round(balance * 100) / 100)}
                                 className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-sm"
                             >
-                                Pay Full
+                                {t("btnPayFull")}
                             </button>
                         </div>
 

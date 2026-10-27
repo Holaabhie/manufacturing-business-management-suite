@@ -12,10 +12,12 @@ import {
     AlertTriangle,
     Info,
     Check,
+    Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
+import { SearchableSelectPanel } from "@/components/ui/SearchableSelectPanel";
 import { DEFAULT_CREDIT_DAYS } from "@/lib/reports/receivables";
 import type { VendorBill, SupplyType, VendorSnapshot } from "@/modules/vendor-bills/domain/types";
 
@@ -176,7 +178,10 @@ export function CreateBillModal({
     ]);
 
     // UI state
-    const [isSaving, setIsSaving] = useState(false);
+    const [savingAction, setSavingAction] = useState<"Draft" | "Open" | null>(null);
+    const isSaving = savingAction !== null;
+    const isDraftSaving = savingAction === "Draft";
+    const isOpenSaving = savingAction === "Open";
     const [vendorDropdownOpen, setVendorDropdownOpen] = useState(false);
     const [vendorSearch, setVendorSearch] = useState("");
     const vendorDropdownRef = useRef<HTMLDivElement>(null);
@@ -194,19 +199,7 @@ export function CreateBillModal({
         };
     }, [open]);
 
-    // Close vendor dropdown on outside click
-    useEffect(() => {
-        function handleClickOutside(e: MouseEvent) {
-            if (
-                vendorDropdownRef.current &&
-                !vendorDropdownRef.current.contains(e.target as Node)
-            ) {
-                setVendorDropdownOpen(false);
-            }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
+
 
     // Load initial reference data (vendors, POs, company state)
     useEffect(() => {
@@ -523,7 +516,7 @@ export function CreateBillModal({
             }
         }
 
-        setIsSaving(true);
+        setSavingAction(targetStatus);
         try {
             const payload = {
                 vendor_id: vendorId,
@@ -602,7 +595,7 @@ export function CreateBillModal({
         } catch (err: any) {
             toast.error(err.message || t("errSaveBill"));
         } finally {
-            setIsSaving(false);
+            setSavingAction(null);
         }
     };
 
@@ -687,55 +680,57 @@ export function CreateBillModal({
                                         <ChevronDown className="w-4 h-4 text-[var(--muted-foreground)]" />
                                     </button>
 
-                                    {vendorDropdownOpen && (
-                                        <div className="absolute top-full left-0 right-0 mt-1 z-30 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-xl max-h-56 overflow-y-auto p-1">
-                                            <div className="p-1.5 border-b border-[var(--border)]">
-                                                <input
-                                                    type="text"
-                                                    value={vendorSearch}
-                                                    onChange={(e) => setVendorSearch(e.target.value)}
-                                                    placeholder={t("vendorSearch")}
-                                                    className="w-full px-2.5 py-1 text-xs rounded-md bg-[var(--muted)] border-none focus:outline-none"
-                                                    autoFocus
-                                                />
-                                            </div>
-                                            <div className="py-1">
-                                                {vendors
-                                                    .filter((v) =>
-                                                        v.name.toLowerCase().includes(vendorSearch.toLowerCase())
-                                                    )
-                                                    .map((v) => (
-                                                        <button
-                                                            key={v.id}
-                                                            type="button"
-                                                            onClick={() => handleSelectVendor(v)}
-                                                            className="w-full px-3 py-2 text-left hover:bg-[var(--muted)] flex items-center justify-between rounded-lg transition-colors"
-                                                        >
-                                                            <div>
-                                                                <div className="text-xs font-semibold text-[var(--foreground)]">
-                                                                    {v.name}
-                                                                </div>
-                                                                {v.gstin && (
-                                                                    <div className="text-[10px] text-[var(--muted-foreground)]">
-                                                                        GSTIN: {v.gstin}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                            {vendorId === v.id && (
-                                                                <Check className="w-4 h-4 text-emerald-500" />
-                                                            )}
-                                                        </button>
-                                                    ))}
-                                                {vendors.filter((v) =>
-                                                    v.name.toLowerCase().includes(vendorSearch.toLowerCase())
-                                                ).length === 0 && (
-                                                        <div className="px-3 py-4 text-center text-xs text-[var(--muted-foreground)]">
-                                                            {t("noVendorsFound")}
-                                                        </div>
-                                                    )}
-                                            </div>
+                                    <SearchableSelectPanel
+                                        open={vendorDropdownOpen}
+                                        onClose={() => setVendorDropdownOpen(false)}
+                                        triggerRef={vendorDropdownRef}
+                                    >
+                                        <div className="p-1.5 border-b border-[var(--surface-popover-border)] sticky top-0 bg-[var(--surface-popover)] z-10">
+                                            <input
+                                                type="text"
+                                                value={vendorSearch}
+                                                onChange={(e) => setVendorSearch(e.target.value)}
+                                                placeholder={t("vendorSearch")}
+                                                className="w-full px-2.5 py-1 text-xs rounded-md bg-[var(--muted)] border-none focus:outline-none"
+                                                autoFocus
+                                            />
                                         </div>
-                                    )}
+                                        <div className="py-1">
+                                            {vendors
+                                                .filter((v) =>
+                                                    v.name.toLowerCase().includes(vendorSearch.toLowerCase())
+                                                )
+                                                .map((v) => (
+                                                    <button
+                                                        key={v.id}
+                                                        type="button"
+                                                        onClick={() => handleSelectVendor(v)}
+                                                        className="w-full px-3 py-2 text-left hover:bg-[var(--muted)] flex items-center justify-between rounded-lg transition-colors"
+                                                    >
+                                                        <div>
+                                                            <div className="text-xs font-semibold text-[var(--foreground)]">
+                                                                {v.name}
+                                                            </div>
+                                                            {v.gstin && (
+                                                                <div className="text-[10px] text-[var(--muted-foreground)]">
+                                                                    GSTIN: {v.gstin}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        {vendorId === v.id && (
+                                                            <Check className="w-4 h-4 text-emerald-500" />
+                                                        )}
+                                                    </button>
+                                                ))}
+                                            {vendors.filter((v) =>
+                                                v.name.toLowerCase().includes(vendorSearch.toLowerCase())
+                                            ).length === 0 && (
+                                                    <div className="px-3 py-4 text-center text-xs text-[var(--muted-foreground)]">
+                                                        {t("noVendorsFound")}
+                                                    </div>
+                                                )}
+                                        </div>
+                                    </SearchableSelectPanel>
                                 </div>
 
                                 {/* Purchase Order Link */}
@@ -777,7 +772,7 @@ export function CreateBillModal({
 
                                 {/* Vendor Address */}
                                 <div>
-                                    <label className={labelClasses}>Address</label>
+                                    <label className={labelClasses}>{t("lblAddress")}</label>
                                     <input
                                         type="text"
                                         value={vendorSnapshot.address || ""}
@@ -815,7 +810,7 @@ export function CreateBillModal({
                                                 : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
                                         )}
                                     >
-                                        CGST + SGST
+                                        {t("cgstPlusSgst")}
                                     </button>
                                     <button
                                         type="button"
@@ -827,7 +822,7 @@ export function CreateBillModal({
                                                 : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
                                         )}
                                     >
-                                        IGST
+                                        {t("igst")}
                                     </button>
                                 </div>
                             }
@@ -941,7 +936,7 @@ export function CreateBillModal({
                                                         type="text"
                                                         value={item.hsn_sac}
                                                         onChange={(e) => handleItemChange(idx, "hsn_sac", e.target.value)}
-                                                        placeholder="e.g. 7208"
+                                                        placeholder={t("hsnPlaceholder")}
                                                         className={inputClasses}
                                                     />
                                                 </div>
@@ -1081,7 +1076,7 @@ export function CreateBillModal({
                                             onChange={(e) => setEnableTds(e.target.checked)}
                                             className="rounded border-[var(--border)] text-emerald-500 focus:ring-emerald-500/20"
                                         />
-                                        <span>Apply Tax Deducted at Source (TDS)</span>
+                                        <span>{t("applyTds")}</span>
                                     </label>
 
                                     {enableTds && (
@@ -1142,40 +1137,114 @@ export function CreateBillModal({
                     </form>
 
                     {/* Footer */}
-                    <div className="p-4 border-t border-[var(--border)] bg-[var(--card)] flex items-center justify-between gap-3 shrink-0">
-                        <div className="text-xs">
-                            <span className="text-[var(--muted-foreground)]">Net Payable: </span>
-                            <span className="font-bold text-[var(--foreground)] text-sm">
-                                ₹{calculations.payableAmount.toFixed(2)}
-                            </span>
-                        </div>
+                    <div className="p-4 pb-[max(env(safe-area-inset-bottom),1rem)] border-t border-[var(--border)] bg-[var(--card)] shrink-0 w-full">
+                        {/* Mobile Layout (2-row/split buttons, max 2 buttons per row, full width) */}
+                        <div className="flex flex-col gap-3 sm:hidden w-full">
+                            {/* Row 1: Net Payable label left, amount right */}
+                            <div className="flex items-center justify-between text-xs whitespace-nowrap w-full">
+                                <span className="text-[var(--muted-foreground)] font-medium">{t("netPayable")}</span>
+                                <span className="font-bold text-[var(--foreground)] text-base">
+                                    ₹{calculations.payableAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                            </div>
 
-                        <div className="flex items-center gap-2">
-                            <button
-                                type="button"
-                                onClick={onClose}
-                                className="px-4 py-2 text-xs font-medium rounded-xl border border-[var(--border)] hover:bg-[var(--muted)] text-[var(--foreground)] transition-colors"
-                            >
-                                {t("cancel")}
-                            </button>
+                            {/* Row 2: Cancel + Secondary "Save as Draft" (grid-cols-2) */}
+                            <div className="grid grid-cols-2 gap-3 w-full">
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    disabled={isSaving}
+                                    className="w-full py-2.5 px-3 text-xs font-medium rounded-xl border border-[var(--border)] hover:bg-[var(--muted)] text-[var(--foreground)] transition-colors text-center disabled:opacity-50"
+                                >
+                                    {t("cancel")}
+                                </button>
 
-                            <button
-                                type="button"
-                                onClick={(e) => handleSubmit(e, "Draft")}
-                                disabled={isSaving}
-                                className="px-4 py-2 text-xs font-medium rounded-xl border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 transition-colors disabled:opacity-50"
-                            >
-                                {isSaving ? t("saving") : t("btnSaveBill")}
-                            </button>
+                                <button
+                                    type="button"
+                                    onClick={(e) => handleSubmit(e, "Draft")}
+                                    disabled={isSaving}
+                                    className="w-full py-2.5 px-3 text-xs font-medium rounded-xl border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 transition-colors text-center flex items-center justify-center gap-1.5 disabled:opacity-50"
+                                >
+                                    {isDraftSaving ? (
+                                        <>
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                            <span>{t("saving")}</span>
+                                        </>
+                                    ) : (
+                                        <span>{t("btnSaveBill")}</span>
+                                    )}
+                                </button>
+                            </div>
 
+                            {/* Row 3: Primary "Save Bill" (full-width) */}
                             <button
                                 type="button"
                                 onClick={(e) => handleSubmit(e, "Open")}
                                 disabled={isSaving}
-                                className="px-4 py-2 text-xs font-semibold rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-sm disabled:opacity-50"
+                                className="w-full py-2.5 px-4 text-xs font-semibold rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-sm text-center flex items-center justify-center gap-1.5 disabled:opacity-50"
                             >
-                                {isSaving ? t("saving") : t("btnOpenBill")}
+                                {isOpenSaving ? (
+                                    <>
+                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                        <span>{t("saving")}</span>
+                                    </>
+                                ) : (
+                                    <span>{t("btnOpenBill")}</span>
+                                )}
                             </button>
+                        </div>
+
+                        {/* Desktop Layout (single row) */}
+                        <div className="hidden sm:flex items-center justify-between gap-3 w-full">
+                            <div className="text-xs whitespace-nowrap">
+                                <span className="text-[var(--muted-foreground)]">{t("netPayable")}: </span>
+                                <span className="font-bold text-[var(--foreground)] text-sm">
+                                    ₹{calculations.payableAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    disabled={isSaving}
+                                    className="px-4 py-2 text-xs font-medium rounded-xl border border-[var(--border)] hover:bg-[var(--muted)] text-[var(--foreground)] transition-colors disabled:opacity-50"
+                                >
+                                    {t("cancel")}
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={(e) => handleSubmit(e, "Draft")}
+                                    disabled={isSaving}
+                                    className="px-4 py-2 text-xs font-medium rounded-xl border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                                >
+                                    {isDraftSaving ? (
+                                        <>
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                            <span>{t("saving")}</span>
+                                        </>
+                                    ) : (
+                                        <span>{t("btnSaveBill")}</span>
+                                    )}
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={(e) => handleSubmit(e, "Open")}
+                                    disabled={isSaving}
+                                    className="px-4 py-2 text-xs font-semibold rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-sm disabled:opacity-50 flex items-center gap-1.5"
+                                >
+                                    {isOpenSaving ? (
+                                        <>
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                            <span>{t("saving")}</span>
+                                        </>
+                                    ) : (
+                                        <span>{t("btnOpenBill")}</span>
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </motion.div>

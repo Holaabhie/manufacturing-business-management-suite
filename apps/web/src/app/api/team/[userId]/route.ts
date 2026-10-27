@@ -1,3 +1,4 @@
+import { ObjectId } from "mongodb";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionUser, getDataOwnerId, destroyAllUserSessions } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
@@ -114,7 +115,7 @@ export async function PUT(
         const db = await getDb();
 
         // Find the target user
-        const targetUser = await db.collection("users").findOne({ _id: userId as any });
+        const targetUser = await db.collection("users").findOne({ _id: (ObjectId.isValid(userId) ? new ObjectId(userId) : userId) as unknown as ObjectId });
         if (!targetUser) {
             return NextResponse.json({ error: "User not found" }, { status: 404 });
         }
@@ -164,7 +165,7 @@ export async function PUT(
         }
 
         // Build update
-        const update: Record<string, any> = {
+        const update: Record<string, unknown> = {
             updatedAt: new Date(),
         };
 
@@ -184,7 +185,7 @@ export async function PUT(
         }
 
         await db.collection("users").updateOne(
-            { _id: userId as any },
+            { _id: (ObjectId.isValid(userId) ? new ObjectId(userId) : userId) as unknown as ObjectId },
             { $set: update }
         );
 
@@ -202,9 +203,9 @@ export async function PUT(
                 resolvedPermissions: resolved,
             },
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[team/userId PUT] Error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: (error as Error).message }, { status: 500 });
     }
 }
 
@@ -256,7 +257,7 @@ export async function DELETE(
         const db = await getDb();
 
         // Find the target user
-        const targetUser = await db.collection("users").findOne({ _id: userId as any });
+        const targetUser = await db.collection("users").findOne({ _id: (ObjectId.isValid(userId) ? new ObjectId(userId) : userId) as unknown as ObjectId });
         if (!targetUser) {
             return NextResponse.json({ error: "User not found" }, { status: 404 });
         }
@@ -307,7 +308,7 @@ export async function DELETE(
 
         // Deactivate user
         await db.collection("users").updateOne(
-            { _id: userId as any },
+            { _id: (ObjectId.isValid(userId) ? new ObjectId(userId) : userId) as unknown as ObjectId },
             {
                 $set: {
                     isActive: false,
@@ -321,8 +322,8 @@ export async function DELETE(
         await destroyAllUserSessions(userId);
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[team/userId DELETE] Error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: (error as Error).message }, { status: 500 });
     }
 }

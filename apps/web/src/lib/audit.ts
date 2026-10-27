@@ -19,8 +19,8 @@ export interface AuditEntry {
     module: string;
     resourceId?: string;
     resourceType?: string;
-    beforeState?: Record<string, unknown>;
-    afterState?: Record<string, unknown>;
+    beforeState?: Record<string, unknown> | object;
+    afterState?: Record<string, unknown> | object;
     ipAddress?: string;
     userAgent?: string;
     severity?: 'info' | 'warning' | 'critical';
@@ -39,6 +39,7 @@ export async function logAudit(entry: AuditEntry): Promise<void> {
 
         await AuditLog.create({
             ...entry,
+            organizationId: entry.organizationId?.trim() || 'unassigned',
             severity: entry.severity || 'info',
             deviceType: deviceInfo.deviceType,
             browser: deviceInfo.browser,
@@ -89,8 +90,8 @@ export async function logDataOperation(
         module: string;
         resourceId?: string;
         resourceType?: string;
-        beforeState?: Record<string, unknown>;
-        afterState?: Record<string, unknown>;
+        beforeState?: Record<string, unknown> | object;
+        afterState?: Record<string, unknown> | object;
         ipAddress?: string;
         userAgent?: string;
     }

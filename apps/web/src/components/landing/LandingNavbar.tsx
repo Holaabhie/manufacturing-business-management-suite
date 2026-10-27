@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { BrandLogo } from "@/components/BrandLogo";
 import { ArrowRight } from "lucide-react";
 import { LandingThemeToggle } from "@/components/LandingThemeToggle";
 
@@ -28,27 +28,15 @@ export function LandingNavbar() {
       }`}
     >
       <div className="mx-auto max-w-7xl flex items-center justify-between px-4 sm:px-6 h-[60px]">
-        {/* Left: logo badge + wordmark + caption */}
-        <Link href="/" className="flex items-center gap-2.5 group flex-shrink-0">
-          <div className="w-9 h-9 rounded-[10px] overflow-hidden flex-shrink-0 shadow-sm transition-transform duration-200 group-hover:scale-105">
-            <Image
-              src="/icons/icon-512.png"
-              alt="IND Manager icon"
-              width={36}
-              height={36}
-              className="w-full h-full object-cover"
-              priority
-            />
-          </div>
-          <div className="flex flex-col leading-none">
-            <span className="font-bold text-[17px] tracking-tight">
-              <span className="text-foreground">Ind</span>{" "}
-              <span className="text-primary">Manager</span>
-            </span>
-            <span className="text-[9px] font-semibold tracking-[0.15em] text-muted-foreground uppercase mt-0.5">
-              Industry · Bookkeeping · Growth
-            </span>
-          </div>
+        {/* Left: official full brand logo */}
+        <Link href="/" className="flex items-center group flex-shrink-0 transition-transform duration-200 hover:scale-105">
+          <BrandLogo
+            variant="full"
+            width={142}
+            height={36}
+            className="h-7 sm:h-8 w-auto object-contain"
+            priority
+          />
         </Link>
 
         {/* Center: nav links (desktop only) */}

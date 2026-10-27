@@ -26,9 +26,9 @@ export async function GET(request: NextRequest) {
         const summary = await svc.getOrderSummary(tenantId, orderId);
 
         return NextResponse.json(summary);
-    } catch (error: any) {
+    } catch (error: unknown) {
         if (error instanceof NotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 });
+            return NextResponse.json({ error: (error as Error).message }, { status: 404 });
         }
         console.error("Error fetching order challan summary:", error);
         return NextResponse.json({ error: "Failed to fetch order challan summary" }, { status: 500 });

@@ -14,12 +14,15 @@
  */
 
 import { useState, useCallback } from 'react';
+import { PLANS, type PlanId } from '@/lib/razorpay/plans';
+import { openRazorpayCheckout } from '@/lib/razorpay/checkout';
+import { toast } from 'sonner';
 
-export type PlanId = 'pro_monthly' | 'pro_yearly';
+export type { PlanId };
 
 interface UseUpgradeReturn {
   /** Open the Razorpay checkout for a specific plan */
-  openCheckout: (plan: PlanId) => Promise<void>;
+  openCheckout: (plan: PlanId, callbacks?: { onSuccess?: () => void; onError?: (err: string) => void }) => Promise<void>;
   /** Whether a checkout is currently being processed */
   isProcessing: boolean;
   /** Error message if checkout failed */
@@ -32,31 +35,44 @@ export function useUpgrade(): UseUpgradeReturn {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const openCheckout = useCallback(async (plan: PlanId) => {
+  const openCheckout = useCallback(async (
+    plan: PlanId,
+    callbacks?: { onSuccess?: () => void; onError?: (err: string) => void }
+  ) => {
     setIsProcessing(true);
     setError(null);
 
+    const planConfig = PLANS[plan] || PLANS.pro_monthly;
+
     try {
-      // TODO: Phase 5 — Full Razorpay integration
-      // 1. POST /api/razorpay/create-order → get orderId
-      // 2. Load Razorpay script dynamically
-      // 3. Open Razorpay checkout modal
-      // 4. On success → POST /api/razorpay/verify-payment
-      // 5. On verification → update user context, show success toast
-
-      console.warn(
-        `🚧 useUpgrade: Checkout for plan "${plan}" not yet implemented. ` +
-        'Razorpay integration coming in Phase 5.'
-      );
-
-      // Simulate a delay for UI testing
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      setError('Payment integration coming soon. Check back later!');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Checkout failed');
-    } finally {
+      await openRazorpayCheckout({
+        amount: planConfig.price,
+        currency: planConfig.currency,
+        name: 'IND Manager Pro',
+        description: `${planConfig.name} Subscription`,
+        plan: planConfig.id,
+        onSuccess: (data) => {
+          setIsProcessing(false);
+          setError(null);
+          toast.success(`Successfully upgraded to ${planConfig.name}!`);
+          callbacks?.onSuccess?.();
+        },
+        onError: (errMessage) => {
+          setIsProcessing(false);
+          setError(errMessage);
+          toast.error(errMessage);
+          callbacks?.onError?.(errMessage);
+        },
+        onDismiss: () => {
+          setIsProcessing(false);
+        },
+      });
+    } catch (err: any) {
+      const msg = err instanceof Error ? err.message : 'Checkout failed';
+      setError(msg);
+      toast.error(msg);
       setIsProcessing(false);
+      callbacks?.onError?.(msg);
     }
   }, []);
 

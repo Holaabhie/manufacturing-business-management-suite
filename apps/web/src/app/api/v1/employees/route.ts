@@ -51,7 +51,7 @@ export const POST = withRateLimit(
                 logAudit({
                     organizationId,
                     userId: adminId,
-                    userName: user.fullName || user.full_name || user.email,
+                    userName: user.fullName || user.full_name || user.email || "Admin",
                     userRole: "Admin",
                     action: `Created employee ${result.employee.fullName} (${result.employee.employeeId})`,
                     actionType: "create",

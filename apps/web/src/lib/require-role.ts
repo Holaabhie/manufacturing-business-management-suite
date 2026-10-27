@@ -91,7 +91,7 @@ export async function requireOrganization(
         return { error: "Unauthorized - Please log in", status: 401 };
     }
 
-    const userOrgId = (user as any).organizationId;
+    const userOrgId = user.organizationId;
     if (organizationId && userOrgId !== organizationId) {
         return { error: "Forbidden - Access denied for this organization", status: 403 };
     }
@@ -129,7 +129,7 @@ export async function requireAccess(options: {
 
     // Check organization
     if (options.organizationId) {
-        const userOrgId = (user as any).organizationId;
+        const userOrgId = user.organizationId;
         if (userOrgId !== options.organizationId) {
             return { error: "Forbidden - Access denied for this organization", status: 403 };
         }

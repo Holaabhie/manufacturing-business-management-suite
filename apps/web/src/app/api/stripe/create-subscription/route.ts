@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
-import { getSessionUser } from '@/lib/auth-session';
+import { getSessionUser, type UserDoc, type MongoUserDoc } from '@/lib/auth-session';
 import { getDb } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 
@@ -23,8 +23,8 @@ export async function POST(request: NextRequest) {
     }
 
     const db = await getDb();
-    const userQueryId = ObjectId.isValid(user._id) ? new ObjectId(user._id) : (user._id as unknown as ObjectId);
-    const profile = await db.collection("users").findOne({ _id: userQueryId });
+    const userQueryId = ObjectId.isValid(user._id) ? new ObjectId(user._id) : user._id;
+    const profile = await db.collection<MongoUserDoc>("users").findOne({ _id: userQueryId });
 
     if (profile?.stripe_subscription_id) {
       return NextResponse.json(
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       });
       customerId = customer.id;
 
-      await db.collection("users").updateOne(
+      await db.collection<MongoUserDoc>("users").updateOne(
         { _id: userQueryId },
         { $set: { stripe_customer_id: customerId } }
       );
@@ -57,9 +57,9 @@ export async function POST(request: NextRequest) {
       metadata: { user_id: user._id.toString() },
     });
 
-    const invoice = subscription.latest_invoice as any;
-    const pendingSetupIntent = subscription.pending_setup_intent as any;
-    const paymentIntent = invoice?.payment_intent as any;
+    const invoice = subscription.latest_invoice as { payment_intent?: { client_secret?: string } };
+    const pendingSetupIntent = subscription.pending_setup_intent as { client_secret?: string };
+    const paymentIntent = invoice?.payment_intent;
 
     let clientSecret: string;
     let confirmationType: 'payment' | 'setup';
@@ -83,10 +83,10 @@ export async function POST(request: NextRequest) {
       clientSecret,
       confirmationType,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creating subscription:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to create subscription' },
+      { error: (error as Error).message || 'Failed to create subscription' },
       { status: 500 }
     );
   }

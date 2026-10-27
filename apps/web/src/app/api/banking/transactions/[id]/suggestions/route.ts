@@ -29,7 +29,7 @@ export async function GET(
     return NextResponse.json({ suggestions });
   } catch (error: unknown) {
     if (error instanceof AppError) {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+      return NextResponse.json({ error: (error as Error).message }, { status: error.statusCode });
     }
     console.error("Error fetching suggestions:", error);
     return NextResponse.json({ error: "Failed to fetch suggestions" }, { status: 500 });

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import Image from "next/image";
+import { BrandLogo } from "@/components/BrandLogo";
 import { motion } from "framer-motion";
 import { Play, Sparkles, Volume2, Maximize2 } from "lucide-react";
 
@@ -63,13 +63,12 @@ export function LandingDemo() {
 
             {/* Central icon & pulsing play button */}
             <div className="relative z-10 flex flex-col items-center justify-center gap-4">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden shadow-md opacity-80 transition-transform duration-300 group-hover:scale-105 border border-border/50 bg-background/80 backdrop-blur-sm p-1.5">
-                <Image
-                  src="/icons/icon-512.png"
-                  alt="IND Manager"
+              <div className="w-14 h-14 sm:w-16 sm:h-16 opacity-80 transition-transform duration-300 group-hover:scale-105 flex items-center justify-center">
+                <BrandLogo
+                  variant="icon"
                   width={64}
                   height={64}
-                  className="w-full h-full object-cover rounded-xl"
+                  className="w-full h-full object-contain"
                 />
               </div>
 

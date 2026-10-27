@@ -29,6 +29,8 @@ declare global {
     }
 }
 
+import { fetchWithAuthTimeout } from "@/lib/auth-timeout";
+
 interface GoogleOneTapProps {
     /** Called when sign-in completes successfully */
     onSuccess?: () => void;
@@ -40,7 +42,7 @@ export function GoogleOneTap({ onSuccess }: GoogleOneTapProps) {
     const handleCredentialResponse = useCallback(
         async (response: { credential: string }) => {
             try {
-                const res = await fetch("/api/auth/google-one-tap", {
+                const res = await fetchWithAuthTimeout("/api/auth/google-one-tap", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ credential: response.credential }),
@@ -55,9 +57,13 @@ export function GoogleOneTap({ onSuccess }: GoogleOneTapProps) {
 
                 toast.success("Signed in successfully!");
                 onSuccess?.();
-                router.push("/dashboard");
-            } catch {
-                toast.error("Google sign-in failed. Please try again.");
+                if (data.user?.role === "Admin" && data.user?.company_setup_complete === false) {
+                    router.replace("/setup");
+                } else {
+                    router.push("/dashboard");
+                }
+            } catch (err: any) {
+                toast.error(err?.message || "Google sign-in failed. Please try again.");
             }
         },
         [router, onSuccess]

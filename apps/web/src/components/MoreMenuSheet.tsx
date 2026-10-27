@@ -674,7 +674,6 @@ export function MoreMenuSheet({
   const t = useTranslations("moreMenu");
   const [mounted, setMounted] = useState(false);
   const [customizeOpen, setCustomizeOpen] = useState(false);
-  const [sheetExpanded, setSheetExpanded] = useState(false);
   const [config, setConfig] = useState<MenuConfig>({ order: [], hidden: [] });
 
   // Portal mount guard
@@ -771,61 +770,44 @@ export function MoreMenuSheet({
           if (customizeOpen) {
             setCustomizeOpen(false);
           } else {
-            setSheetExpanded(false);
             onClose();
           }
         }}
-        maxHeight={sheetExpanded ? "92dvh" : "70dvh"}
+        maxHeight="88dvh"
         showHandle={true}
         dragToClose={true}
-        onSheetScroll={(scrollTop) => {
-          if (scrollTop > 40 && !sheetExpanded) {
-            setSheetExpanded(true);
-          }
-          if (scrollTop === 0 && sheetExpanded) {
-            setSheetExpanded(false);
-          }
-        }}
+        solidBackground={true}
+        header={
+          <div className="flex items-center justify-between px-5 py-3">
+            <h2
+              className="text-[22px] font-semibold tracking-tight"
+              style={{ color: "var(--overlay-text-primary)" }}
+            >
+              {t("title")}
+            </h2>
+            <button
+              onClick={() => setCustomizeOpen(true)}
+              className="flex items-center gap-1.5 text-[13px] font-medium px-3.5 py-1.5 rounded-full transition-colors duration-150 ease cursor-pointer"
+              style={{
+                color: "var(--overlay-accent)",
+                background: "var(--overlay-hover)",
+                border: "1px solid rgba(37, 99, 235, 0.12)",
+              }}
+              onMouseEnter={(e) =>
+              (e.currentTarget.style.background =
+                "var(--overlay-active)")
+              }
+              onMouseLeave={(e) =>
+              (e.currentTarget.style.background =
+                "var(--overlay-hover)")
+              }
+            >
+              <Settings2 size={14} />
+              {t("customise")}
+            </button>
+          </div>
+        }
       >
-        {/* ── Sticky Header ── */}
-        <div
-          className="flex items-center justify-between px-5 py-3"
-          style={{
-            position: "sticky",
-            top: 0,
-            zIndex: 10,
-            background: "var(--overlay-sheet-bg, #0D1421)",
-            borderBottom: "1px solid var(--overlay-border)",
-          }}
-        >
-          <h2
-            className="text-[22px] font-semibold tracking-tight"
-            style={{ color: "var(--overlay-text-primary)" }}
-          >
-            {t("title")}
-          </h2>
-          <button
-            onClick={() => setCustomizeOpen(true)}
-            className="flex items-center gap-1.5 text-[13px] font-medium px-3.5 py-1.5 rounded-full transition-colors duration-150 ease cursor-pointer"
-            style={{
-              color: "var(--overlay-accent)",
-              background: "var(--overlay-hover)",
-              border: "1px solid rgba(37, 99, 235, 0.12)",
-            }}
-            onMouseEnter={(e) =>
-            (e.currentTarget.style.background =
-              "var(--overlay-active)")
-            }
-            onMouseLeave={(e) =>
-            (e.currentTarget.style.background =
-              "var(--overlay-hover)")
-            }
-          >
-            <Settings2 size={14} />
-            {t("customise")}
-          </button>
-        </div>
-
         {/* ── Sticky Quick Actions Row ── */}
         <div
           className="qa-scroll flex gap-2.5 overflow-x-auto px-5 py-4"
@@ -867,7 +849,7 @@ export function MoreMenuSheet({
         </div>
 
         {/* ── Categorized Sections (free-flowing) ── */}
-        <div className="px-4 pt-4 pb-8 space-y-5">
+        <div className="px-4 pt-4 pb-[calc(72px+env(safe-area-inset-bottom,16px)+16px)] space-y-5">
           {displaySections.map((section) => (
             <div key={section.label}>
               {/* Section header */}

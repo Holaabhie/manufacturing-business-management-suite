@@ -18,10 +18,10 @@ export async function GET() {
         const rules = await service.listRules(tenantId);
 
         return NextResponse.json({ success: true, rules });
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error("[Reminders API] GET /rules error:", err);
         return NextResponse.json(
-            { error: err?.message || "Failed to fetch reminder rules" },
+            { error: (err as Error)?.message || "Failed to fetch reminder rules" },
             { status: 500 }
         );
     }
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
 
         // Audit log
         await logAudit({
-            organizationId: (auth.user as any).organizationId || tenantId,
+            organizationId: auth.user.organizationId || tenantId,
             userId: String(auth.user._id),
             userName: auth.user.fullName || auth.user.full_name || auth.user.email || "User",
             userRole: auth.user.role === "Admin" ? "Admin" : "Staff",
@@ -64,15 +64,15 @@ export async function POST(request: NextRequest) {
             module: "reminders",
             resourceId: rule.id,
             resourceType: "reminder_rule",
-            afterState: rule as any,
+            afterState: rule as unknown as Record<string, unknown>,
             severity: "info",
         });
 
         return NextResponse.json({ success: true, rule }, { status: 201 });
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error("[Reminders API] POST /rules error:", err);
         return NextResponse.json(
-            { error: err?.message || "Failed to create reminder rule" },
+            { error: (err as Error)?.message || "Failed to create reminder rule" },
             { status: 500 }
         );
     }

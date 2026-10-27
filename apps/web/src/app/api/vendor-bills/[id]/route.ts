@@ -29,7 +29,7 @@ export async function GET(
         }
 
         return NextResponse.json(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error fetching vendor bill:", error);
         return NextResponse.json({ error: "Failed to fetch vendor bill" }, { status: 500 });
     }
@@ -44,7 +44,6 @@ export const PATCH = withIdempotency(
             }
             const user = result.user;
             const tenantId = getDataOwnerId(user);
-            const userAny = user as any;
             const { id } = await context.params;
 
             const body = await request.json();
@@ -55,21 +54,21 @@ export const PATCH = withIdempotency(
             await logDataOperation({
                 organizationId: tenantId,
                 userId: String(user._id),
-                userName: userAny.fullName || userAny.name || user.email || "Unknown User",
-                userRole: (userAny.role === "Admin" || userAny.role === "Owner") ? "Admin" : "Staff",
-            userRoleDetail: userAny.role || user.role,
+                userName: user.fullName || user.fullName || user.email || "Unknown User",
+                userRole: (user.role === "Admin" || user.role === "Owner") ? "Admin" : "Staff",
+            userRoleDetail: user.role || user.role,
                 action: `Updated vendor bill ${updated.bill_number}`,
                 actionType: "update",
                 module: "vendor_bills",
                 resourceId: updated.id,
                 resourceType: "vendor_bill",
-                afterState: updated as unknown as Record<string, unknown>,
+                afterState: updated,
                 ipAddress: getClientIp(request),
                 userAgent: request.headers.get("user-agent") || undefined,
             });
 
             return NextResponse.json(updated);
-        } catch (error: any) {
+        } catch (error: unknown) {
             if (error instanceof ZodError) {
                 return NextResponse.json(
                     { error: error.issues?.[0]?.message || "Validation failed", details: error.issues },
@@ -82,8 +81,9 @@ export const PATCH = withIdempotency(
                     { status: error.statusCode }
                 );
             }
-            if (error.statusCode) {
-                return NextResponse.json({ error: error.message }, { status: error.statusCode });
+            const statusCode = (error as { statusCode?: number })?.statusCode;
+            if (statusCode) {
+                return NextResponse.json({ error: (error as Error).message }, { status: statusCode });
             }
             console.error("Error updating vendor bill:", error);
             return NextResponse.json({ error: "Failed to update vendor bill" }, { status: 500 });
@@ -105,7 +105,6 @@ export async function DELETE(
         }
         const user = result.user;
         const tenantId = getDataOwnerId(user);
-        const userAny = user as any;
         const { id } = await context.params;
 
         const svc = getVendorBillService();
@@ -115,9 +114,9 @@ export async function DELETE(
         await logDataOperation({
             organizationId: tenantId,
             userId: String(user._id),
-            userName: userAny.fullName || userAny.name || user.email || "Unknown User",
-            userRole: (userAny.role === "Admin" || userAny.role === "Owner") ? "Admin" : "Staff",
-            userRoleDetail: userAny.role || user.role,
+            userName: user.fullName || user.fullName || user.email || "Unknown User",
+            userRole: (user.role === "Admin" || user.role === "Owner") ? "Admin" : "Staff",
+            userRoleDetail: user.role || user.role,
             action: `Deleted vendor bill ${id}`,
             actionType: "delete",
             module: "vendor_bills",
@@ -128,15 +127,16 @@ export async function DELETE(
         });
 
         return NextResponse.json({ success: true, message: "Vendor bill deleted" });
-    } catch (error: any) {
+    } catch (error: unknown) {
         if (error instanceof AppError) {
-            return NextResponse.json(
-                { error: error.message, code: error.code, details: error.details },
-                { status: error.statusCode }
-            );
-        }
-        if (error.statusCode) {
-            return NextResponse.json({ error: error.message }, { status: error.statusCode });
+                return NextResponse.json(
+                    { error: error.message, code: error.code, details: error.details },
+                    { status: error.statusCode }
+                );
+            }
+        const statusCode = (error as { statusCode?: number })?.statusCode;
+            if (statusCode) {
+            return NextResponse.json({ error: (error as Error).message }, { status: statusCode });
         }
         console.error("Error deleting vendor bill:", error);
         return NextResponse.json({ error: "Failed to delete vendor bill" }, { status: 500 });

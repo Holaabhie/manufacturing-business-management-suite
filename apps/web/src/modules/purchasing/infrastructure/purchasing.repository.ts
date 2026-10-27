@@ -165,7 +165,7 @@ export class MongoVendorRepository implements IVendorRepository {
             { $set: updateFields },
             { returnDocument: "after" },
         );
-        return result ? toVendorEntity(result as unknown as VendorDocument) : null;
+        return result ? toVendorEntity(result) : null;
     }
 
     async delete(id: string, userId: string): Promise<boolean> {
@@ -264,7 +264,7 @@ export class MongoPurchaseOrderRepository implements IPurchaseOrderRepository {
             { $set: updateFields },
             { returnDocument: "after" },
         );
-        return result ? toPurchaseOrderEntity(result as unknown as PurchaseOrderDocument) : null;
+        return result ? toPurchaseOrderEntity(result) : null;
     }
 
     async delete(id: string, userId: string): Promise<boolean> {

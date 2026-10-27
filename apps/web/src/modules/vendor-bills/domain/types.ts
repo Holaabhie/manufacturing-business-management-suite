@@ -82,6 +82,13 @@ export interface VendorBill {
     payment_status?: PaymentStatus;
     overdue?: boolean;                      // status === 'Open' && balance > 0 && due_date < today_IST
     warnings?: string[];                    // e.g. PO over-billing warning
+    purchase_order?: {
+        id: string;
+        poNumber: string;
+        supplierName: string;
+        date?: string | null;
+        totalAmount?: number;
+    } | null;
 }
 
 export interface VendorBillPayment {
