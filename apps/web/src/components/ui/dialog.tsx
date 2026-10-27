@@ -83,13 +83,13 @@ function DialogContent({
                   "data-[state=open]:animate-[sheetSlideUp_0.28s_ease] data-[state=closed]:animate-[sheetSlideDown_0.22s_ease_forwards]",
                   /* ── Desktop md+: centered dialog (same as default) ── */
                   "md:inset-auto md:fixed md:bottom-auto md:top-1/2 md:left-1/2 md:[translate:none]",
-                  "md:w-full md:max-h-[85dvh] md:overflow-y-auto",
+                  "md:w-full md:max-h-[calc(100dvh-2rem)] md:overflow-y-auto",
                   "md:rounded-[24px]",
                   "md:data-[state=open]:animate-[dialogScaleIn_0.22s_ease] md:data-[state=closed]:animate-[dialogScaleOut_0.18s_ease_forwards]",
                 ]
               : [
                   /* ── Mobile: bottom sheet ── */
-                  "fixed bottom-0 left-1/2 -translate-x-1/2 z-[1001]",
+                  "fixed bottom-0 left-0 right-0 mx-auto z-[1001]",
                   "w-full max-w-[480px]",
                   "max-h-[88dvh] flex flex-col",
                   "rounded-t-[32px] rounded-b-none",
@@ -97,7 +97,7 @@ function DialogContent({
                   "data-[state=open]:animate-[sheetSlideUp_0.28s_ease] data-[state=closed]:animate-[sheetSlideDown_0.22s_ease_forwards]",
                   /* ── Desktop md+: centered dialog ── */
                   "md:top-1/2 md:bottom-auto md:[translate:none]",
-                  "md:max-h-[85dvh] md:overflow-y-auto",
+                  "md:max-h-[calc(100dvh-2rem)] md:overflow-y-auto",
                   "md:rounded-[24px]",
                   "md:data-[state=open]:animate-[dialogScaleIn_0.22s_ease] md:data-[state=closed]:animate-[dialogScaleOut_0.18s_ease_forwards]",
                 ],
@@ -149,12 +149,22 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
+function DialogBody({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="dialog-body"
+      className={cn("flex-1 min-h-0 overflow-y-auto overscroll-contain", className)}
+      {...props}
+    />
+  )
+}
+
 function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-footer"
       className={cn(
-        "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
+        "shrink-0 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end border-t border-[var(--border)] bg-[var(--card)]/90 backdrop-blur pb-[max(env(safe-area-inset-bottom),14px)] pt-3 px-6",
         className
       )}
       {...props}
@@ -190,6 +200,7 @@ function DialogDescription({
 
 export {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,

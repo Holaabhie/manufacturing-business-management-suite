@@ -21,7 +21,7 @@ function Command({
     <CommandPrimitive
       data-slot="command"
       className={cn(
-        "bg-[var(--erp-elevated)] text-[var(--foreground)] flex h-full w-full flex-col overflow-hidden rounded-md outline-none",
+        "bg-[var(--surface-popover)] text-[var(--foreground)] border border-[var(--surface-popover-border)] flex h-full w-full flex-col overflow-hidden rounded-xl shadow-xl outline-none",
         className
       )}
       {...props}
@@ -67,7 +67,7 @@ function CommandInput({
   return (
     <div
       data-slot="command-input-wrapper"
-      className="flex h-12 items-center gap-2.5 border-b border-[var(--glass-border)] px-4 focus-within:ring-1 focus-within:ring-[#2563EB]/20 transition-shadow"
+      className="flex h-12 items-center gap-2.5 border-b border-[var(--surface-popover-border)] px-4 focus-within:ring-1 focus-within:ring-[#2563EB]/20 transition-shadow"
     >
       <SearchIcon className="size-4 shrink-0 opacity-50" />
       <CommandPrimitive.Input
@@ -133,7 +133,7 @@ function CommandSeparator({
   return (
     <CommandPrimitive.Separator
       data-slot="command-separator"
-      className={cn("bg-[var(--glass-border)] -mx-1 h-px", className)}
+      className={cn("bg-[var(--surface-popover-border)] -mx-1 h-px", className)}
       {...props}
     />
   )
@@ -147,7 +147,7 @@ function CommandItem({
     <CommandPrimitive.Item
       data-slot="command-item"
       className={cn(
-        "data-[selected=true]:bg-white/[0.05] data-[selected=true]:text-[var(--foreground)] [&_svg:not([class*='text-'])]:text-muted-foreground relative flex cursor-default items-center gap-2 rounded-[var(--radius-md)] px-2 py-1.5 text-sm outline-hidden select-none data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "data-[selected=true]:bg-muted data-[selected=true]:text-[var(--foreground)] [&_svg:not([class*='text-'])]:text-muted-foreground relative flex cursor-default items-center gap-2 rounded-lg px-2 py-1.5 text-sm outline-hidden select-none data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className
       )}
       {...props}

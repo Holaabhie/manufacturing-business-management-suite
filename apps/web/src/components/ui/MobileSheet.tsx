@@ -27,7 +27,7 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence, type PanInfo } from 'framer-motion';
+import { motion, AnimatePresence, useDragControls, type PanInfo } from 'framer-motion';
 import {
   springModal,
   variantsBackdrop,
@@ -92,6 +92,10 @@ export interface MobileSheetProps {
   dragThreshold?: number;
   /** Scroll callback — receives scrollTop from the scroll container via scrollRef */
   onSheetScroll?: (scrollTop: number) => void;
+  /** Opt-in header slot rendered between handle and scroll container */
+  header?: React.ReactNode;
+  /** Render solid opaque sheet background instead of translucent glass */
+  solidBackground?: boolean;
 }
 
 export function MobileSheet({
@@ -106,9 +110,12 @@ export function MobileSheet({
   dragToClose = true,
   dragThreshold = DRAG_DISMISS_THRESHOLD,
   onSheetScroll,
+  header,
+  solidBackground = false,
 }: MobileSheetProps) {
   const [mounted, setMounted] = useState(false);
   const isDesktop = useIsDesktop();
+  const dragControls = useDragControls();
   const sheetRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -215,6 +222,16 @@ export function MobileSheet({
               onPointerDown={(e) => e.stopPropagation()}
               // Focus target for keyboard events
               tabIndex={-1}
+              {...(!isDesktop && dragToClose
+                ? {
+                    drag: 'y' as const,
+                    dragControls: dragControls,
+                    dragListener: false,
+                    dragConstraints: { top: 0 },
+                    dragElastic: { top: 0, bottom: 0.2 },
+                    onDragEnd: handleDragEnd,
+                  }
+                : {})}
               style={
                 isDesktop
                   ? {
@@ -231,7 +248,9 @@ export function MobileSheet({
                       maxHeight: 'min(90vh, 700px)',
                       display: 'flex',
                       flexDirection: 'column' as const,
-                      background: 'var(--overlay-sheet-bg, rgba(255,255,255,0.96))',
+                      background: solidBackground
+                        ? 'var(--overlay-sheet-solid-bg, #FFFFFF)'
+                        : 'var(--overlay-sheet-bg, rgba(255,255,255,0.96))',
                       border: '1px solid var(--overlay-border, rgba(15,23,42,0.06))',
                       borderRadius: 24,
                       boxShadow: 'var(--overlay-shadow, 0 8px 30px rgba(15,23,42,0.08))',
@@ -250,7 +269,9 @@ export function MobileSheet({
                       maxHeight,
                       display: 'flex',
                       flexDirection: 'column' as const,
-                      background: 'var(--overlay-sheet-bg, rgba(255,255,255,0.96))',
+                      background: solidBackground
+                        ? 'var(--overlay-sheet-solid-bg, #FFFFFF)'
+                        : 'var(--overlay-sheet-bg, rgba(255,255,255,0.96))',
                       borderTop: '1px solid var(--overlay-border, rgba(15,23,42,0.06))',
                       borderLeft: '1px solid var(--overlay-border, rgba(15,23,42,0.06))',
                       borderRight: '1px solid var(--overlay-border, rgba(15,23,42,0.06))',
@@ -263,11 +284,12 @@ export function MobileSheet({
               }
             >
               {/* Handle pill (mobile bottom sheet only)
-                  This is the ONLY drag-to-dismiss gesture target.
-                  Keeping drag on the handle prevents it from intercepting
-                  vertical scroll gestures inside the content region. */}
+                  Gesture target attached via dragControls to drag the whole sheet. */}
               {!isDesktop && showHandle && (
-                <motion.div
+                <div
+                  onPointerDown={(e) => {
+                    if (dragToClose) dragControls.start(e);
+                  }}
                   style={{
                     display: 'flex',
                     justifyContent: 'center',
@@ -276,17 +298,11 @@ export function MobileSheet({
                     cursor: dragToClose ? 'grab' : undefined,
                     flexShrink: 0,
                     touchAction: dragToClose ? 'none' : undefined,
+                    background: solidBackground
+                      ? 'var(--overlay-sheet-solid-bg, #FFFFFF)'
+                      : undefined,
+                    borderRadius: '32px 32px 0 0',
                   }}
-                  // Drag-to-close on the handle only (mobile)
-                  {...(dragToClose
-                    ? {
-                        drag: 'y' as const,
-                        dragConstraints: { top: 0 },
-                        dragElastic: 0.1,
-                        onDragEnd: handleDragEnd,
-                        dragTransition: { bounceStiffness: 0, bounceDamping: 0 },
-                      }
-                    : {})}
                 >
                   <div
                     style={{
@@ -296,7 +312,35 @@ export function MobileSheet({
                       background: 'var(--overlay-handle, rgba(15,23,42,0.15))',
                     }}
                   />
-                </motion.div>
+                </div>
+              )}
+
+              {/* ── Opt-in Header slot ──
+                  Renders between drag handle and scroll container as a shrink-0 block
+                  with opaque background, z-10, and bottom border. */}
+              {header && (
+                <div
+                  onPointerDown={(e) => {
+                    if (isDesktop || !dragToClose) return;
+                    const target = e.target as HTMLElement | null;
+                    if (target?.closest('button, a, input, select, textarea, [role="button"]')) {
+                      return;
+                    }
+                    dragControls.start(e);
+                  }}
+                  style={{
+                    flexShrink: 0,
+                    zIndex: 10,
+                    background: solidBackground
+                      ? 'var(--overlay-sheet-solid-bg, #FFFFFF)'
+                      : 'var(--overlay-sheet-bg, rgba(255,255,255,0.96))',
+                    borderBottom: '1px solid var(--overlay-border, rgba(15,23,42,0.06))',
+                    ...(!showHandle ? { borderRadius: isDesktop ? '24px 24px 0 0' : '32px 32px 0 0' } : {}),
+                    touchAction: !isDesktop && dragToClose ? 'none' : undefined,
+                  }}
+                >
+                  {header}
+                </div>
               )}
 
               {/* ── Scrollable content region ──

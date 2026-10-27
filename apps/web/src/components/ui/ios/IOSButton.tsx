@@ -40,8 +40,13 @@ const buttonVariants = cva(
                     'dark:bg-[#0A84FF] dark:hover:bg-[#0070E0]',
                 ].join(' '),
                 gray: [
-                    'bg-[var(--accent)] text-[var(--foreground)]',
-                    'hover:bg-[var(--fill-primary)]',
+                    'bg-white text-[var(--foreground)] border border-[var(--border)] shadow-xs',
+                    'hover:bg-[var(--muted)] hover:text-[var(--foreground)]',
+                    'active:bg-slate-200/70',
+                    'dark:bg-white/[0.08] dark:border-white/[0.10] dark:text-[var(--foreground)]',
+                    'dark:hover:bg-white/[0.14] dark:active:bg-white/[0.18]',
+                    'focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2',
+                    'data-[state=open]:bg-[var(--muted)] dark:data-[state=open]:bg-white/[0.14]',
                 ].join(' '),
                 tinted: [
                     'bg-[rgba(0,122,255,0.12)] text-[var(--primary)]',

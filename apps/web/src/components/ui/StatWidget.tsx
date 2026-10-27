@@ -93,10 +93,16 @@ export function StatWidget({
     );
 
     return (
-        <motion.div variants={staggerItem} custom={delay} className="min-w-0 w-full overflow-hidden rounded-[20px]">
+        <motion.div
+            variants={staggerItem}
+            initial="initial"
+            animate="animate"
+            custom={delay}
+            className="min-w-0 w-full overflow-hidden rounded-[20px] h-full flex flex-col"
+        >
             <div
                 className={cn(
-                    "kpi-card relative min-w-0",
+                    "kpi-card relative min-w-0 h-full flex flex-col justify-between",
                     href && "cursor-pointer transition-transform duration-100 ease-[cubic-bezier(0.7,0,0.84,0)] active:scale-[0.98]"
                 )}
                 tabIndex={0}
@@ -123,20 +129,22 @@ export function StatWidget({
                 </div>
 
                 {/* Metric + Label */}
-                <div
-                    className="kpi-card__value !text-gray-900 dark:!text-white truncate text-sm sm:text-base lg:text-lg xl:text-xl"
-                    title={valueTitle}
-                >
-                    {displayValue != null ? (
-                        <span title={valueTitle}>{displayValue}</span>
-                    ) : (
-                        <AnimatedValue value={value} prefix={prefix} suffix={suffix} />
-                    )}
+                <div className="min-w-0">
+                    <div
+                        className="kpi-card__value !text-gray-900 dark:!text-white text-base sm:text-lg lg:text-xl font-bold tabular-nums whitespace-nowrap overflow-visible"
+                        title={valueTitle}
+                    >
+                        {displayValue != null ? (
+                            <span title={valueTitle}>{displayValue}</span>
+                        ) : (
+                            <AnimatedValue value={value} prefix={prefix} suffix={suffix} />
+                        )}
+                    </div>
+                    <div className="kpi-card__label !text-gray-500 dark:!text-[rgba(255,255,255,0.5)] text-xs line-clamp-2 leading-tight break-words">{label}</div>
                 </div>
-                <div className="kpi-card__label !text-gray-500 dark:!text-[rgba(255,255,255,0.5)] text-xs truncate">{label}</div>
 
                 {/* Stitch mini-progress bar (decorative, color-keyed) */}
-                <div className="kpi-card__progress">
+                <div className="kpi-card__progress mt-auto">
                     <div
                         className={`kpi-card__progress-fill kpi-card__progress-fill--${color}`}
                         style={{ "--progress-width": "75%" } as React.CSSProperties}
@@ -158,7 +166,7 @@ export function EmptyWidgetSlot({
 }) {
     const t = useTranslations("common");
     return (
-        <motion.div variants={staggerItem} custom={delay}>
+        <motion.div variants={staggerItem} initial="initial" animate="animate" custom={delay}>
             <div
                 className="kpi-card flex flex-col items-center justify-center cursor-pointer border-dashed dark:border-white/[0.18] border-gray-300 dark:bg-white/[0.03] bg-gray-50"
                 onClick={onAdd}
