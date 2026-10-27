@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
+
 import {
   Bell,
   MessageCircle,
@@ -80,6 +81,17 @@ export default function NotificationsPage() {
   const [activeTab, setActiveTab] = useState<
     "activity" | "templates" | "logs"
   >("activity");
+  const activeTabRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (activeTabRef.current) {
+      activeTabRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "center",
+      });
+    }
+  }, [activeTab]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [logStats, setLogStats] = useState<Record<string, unknown>>({});
@@ -344,7 +356,7 @@ export default function NotificationsPage() {
       variants={staggerContainer}
       initial="initial"
       animate="animate"
-      className="w-full min-w-0 overflow-x-hidden space-y-6 ind-page bg-[#F1F4F9] dark:bg-transparent -m-6 p-6"
+      className="w-full min-w-0 overflow-x-hidden space-y-6 ind-page bg-[#F1F4F9] dark:bg-transparent page-bleed -m-4 md:-m-6 lg:-m-8 p-4 md:p-6 lg:p-8"
     >
       {/* ── Header ── */}
       <motion.div variants={staggerItem}>
@@ -364,29 +376,33 @@ export default function NotificationsPage() {
       </motion.div>
 
       {/* ── Channel Grid ── */}
-      <motion.div variants={staggerItem}>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <motion.div variants={staggerItem} className="w-full min-w-0">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 min-w-0 w-full">
           {Object.entries(channelIcons).map(([key, ch]) => (
-            <div key={key} className="ind-card shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] dark:shadow-none" style={{ padding: 16 }}>
-              <div className="flex items-center gap-3">
+            <div
+              key={key}
+              className="ind-card shadow-[0_1px_4px_rgba(15,23,42,0.07),0_4px_16px_rgba(15,23,42,0.05)] dark:shadow-none min-w-0 w-full h-full flex flex-col justify-center"
+              style={{ padding: 14 }}
+            >
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                 <div
-                  className="w-[36px] h-[36px] rounded-[10px] flex items-center justify-center"
+                  className="w-[36px] h-[36px] rounded-[10px] flex items-center justify-center shrink-0"
                   style={{ background: `${ch.color}15` }}
                 >
                   <ch.icon
-                    className="h-[16px] w-[16px]"
+                    className="h-[16px] w-[16px] shrink-0"
                     style={{ color: ch.color }}
                   />
                 </div>
-                <div>
+                <div className="min-w-0 flex-1">
                   <span
-                    className="text-[14px] font-semibold block"
+                    className="text-[14px] font-semibold block truncate"
                     style={{ color: "var(--ind-text)" }}
                   >
                     {ch.label}
                   </span>
                   <span
-                    className="text-[11px]"
+                    className="text-[11px] block truncate"
                     style={{ color: "var(--ind-text-muted)" }}
                   >
                     {t("activeRulesCount", {
@@ -434,40 +450,45 @@ export default function NotificationsPage() {
       </div>
 
       {/* ── Tab Control ── */}
-      <motion.div variants={staggerItem}>
-        <div className="ind-pill-tabs">
-          <button
-            className={cn(
-              "ind-pill-tab",
-              activeTab === "activity" && "active"
-            )}
-            onClick={() => setActiveTab("activity")}
-          >
-            {t("tabActivity")}
-            {feedUnreadCount > 0 && (
-              <span className="ml-1.5 text-[10px] font-bold rounded-full min-w-[18px] h-[18px] inline-flex items-center justify-center px-1 bg-[var(--accent-red,#EF4444)] text-white">
-                {feedUnreadCount}
-              </span>
-            )}
-          </button>
-          <button
-            className={cn(
-              "ind-pill-tab",
-              activeTab === "templates" && "active"
-            )}
-            onClick={() => setActiveTab("templates")}
-          >
-            {t("tabTemplates")}
-          </button>
-          <button
-            className={cn(
-              "ind-pill-tab",
-              activeTab === "logs" && "active"
-            )}
-            onClick={() => setActiveTab("logs")}
-          >
-            {t("tabLogs")}
-          </button>
+      <motion.div variants={staggerItem} className="w-full min-w-0">
+        <div className="w-full min-w-0 overflow-x-auto scrollbar-hide py-1">
+          <div className="ind-pill-tabs flex w-max sm:w-auto">
+            <button
+              ref={activeTab === "activity" ? activeTabRef : null}
+              className={cn(
+                "ind-pill-tab whitespace-nowrap shrink-0",
+                activeTab === "activity" && "active"
+              )}
+              onClick={() => setActiveTab("activity")}
+            >
+              {t("tabActivity")}
+              {feedUnreadCount > 0 && (
+                <span className="ml-1.5 text-[10px] font-bold rounded-full min-w-[18px] h-[18px] inline-flex items-center justify-center px-1 bg-[var(--accent-red,#EF4444)] text-white">
+                  {feedUnreadCount}
+                </span>
+              )}
+            </button>
+            <button
+              ref={activeTab === "templates" ? activeTabRef : null}
+              className={cn(
+                "ind-pill-tab whitespace-nowrap shrink-0",
+                activeTab === "templates" && "active"
+              )}
+              onClick={() => setActiveTab("templates")}
+            >
+              {t("tabTemplates")}
+            </button>
+            <button
+              ref={activeTab === "logs" ? activeTabRef : null}
+              className={cn(
+                "ind-pill-tab whitespace-nowrap shrink-0",
+                activeTab === "logs" && "active"
+              )}
+              onClick={() => setActiveTab("logs")}
+            >
+              {t("tabLogs")}
+            </button>
+          </div>
         </div>
       </motion.div>
 

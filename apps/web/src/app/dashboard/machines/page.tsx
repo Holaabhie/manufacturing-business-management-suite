@@ -35,6 +35,7 @@ import { useFormatters } from "@/hooks/useFormatters";
 import { ConfirmDeleteSheet } from "@/components/ui/ConfirmDeleteSheet";
 import {
     Dialog,
+    DialogBody,
     DialogContent,
     DialogHeader,
     DialogTitle,
@@ -560,9 +561,9 @@ export default function MachinesPage() {
 
             {/* ─── Add/Edit Dialog ─────────────────────────────────── */}
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                <DialogContent fullScreenMobile className="sm:max-w-[480px] bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px] overflow-hidden p-0">
-                    <div className="p-6">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 16, marginBottom: 0, borderBottom: '1px solid var(--border)' }}>
+                <DialogContent fullScreenMobile className="sm:max-w-[480px] flex flex-col max-h-[calc(100dvh-2rem)] bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px] overflow-hidden p-0">
+                    <div className="shrink-0 p-6 pb-4 border-b border-[var(--border)]">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg, rgba(59,130,246,0.4), rgba(255,255,255,0.06))', border: '1px solid rgba(255,255,255,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <Cpu className="h-[18px] w-[18px] text-[#60a5fa]" />
                           </div>
@@ -575,87 +576,89 @@ export default function MachinesPage() {
                             </DialogDescription>
                           </div>
                         </div>
-
-                        <div className="space-y-4 py-6">
-                            <div className="space-y-1.5">
-                                <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">
-                                    {t("machineName")} <span className="text-[#FF3B30]">*</span>
-                                </label>
-                                <IOSInput
-                                    value={formName}
-                                    onChange={(e: any) => setFormName(e.target.value)}
-                                    placeholder={t("machineNamePlaceholder")}
-                                    className="h-[44px]"
-                                    id="machine-name-input"
-                                />
-                            </div>
-
-                            <div className="space-y-1.5">
-                                <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">
-                                    {t("machineType")}
-                                </label>
-                                <IOSInput
-                                    value={formType}
-                                    onChange={(e: any) => setFormType(e.target.value)}
-                                    placeholder={t("machineTypePlaceholder")}
-                                    className="h-[44px]"
-                                    id="machine-type-input"
-                                />
-                            </div>
-
-                            <div className="space-y-1.5">
-                                <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">
-                                    {t("capacityDescription")}
-                                </label>
-                                <IOSInput
-                                    value={formCapacity}
-                                    onChange={(e: any) => setFormCapacity(e.target.value)}
-                                    placeholder={t("capacityPlaceholder")}
-                                    className="h-[44px]"
-                                    id="machine-capacity-input"
-                                />
-                            </div>
-
-                            {dialogMode === "edit" && (
-                                <div className="space-y-1.5">
-                                    <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">
-                                        {t("status")}
-                                    </label>
-                                    <div className="relative">
-                                        <select
-                                            value={formStatus}
-                                            onChange={(e) => setFormStatus(e.target.value)}
-                                            className="w-full h-[44px] px-4 rounded-[12px] bg-[var(--muted)] hover:bg-[var(--accent)] border-transparent text-[15px] font-medium focus:ring-[3px] focus:ring-[#007AFF]/30 focus:border-[#007AFF] outline-none transition-all appearance-none text-[var(--foreground)]"
-                                            id="machine-status-select"
-                                        >
-                                            <option value="active">{t("statusActive")}</option>
-                                            <option value="running">{t("statusRunning")}</option>
-                                            <option value="idle">{t("statusIdle")}</option>
-                                            <option value="maintenance">{t("statusMaintenance")}</option>
-                                            <option value="inactive">{t("statusDisabled")}</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        <div style={{ display: 'flex', gap: 10, paddingTop: 8, borderTop: '1px solid var(--border)', marginLeft: -24, marginRight: -24, paddingLeft: 24, paddingRight: 24, paddingBottom: 8 }}>
-                            <button
-                                onClick={() => setDialogOpen(false)}
-                                style={{ flex: 1, height: 48, borderRadius: 14, background: 'var(--muted)', color: 'var(--muted-foreground)', border: '1px solid var(--border)', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}
-                            >
-                                {tCommon("cancel")}
-                            </button>
-                            <button
-                                onClick={handleSubmit}
-                                disabled={saving || !formName.trim()}
-                                id="save-machine-btn"
-                                style={{ flex: 1, height: 48, borderRadius: 14, background: 'linear-gradient(135deg, #3b82f6, #2563eb)', color: '#fff', border: '1px solid rgba(59,130,246,0.3)', boxShadow: '0 4px 16px rgba(59,130,246,0.25)', fontSize: 15, fontWeight: 600, cursor: 'pointer', opacity: (saving || !formName.trim()) ? 0.5 : 1 }}
-                            >
-                                {saving ? t("saving") : dialogMode === "add" ? t("addMachine") : t("saveChanges")}
-                            </button>
-                        </div>
                     </div>
+
+                    <DialogBody className="p-6 space-y-4">
+                        <div className="space-y-1.5">
+                            <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">
+                                {t("machineName")} <span className="text-[#FF3B30]">*</span>
+                            </label>
+                            <IOSInput
+                                value={formName}
+                                onChange={(e: any) => setFormName(e.target.value)}
+                                placeholder={t("machineNamePlaceholder")}
+                                className="h-[44px]"
+                                id="machine-name-input"
+                            />
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">
+                                {t("machineType")}
+                            </label>
+                            <IOSInput
+                                value={formType}
+                                onChange={(e: any) => setFormType(e.target.value)}
+                                placeholder={t("machineTypePlaceholder")}
+                                className="h-[44px]"
+                                id="machine-type-input"
+                            />
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">
+                                {t("capacityDescription")}
+                            </label>
+                            <IOSInput
+                                value={formCapacity}
+                                onChange={(e: any) => setFormCapacity(e.target.value)}
+                                placeholder={t("capacityPlaceholder")}
+                                className="h-[44px]"
+                                id="machine-capacity-input"
+                            />
+                        </div>
+
+                        {dialogMode === "edit" && (
+                            <div className="space-y-1.5">
+                                <label className="text-[13px] font-medium text-[var(--muted-foreground)] ml-1">
+                                    {t("status")}
+                                </label>
+                                <div className="relative">
+                                    <select
+                                        value={formStatus}
+                                        onChange={(e) => setFormStatus(e.target.value)}
+                                        className="w-full h-[44px] px-4 rounded-[12px] bg-[var(--muted)] hover:bg-[var(--accent)] border-transparent text-[15px] font-medium focus:ring-[3px] focus:ring-[#007AFF]/30 focus:border-[#007AFF] outline-none transition-all appearance-none text-[var(--foreground)]"
+                                        id="machine-status-select"
+                                    >
+                                        <option value="active">{t("statusActive")}</option>
+                                        <option value="running">{t("statusRunning")}</option>
+                                        <option value="idle">{t("statusIdle")}</option>
+                                        <option value="maintenance">{t("statusMaintenance")}</option>
+                                        <option value="inactive">{t("statusDisabled")}</option>
+                                    </select>
+                                </div>
+                            </div>
+                        )}
+                    </DialogBody>
+
+                    <DialogFooter className="shrink-0 flex gap-2.5 px-6 pt-3 pb-4 border-t border-[var(--border)] bg-[var(--card)]/90 backdrop-blur">
+                        <button
+                            type="button"
+                            onClick={() => setDialogOpen(false)}
+                            style={{ flex: 1, height: 48, borderRadius: 14, background: 'var(--muted)', color: 'var(--muted-foreground)', border: '1px solid var(--border)', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}
+                        >
+                            {tCommon("cancel")}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleSubmit}
+                            disabled={saving || !formName.trim()}
+                            id="save-machine-btn"
+                            style={{ flex: 1, height: 48, borderRadius: 14, background: 'linear-gradient(135deg, #3b82f6, #2563eb)', color: '#fff', border: '1px solid rgba(59,130,246,0.3)', boxShadow: '0 4px 16px rgba(59,130,246,0.25)', fontSize: 15, fontWeight: 600, cursor: 'pointer', opacity: (saving || !formName.trim()) ? 0.5 : 1 }}
+                        >
+                            {saving ? t("saving") : dialogMode === "add" ? t("addMachine") : t("saveChanges")}
+                        </button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
 

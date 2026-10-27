@@ -40,6 +40,8 @@
   --color-primary: var(--primary);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
+  --color-surface-popover: var(--surface-popover);
+  --color-surface-popover-border: var(--surface-popover-border);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
 
@@ -58,9 +60,28 @@
   --animate-collapsible-up: collapsible-up 0.2s ease-out forwards;
 }
 
+html {
+  color-scheme: light !important;
+}
+
+html.dark {
+  color-scheme: dark !important;
+}
+
 html, body {
   max-width: 100%;
-  overflow-x: clip;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.recharts-text,
+.recharts-cartesian-axis-tick-value,
+.recharts-legend-item-text,
+.recharts-tooltip-wrapper {
+  font-family: var(--font-sans) !important;
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 /* ============================================
@@ -291,6 +312,8 @@ html, body {
   --card-foreground: #0F172A;
   --popover: #FFFFFF;
   --popover-foreground: #0F172A;
+  --surface-popover: #FFFFFF;
+  --surface-popover-border: rgba(15, 23, 42, 0.08);
 
   --primary: #2563EB;
   --primary-foreground: #FFFFFF;
@@ -340,6 +363,7 @@ html, body {
   --overlay-backdrop: rgba(15, 23, 42, 0.4);
   --overlay-backdrop-blur: blur(8px);
   --overlay-sheet-bg: rgba(255, 255, 255, 0.96);
+  --overlay-sheet-solid-bg: #FFFFFF;
   --overlay-card-bg: rgba(255, 255, 255, 0.88);
   --overlay-border: rgba(15, 23, 42, 0.08);
   --overlay-shadow: 0 8px 30px rgba(15, 23, 42, 0.08);
@@ -498,6 +522,8 @@ html, body {
   --card-foreground: #F1F5F9;
   --popover: #1E293B;
   --popover-foreground: #F1F5F9;
+  --surface-popover: #161B27;
+  --surface-popover-border: rgba(255, 255, 255, 0.14);
 
   --primary: #3B82F6;
   --primary-foreground: #FFFFFF;
@@ -544,6 +570,7 @@ html, body {
   --overlay-backdrop: rgba(0, 0, 0, 0.6);
   --overlay-backdrop-blur: blur(8px);
   --overlay-sheet-bg: rgba(15, 23, 42, 0.94);
+  --overlay-sheet-solid-bg: #0F172A;
   --overlay-card-bg: rgba(30, 41, 59, 0.72);
   --overlay-border: rgba(255, 255, 255, 0.06);
   --overlay-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
@@ -2075,6 +2102,44 @@ html, body {
   background: #fee2e2 !important;
   color: #991b1b !important;
   border-color: rgba(153, 27, 27, 0.12) !important;
+}
+
+/* ── KPI Panel & Cards — Mobile Compaction (< 768px) ─── */
+@media (max-width: 767px) {
+  .kpi-card {
+    padding: 14px 14px 12px 14px;
+    border-radius: 16px;
+  }
+
+  .kpi-card__header {
+    margin-bottom: 8px;
+  }
+
+  .kpi-card__icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
+
+  .kpi-card__icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .kpi-card__value {
+    font-size: 18px;
+    margin-bottom: 2px;
+    line-height: 1.2;
+  }
+
+  .kpi-card__label {
+    font-size: 11px;
+    line-height: 1.25;
+  }
+
+  .kpi-card__progress {
+    margin-top: 8px;
+  }
 }
 
 /* ── KPI Panel & Cards — Desktop Compaction (lg+) ─── */
@@ -4173,7 +4238,23 @@ textarea:-webkit-autofill:active {
 
 /* ── Mobile overflow safety ─────────────────── */
 html, body {
+  overflow-x: hidden;          /* fallback for older browsers */
+}
+
+@supports (overflow: clip) {
+  html, body {
+    overflow-x: clip;
+  }
+}
+
+.overflow-x-clip-safe {
   overflow-x: hidden;
+}
+
+@supports (overflow: clip) {
+  .overflow-x-clip-safe {
+    overflow-x: clip;
+  }
 }
 
 .truncate-safe {
@@ -4194,62 +4275,74 @@ html::-webkit-scrollbar {
 }
 
 /* ══════════════════════════════════════════════════════
-   Client Profile Modal — Field Styles
-   Scoped to .client-profile-field  (clients/page.tsx only)
-   All values use theme CSS variables — no hardcoded colors.
+   Client Profile & Form Field Styles
+   Scoped to .client-profile-field and .field-wrapper
+   All values use theme CSS variables — single border system.
    ══════════════════════════════════════════════════════ */
 
+.field-bare,
+.client-profile-field-input {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  color: var(--foreground) !important;
+}
+
 /* Hover: slightly stronger border */
-.client-profile-field:hover:not(:focus-within) {
+.client-profile-field:hover:not(:focus-within),
+.field-wrapper:hover:not(:focus-within) {
   border-color: var(--border-input) !important;
-  /* border-input is already stronger than --border; add mild brightness */
-  filter: brightness(1);
-  box-shadow: 0 0 0 1px var(--ring) / 0;
-}
-/* A cleaner hover — just lift the opacity of the border a bit */
-@supports not (border-color: color-mix(in srgb, red 50%, blue)) {
-  .client-profile-field:hover:not(:focus-within) {
-    border-color: var(--ring) !important;
-    opacity: 1;
-  }
-}
-.client-profile-field:hover:not(:focus-within) {
-  border-color: color-mix(in srgb, var(--border-input) 100%, var(--ring) 30%) !important;
 }
 
 /* Focus-within: accent border + soft ring */
-.client-profile-field:focus-within {
+.client-profile-field:focus-within,
+.field-wrapper:focus-within {
   border-color: var(--primary) !important;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent) !important;
   outline: none;
 }
 
 /* Icon turns accent on focus */
-.client-profile-field:focus-within .client-profile-field-icon {
+.client-profile-field:focus-within .client-profile-field-icon,
+.field-wrapper:focus-within .field-icon {
   color: var(--primary) !important;
 }
 
 /* Placeholder: muted, visibly lighter than entered text */
-.client-profile-field-input::placeholder {
-  color: var(--muted-foreground);
-  opacity: 0.7;
+.client-profile-field-input::placeholder,
+.field-bare::placeholder {
+  color: var(--muted-foreground) !important;
+  opacity: 0.65;
 }
 
 /* Mobile font size — prevents iOS zoom (must be >= 16px on <640px) */
 @media (max-width: 639px) {
-  .client-profile-field-input {
+  .client-profile-field-input,
+  .field-bare {
     font-size: 16px !important;
   }
 }
 
+/* Error state */
+.field-wrapper.field-error,
+.client-profile-field.field-error {
+  border-color: var(--destructive) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--destructive) 20%, transparent) !important;
+}
+
 /* Disabled (read-only) state: no focus ring, muted opacity */
 .client-profile-field:has(input:disabled),
-.client-profile-field:has(textarea:disabled) {
+.client-profile-field:has(textarea:disabled),
+.field-wrapper:has(input:disabled),
+.field-wrapper:has(textarea:disabled) {
   opacity: 0.65;
   cursor: not-allowed;
 }
 .client-profile-field:has(input:disabled):focus-within,
-.client-profile-field:has(textarea:disabled):focus-within {
+.client-profile-field:has(textarea:disabled):focus-within,
+.field-wrapper:has(input:disabled):focus-within,
+.field-wrapper:has(textarea:disabled):focus-within {
   border-color: var(--border-input) !important;
   box-shadow: none !important;
 }
@@ -4259,3 +4352,23 @@ nextjs-portal,
 #devtools-indicator {
   display: none !important;
 }
+
+/* ── Page Bleed (Full-width edge bleed matching <main> padding across breakpoints) ── */
+.page-bleed {
+  margin: -1rem;
+  padding: 1rem;
+}
+
+@media (min-width: 768px) {
+  .page-bleed {
+    margin: -1.5rem;
+    padding: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .page-bleed {
+    margin: -2rem;
+    padding: 2rem;
+  }
+}

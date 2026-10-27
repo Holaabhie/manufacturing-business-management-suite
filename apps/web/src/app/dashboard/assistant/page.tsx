@@ -4,16 +4,12 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Sparkles,
   Settings,
   RotateCcw,
   TrendingUp,
   AlertTriangle,
   Clock,
   ChevronRight,
-  ArrowUpRight,
-  Paperclip,
-  Pin,
   BarChart3,
   Package,
   Users,
@@ -25,8 +21,9 @@ import { cn } from "@/lib/utils";
 import { AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 
-// ── AI Components (untouched internals) ──
-import { AIThinkingLoader } from "@/components/ai/AIThinkingLoader";
+// ── AI Components ──
+import { ThinkingIndicator } from "@/components/ai/ThinkingIndicator";
+import { AIMark } from "@/components/ai/AIMark";
 import { SmartInputBar } from "@/components/ai/SmartInputBar";
 import { ResponseCard } from "@/components/ai/ResponseCard";
 import { UserMessageCard } from "@/components/ai/UserMessageCard";
@@ -35,101 +32,23 @@ import { MobileSheet } from "@/components/ui/MobileSheet";
 // ── Hook (untouched chat logic) ──
 import { useAIChat } from "@/hooks/useAIChat";
 
-// ─── 5 Category Cards (Analytics, Inventory, Clients, Payments, Orders) ──
-const CATEGORY_CARDS = [
+// ─── 4 Compact Suggestion Chips ─────────────────────────────
+const SUGGESTION_CHIPS = [
   {
-    id: "analytics",
-    titleKey: "cardAnalyticsTitle",
-    descKey: "cardAnalyticsDesc",
-    promptKey: "cardAnalyticsPrompt",
-    title: "Analytics",
-    description: "Track revenue growth, top products, and monthly sales trends",
-    prompt: "Analyze my total revenue, top products by revenue, and month-over-month growth trends.",
-    icon: BarChart3,
-    color: "#2563EB",
-    bg: "rgba(37, 99, 235, 0.10)",
-    border: "rgba(37, 99, 235, 0.20)",
+    key: "chipOrders",
+    prompt: "What is the status of today's orders and pending fulfillment?",
   },
   {
-    id: "inventory",
-    titleKey: "cardInventoryTitle",
-    descKey: "cardInventoryDesc",
-    promptKey: "cardInventoryPrompt",
-    title: "Inventory",
-    description: "Check stock levels, low-stock reorder alerts, and turnover rates",
-    prompt: "Which inventory items are running low and need to be restocked soon?",
-    icon: Package,
-    color: "#059669",
-    bg: "rgba(5, 150, 105, 0.10)",
-    border: "rgba(5, 150, 105, 0.20)",
-  },
-  {
-    id: "clients",
-    titleKey: "cardClientsTitle",
-    descKey: "cardClientsDesc",
-    promptKey: "cardClientsPrompt",
-    title: "Clients",
-    description: "Review client profiles, order history, and payment reliability",
-    prompt: "Who are my most valuable clients? Show revenue per client and payment reliability.",
-    icon: Users,
-    color: "#7C3AED",
-    bg: "rgba(124, 58, 237, 0.10)",
-    border: "rgba(124, 58, 237, 0.20)",
-  },
-  {
-    id: "payments",
-    titleKey: "cardPaymentsTitle",
-    descKey: "cardPaymentsDesc",
-    promptKey: "cardPaymentsPrompt",
-    title: "Payments",
-    description: "Monitor incoming payments, pending dues, and cash flow health",
-    prompt: "Give me a summary of collected vs outstanding payments this month.",
-    icon: CreditCard,
-    color: "#D97706",
-    bg: "rgba(217, 119, 6, 0.10)",
-    border: "rgba(217, 119, 6, 0.20)",
-  },
-  {
-    id: "orders",
-    titleKey: "cardOrdersTitle",
-    descKey: "cardOrdersDesc",
-    promptKey: "cardOrdersPrompt",
-    title: "Orders",
-    description: "Track pending orders, fulfillment progress, and delivery status",
-    prompt: "What is the status of all pending and in-progress orders?",
-    icon: ShoppingCart,
-    color: "#4F46E5",
-    bg: "rgba(79, 70, 229, 0.10)",
-    border: "rgba(79, 70, 229, 0.20)",
-  },
-];
-
-// ─── Try Asking Prompts ──────────────────────────────────────
-const SUGGESTION_PROMPTS = [
-  {
-    labelKey: "promptRevenue",
-    label: "Show revenue summary",
-    prompt: "Give me a summary of my revenue for this month including total collected, pending, and growth trends.",
-  },
-  {
-    labelKey: "promptLowStock",
-    label: "Which items have low stock?",
+    key: "chipStock",
     prompt: "Which inventory items are running low and need to be restocked soon?",
   },
   {
-    labelKey: "promptPendingOrders",
-    label: "Pending orders status",
-    prompt: "What is the status of all pending and in-progress orders?",
+    key: "chipPayments",
+    prompt: "List all pending payments and total outstanding balance.",
   },
   {
-    labelKey: "promptOutstandingPayments",
-    label: "Outstanding payments this month",
-    prompt: "List all clients with outstanding payments and the amounts due.",
-  },
-  {
-    labelKey: "promptProductionEfficiency",
-    label: "Production efficiency report",
-    prompt: "How efficient is my production? Show order completion rate, average delivery time, and bottlenecks.",
+    key: "chipProduction",
+    prompt: "How is production running? Show active jobs and bottlenecks.",
   },
 ];
 
@@ -177,7 +96,7 @@ const QUICK_ACTIONS = [
   },
 ];
 
-// ─── Recent Insights (Static Placeholder — TODO: connect to live stats API) ──
+// ─── Recent Insights (Static Placeholder) ───────────────────
 const RECENT_INSIGHTS = [
   {
     id: "insight-revenue",
@@ -225,9 +144,25 @@ export default function AIAssistantPage() {
 
   const [input, setInput] = useState("");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [composerHeight, setComposerHeight] = useState(60);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
 
   const userMessageCount = messages.filter((m) => m.role === "user").length;
+
+  // ── Measure composer height with ResizeObserver ──
+  useEffect(() => {
+    if (!composerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.height > 0) {
+          setComposerHeight(Math.round(entry.contentRect.height));
+        }
+      }
+    });
+    observer.observe(composerRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   // ── Auto-scroll to bottom of page on new message ──
   const scrollToBottom = useCallback(() => {
@@ -247,58 +182,69 @@ export default function AIAssistantPage() {
     setInput("");
   };
 
-  const welcomeText = t("welcomeTitle", { appName: "IND Manager" });
-
   return (
-    <div className="space-y-6 w-full min-w-0 overflow-x-hidden">
-      {/* ════════════════ SLIM PAGE HEADING ROW ════════════════ */}
-      <div className="flex items-center justify-between gap-3 pb-1">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground truncate">
-              {t("pageTitle")}
-            </h1>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              {t("badgeLive")}
-            </span>
+    <div className="space-y-4 w-full min-w-0 overflow-x-hidden">
+      {/* ════════════════ SLIM PAGE HEADING ROW (Clean, Stable) ════════════════ */}
+      <div className="flex items-center justify-between gap-3 pb-2 border-b border-border/40">
+        {/* Left zone: Title + Live badge */}
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-foreground whitespace-nowrap">
+                {t("pageTitle")}
+              </h1>
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                {t("badgeLive")}
+              </span>
+            </div>
+            <p className="hidden md:block text-xs text-muted-foreground mt-0.5 truncate">
+              {t("pageSubtitle")}
+            </p>
           </div>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 truncate">
-            {t("pageSubtitle")}
-          </p>
         </div>
 
-        {/* Right zone: Mobile drawer trigger + New Chat Action */}
+        {/* Right zone: Two 40px icon-only buttons ALWAYS (never shifts between states) */}
         <div className="flex items-center gap-2 shrink-0">
-          {/* Mobile-only Quick Actions & Insights Drawer Trigger */}
+          {/* New Chat Button */}
+          <button
+            type="button"
+            onClick={clearChat}
+            disabled={userMessageCount === 0}
+            aria-label={t("btnNewChat")}
+            title={t("titleNewChat")}
+            className={cn(
+              "w-10 h-10 rounded-xl border border-border bg-card flex items-center justify-center transition-all",
+              userMessageCount > 0
+                ? "hover:bg-rose-500/10 hover:border-rose-500/30 hover:text-rose-600 dark:hover:text-rose-400 text-muted-foreground cursor-pointer shadow-xs"
+                : "opacity-30 cursor-not-allowed text-muted-foreground pointer-events-none"
+            )}
+          >
+            <RotateCcw className="h-4 w-4" />
+          </button>
+
+          {/* Quick Actions & Insights Drawer Trigger */}
           <button
             type="button"
             onClick={() => setIsDrawerOpen(true)}
-            className="lg:hidden flex items-center gap-1.5 h-[34px] px-3 rounded-lg border border-border bg-card hover:bg-muted text-foreground text-[12px] font-medium transition-colors shadow-sm cursor-pointer"
+            aria-label={t("btnActionsInsights")}
             title={t("titleActionsInsights")}
+            className="w-10 h-10 rounded-xl border border-border bg-card hover:bg-muted text-foreground flex items-center justify-center shadow-xs transition-colors cursor-pointer"
           >
-            <Zap className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-            <span>{t("btnActionsInsights")}</span>
+            <Zap className="h-4 w-4 text-amber-500" />
           </button>
-
-          {userMessageCount > 0 && (
-            <button
-              type="button"
-              onClick={clearChat}
-              className="flex items-center gap-1.5 h-[34px] px-3 rounded-lg border border-border hover:bg-rose-500/10 hover:border-rose-500/30 hover:text-rose-600 dark:hover:text-rose-400 text-muted-foreground text-[12px] font-medium transition-all cursor-pointer"
-              title={t("titleNewChat")}
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              <span>{t("btnNewChat")}</span>
-            </button>
-          )}
         </div>
       </div>
 
       {/* ═══════════ MAIN CONTENT AREA ═══════════ */}
       <div className="flex flex-col lg:flex-row gap-6 w-full min-w-0">
-        {/* ── Left / Primary Scrollable Column ── */}
-        <div className="flex-1 min-w-0 space-y-6 pb-40 lg:pb-6">
+        {/* ── Left / Primary Column with Dynamic Clearance ── */}
+        <div
+          className="flex-1 min-w-0 space-y-4 lg:!pb-6"
+          style={{
+            paddingBottom: `calc(${composerHeight}px + 4.5rem + env(safe-area-inset-bottom, 0px) + 16px)`,
+          }}
+        >
           {/* AI Not Configured Banner */}
           {aiNotConfigured && (
             <div className="flex items-center gap-3 p-4 rounded-[16px] border border-amber-500/20 bg-amber-500/10">
@@ -316,105 +262,55 @@ export default function AIAssistantPage() {
             </div>
           )}
 
-          {/* Welcome Card + Category Cards (shown when userMessageCount === 0) */}
+          {/* Compact Empty State (shown ONLY when userMessageCount === 0) */}
           {userMessageCount === 0 && (
-            <div className="space-y-6">
-              {/* Welcome Card (Clean text-only, no icon, no emoji) */}
-              <div className="rounded-[20px] p-5 sm:p-6 bg-card border border-border shadow-[0_8px_30px_rgba(15,23,42,0.04)]">
-                <h2 className="text-lg sm:text-xl font-bold text-foreground tracking-tight leading-snug">
-                  {welcomeText.includes("IND Manager") ? (
-                    <>
-                      {welcomeText.split("IND Manager")[0]}
-                      <span className="text-primary">IND Manager</span>
-                      {welcomeText.split("IND Manager")[1]}
-                    </>
-                  ) : (
-                    welcomeText
-                  )}
-                </h2>
-                <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
-                  {t("welcomeDesc")}
-                </p>
-              </div>
+            <div className="flex flex-col items-center justify-center text-center py-10 sm:py-16 px-4 max-w-md mx-auto">
+              <AIMark size={48} className="mb-3.5" />
+              <h2 className="text-base sm:text-lg font-semibold text-foreground tracking-tight">
+                {t("emptyHeading")}
+              </h2>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1 mb-6 max-w-[280px] sm:max-w-none leading-relaxed">
+                {t("emptySubheading")}
+              </p>
 
-              {/* 5 Category Cards Grid */}
-              <div className="space-y-3">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-0.5">
-                  {t("businessModules")}
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3.5 w-full min-w-0">
-                  {CATEGORY_CARDS.map((card) => {
-                    const Icon = card.icon;
-                    return (
-                      <button
-                        key={card.id}
-                        onClick={() => handleSend(card.prompt)}
-                        className="group relative flex flex-col justify-between p-4 rounded-[16px] text-left transition-all duration-150 ease-out cursor-pointer bg-card border border-border hover:border-primary/40 hover:shadow-md min-w-0 w-full overflow-hidden"
-                        style={{ boxShadow: "0 4px 20px rgba(15,23,42,0.03)" }}
-                      >
-                        <div className="flex items-start justify-between gap-2 w-full mb-3">
-                          <div
-                            className="w-10 h-10 rounded-[12px] flex items-center justify-center shrink-0 transition-transform duration-150 group-hover:scale-105"
-                            style={{ backgroundColor: card.bg }}
-                          >
-                            <Icon className="w-5 h-5" style={{ color: card.color }} />
-                          </div>
-                          <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0" />
-                        </div>
-                        <div className="min-w-0">
-                          <h4 className="text-sm font-semibold text-foreground mb-1 group-hover:text-primary transition-colors truncate">
-                            {card.titleKey ? t(card.titleKey as any) : card.title}
-                          </h4>
-                          <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                            {card.descKey ? t(card.descKey as any) : card.description}
-                          </p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* "Try asking..." Horizontal Prompt Chips */}
-              <div className="w-full min-w-0 space-y-2 pt-1">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-0.5">
-                  {t("tryAsking")}
-                </p>
-                <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
-                  {SUGGESTION_PROMPTS.map((item, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => handleSend(item.prompt)}
-                      className="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-150 ease-out cursor-pointer bg-card border border-border text-foreground hover:border-primary/40 hover:text-primary hover:bg-primary/5 shadow-sm"
-                    >
-                      {item.labelKey ? t(item.labelKey as any) : item.label}
-                    </button>
-                  ))}
-                </div>
+              {/* 4 small suggestion chips (2x2 grid, ~38px height, one line each) */}
+              <div className="grid grid-cols-2 gap-2 w-full max-w-sm">
+                {SUGGESTION_CHIPS.map((chip) => (
+                  <button
+                    key={chip.key}
+                    type="button"
+                    onClick={() => handleSend(chip.prompt)}
+                    className="h-10 px-3 rounded-xl border border-border bg-card hover:bg-primary/5 hover:border-primary/40 text-xs font-medium text-foreground transition-all duration-150 flex items-center justify-center text-center shadow-xs cursor-pointer truncate"
+                  >
+                    <span className="truncate">{t(chip.key as any)}</span>
+                  </button>
+                ))}
               </div>
             </div>
           )}
 
           {/* Active Message Stream */}
           {userMessageCount > 0 && (
-            <div className="space-y-4 pb-2">
+            <div className="space-y-3.5 pb-2">
               <AnimatePresence mode="popLayout">
-                {messages.map((message) => {
+                {messages.map((message, idx) => {
                   if (message.isLoading) {
-                    return (
-                      <AIThinkingLoader
-                        key={message.id}
-                        message={t("loaderAnalyzing")}
-                      />
-                    );
+                    return <ThinkingIndicator key={message.id} />;
                   }
 
                   if (message.role === "user") {
+                    const nextMsgs = messages.slice(idx + 1);
+                    const nextUserIdx = nextMsgs.findIndex((m) => m.role === "user");
+                    const turnAssistantMsgs = nextUserIdx >= 0 ? nextMsgs.slice(0, nextUserIdx) : nextMsgs;
+                    const reply = turnAssistantMsgs.find((m) => m.role === "assistant");
+                    const hasReplied = Boolean(reply && !reply.isLoading && !reply.isError && Boolean(reply.content));
+
                     return (
                       <UserMessageCard
                         key={message.id}
                         content={message.displayedContent ?? message.content}
                         timestamp={message.timestamp}
+                        hasReplied={hasReplied}
                       />
                     );
                   }
@@ -437,40 +333,17 @@ export default function AIAssistantPage() {
             </div>
           )}
 
-          {/* Pinned/Fixed Chat Input Bar (Mobile fixed above bottom nav, Desktop sticky) */}
-          <div className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom,0px))] left-4 right-4 z-40 lg:sticky lg:bottom-0 lg:left-auto lg:right-auto lg:z-10 bg-card/95 backdrop-blur-xl border border-border rounded-[20px] p-2 shadow-[0_8px_30px_rgba(15,23,42,0.08)]">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                title={t("tooltipAttach")}
-                className="hidden sm:flex h-10 w-10 rounded-full items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0 cursor-not-allowed"
-                disabled
-              >
-                <Paperclip className="h-4 w-4" />
-              </button>
-              <div className="flex-1 min-w-0">
-                <SmartInputBar
-                  value={input}
-                  onChange={setInput}
-                  onSubmit={handleSend}
-                  isLoading={isLoading}
-                />
-              </div>
-              <button
-                type="button"
-                title={t("tooltipQuickPrompts")}
-                onClick={() => {
-                  const randomPrompt =
-                    SUGGESTION_PROMPTS[
-                      Math.floor(Math.random() * SUGGESTION_PROMPTS.length)
-                    ].prompt;
-                  setInput(randomPrompt);
-                }}
-                className="hidden sm:flex h-10 w-10 rounded-full items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors shrink-0 cursor-pointer"
-              >
-                <Pin className="h-4 w-4" />
-              </button>
-            </div>
+          {/* Fixed Composer (Clean, Minimal, Non-Overlapping) */}
+          <div
+            ref={composerRef}
+            className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-40 bg-background/95 backdrop-blur-xl border-t border-border px-4 py-2 sm:px-6 lg:static lg:bg-transparent lg:border-t-0 lg:p-0 lg:z-10"
+          >
+            <SmartInputBar
+              value={input}
+              onChange={setInput}
+              onSubmit={handleSend}
+              isLoading={isLoading}
+            />
           </div>
 
           <div ref={bottomRef} />
@@ -520,7 +393,7 @@ export default function AIAssistantPage() {
           <div className="rounded-[20px] p-4 bg-card border border-border shadow-[0_8px_30px_rgba(15,23,42,0.04)]">
             <div className="flex items-center justify-between mb-3 px-1">
               <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-primary shrink-0" />
+                <AIMark size={18} />
                 <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">
                   {t("recentInsights")}
                 </h3>
@@ -618,7 +491,7 @@ export default function AIAssistantPage() {
           <div className="pt-2 border-t border-border">
             <div className="flex items-center justify-between mb-3 px-1">
               <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-primary shrink-0" />
+                <AIMark size={18} />
                 <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">
                   {t("recentInsights")}
                 </h3>

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
+import { BrandLogo } from "@/components/BrandLogo";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -94,11 +96,14 @@ export default function AdminLoginPage() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.6 }}
                     >
-                        <div className="flex items-center gap-3 mb-8">
-                            <div className="p-3 bg-indigo-600 rounded-2xl shadow-lg shadow-indigo-600/30">
-                                <Factory className="h-8 w-8 text-white" />
-                            </div>
-                            <h1 className="text-3xl font-extrabold tracking-tight text-white">IND Manager</h1>
+                        <div className="mb-8">
+                            <BrandLogo
+                                variant="full"
+                                width={160}
+                                height={40}
+                                className="h-9 w-auto object-contain"
+                                priority
+                            />
                         </div>
                         <h2 className="text-5xl font-bold leading-tight mb-6 text-white">
                             Administration <br />
@@ -146,12 +151,13 @@ export default function AdminLoginPage() {
                     >
                         {/* Mobile Logo */}
                         <div className="lg:hidden flex justify-center mb-8">
-                            <div className="flex items-center gap-2">
-                                <div className="p-2 bg-indigo-600 rounded-lg">
-                                    <Factory className="h-5 w-5 text-white" />
-                                </div>
-                                <span className="font-bold text-xl tracking-tight">IND Manager</span>
-                            </div>
+                            <BrandLogo
+                                variant="full"
+                                width={150}
+                                height={38}
+                                className="h-8 w-auto object-contain"
+                                priority
+                            />
                         </div>
 
                         {/* Warning Banner */}

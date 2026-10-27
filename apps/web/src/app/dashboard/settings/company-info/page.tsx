@@ -10,6 +10,8 @@ import {
   Upload,
   Save,
   Loader2,
+  FileText,
+  AlertCircle,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { IOSCard, IOSButton, IOSInput } from "@/components/ui/ios";
@@ -19,6 +21,8 @@ import { ReadOnlyBanner } from "@/components/AccessDenied";
 import { useCompanyProfile, type CompanyProfile } from "@/hooks/useCompanyProfile";
 import { SettingsHeader } from "../SettingsHeader";
 
+const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+
 export default function CompanyInfoPage() {
   const t = useTranslations("settings");
   const tCommon = useTranslations("common");
@@ -26,6 +30,7 @@ export default function CompanyInfoPage() {
   const [userLoading, setUserLoading] = useState(true);
   const [companySaving, setCompanySaving] = useState(false);
   const logoSavingRef = useRef(false);
+  const [gstinError, setGstinError] = useState<string | null>(null);
 
   const {
     company: hookCompany,
@@ -39,11 +44,32 @@ export default function CompanyInfoPage() {
     phone: "",
     email: "",
     logoUrl: "",
+    gstin: "",
     bankName: "",
     accountNo: "",
     ifsc: "",
     upiId: "",
   });
+
+  const validateGstin = (value: string) => {
+    const trimmed = value.trim().toUpperCase();
+    if (!trimmed) {
+      setGstinError(null);
+      return true;
+    }
+    if (!GSTIN_REGEX.test(trimmed)) {
+      setGstinError(t("companyInfoPage.gstinError"));
+      return false;
+    }
+    setGstinError(null);
+    return true;
+  };
+
+  const handleGstinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const upper = e.target.value.toUpperCase().slice(0, 15);
+    setCompanyData((prev) => ({ ...prev, gstin: upper }));
+    validateGstin(upper);
+  };
 
   useEffect(() => {
     async function fetchUser() {
@@ -64,17 +90,24 @@ export default function CompanyInfoPage() {
 
   useEffect(() => {
     if (hookCompany && !logoSavingRef.current) {
+      const gstinVal = hookCompany.gstin || "";
       setCompanyData({
         companyName: hookCompany.companyName || "",
         address: hookCompany.address || "",
         phone: hookCompany.phone || "",
         email: hookCompany.email || "",
         logoUrl: hookCompany.logoUrl || "",
+        gstin: gstinVal,
         bankName: hookCompany.bankName || "",
         accountNo: hookCompany.accountNo || "",
         ifsc: hookCompany.ifsc || "",
         upiId: hookCompany.upiId || "",
       });
+      if (gstinVal) {
+        validateGstin(gstinVal);
+      } else {
+        setGstinError(null);
+      }
     }
   }, [hookCompany]);
 
@@ -122,10 +155,23 @@ export default function CompanyInfoPage() {
       return;
     }
 
+    const isGstinValid = validateGstin(companyData.gstin || "");
+    if (!isGstinValid) {
+      toast.error(t("companyInfoPage.toastValidationErrors"));
+      return;
+    }
+
     setCompanySaving(true);
     try {
-      const updated = await updateCompanyProfile(companyData);
+      const payload = {
+        ...companyData,
+        gstin: (companyData.gstin || "").trim().toUpperCase(),
+      };
+      const updated = await updateCompanyProfile(payload);
       setCompanyData((prev) => ({ ...prev, ...updated }));
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("company-updated", { detail: updated }));
+      }
       toast.success(t("companyInfoPage.toastSaveSuccess"));
     } catch (error: any) {
       toast.error(error.message || t("companyInfoPage.toastSaveFailed"));
@@ -143,7 +189,7 @@ export default function CompanyInfoPage() {
   }
 
   return (
-    <div className="w-full min-w-0 overflow-x-hidden space-y-6 max-w-4xl mx-auto pb-16 px-4 sm:px-0">
+    <div className="w-full min-w-0 overflow-x-hidden space-y-6 max-w-4xl mx-auto pb-16">
       <SettingsHeader
         title={t("companyInfoPage.title")}
         subtitle={t("companyInfoPage.subtitle")}
@@ -264,6 +310,41 @@ export default function CompanyInfoPage() {
                   className="pl-11 pt-3 min-h-[90px] resize-none rounded-[12px] bg-white dark:bg-[#1C1C1E] border border-[var(--border)] text-[15px] text-[var(--foreground)] focus:ring-[3px] focus:ring-[#007AFF]/30 focus:border-[#007AFF] outline-none transition-all placeholder:text-[var(--muted-foreground)] shadow-sm"
                 />
               </div>
+            </div>
+
+            {/* GSTIN Field */}
+            <div className="space-y-1.5 pt-2">
+              <div className="flex items-center justify-between">
+                <label htmlFor="companyGstin" className="text-[13px] font-medium text-[var(--muted-foreground)]">
+                  {t("companyInfoPage.gstin")}
+                </label>
+                <span className="text-[11px] text-[var(--muted-foreground)]">
+                  {t("companyInfoPage.gstinOptional")}
+                </span>
+              </div>
+              <div className="relative">
+                <FileText className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--muted-foreground)]" />
+                <IOSInput
+                  id="companyGstin"
+                  placeholder={t("companyInfoPage.gstinPlaceholder")}
+                  value={companyData.gstin || ""}
+                  onChange={handleGstinChange}
+                  maxLength={15}
+                  className={`pl-11 h-[46px] font-mono uppercase tracking-wider ${
+                    gstinError ? "border-[#FF3B30] focus:ring-[#FF3B30]/30 focus:border-[#FF3B30]" : ""
+                  }`}
+                />
+              </div>
+              {gstinError ? (
+                <p className="text-[12px] text-[#FF3B30] mt-1 flex items-center gap-1 font-medium">
+                  <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                  {gstinError}
+                </p>
+              ) : (
+                <p className="text-[11px] text-[var(--muted-foreground)] mt-1">
+                  {t("companyInfoPage.gstinHint")}
+                </p>
+              )}
             </div>
           </IOSCard>
 

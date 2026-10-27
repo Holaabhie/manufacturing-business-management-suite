@@ -129,7 +129,7 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div className="w-full min-w-0 overflow-x-hidden space-y-6 max-w-4xl mx-auto pb-16 px-4 sm:px-0">
+    <div className="w-full min-w-0 overflow-x-hidden space-y-6 max-w-4xl mx-auto pb-16">
       {/* Page Header */}
       <div className="flex flex-col gap-1.5 pt-4 sm:pt-6">
         <h1 className="text-[28px] sm:text-[34px] font-bold tracking-tight text-[var(--foreground)]">

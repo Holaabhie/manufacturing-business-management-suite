@@ -11,7 +11,7 @@ export default function LanguageSettingsPage() {
   const t = useTranslations("settings");
 
   return (
-    <div className="w-full min-w-0 overflow-x-hidden space-y-6 max-w-4xl mx-auto pb-16 px-4 sm:px-0">
+    <div className="w-full min-w-0 overflow-x-hidden space-y-6 max-w-4xl mx-auto pb-16">
       <SettingsHeader
         title={t("languagePage.title")}
         subtitle={t("languagePage.subtitle")}

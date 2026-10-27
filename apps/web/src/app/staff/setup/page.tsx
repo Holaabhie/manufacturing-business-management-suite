@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { BrandLogo } from "@/components/BrandLogo";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -155,11 +156,14 @@ export default function StaffSetupPage() {
             <div className="w-full max-w-lg">
                 {/* Header */}
                 <div className="text-center mb-8">
-                    <div className="inline-flex items-center gap-2 mb-4">
-                        <div className="p-2 bg-emerald-600 rounded-lg">
-                            <Factory className="h-6 w-6 text-white" />
-                        </div>
-                        <span className="font-bold text-xl tracking-tight">IND Manager</span>
+                    <div className="mb-4 inline-flex items-center justify-center">
+                        <BrandLogo
+                            variant="full"
+                            width={150}
+                            height={38}
+                            className="h-8 w-auto object-contain"
+                            priority
+                        />
                     </div>
                     <h1 className="text-2xl font-bold mb-2">Complete Your Account Setup</h1>
                     <p className="text-muted-foreground text-sm">

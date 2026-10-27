@@ -10,7 +10,7 @@ import {
     Filter, ArrowUpDown, Eye, EyeOff, Trash2, Loader2, Hash, X,
 } from "lucide-react";
 import {
-    Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+    Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -508,18 +508,22 @@ export default function EmployeeManagementPage() {
                     </div>
 
                     <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
-                        <button
+                        <IOSButton
+                            variant="gray"
+                            size="medium"
                             onClick={exportToXLSX}
-                            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/15 bg-[rgba(255,255,255,0.08)] hover:bg-white/15 text-white text-xs font-medium cursor-pointer transition-all duration-150"
+                            className="hidden sm:inline-flex"
                             title={t("btnExportTitle")}
+                            icon={
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+                                    <rect width="24" height="24" rx="4" fill="#217346"/>
+                                    <path d="M14 3v5h4" fill="none" stroke="#fff" strokeWidth="1" opacity="0.5"/>
+                                    <text x="12" y="15" textAnchor="middle" fontFamily="Arial" fontWeight="bold" fontSize="8" fill="#fff">XLS</text>
+                                </svg>
+                            }
                         >
-                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
-                                <rect width="24" height="24" rx="4" fill="#217346"/>
-                                <path d="M14 3v5h4" fill="none" stroke="#fff" strokeWidth="1" opacity="0.5"/>
-                                <text x="12" y="15" textAnchor="middle" fontFamily="Arial" fontWeight="bold" fontSize="8" fill="#fff">XLS</text>
-                            </svg>
-                            <span>{t("btnExport")}</span>
-                        </button>
+                            {t("btnExport")}
+                        </IOSButton>
                         <IOSButton
                             variant="filled"
                             color="blue"
@@ -788,9 +792,9 @@ export default function EmployeeManagementPage() {
             ADD EMPLOYEE DIALOG
         ═══════════════════════════════════════════════════════ */}
                 <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-                    <DialogContent fullScreenMobile className="sm:max-w-lg bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px] p-0 overflow-hidden">
-                        <div className="p-6">
-                            <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+                    <DialogContent fullScreenMobile className="sm:max-w-lg flex flex-col max-h-[calc(100dvh-2rem)] p-0 overflow-hidden bg-white/80 dark:bg-[rgba(28,28,30,0.8)] backdrop-blur-[40px] border border-white/20 dark:border-white/10 shadow-[var(--shadow-lg)] rounded-[24px]">
+                        <div className="shrink-0 p-6 pb-4 border-b border-[var(--border)]">
+                            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                                 <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, rgba(59,130,246,0.4), rgba(255,255,255,0.06))", border: "1px solid rgba(255,255,255,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                     <Plus className="h-[18px] w-[18px] text-[#60a5fa]" />
                                 </div>
@@ -799,157 +803,157 @@ export default function EmployeeManagementPage() {
                                     <DialogDescription style={{ fontSize: 13, color: "var(--muted-foreground)", lineHeight: "18px", margin: "2px 0 0" }}>{t("addModalSubtitle")}</DialogDescription>
                                 </div>
                             </div>
+                        </div>
 
-                            <div className="grid gap-4 py-6">
+                        <DialogBody className="p-6 space-y-4">
+                            <div className="space-y-1.5">
+                                <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">{t("lblName")}</label>
+                                <IOSInput
+                                    placeholder={t("placeholderName")}
+                                    value={newEmpName}
+                                    onChange={(e: any) => setNewEmpName(e.target.value)}
+                                    className="h-11"
+                                    autoFocus
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1.5">
-                                    <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">{t("lblName")}</label>
+                                    <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">{t("lblEmail")}</label>
                                     <IOSInput
-                                        placeholder={t("placeholderName")}
-                                        value={newEmpName}
-                                        onChange={(e: any) => setNewEmpName(e.target.value)}
+                                        type="email"
+                                        placeholder={t("placeholderEmail")}
+                                        value={newEmpEmail}
+                                        onChange={(e: any) => setNewEmpEmail(e.target.value)}
                                         className="h-11"
-                                        autoFocus
                                     />
                                 </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1.5">
-                                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">{t("lblEmail")}</label>
-                                        <IOSInput
-                                            type="email"
-                                            placeholder={t("placeholderEmail")}
-                                            value={newEmpEmail}
-                                            onChange={(e: any) => setNewEmpEmail(e.target.value)}
-                                            className="h-11"
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">{t("lblPhone")}</label>
-                                        <IOSInput
-                                            type="tel"
-                                            placeholder={t("placeholderPhone")}
-                                            value={newEmpPhone}
-                                            onChange={(e: any) => setNewEmpPhone(e.target.value)}
-                                            className="h-11"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1.5">
-                                        <IOSSelect
-                                            value={newEmpDept}
-                                            onChange={(e: any) => setNewEmpDept(e.target.value)}
-                                            label={t("lblDepartment")}
-                                            options={DEPARTMENTS.map(d => ({ value: d, label: getDepartmentLabel(d) }))}
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">{t("lblDesignation")}</label>
-                                        <IOSInput
-                                            placeholder={t("placeholderDesignation")}
-                                            value={newEmpDesignation}
-                                            onChange={(e: any) => setNewEmpDesignation(e.target.value)}
-                                            className="h-[44px]"
-                                        />
-                                    </div>
-                                </div>
-
                                 <div className="space-y-1.5">
-                                    <IOSSelect
-                                        value={newEmpTemplate}
-                                        onChange={(e: any) => setNewEmpTemplate(e.target.value)}
-                                        label={t("lblTemplate")}
-                                        options={[
-                                            { value: "full_access", label: t("templates.full_access") },
-                                            { value: "operations", label: t("templates.operations") },
-                                            { value: "sales", label: t("templates.sales") },
-                                            { value: "view_only", label: t("templates.view_only") },
-                                        ]}
+                                    <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">{t("lblPhone")}</label>
+                                    <IOSInput
+                                        type="tel"
+                                        placeholder={t("placeholderPhone")}
+                                        value={newEmpPhone}
+                                        onChange={(e: any) => setNewEmpPhone(e.target.value)}
+                                        className="h-11"
                                     />
-                                </div>
-
-                                {/* Password Fields */}
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1.5">
-                                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">{t("lblPassword")}</label>
-                                        <div className="relative">
-                                            <IOSInput
-                                                type={showNewEmpPassword ? "text" : "password"}
-                                                placeholder={t("placeholderPassword")}
-                                                value={newEmpPassword}
-                                                onChange={(e: any) => setNewEmpPassword(e.target.value)}
-                                                className="h-11 pr-10"
-                                            />
-                                            <button type="button" onClick={() => setShowNewEmpPassword(!showNewEmpPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors">
-                                                {showNewEmpPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">{t("lblConfirmPassword")}</label>
-                                        <IOSInput
-                                            type="password"
-                                            placeholder={t("placeholderConfirmPassword")}
-                                            value={newEmpConfirmPassword}
-                                            onChange={(e: any) => setNewEmpConfirmPassword(e.target.value)}
-                                            className="h-11"
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Password Strength */}
-                                {newEmpPassword && (
-                                    <div className="px-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <div className="flex-1 h-1.5 bg-[var(--muted)] rounded-full overflow-hidden">
-                                                <div className={`h-full rounded-full transition-all ${
-                                                    newEmpPassword.length < 8 ? 'w-[20%] bg-red-500' :
-                                                    !/[A-Z]/.test(newEmpPassword) || !/[a-z]/.test(newEmpPassword) ? 'w-[50%] bg-amber-500' :
-                                                    !/[0-9]/.test(newEmpPassword) ? 'w-[75%] bg-blue-500' : 'w-full bg-emerald-500'
-                                                }`} />
-                                            </div>
-                                        </div>
-                                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px]">
-                                            <span className={newEmpPassword.length >= 8 ? 'text-emerald-500' : 'text-[var(--muted-foreground)]'}>{t("reqMinChars")}</span>
-                                            <span className={/[A-Z]/.test(newEmpPassword) ? 'text-emerald-500' : 'text-[var(--muted-foreground)]'}>{t("reqUppercase")}</span>
-                                            <span className={/[a-z]/.test(newEmpPassword) ? 'text-emerald-500' : 'text-[var(--muted-foreground)]'}>{t("reqLowercase")}</span>
-                                            <span className={/[0-9]/.test(newEmpPassword) ? 'text-emerald-500' : 'text-[var(--muted-foreground)]'}>{t("reqNumber")}</span>
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="p-4 rounded-[12px] bg-[var(--muted)] dark:bg-[var(--muted)] border border-[var(--border)]">
-                                    <div className="flex items-start gap-3">
-                                        <div className="h-6 w-6 rounded-full bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                            <Shield className="h-3 w-3 text-[#007AFF]" />
-                                        </div>
-                                        <div className="text-[13px] text-[var(--muted-foreground)] space-y-2">
-                                            <p className="font-semibold text-[var(--foreground)]">{t("nextStepsTitle")}</p>
-                                            <ul className="space-y-1">
-                                                <li>{t("step1")}</li>
-                                                <li>{t("step2")}</li>
-                                                <li>{t("step3")}</li>
-                                            </ul>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
 
-                            <DialogFooter className="flex gap-2 pt-2 border-t border-[var(--border)] border-x-[-24px] mx-[-24px] px-6 pb-2">
-                                <IOSButton variant="gray" onClick={() => setShowAddDialog(false)} className="flex-1">{t("btnCancel")}</IOSButton>
-                                <IOSButton
-                                    variant="filled"
-                                    color="blue"
-                                    onClick={handleAddEmployee}
-                                    disabled={adding || !newEmpName.trim() || !newEmpEmail.trim() || !newEmpPassword || newEmpPassword !== newEmpConfirmPassword}
-                                    className="flex-1"
-                                >
-                                    {adding ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Plus className="h-4 w-4 mr-1.5" />}
-                                    {adding ? t("creatingEmployee") : t("btnCreateEmployee")}
-                                </IOSButton>
-                            </DialogFooter>
-                        </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1.5">
+                                    <IOSSelect
+                                        value={newEmpDept}
+                                        onChange={(e: any) => setNewEmpDept(e.target.value)}
+                                        label={t("lblDepartment")}
+                                        options={DEPARTMENTS.map(d => ({ value: d, label: getDepartmentLabel(d) }))}
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">{t("lblDesignation")}</label>
+                                    <IOSInput
+                                        placeholder={t("placeholderDesignation")}
+                                        value={newEmpDesignation}
+                                        onChange={(e: any) => setNewEmpDesignation(e.target.value)}
+                                        className="h-[44px]"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <IOSSelect
+                                    value={newEmpTemplate}
+                                    onChange={(e: any) => setNewEmpTemplate(e.target.value)}
+                                    label={t("lblTemplate")}
+                                    options={[
+                                        { value: "full_access", label: t("templates.full_access") },
+                                        { value: "operations", label: t("templates.operations") },
+                                        { value: "sales", label: t("templates.sales") },
+                                        { value: "view_only", label: t("templates.view_only") },
+                                    ]}
+                                />
+                            </div>
+
+                            {/* Password Fields */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1.5">
+                                    <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">{t("lblPassword")}</label>
+                                    <div className="relative">
+                                        <IOSInput
+                                            type={showNewEmpPassword ? "text" : "password"}
+                                            placeholder={t("placeholderPassword")}
+                                            value={newEmpPassword}
+                                            onChange={(e: any) => setNewEmpPassword(e.target.value)}
+                                            className="h-11 pr-10"
+                                        />
+                                        <button type="button" onClick={() => setShowNewEmpPassword(!showNewEmpPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors">
+                                            {showNewEmpPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[13px] font-medium text-[var(--muted-foreground)] px-1">{t("lblConfirmPassword")}</label>
+                                    <IOSInput
+                                        type="password"
+                                        placeholder={t("placeholderConfirmPassword")}
+                                        value={newEmpConfirmPassword}
+                                        onChange={(e: any) => setNewEmpConfirmPassword(e.target.value)}
+                                        className="h-11"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Password Strength */}
+                            {newEmpPassword && (
+                                <div className="px-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <div className="flex-1 h-1.5 bg-[var(--muted)] rounded-full overflow-hidden">
+                                            <div className={`h-full rounded-full transition-all ${
+                                                newEmpPassword.length < 8 ? 'w-[20%] bg-red-500' :
+                                                !/[A-Z]/.test(newEmpPassword) || !/[a-z]/.test(newEmpPassword) ? 'w-[50%] bg-amber-500' :
+                                                !/[0-9]/.test(newEmpPassword) ? 'w-[75%] bg-blue-500' : 'w-full bg-emerald-500'
+                                            }`} />
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px]">
+                                        <span className={newEmpPassword.length >= 8 ? 'text-emerald-500' : 'text-[var(--muted-foreground)]'}>{t("reqMinChars")}</span>
+                                        <span className={/[A-Z]/.test(newEmpPassword) ? 'text-emerald-500' : 'text-[var(--muted-foreground)]'}>{t("reqUppercase")}</span>
+                                        <span className={/[a-z]/.test(newEmpPassword) ? 'text-emerald-500' : 'text-[var(--muted-foreground)]'}>{t("reqLowercase")}</span>
+                                        <span className={/[0-9]/.test(newEmpPassword) ? 'text-emerald-500' : 'text-[var(--muted-foreground)]'}>{t("reqNumber")}</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="p-4 rounded-[12px] bg-[var(--muted)] dark:bg-[var(--muted)] border border-[var(--border)]">
+                                <div className="flex items-start gap-3">
+                                    <div className="h-6 w-6 rounded-full bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                        <Shield className="h-3 w-3 text-[#007AFF]" />
+                                    </div>
+                                    <div className="text-[13px] text-[var(--muted-foreground)] space-y-2">
+                                        <p className="font-semibold text-[var(--foreground)]">{t("nextStepsTitle")}</p>
+                                        <ul className="space-y-1">
+                                            <li>{t("step1")}</li>
+                                            <li>{t("step2")}</li>
+                                            <li>{t("step3")}</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </DialogBody>
+
+                        <DialogFooter className="shrink-0 flex gap-2 pt-3 border-t border-[var(--border)] px-6 pb-4 bg-[var(--card)]/90 backdrop-blur">
+                            <IOSButton variant="gray" onClick={() => setShowAddDialog(false)} className="flex-1">{t("btnCancel")}</IOSButton>
+                            <IOSButton
+                                variant="filled"
+                                color="blue"
+                                onClick={handleAddEmployee}
+                                disabled={adding || !newEmpName.trim() || !newEmpEmail.trim() || !newEmpPassword || newEmpPassword !== newEmpConfirmPassword}
+                                className="flex-1"
+                            >
+                                {adding ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Plus className="h-4 w-4 mr-1.5" />}
+                                {adding ? t("creatingEmployee") : t("btnCreateEmployee")}
+                            </IOSButton>
+                        </DialogFooter>
                     </DialogContent>
                 </Dialog>
 

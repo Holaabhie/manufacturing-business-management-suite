@@ -32,6 +32,16 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
+        url: "/brand/favicons/favicon-192.png",
+        sizes: "192x192",
+        type: "image/png",
+      },
+      {
+        url: "/brand/favicons/favicon-96.png",
+        sizes: "96x96",
+        type: "image/png",
+      },
+      {
         url: "/brand/favicons/favicon-light-32.png",
         sizes: "32x32",
         type: "image/png",
@@ -71,6 +81,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   themeColor: "#2563EB",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

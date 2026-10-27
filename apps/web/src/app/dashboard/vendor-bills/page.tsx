@@ -234,7 +234,7 @@ function VendorBillsContent() {
     ];
 
     return (
-        <div className="w-full min-w-0 overflow-x-hidden space-y-6 hero-glow max-w-7xl mx-auto p-4 sm:p-6 pb-24">
+        <div className="w-full min-w-0 overflow-x-hidden space-y-6 hero-glow max-w-7xl mx-auto">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
@@ -497,7 +497,7 @@ function VendorBillsContent() {
                                             {b.vendor.name}
                                         </div>
                                         <div className="text-[11px] text-[var(--muted-foreground)] font-mono">
-                                            Inv: {b.vendor_invoice_number}
+                                            {t("invPrefix")}: {b.vendor_invoice_number}
                                         </div>
                                     </div>
 
@@ -524,11 +524,11 @@ function VendorBillsContent() {
 
                                 <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-[var(--border)]/60">
                                     <div>
-                                        <span className="text-[var(--muted-foreground)] text-[10px] block">Bill Date:</span>
+                                        <span className="text-[var(--muted-foreground)] text-[10px] block">{t("billDate")}:</span>
                                         <span className="font-medium text-[var(--foreground)]">{b.bill_date}</span>
                                     </div>
                                     <div className="text-right">
-                                        <span className="text-[var(--muted-foreground)] text-[10px] block">Due Date:</span>
+                                        <span className="text-[var(--muted-foreground)] text-[10px] block">{t("dueDate")}:</span>
                                         <span
                                             className={cn(
                                                 "font-medium",
@@ -541,11 +541,11 @@ function VendorBillsContent() {
                                         </span>
                                     </div>
                                     <div>
-                                        <span className="text-[var(--muted-foreground)] text-[10px] block">Payable:</span>
+                                        <span className="text-[var(--muted-foreground)] text-[10px] block">{t("thPayable")}:</span>
                                         <span className="font-semibold text-[var(--foreground)]">₹{b.payable_amount.toFixed(2)}</span>
                                     </div>
                                     <div className="text-right">
-                                        <span className="text-[var(--muted-foreground)] text-[10px] block">Balance:</span>
+                                        <span className="text-[var(--muted-foreground)] text-[10px] block">{t("thBalance")}:</span>
                                         <span className="font-bold text-emerald-600 dark:text-emerald-400">
                                             ₹{(b.balance ?? 0).toFixed(2)}
                                         </span>

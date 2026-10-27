@@ -176,7 +176,7 @@ export default function TaxSettingsPage() {
   }
 
   return (
-    <div className="w-full min-w-0 overflow-x-hidden space-y-6 max-w-4xl mx-auto pb-16 px-4 sm:px-0">
+    <div className="w-full min-w-0 overflow-x-hidden space-y-6 max-w-4xl mx-auto pb-16">
       <SettingsHeader
         title={t("taxPage.title")}
         subtitle={t("taxPage.subtitle")}

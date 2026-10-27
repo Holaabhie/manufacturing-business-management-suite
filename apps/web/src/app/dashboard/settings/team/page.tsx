@@ -96,7 +96,7 @@ export default function TeamPage() {
   }
 
   return (
-    <div className="w-full min-w-0 overflow-x-hidden space-y-6 max-w-4xl mx-auto pb-16 px-4 sm:px-0">
+    <div className="w-full min-w-0 overflow-x-hidden space-y-6 max-w-4xl mx-auto pb-16">
       <SettingsHeader
         title={t("teamPage.title")}
         subtitle={t("teamPage.subtitle")}
@@ -235,11 +235,17 @@ function EditDrawer({ member, onClose, onSaved }: { member: TeamMember; onClose:
         if (rolePreset[k] !== v) custom[k] = v;
       }
 
-      await fetch(`/api/team/${member.id}`, {
+      const res = await fetch(`/api/team/${member.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role, customPermissions: Object.keys(custom).length > 0 ? custom : null }),
       });
+
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        toast.error(d.error || t("teamPage.toastPermissionsSaveFailed"));
+        return;
+      }
 
       toast.success(t("teamPage.toastPermissionsUpdated"));
       onSaved();

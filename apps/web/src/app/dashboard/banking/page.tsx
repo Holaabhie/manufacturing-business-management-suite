@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback, Suspense } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -62,6 +62,31 @@ function BankingContent() {
 
   // Primary State
   const [activeTab, setActiveTab] = useState<"transactions" | "accounts" | "imports">("transactions");
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  const checkTabScroll = useCallback(() => {
+    const el = tabsContainerRef.current;
+    if (!el) return;
+    const hasMore = el.scrollWidth - el.scrollLeft - el.clientWidth > 4;
+    setCanScrollRight(hasMore);
+  }, []);
+
+  useEffect(() => {
+    checkTabScroll();
+    window.addEventListener("resize", checkTabScroll);
+    return () => window.removeEventListener("resize", checkTabScroll);
+  }, [checkTabScroll]);
+
+  useEffect(() => {
+    const el = tabRefs.current[activeTab];
+    if (el) {
+      el.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+    }
+    checkTabScroll();
+  }, [activeTab, checkTabScroll]);
+
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [imports, setImports] = useState<BankStatementImport[]>([]);
   const [transactions, setTransactions] = useState<BankTransaction[]>([]);
@@ -574,45 +599,65 @@ function BankingContent() {
       </div>
 
       {/* Tabs Navigation */}
-      <div className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden p-1 rounded-xl bg-[var(--muted)]/50 border border-[var(--border)] shrink-0 w-fit">
-        <button
-          type="button"
-          onClick={() => setActiveTab("transactions")}
-          className={cn(
-            "px-3.5 py-1.5 text-xs font-medium rounded-lg transition-all whitespace-nowrap",
-            activeTab === "transactions"
-              ? "bg-[var(--card)] text-[var(--foreground)] shadow-sm font-semibold"
-              : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-          )}
+      <div className="relative w-full min-w-0">
+        <div
+          ref={tabsContainerRef}
+          onScroll={checkTabScroll}
+          className="flex items-center gap-1.5 overflow-x-auto flex-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x p-1 rounded-xl bg-[var(--muted)]/50 border border-[var(--border)] max-w-full w-full sm:w-fit"
         >
-          {t("tabTransactions")}
-        </button>
+          <button
+            ref={(el) => {
+              tabRefs.current["transactions"] = el;
+            }}
+            type="button"
+            onClick={() => setActiveTab("transactions")}
+            className={cn(
+              "shrink-0 px-3.5 py-1.5 text-xs font-medium rounded-lg transition-all whitespace-nowrap",
+              activeTab === "transactions"
+                ? "bg-[var(--card)] text-[var(--foreground)] shadow-sm font-semibold"
+                : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            )}
+          >
+            {t("tabTransactions")}
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab("accounts")}
-          className={cn(
-            "px-3.5 py-1.5 text-xs font-medium rounded-lg transition-all whitespace-nowrap",
-            activeTab === "accounts"
-              ? "bg-[var(--card)] text-[var(--foreground)] shadow-sm font-semibold"
-              : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-          )}
-        >
-          {t("tabAccounts")} ({accounts.length})
-        </button>
+          <button
+            ref={(el) => {
+              tabRefs.current["accounts"] = el;
+            }}
+            type="button"
+            onClick={() => setActiveTab("accounts")}
+            className={cn(
+              "shrink-0 px-3.5 py-1.5 text-xs font-medium rounded-lg transition-all whitespace-nowrap",
+              activeTab === "accounts"
+                ? "bg-[var(--card)] text-[var(--foreground)] shadow-sm font-semibold"
+                : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            )}
+          >
+            {t("tabAccounts")} ({accounts.length})
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab("imports")}
-          className={cn(
-            "px-3.5 py-1.5 text-xs font-medium rounded-lg transition-all whitespace-nowrap",
-            activeTab === "imports"
-              ? "bg-[var(--card)] text-[var(--foreground)] shadow-sm font-semibold"
-              : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-          )}
-        >
-          {t("tabImports")} ({imports.length})
-        </button>
+          <button
+            ref={(el) => {
+              tabRefs.current["imports"] = el;
+            }}
+            type="button"
+            onClick={() => setActiveTab("imports")}
+            className={cn(
+              "shrink-0 px-3.5 py-1.5 text-xs font-medium rounded-lg transition-all whitespace-nowrap",
+              activeTab === "imports"
+                ? "bg-[var(--card)] text-[var(--foreground)] shadow-sm font-semibold"
+                : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            )}
+          >
+            {t("tabImports")} ({imports.length})
+          </button>
+        </div>
+
+        {/* Subtle right-edge fade when scrollable */}
+        {canScrollRight && (
+          <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 rounded-r-xl bg-gradient-to-l from-[var(--background)] to-transparent sm:hidden transition-opacity duration-200" />
+        )}
       </div>
 
       {/* ─── TAB 1: TRANSACTIONS ─── */}

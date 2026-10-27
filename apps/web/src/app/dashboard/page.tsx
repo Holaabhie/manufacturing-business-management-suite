@@ -742,7 +742,7 @@ export default function DashboardPage() {
       variants={staggerContainer}
       initial="initial"
       animate="animate"
-      className="space-y-6 lg:space-y-4 hero-glow bg-[#F1F4F9] dark:bg-transparent -m-6 p-6"
+      className="space-y-6 lg:space-y-4 hero-glow bg-[#F1F4F9] dark:bg-transparent page-bleed -m-4 md:-m-6 lg:-m-8 p-4 md:p-6 lg:p-8"
     >
 
       {/* Sample Data Banner (shown when dashboard is empty) */}

@@ -4,13 +4,7 @@ export default function SetupLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#080c14",
-        fontFamily: "'Open Sans', sans-serif",
-      }}
-    >
+    <div className="min-h-screen bg-background text-foreground antialiased selection:bg-primary selection:text-primary-foreground">
       {children}
     </div>
   );

@@ -66,6 +66,19 @@ const STATUS_TABS: { labelKey: string; value: string }[] = [
   { labelKey: "filterExpired", value: "Expired" },
 ];
 
+function formatKpiCurrency(val: number): { formatted: string; full: string } {
+  const full = `₹${val.toLocaleString("en-IN")}`;
+  if (val >= 10_000_000) {
+    const cr = (val / 10_000_000).toFixed(1).replace(/\.0$/, "");
+    return { formatted: `₹${cr}Cr`, full };
+  }
+  if (val >= 100_000) {
+    const l = (val / 100_000).toFixed(1).replace(/\.0$/, "");
+    return { formatted: `₹${l}L`, full };
+  }
+  return { formatted: full, full };
+}
+
 function QuotesContent() {
   const t = useTranslations("quotes");
   const tCommon = useTranslations("common");
@@ -440,7 +453,7 @@ function QuotesContent() {
   ];
 
   return (
-    <div className="w-full min-w-0 overflow-x-hidden space-y-5 p-3 sm:p-6 pb-24 sm:pb-8">
+    <div className="w-full min-w-0 overflow-x-hidden space-y-5 p-3 sm:p-6 pb-36 sm:pb-8">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
         <div className="min-w-0">
@@ -452,7 +465,7 @@ function QuotesContent() {
               {quotes.length}
             </span>
           </div>
-          <p className="text-xs sm:text-sm text-[var(--muted-foreground)] mt-0.5 truncate">
+          <p className="text-xs sm:text-sm text-[var(--muted-foreground)] mt-0.5">
             {t("subtitle")}
           </p>
         </div>
@@ -477,8 +490,8 @@ function QuotesContent() {
         <StatWidget
           label={t("cardTotalQuotes")}
           value={stats.total}
-          displayValue={stats.total > 0 ? formatCurrency(stats.totalValue) : "0"}
-          valueTitle={`${stats.total} quotes (${formatCurrency(stats.totalValue)})`}
+          displayValue={stats.total > 0 ? formatKpiCurrency(stats.totalValue).formatted : "0"}
+          valueTitle={`${stats.total} quotes (${formatKpiCurrency(stats.totalValue).full})`}
           icon={FileText}
           color="blue"
           delay={0}
@@ -496,8 +509,8 @@ function QuotesContent() {
         <StatWidget
           label={t("cardAccepted")}
           value={stats.accepted}
-          displayValue={stats.accepted > 0 ? formatCurrency(stats.acceptedValue) : "0"}
-          valueTitle={`${stats.accepted} quotes accepted`}
+          displayValue={stats.accepted > 0 ? formatKpiCurrency(stats.acceptedValue).formatted : "0"}
+          valueTitle={`${stats.accepted} quotes accepted (${formatKpiCurrency(stats.acceptedValue).full})`}
           icon={CheckCircle2}
           color="green"
           delay={0.1}

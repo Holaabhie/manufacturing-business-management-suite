@@ -18,7 +18,9 @@ import {
 import { LandingNavbar } from "@/components/landing/LandingNavbar";
 import { LandingHero } from "@/components/landing/LandingHero";
 import { LandingDemo } from "@/components/landing/LandingDemo";
+import { LandingPricing } from "@/components/landing/LandingPricing";
 import { SectionReveal } from "@/components/landing/SectionReveal";
+import { Footer } from "@/components/landing/Footer";
 import { MODULES } from "@/content/modules";
 
 /* ─────────────────────────────────────────────────────────────
@@ -228,118 +230,7 @@ export default async function HomePage() {
       {/* ════════════════════════════════════════════════════════
           FOOTER
           ════════════════════════════════════════════════════════ */}
-      <footer className="border-t border-border py-12 sm:py-16 px-4 sm:px-6 bg-card/30">
-        <div className="mx-auto max-w-6xl">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 sm:gap-12">
-            {/* Brand */}
-            <div className="col-span-2 sm:col-span-1 space-y-4">
-              <Link href="/" className="inline-block">
-                <BrandLogo
-                  variant="full"
-                  width={130}
-                  height={32}
-                  className="h-7 w-auto object-contain"
-                />
-              </Link>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Manufacturing &amp; business management for Indian SMEs.
-              </p>
-            </div>
-
-            {/* Product */}
-            <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-foreground">Product</h4>
-              <ul className="space-y-2">
-                <li>
-                  <a
-                    href="#features"
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Features
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#pricing"
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Pricing
-                  </a>
-                </li>
-                <li>
-                  <Link
-                    href="/login"
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Sign In
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            {/* Company */}
-            <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-foreground">Company</h4>
-              <ul className="space-y-2">
-                <li>
-                  <a
-                    href="#about"
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    About
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="mailto:support@indmanager.in"
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Contact
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            {/* Legal */}
-            <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-foreground">Legal</h4>
-              <ul className="space-y-2">
-                <li>
-                  <Link
-                    href="/privacy"
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Privacy Policy
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/terms"
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Terms of Service
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/refund"
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Refund Policy
-                  </Link>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="mt-12 pt-8 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-muted-foreground">
-              &copy; {new Date().getFullYear()} IND Manager. All rights reserved.
-            </p>
-            <p className="text-sm text-muted-foreground">Made in India 🇮🇳</p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

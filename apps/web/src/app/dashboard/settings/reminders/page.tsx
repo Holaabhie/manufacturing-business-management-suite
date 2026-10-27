@@ -23,6 +23,8 @@ import { toast } from "sonner";
 import { SettingsHeader } from "../SettingsHeader";
 import { StatWidget } from "@/components/ui/StatWidget";
 import { IOSCard, IOSBadge } from "@/components/ui/ios";
+import { LinkedDocChip } from "@/components/ui/LinkedDocChip";
+import { getOrderDisplayNumber } from "@/lib/order-utils";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
@@ -304,9 +306,11 @@ export default function PaymentRemindersSettingsPage() {
                 accessorKey: "order_id",
                 header: t("colOrder"),
                 cell: ({ row }) => (
-                    <span className="font-semibold text-[13px] text-[var(--foreground)]">
-                        #{row.original.order_id}
-                    </span>
+                    <LinkedDocChip
+                        type="order"
+                        docNumber={getOrderDisplayNumber(row.original.order_id)}
+                        partyName={row.original.recipient}
+                    />
                 ),
             },
             {
@@ -425,7 +429,7 @@ export default function PaymentRemindersSettingsPage() {
     );
 
     return (
-        <div className="w-full min-w-0 overflow-x-hidden space-y-6 max-w-6xl mx-auto pb-16 px-4 sm:px-6">
+        <div className="w-full min-w-0 overflow-x-hidden space-y-6 max-w-6xl mx-auto pb-16">
             {/* Header */}
             <SettingsHeader
                 title={t("title")}
@@ -756,9 +760,12 @@ export default function PaymentRemindersSettingsPage() {
                                                     className="p-3.5 rounded-[12px] border border-[var(--border)] bg-[var(--card)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[13px]"
                                                 >
                                                     <div className="space-y-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-bold text-[var(--foreground)]">Order #{c.order_id}</span>
-                                                            <span className="text-[var(--muted-foreground)]">({c.client_name})</span>
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <LinkedDocChip
+                                                                type="order"
+                                                                docNumber={getOrderDisplayNumber(c.order_id)}
+                                                                partyName={c.client_name}
+                                                            />
                                                             <IOSBadge color={c.status === "would_queue" ? "green" : "orange"} variant="tinted" size="small">
                                                                 {c.status === "would_queue" ? t("wouldQueue") : t("wouldSkip")}
                                                             </IOSBadge>

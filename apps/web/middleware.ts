@@ -24,6 +24,7 @@ export default auth((req) => {
     "/login",
     "/admin/login",
     "/staff/login",
+    "/forgot-password",
     "/api/auth",
     "/staff/setup",
     "/access-denied",
@@ -58,11 +59,14 @@ export default auth((req) => {
         return Response.redirect(new URL("/access-denied", req.url));
       }
     }
+    if (userRole === "Admin" && (req.auth as any)?.user?.company_setup_complete === false && pathname.startsWith("/dashboard")) {
+      return Response.redirect(new URL("/setup", req.url));
+    }
   }
 
   return undefined;
 });
 
 export const config = {
-  matcher: ["/((?!_next|static|favicon|.*\\..*).*)"],
+  matcher: ["/((?!_next|static|favicon|brand|.*\\..*).*)"],
 };
