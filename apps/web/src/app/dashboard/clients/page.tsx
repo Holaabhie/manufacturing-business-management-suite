@@ -75,6 +75,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useCachedPage } from "@/hooks/useCachedPage";
 import { ConfirmDeleteSheet } from "@/components/ui/ConfirmDeleteSheet";
 import { STARTER_LIMIT } from "@/lib/entitlements/limits";
+import { useURLSyncedPagination } from "@/hooks/useURLSyncedPagination";
+import { TablePagination } from "@/components/ui/TablePagination";
 import {
   useClients,
   useCreateClient,
@@ -97,9 +99,13 @@ export default function ClientsPage() {
   const canViewStatement = userRole === "Owner" || userRole === "Admin" || userRole === "Accountant";
   const [statementClient, setStatementClient] = useState<any>(null);
   const [isStatementDialogOpen, setIsStatementDialogOpen] = useState(false);
+  const { initialPage, initialSearch, initialLimit, syncToURL } = useURLSyncedPagination({ debounceMs: 300 });
+  const [currentPage, setCurrentPage] = useState(initialPage);
+  const [pageSize, setPageSize] = useState(initialLimit);
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
+  const [debouncedQuery, setDebouncedQuery] = useState(initialSearch);
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [isDeleteDialogOpenConfirm, setIsDeleteDialogOpenConfirm] = useState(false);
@@ -107,8 +113,34 @@ export default function ClientsPage() {
   const [restoredFromCache, setRestoredFromCache] = useState(false);
   const restoredFromCacheRef = useRef(false);
 
-  // ── Unified Data Fetching (Phase 3) ──
-  const { data: clientsData, refetch: refetchClients } = useClients();
+  // 300ms search debounce
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQuery(searchTerm);
+      setCurrentPage(1);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  // Sync to URL query parameters
+  useEffect(() => {
+    syncToURL({
+      page: currentPage,
+      limit: pageSize,
+      q: debouncedQuery,
+    });
+  }, [currentPage, pageSize, debouncedQuery, syncToURL]);
+
+  // ── Unified Data Fetching (Phase 3b: Server-Side Pagination & Search) ──
+  const { data: clientsData, isLoading: clientsLoading, refetch: refetchClients } = useClients({
+    page: currentPage,
+    limit: pageSize,
+    q: debouncedQuery ? debouncedQuery.slice(0, 100) : undefined,
+  });
+  const pagination = clientsData?.pagination;
+  const totalClients = pagination?.total ?? (clientsData?.total ?? clients.length);
+  const totalPages = pagination?.totalPages ?? 1;
+
   const createClientMutation = useCreateClient();
   const updateClientMutation = useUpdateClient();
   const deleteClientMutation = useDeleteClient();
@@ -118,8 +150,8 @@ export default function ClientsPage() {
   const deleteClientMaterialMutation = useDeleteClientMaterial();
 
   useEffect(() => {
-    if (clientsData) {
-      setClients(clientsData);
+    if (clientsData?.data) {
+      setClients(clientsData.data);
       setLoading(false);
     }
   }, [clientsData]);
@@ -223,7 +255,7 @@ export default function ClientsPage() {
     if (showLoading) setLoading(true);
     try {
       const res = await refetchClients();
-      if (res.data) setClients(res.data);
+      if (res.data) setClients(res.data.data ?? (Array.isArray(res.data) ? res.data : []));
     } catch {
       toast.error(t("toasts.fetchFailed"));
     } finally {
@@ -430,14 +462,7 @@ export default function ClientsPage() {
     }
   };
 
-  const filteredClients = clients.filter((client) => {
-    const q = searchTerm.trim().toLowerCase();
-    if (!q) return true;
-    const name = String(client?.name || "").toLowerCase();
-    const company = String(client?.company || "").toLowerCase();
-    const email = String(client?.email || "").toLowerCase();
-    return name.includes(q) || company.includes(q) || email.includes(q);
-  });
+  const filteredClients = clients;
 
   const clientInitials = (nameLike: unknown) => {
     const name = String(nameLike || "").trim();
@@ -725,6 +750,20 @@ export default function ClientsPage() {
             </div>
           )}
         </div>
+
+        {/* ── Server-Side Pagination & Page Size Selector ── */}
+        <TablePagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalClients}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
+          pageSizeOptions={[25, 50, 100]}
+        />
       </motion.div>
 
       {/* Client profile modal (name, company, profile, orders, sum) */}

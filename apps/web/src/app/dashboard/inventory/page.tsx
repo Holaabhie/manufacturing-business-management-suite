@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useCachedPage } from "@/hooks/useCachedPage";
-import { usePaginatedSearch } from "@/hooks/usePaginatedSearch";
 import { useURLSyncedPagination } from "@/hooks/useURLSyncedPagination";
 import { useLongPress } from "@/hooks/useLongPress";
 import { SearchBar } from "@/components/ui/SearchBar";
@@ -99,21 +98,61 @@ export default function InventoryPage() {
   const [mounted, setMounted] = useState(false);
   const [restoredFromCache, setRestoredFromCache] = useState(false);
 
-  // ── Forecast State ──
+  // ── Forecast & Filter State ──
+  type InventoryFilter = "all" | "low_stock" | "critical" | "out_of_stock" | "recently_updated";
+  const [inventoryFilter, setInventoryFilter] = useState<InventoryFilter>("all");
   const [viewMode, setViewMode] = useState<"table" | "forecast">("table");
   const [forecastData, setForecastData] = useState<any>(null);
   const [forecastLoading, setForecastLoading] = useState(false);
   const [expandedForecast, setExpandedForecast] = useState<string | null>(null);
 
-  // ── Unified Data Fetching (Phase 3) ──
-  const { data: inventoryData, isLoading: inventoryLoading, refetch: refetchInventory } = useInventory();
+  // ── URL Synced Pagination & Search (Phase 3b) ──
+  const { initialPage, initialSearch, initialLimit, syncToURL } = useURLSyncedPagination({ debounceMs: 300 });
+  const [currentPage, setCurrentPage] = useState(initialPage);
+  const [pageSize, setPageSize] = useState(initialLimit);
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
+  const [debouncedQuery, setDebouncedQuery] = useState(initialSearch);
+
+  // 300ms search debounce
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQuery(searchTerm);
+      setCurrentPage(1);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  // Sync to URL
+  useEffect(() => {
+    syncToURL({
+      page: currentPage,
+      limit: pageSize,
+      q: debouncedQuery,
+      filters: { filter: inventoryFilter === "all" ? null : inventoryFilter },
+    });
+  }, [currentPage, pageSize, debouncedQuery, inventoryFilter, syncToURL]);
+
+  // ── Unified Data Fetching (Phase 3b: Server-Side Pagination & Search) ──
+  const { data: inventoryData, isLoading: inventoryLoading, refetch: refetchInventory } = useInventory({
+    page: currentPage,
+    limit: pageSize,
+    q: debouncedQuery ? debouncedQuery.slice(0, 100) : undefined,
+    category: inventoryFilter === "all" ? undefined : inventoryFilter,
+  });
+  const pagination = inventoryData?.pagination;
+  const totalItems = pagination?.total ?? (inventoryData?.total ?? items.length);
+  const totalPages = pagination?.totalPages ?? 1;
+
   const { data: forecastQueryData, refetch: refetchForecast } = useInventoryForecast({ enabled: viewMode === "forecast" });
   const createItemMutation = useCreateInventoryItem();
   const updateItemMutation = useUpdateInventoryItem();
   const deleteItemMutation = useDeleteInventoryItem();
 
   useEffect(() => {
-    if (inventoryData) {
+    if (inventoryData?.data) {
+      setItems(inventoryData.data);
+      setLoading(false);
+    } else if (Array.isArray(inventoryData)) {
       setItems(inventoryData);
       setLoading(false);
     }
@@ -376,80 +415,6 @@ export default function InventoryPage() {
     window.open(whatsappUrl, "_blank");
   };
 
-  // ── Inventory Filter Pills ─────────────────────────
-  type InventoryFilter = "all" | "low_stock" | "critical" | "out_of_stock" | "recently_updated";
-  const [inventoryFilter, setInventoryFilter] = useState<InventoryFilter>("all");
-
-  // ── Page State Persistence ───────────────────────────
-  const { restoreState, persist, scrollYRef, restoreScroll } = useCachedPage({ pageKey: "inventory", maxAgeMs: 5 * 60 * 1000 });
-  const persistRef = useRef({ inventoryFilter, viewMode: "table" as string, items });
-  useEffect(() => { persistRef.current = { inventoryFilter, viewMode, items }; });
-  useEffect(() => {
-    const cached = restoreState();
-    if (cached) {
-      if (cached.inventoryFilter) setInventoryFilter(cached.inventoryFilter as InventoryFilter);
-      if (cached.viewMode) setViewMode(cached.viewMode as "table" | "forecast");
-      if (Array.isArray(cached.items) && (cached.items as any[]).length > 0) {
-        setItems(cached.items as any[]);
-        setLoading(false);
-        setRestoredFromCache(true);
-      }
-    }
-    return () => {
-      persist({ ...persistRef.current, scrollY: scrollYRef.current });
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const inventoryPreFiltered = useMemo(() => {
-    const DEFAULT_MIN_STOCK = 10; // Safeguard for min_stock_level = 0
-    return items.filter((item) => {
-      if (inventoryFilter === "all") return true;
-      const qty = Number(item.quantity || 0);
-      const minLevel = Number(item.min_stock_level || DEFAULT_MIN_STOCK);
-      if (inventoryFilter === "critical") return qty <= minLevel;
-      if (inventoryFilter === "low_stock") return qty <= minLevel * 2;
-      if (inventoryFilter === "out_of_stock") return qty === 0;
-      if (inventoryFilter === "recently_updated") {
-        if (!item.updatedAt) return false;
-        const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        return new Date(item.updatedAt) >= weekAgo;
-      }
-      return true;
-    });
-  }, [items, inventoryFilter]);
-
-  // ── URL Sync ─────────────────────────────────────────
-  const { initialPage, initialSearch, syncToURL } = useURLSyncedPagination();
-
-  // ── Pagination + Search ──────────────────────────────
-  const {
-    searchQuery,
-    handleSearch,
-    currentPage,
-    setCurrentPage,
-    totalPages,
-    totalFiltered,
-    totalItems,
-    paginatedData: filteredItems,
-    debouncedQuery,
-  } = usePaginatedSearch({
-    data: inventoryPreFiltered,
-    searchFields: ["name", "supplier_whatsapp", "hsn_code"],
-    pageSize: 15,
-    initialPage,
-    initialSearch,
-  });
-
-  // ── Sync to URL on state change ──────────────────────
-  useEffect(() => {
-    syncToURL({
-      page: currentPage,
-      search: debouncedQuery,
-      filters: { filter: inventoryFilter === "all" ? null : inventoryFilter },
-    });
-  }, [currentPage, debouncedQuery, inventoryFilter, syncToURL]);
-
   // ── Scroll-to-top on page change ─────────────────────
   const tableContainerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -459,11 +424,12 @@ export default function InventoryPage() {
   }, [currentPage]);
 
   // ── Restore cached state on mount ──
+  const { restoreState, persist, scrollYRef, restoreScroll } = useCachedPage({ pageKey: "inventory", maxAgeMs: 5 * 60 * 1000 });
   useEffect(() => {
     const cached = restoreState();
     if (cached) {
       // URL params win — only apply cache if URL didn't provide values
-      if (!initialSearch && cached.searchQuery) handleSearch(cached.searchQuery as string);
+      if (!initialSearch && cached.searchQuery) setSearchTerm(cached.searchQuery as string);
       if (initialPage === 1 && typeof cached.currentPage === "number" && cached.currentPage > 1) setCurrentPage(cached.currentPage as number);
       if (cached.inventoryFilter) setInventoryFilter(cached.inventoryFilter as InventoryFilter);
       if (cached.viewMode) setViewMode(cached.viewMode as "table" | "forecast");
@@ -480,9 +446,9 @@ export default function InventoryPage() {
   }, []);
 
   // ── Persist state on unmount ──
-  const stateRef = useRef({ searchQuery, currentPage, items, inventoryFilter, viewMode });
+  const stateRef = useRef({ searchQuery: searchTerm, currentPage, items, inventoryFilter, viewMode });
   useEffect(() => {
-    stateRef.current = { searchQuery, currentPage, items, inventoryFilter, viewMode };
+    stateRef.current = { searchQuery: searchTerm, currentPage, items, inventoryFilter, viewMode };
   });
   useEffect(() => {
     return () => {
@@ -490,6 +456,9 @@ export default function InventoryPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const totalFiltered = totalItems;
+  const filteredItems = items;
 
   // ── Track scroll position for cache ──
   useEffect(() => {
@@ -667,8 +636,8 @@ export default function InventoryPage() {
           <motion.div variants={staggerItem} className="flex flex-col gap-4">
             {/* Row 1: Search bar — full width */}
             <SearchBar
-              value={searchQuery}
-              onChange={handleSearch}
+              value={searchTerm}
+              onChange={setSearchTerm}
               placeholder={t("searchPlaceholder")}
               ariaLabel={t("searchPlaceholder")}
               id="inventory-search"
@@ -709,11 +678,11 @@ export default function InventoryPage() {
                 >
                   {t("quickAdd")}
                 </button>
-                {(searchQuery || inventoryFilter !== "all") && (
+                {(searchTerm || inventoryFilter !== "all") && (
                   <button
                     type="button"
                     onClick={() => {
-                      handleSearch("");
+                      setSearchTerm("");
                       setInventoryFilter("all");
                     }}
                     className="h-9 px-3 rounded-lg text-xs font-medium text-[var(--muted-foreground)] bg-[var(--muted)] hover:bg-[var(--accent)] cursor-pointer"
@@ -755,10 +724,10 @@ export default function InventoryPage() {
                     <TableRow>
                       <TableCell colSpan={5} className="text-center">
                         <TableEmptyState
-                          variant={searchQuery ? "no-results" : "no-data"}
-                          title={searchQuery ? t("emptyNoResults") : t("emptyNoData")}
-                          subtitle={searchQuery ? t("emptyNoResultsSubtitle") : t("emptyNoDataSubtitle")}
-                          action={!searchQuery ? { label: t("addFirstMaterial"), onClick: handleAddNewClick } : undefined}
+                          variant={searchTerm ? "no-results" : "no-data"}
+                          title={searchTerm ? t("emptyNoResults") : t("emptyNoData")}
+                          subtitle={searchTerm ? t("emptyNoResultsSubtitle") : t("emptyNoDataSubtitle")}
+                          action={!searchTerm ? { label: t("addFirstMaterial"), onClick: handleAddNewClick } : undefined}
                         />
                       </TableCell>
                     </TableRow>
@@ -873,15 +842,6 @@ export default function InventoryPage() {
               </div>
             </IOSCard>
 
-            {/* ── Pagination ── */}
-            <TablePagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalItems={totalFiltered}
-              pageSize={15}
-              onPageChange={setCurrentPage}
-            />
-
             {/* Mobile Inventory Cards — visible only below md (768px) */}
             <div className="block md:hidden px-3 py-2 mt-2 flex flex-col gap-3">
               {loading ? (
@@ -895,12 +855,26 @@ export default function InventoryPage() {
               ) : filteredItems.length === 0 ? (
                 <div className="py-16 text-center">
                   <Package className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-                  <p className="text-muted-foreground text-sm">{searchQuery ? t("emptyNoResults") : t("emptyNoData")}</p>
+                  <p className="text-muted-foreground text-sm">{searchTerm ? t("emptyNoResults") : t("emptyNoData")}</p>
                 </div>
               ) : filteredItems.map((item) => {
                 return <MobileInventoryCard key={item.id} item={item} getStockStatus={getStockStatus} formatSourceDate={formatSourceDate} onTap={() => setSelectedMaterial(item)} onLongPress={() => { setLongPressedItem(item); setIsItemSheetOpen(true); }} />;
               })}
             </div>
+
+            {/* ── Server-Side Pagination & Page Size Selector ── */}
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalFiltered}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setCurrentPage(1);
+              }}
+              pageSizeOptions={[25, 50, 100]}
+            />
           </motion.div>
         </>
       )}

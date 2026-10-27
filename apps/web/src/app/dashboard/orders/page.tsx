@@ -7,6 +7,8 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useCachedPage } from "@/hooks/useCachedPage";
 import { SearchBar } from "@/components/ui/SearchBar";
+import { TablePagination } from "@/components/ui/TablePagination";
+import { useURLSyncedPagination } from "@/hooks/useURLSyncedPagination";
 import { TableEmptyState } from "@/components/ui/TableEmptyState";
 import {
   Plus,
@@ -109,12 +111,15 @@ import {
   useOrders,
   useClients,
   useInventory,
+  useClientOptions,
+  useInventoryOptions,
   useCreateOrder,
   useUpdateOrder,
   useDeleteOrder,
   useRecordPayment,
   useUpdateOrderStatus,
   queryKeys,
+  type OrderItem,
 } from "@/lib/hooks/use-orders";
 import { apiClient } from "@/lib/api-client";
 import { STARTER_LIMIT } from "@/lib/entitlements/limits";
@@ -129,18 +134,26 @@ function OrdersContent() {
   const { locale } = useAppLocale();
   const dateLocale = locale === "hi" ? "hi-IN" : locale === "gu" ? "gu-IN" : locale === "mr" ? "mr-IN" : "en-IN";
 
-  // Search state (replaces usePaginatedSearch - pagination removed for monthly grouping)
+  // Search and URL-synced pagination state (Phase 3b)
   const searchParams = useSearchParams();
-  const initialSearch = searchParams.get("search") || "";
-  const [searchQuery, setSearchQuery] = useState(initialSearch);
-  const [debouncedQuery, setDebouncedQuery] = useState(initialSearch);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { initialPage, initialSearch, initialLimit, syncToURL } = useURLSyncedPagination({ debounceMs: 300 });
+  const [currentPage, setCurrentPage] = useState(initialPage);
+  const [pageSize, setPageSize] = useState(initialLimit);
+  const [searchQuery, setSearchQuery] = useState(initialSearch || searchParams.get("search") || "");
+  const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
+
+  // 300ms search debounce
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+      setCurrentPage(1);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
   const handleSearch = useCallback((val: string) => {
     setSearchQuery(val);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => setDebouncedQuery(val), 300);
   }, []);
-  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current); }, []);
 
   // Page-level UI state cache (search, filters, scroll) 
   const { restoreState, persist, scrollYRef, restoreScroll } = useCachedPage({
@@ -150,13 +163,22 @@ function OrdersContent() {
 
   // React Query: data fetching ---
   const {
-    data: orders = [],
+    data: ordersResponse,
     isLoading: ordersLoading,
     isError: ordersError,
     error: ordersErrorObj,
-  } = useOrders();
-  const { data: clients = [] } = useClients();
-  const { data: inventory = [] } = useInventory();
+  } = useOrders({
+    page: currentPage,
+    limit: pageSize,
+    q: debouncedQuery ? debouncedQuery.slice(0, 100) : undefined,
+  });
+  const orders: OrderItem[] = ordersResponse?.data ?? (Array.isArray(ordersResponse) ? ordersResponse : []);
+  const pagination = ordersResponse?.pagination;
+  const totalOrders = pagination?.total ?? (ordersResponse?.total ?? orders.length);
+  const totalPages = pagination?.totalPages ?? 1;
+
+  const { data: clients = [] } = useClientOptions();
+  const { data: inventory = [] } = useInventoryOptions();
 
   // React Query: mutations ---
   const createOrder = useCreateOrder();
@@ -263,6 +285,16 @@ function OrdersContent() {
   const setStatusShortcut = useCallback((status: string | null) => {
     setStatusFilter(!status || status === "all" ? null : status);
   }, []);
+
+  // Sync to URL
+  useEffect(() => {
+    syncToURL({
+      page: currentPage,
+      limit: pageSize,
+      q: debouncedQuery,
+      filters: { status: statusFilter && statusFilter !== "ALL" ? statusFilter : null },
+    });
+  }, [currentPage, pageSize, debouncedQuery, statusFilter, syncToURL]);
 
   const [paymentFormData, setPaymentFormData] = useState({
     amount: "",
@@ -2111,6 +2143,20 @@ function OrdersContent() {
                 ))}
               </div>
             </div>
+
+            {/* ── Server-Side Pagination & Page Size Selector ── */}
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalOrders}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setCurrentPage(1);
+              }}
+              pageSizeOptions={[25, 50, 100]}
+            />
           </motion.div>
         </motion.div>
       )}

@@ -184,19 +184,33 @@ describe("Unified Data Fetching - apiClient & queryKeys", () => {
         expect(window.location.href).toBe("http://localhost:3000/dashboard/orders");
       });
 
-      it("does NOT redirect when user is already on a public page (/login, /register, etc.)", async () => {
-        window.location.pathname = "/login";
-        window.location.href = "http://localhost:3000/login";
+      it("does NOT redirect when user is on any exempt page", async () => {
+        const exemptPaths = [
+          "/login",
+          "/admin/login",
+          "/staff/login",
+          "/forgot-password",
+          "/invite",
+          "/invite/accept",
+          "/setup",
+          "/staff/setup",
+          "/access-denied",
+        ];
 
-        globalThis.fetch = vi.fn().mockResolvedValue(
-          new Response(JSON.stringify({ error: "Unauthorized" }), {
-            status: 401,
-            headers: { "Content-Type": "application/json" },
-          })
-        );
+        for (const path of exemptPaths) {
+          window.location.pathname = path;
+          window.location.href = `http://localhost:3000${path}`;
 
-        await expect(apiClient.get("/api/v1/profile")).rejects.toThrow(ApiError);
-        expect(window.location.href).toBe("http://localhost:3000/login");
+          globalThis.fetch = vi.fn().mockResolvedValue(
+            new Response(JSON.stringify({ error: "Unauthorized" }), {
+              status: 401,
+              headers: { "Content-Type": "application/json" },
+            })
+          );
+
+          await expect(apiClient.get("/api/v1/profile")).rejects.toThrow(ApiError);
+          expect(window.location.href).toBe(`http://localhost:3000${path}`);
+        }
       });
 
       it("does NOT redirect when skipAuthRedirect is true", async () => {
