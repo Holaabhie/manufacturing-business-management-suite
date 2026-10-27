@@ -18,6 +18,10 @@ interface TablePaginationProps {
   pageSize: number;
   /** Callback when page changes */
   onPageChange: (page: number) => void;
+  /** Optional callback when page size changes */
+  onPageSizeChange?: (pageSize: number) => void;
+  /** Available page size options. Default: [25, 50, 100] */
+  pageSizeOptions?: number[];
   /** Optional "Showing X–Y of Z results" text override */
   showingText?: string;
   /** Hide the "Showing X–Y of Z" label */
@@ -34,6 +38,8 @@ export function TablePagination({
   totalItems,
   pageSize,
   onPageChange,
+  onPageSizeChange,
+  pageSizeOptions = [25, 50, 100],
   showingText,
   hideShowingText = false,
   className,
@@ -104,13 +110,32 @@ export function TablePagination({
         className
       )}
     >
-      {/* Showing text — hidden on mobile */}
-      {!hideShowingText && (
-        <p className="hidden sm:block text-[13px] text-[var(--muted-foreground)] tabular-nums">
-          {showingText ||
-            t("showingResults", { start: startItem, end: endItem, total: totalItems })}
-        </p>
-      )}
+      {/* Showing text & Page Size Selector */}
+      <div className="hidden sm:flex items-center gap-3">
+        {!hideShowingText && (
+          <p className="text-[13px] text-[var(--muted-foreground)] tabular-nums">
+            {showingText ||
+              t("showingResults", { start: startItem, end: endItem, total: totalItems })}
+          </p>
+        )}
+        {onPageSizeChange && (
+          <div className="flex items-center gap-1.5 text-[12px] text-[var(--muted-foreground)]">
+            <span>Rows:</span>
+            <select
+              aria-label="Rows per page"
+              value={pageSize}
+              onChange={(e) => onPageSizeChange(Number(e.target.value))}
+              className="h-8 px-2 py-0 rounded-[8px] bg-[rgba(255,255,255,0.72)] dark:bg-[rgba(255,255,255,0.06)] border border-[rgba(15,23,42,0.08)] dark:border-[rgba(255,255,255,0.08)] text-[var(--foreground)] text-[12px] font-medium outline-none cursor-pointer focus:border-[#2563EB]"
+            >
+              {pageSizeOptions.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
 
       {/* ── Desktop pagination ── */}
       <nav
@@ -195,49 +220,73 @@ export function TablePagination({
       </nav>
 
       {/* ── Mobile pagination ── */}
-      <nav
-        className="flex sm:hidden items-center justify-center gap-3 w-full"
-        role="navigation"
-        aria-label={t("pagination")}
-      >
-        <button
-          type="button"
-          onClick={() => !isFirstPage && onPageChange(currentPage - 1)}
-          disabled={isFirstPage}
-          className={cn(
-            "h-9 px-3 rounded-[10px] text-[13px] font-medium",
-            "flex items-center gap-1",
-            "bg-[rgba(255,255,255,0.72)] dark:bg-[rgba(255,255,255,0.06)]",
-            "border border-[rgba(15,23,42,0.08)] dark:border-[rgba(255,255,255,0.08)]",
-            "transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-95 cursor-pointer",
-            isFirstPage && "opacity-40 cursor-not-allowed"
-          )}
+      <div className="flex sm:hidden flex-col items-center gap-2 w-full">
+        <nav
+          className="flex items-center justify-between w-full"
+          role="navigation"
+          aria-label={t("pagination")}
         >
-          <ChevronLeft className="h-3.5 w-3.5" />
-          {t("prev")}
-        </button>
+          <button
+            type="button"
+            onClick={() => !isFirstPage && onPageChange(currentPage - 1)}
+            disabled={isFirstPage}
+            className={cn(
+              "h-9 px-3 rounded-[10px] text-[13px] font-medium",
+              "flex items-center gap-1",
+              "bg-[rgba(255,255,255,0.72)] dark:bg-[rgba(255,255,255,0.06)]",
+              "border border-[rgba(15,23,42,0.08)] dark:border-[rgba(255,255,255,0.08)]",
+              "transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-95 cursor-pointer",
+              isFirstPage && "opacity-40 cursor-not-allowed"
+            )}
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+            {t("prev")}
+          </button>
 
-        <span className="text-[13px] font-semibold text-[var(--foreground)] tabular-nums">
-          {currentPage} / {totalPages}
-        </span>
+          <span className="text-[13px] font-semibold text-[var(--foreground)] tabular-nums">
+            {currentPage} / {totalPages}
+          </span>
 
-        <button
-          type="button"
-          onClick={() => !isLastPage && onPageChange(currentPage + 1)}
-          disabled={isLastPage}
-          className={cn(
-            "h-9 px-3 rounded-[10px] text-[13px] font-medium",
-            "flex items-center gap-1",
-            "bg-[rgba(255,255,255,0.72)] dark:bg-[rgba(255,255,255,0.06)]",
-            "border border-[rgba(15,23,42,0.08)] dark:border-[rgba(255,255,255,0.08)]",
-            "transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-95 cursor-pointer",
-            isLastPage && "opacity-40 cursor-not-allowed"
-          )}
-        >
-          {t("next")}
-          <ChevronRight className="h-3.5 w-3.5" />
-        </button>
-      </nav>
+          <button
+            type="button"
+            onClick={() => !isLastPage && onPageChange(currentPage + 1)}
+            disabled={isLastPage}
+            className={cn(
+              "h-9 px-3 rounded-[10px] text-[13px] font-medium",
+              "flex items-center gap-1",
+              "bg-[rgba(255,255,255,0.72)] dark:bg-[rgba(255,255,255,0.06)]",
+              "border border-[rgba(15,23,42,0.08)] dark:border-[rgba(255,255,255,0.08)]",
+              "transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-95 cursor-pointer",
+              isLastPage && "opacity-40 cursor-not-allowed"
+            )}
+          >
+            {t("next")}
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        </nav>
+        {onPageSizeChange && (
+          <div className="flex items-center justify-between w-full text-[12px] text-[var(--muted-foreground)] px-1">
+            <span>
+              {showingText || t("showingResults", { start: startItem, end: endItem, total: totalItems })}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <span>Rows:</span>
+              <select
+                aria-label="Rows per page (mobile)"
+                value={pageSize}
+                onChange={(e) => onPageSizeChange(Number(e.target.value))}
+                className="h-7 px-1.5 py-0 rounded-[6px] bg-[rgba(255,255,255,0.72)] dark:bg-[rgba(255,255,255,0.06)] border border-[rgba(15,23,42,0.08)] dark:border-[rgba(255,255,255,0.08)] text-[var(--foreground)] text-[12px] font-medium outline-none cursor-pointer"
+              >
+                {pageSizeOptions.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

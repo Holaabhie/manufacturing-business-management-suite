@@ -90,23 +90,46 @@ export async function apiFetch<T>(url: string): Promise<T> {
 
 // ─── Queries ─────────────────────────────────────────────
 
-export type PaginatedOrderList = OrderItem[] & { pagination?: PaginationInfo };
+import type { PaginatedResult } from "@/shared/lib/pagination";
+import { useClientOptions } from "./use-clients";
+import { useInventoryOptions } from "./use-inventory";
+
+export { useClientOptions, useInventoryOptions };
+
+export type OrdersQueryResult = PaginatedResult<OrderItem>;
 
 export function useOrders(filters?: Record<string, unknown>) {
-    return useQuery<PaginatedOrderList>({
+    return useQuery<OrdersQueryResult>({
         queryKey: filters ? [...queryKeys.orders, filters] : queryKeys.orders,
         queryFn: async () => {
-            const res = await apiClient.get<OrderItem[] | { data: OrderItem[]; pagination?: PaginationInfo }>("/api/v1/orders", {
+            const res = await apiClient.get<
+                | { success: boolean; data: OrderItem[]; pagination: PaginationInfo }
+                | { success: boolean; data: OrderItem[]; truncated: boolean; total: number }
+                | OrderItem[]
+            >("/api/v1/orders", {
                 params: filters as Record<string, string | number | boolean>,
             });
+
             if (res && typeof res === "object" && "data" in res && Array.isArray((res as { data: OrderItem[] }).data)) {
-                const arr = [...(res as { data: OrderItem[] }).data] as PaginatedOrderList;
-                if ((res as { pagination?: PaginationInfo }).pagination) {
-                    arr.pagination = (res as { pagination?: PaginationInfo }).pagination;
-                }
-                return arr;
+                const responseObj = res as {
+                    data: OrderItem[];
+                    pagination?: PaginationInfo;
+                    truncated?: boolean;
+                    total?: number;
+                };
+                return {
+                    data: responseObj.data,
+                    pagination: responseObj.pagination,
+                    truncated: responseObj.truncated,
+                    total: responseObj.pagination?.total ?? responseObj.total ?? responseObj.data.length,
+                };
             }
-            return (Array.isArray(res) ? [...res] : []) as PaginatedOrderList;
+
+            const rawArray = Array.isArray(res) ? res : [];
+            return {
+                data: rawArray,
+                total: rawArray.length,
+            };
         },
         placeholderData: keepPreviousData,
     });

@@ -41,26 +41,68 @@ export interface InventoryForecast {
   suggestedReorderDate: string;
 }
 
-export type PaginatedInventoryList = InventoryItem[] & { pagination?: PaginationInfo };
+import type { PaginatedResult } from "@/shared/lib/pagination";
+
+export interface InventoryOption {
+  id: string;
+  name: string;
+  sku?: string;
+  quantity?: number;
+  unit?: string;
+  purchase_cost_per_unit?: number;
+  tax_rate?: number;
+}
+
+export type InventoryQueryResult = PaginatedResult<InventoryItem>;
+
+export function useInventoryOptions(q?: string) {
+  return useQuery<InventoryOption[]>({
+    queryKey: queryKeys.inventoryOptions(q),
+    queryFn: async () => {
+      const res = await apiClient.get<{ success: boolean; data: InventoryOption[] }>("/api/v1/inventory/options", {
+        params: q ? { q } : undefined,
+      });
+      return res?.data ?? [];
+    },
+    staleTime: 60 * 1000,
+  });
+}
 
 export function useInventory(filters?: Record<string, unknown>) {
-  return useQuery<PaginatedInventoryList>({
+  return useQuery<InventoryQueryResult>({
     queryKey: filters ? [...queryKeys.inventory, filters] : queryKeys.inventory,
     queryFn: async () => {
-      const res = await apiClient.get<InventoryItem[] | { data: InventoryItem[]; pagination?: PaginationInfo }>(
+      const res = await apiClient.get<
+        | { success: boolean; data: InventoryItem[]; pagination: PaginationInfo }
+        | { success: boolean; data: InventoryItem[]; truncated: boolean; total: number }
+        | InventoryItem[]
+      >(
         "/api/v1/inventory",
         {
           params: filters as Record<string, string | number | boolean>,
         }
       );
+
       if (res && typeof res === "object" && "data" in res && Array.isArray((res as { data: InventoryItem[] }).data)) {
-        const arr = [...(res as { data: InventoryItem[] }).data] as PaginatedInventoryList;
-        if ((res as { pagination?: PaginationInfo }).pagination) {
-          arr.pagination = (res as { pagination?: PaginationInfo }).pagination;
-        }
-        return arr;
+        const responseObj = res as {
+          data: InventoryItem[];
+          pagination?: PaginationInfo;
+          truncated?: boolean;
+          total?: number;
+        };
+        return {
+          data: responseObj.data,
+          pagination: responseObj.pagination,
+          truncated: responseObj.truncated,
+          total: responseObj.pagination?.total ?? responseObj.total ?? responseObj.data.length,
+        };
       }
-      return (Array.isArray(res) ? [...res] : []) as PaginatedInventoryList;
+
+      const rawArray = Array.isArray(res) ? res : [];
+      return {
+        data: rawArray,
+        total: rawArray.length,
+      };
     },
     staleTime: 30 * 1000,
     placeholderData: keepPreviousData,

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { TruncatedDataBanner } from "@/components/ui/TruncatedDataBanner";
 
 import { StatWidget } from "@/components/ui/StatWidget";
 import { MonthYearFilter, matchesMonthYear, type MonthYearFilterValue } from "@/components/ui/month-year-filter";
@@ -91,6 +92,7 @@ function DeliveryChallansContent() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [challanToDelete, setChallanToDelete] = useState<DeliveryChallan | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isTruncated, setIsTruncated] = useState(false);
 
   // Check query params for ?new=true
   useEffect(() => {
@@ -106,8 +108,9 @@ function DeliveryChallansContent() {
       const res = await fetch("/api/delivery-challans");
       if (!res.ok) throw new Error("Failed to fetch delivery challans");
       const data = await res.json();
-      setChallans(Array.isArray(data) ? data : []);
-    } catch (err: any) {
+      setChallans(Array.isArray(data) ? data : data.data || []);
+      setIsTruncated(Boolean(data?.truncated));
+    } catch (err: unknown) {
       console.error(err);
       toast.error(t("toastFailedLoad"));
     }
@@ -395,6 +398,8 @@ function DeliveryChallansContent() {
           </IOSButton>
         </div>
       </div>
+
+      <TruncatedDataBanner truncated={isTruncated} count={challans.length} entityName="delivery challans" />
 
       {/* KPI Stat Widgets Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 min-w-0 w-full overflow-hidden">

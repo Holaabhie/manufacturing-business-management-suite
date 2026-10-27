@@ -48,23 +48,62 @@ export interface Client {
   products?: ClientProduct[];
 }
 
-export type PaginatedClientList = Client[] & { pagination?: PaginationInfo };
+import type { PaginatedResult } from "@/shared/lib/pagination";
+
+export interface ClientOption {
+  id: string;
+  name: string;
+  phone?: string;
+  email?: string;
+}
+
+export type ClientsQueryResult = PaginatedResult<Client>;
+
+export function useClientOptions(q?: string) {
+  return useQuery<ClientOption[]>({
+    queryKey: queryKeys.clientOptions(q),
+    queryFn: async () => {
+      const res = await apiClient.get<{ success: boolean; data: ClientOption[] }>("/api/v1/clients/options", {
+        params: q ? { q } : undefined,
+      });
+      return res?.data ?? [];
+    },
+    staleTime: 60 * 1000,
+  });
+}
 
 export function useClients(filters?: Record<string, unknown>) {
-  return useQuery<PaginatedClientList>({
+  return useQuery<ClientsQueryResult>({
     queryKey: filters ? [...queryKeys.clients, filters] : queryKeys.clients,
     queryFn: async () => {
-      const res = await apiClient.get<Client[] | { data: Client[]; pagination?: PaginationInfo }>("/api/v1/clients", {
+      const res = await apiClient.get<
+        | { success: boolean; data: Client[]; pagination: PaginationInfo }
+        | { success: boolean; data: Client[]; truncated: boolean; total: number }
+        | Client[]
+      >("/api/v1/clients", {
         params: filters as Record<string, string | number | boolean>,
       });
+
       if (res && typeof res === "object" && "data" in res && Array.isArray((res as { data: Client[] }).data)) {
-        const arr = [...(res as { data: Client[] }).data] as PaginatedClientList;
-        if ((res as { pagination?: PaginationInfo }).pagination) {
-          arr.pagination = (res as { pagination?: PaginationInfo }).pagination;
-        }
-        return arr;
+        const responseObj = res as {
+          data: Client[];
+          pagination?: PaginationInfo;
+          truncated?: boolean;
+          total?: number;
+        };
+        return {
+          data: responseObj.data,
+          pagination: responseObj.pagination,
+          truncated: responseObj.truncated,
+          total: responseObj.pagination?.total ?? responseObj.total ?? responseObj.data.length,
+        };
       }
-      return (Array.isArray(res) ? [...res] : []) as PaginatedClientList;
+
+      const rawArray = Array.isArray(res) ? res : [];
+      return {
+        data: rawArray,
+        total: rawArray.length,
+      };
     },
     placeholderData: keepPreviousData,
   });

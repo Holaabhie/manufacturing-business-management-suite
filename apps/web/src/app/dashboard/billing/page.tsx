@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { exportToTally } from "@/lib/tallyExport";
 import { AccessDenied } from "@/components/AccessDenied";
+import { TruncatedDataBanner } from "@/components/ui/TruncatedDataBanner";
 import {
     Plus,
     Search,
@@ -154,6 +155,7 @@ export default function BillingPage() {
     const [clients, setClients] = useState<any[]>([]);
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isTruncated, setIsTruncated] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -240,6 +242,7 @@ export default function BillingPage() {
             setClients(clientsRes.data || []);
             setOrders(ordersRes.data || []);
             setBills(billsRes.data || []);
+            setIsTruncated(Boolean(billsRes?.truncated || ordersRes?.truncated));
         } catch (error) {
             console.error("Failed to fetch data:", error);
             toast.error(t("toasts.fetchFailed"));
@@ -753,6 +756,8 @@ export default function BillingPage() {
                 subtitleLoading={loading}
                 collapseProgress={collapseProgress}
             />
+
+            <TruncatedDataBanner truncated={isTruncated} count={bills.length} entityName="invoices" />
 
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 {/* Company Details Warning */}
