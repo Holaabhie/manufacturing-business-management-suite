@@ -37,7 +37,7 @@ import {
   Hash,
   Settings2,
 } from "lucide-react";
-import { useClients, useInventory, useUpdateOrder } from "@/lib/hooks/use-orders";
+import { useClientOptions, useInventoryOptions, useUpdateOrder } from "@/lib/hooks/use-orders";
 import { apiClient, ApiError } from "@/lib/api-client";
 import { useRole } from "@/lib/hooks/use-role";
 
@@ -278,9 +278,9 @@ export default function EditOrderPage() {
 
   // ─── Data Fetching ──────────────────────────────────────
   const [order, setOrder] = useState<any>(null);
-  const [pageState, setPageState] = useState<"loading" | "not-found" | "ready" | "error">("loading");
-  const { data: clients = [] } = useClients();
-  const { data: inventoryItems = [] } = useInventory();
+  const [pageState, setPageState] = useState<"loading" | "ready" | "not-found" | "error">("loading");
+  const { data: clients = [] } = useClientOptions();
+  const { data: inventoryItems = [] } = useInventoryOptions();
   const updateOrder = useUpdateOrder();
 
   // ─── Form State (single source of truth) ────────────────

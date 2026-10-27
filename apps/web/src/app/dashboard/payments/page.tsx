@@ -67,6 +67,7 @@ import { staggerContainer, staggerItem } from "@/styles/animations";
 import {
   useOrders,
   useClients,
+  useClientOptions,
   usePayments,
   useCreatePayment,
   useDeletePayment,
@@ -236,9 +237,9 @@ export default function PaymentsPage() {
   const tReminders = useTranslations("reminders");
   const { locale } = useAppLocale();
   const dateLocale = locale === 'hi' ? 'hi-IN' : locale === 'gu' ? 'gu-IN' : locale === 'mr' ? 'mr-IN' : 'en-IN';
-  // ─── React Query: cached data ────────────────────────
-  const { data: clients = [], isLoading: clientsLoading } = useClients();
-  const { data: orders = [], isLoading: ordersLoading } = useOrders();
+  const { data: clients = [], isLoading: clientsLoading } = useClientOptions();
+  const { data: ordersRes, isLoading: ordersLoading } = useOrders();
+  const orders = ordersRes?.data ?? (Array.isArray(ordersRes) ? ordersRes : []);
   const { data: payments = [], isLoading: paymentsLoading } = usePayments();
 
   // ─── React Query: mutations ────────────────────────

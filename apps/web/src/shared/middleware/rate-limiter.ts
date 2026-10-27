@@ -165,7 +165,7 @@ function buildIdentifier(
 
 // ─── Middleware Wrapper ─────────────────────────────────────────
 
-type RouteHandler<C = any> = (
+type RouteHandler<C = unknown> = (
     request: NextRequest,
     context: C,
 ) => Promise<NextResponse>;
@@ -177,7 +177,7 @@ interface RateLimitOptions {
     routeKey?: string;
 }
 
-export function withRateLimit<C = any>(
+export function withRateLimit<C = unknown>(
     handler: RouteHandler<C>,
     options: RateLimitOptions = {},
 ): RouteHandler<C> {

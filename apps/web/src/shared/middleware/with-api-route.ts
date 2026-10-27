@@ -26,7 +26,7 @@ import { apiLogger } from "@/infrastructure/logging/logger";
 
 // Route context matching Next.js App Router handler params
 // Generic route context to support any params shape
-type AnyRouteContext = any;
+type AnyRouteContext = unknown;
 
 type RouteHandler<C = AnyRouteContext> = (
     request: NextRequest,

@@ -35,9 +35,12 @@ export function runAnchorEvidenceAudit(evidenceFilePath?: string): {
   totalVerified: number;
   allFailures: string[];
 } {
+  const candidate1 = path.resolve(process.cwd(), "src/content/modules.evidence.md");
+  const candidate2 = path.resolve(process.cwd(), "apps/web/src/content/modules.evidence.md");
+  const candidate3 = path.resolve(__dirname, "../content/modules.evidence.md");
   const filePath =
     evidenceFilePath ||
-    path.resolve(process.cwd(), "src/content/modules.evidence.md");
+    (fs.existsSync(candidate1) ? candidate1 : fs.existsSync(candidate2) ? candidate2 : candidate3);
 
   if (!fs.existsSync(filePath)) {
     throw new Error(`Evidence file not found: ${filePath}`);

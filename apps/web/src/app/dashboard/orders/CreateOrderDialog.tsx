@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { NumericInput } from "@/components/ui/numeric-input";
-import { TogglePill } from "@/components/ui/toggle-pill";
+import { TogglePill } from "@/components/ui/glass";
 import { IOSButton } from "@/components/ui/ios";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -94,11 +94,11 @@ export function CreateOrderDialog({
 
   const isSubmitDisabled = !formData.client_id || !formData.product_name || parseNumericValue(formData.quantity) <= 0 || submitLoading;
 
-  const handleDraftSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
+  const handleDraftSubmit = useCallback((e?: React.SyntheticEvent) => {
+    e?.preventDefault();
     setFormData((prev: any) => ({ ...prev, status: "pending" }));
     setTimeout(() => {
-      handleSubmit(e);
+      handleSubmit(e as React.FormEvent || ({ preventDefault: () => {} } as React.FormEvent));
       resetDirty();
     }, 0);
   }, [handleSubmit, setFormData, resetDirty]);
@@ -129,7 +129,7 @@ export function CreateOrderDialog({
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
         if (!isSubmitDisabled) {
-          handleDraftSubmit(new Event('submit') as unknown as React.FormEvent);
+          handleDraftSubmit();
         }
       }
     };

@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { Search, UserPlus, Check, Package, IndianRupee, Calendar, Cpu, User, ChevronDown, ChevronRight, X, AlertTriangle, TrendingUp, Layers, Copy, Clock, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Order } from "@/modules/orders/domain/types";
+import { generateId } from "@/lib/uuid";
 
 // ─── Shared field wrapper ────────────────────────────────────
 function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
@@ -436,10 +437,7 @@ export function StepFinancials({ form, setForm }: { form: any; setForm: (f: any)
 // STEP 3: Production Setup (Optional) — Multi Machine+Operator
 // ═════════════════════════════════════════════════════════════
 function getNextId(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return "pa-" + Math.random().toString(36).substring(2, 9) + "-" + Date.now().toString(36);
+  return generateId();
 }
 
 export function StepProduction({
@@ -678,7 +676,7 @@ export function StepMaterials({
       </div>
 
       {/* Search */}
-      <div ref={searchRef} className="relative">
+      <div ref={searchRef} className="relative z-30">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--muted-foreground)]" />
           <Input
@@ -694,8 +692,10 @@ export function StepMaterials({
         <AnimatePresence>
           {showDropdown && searchResults.length > 0 && (
             <motion.div
-              initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
-              className="absolute z-20 top-[48px] left-0 right-0 max-h-[200px] overflow-y-auto rounded-[10px] border border-[var(--border)] bg-[var(--card)] shadow-lg"
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              className="absolute z-50 top-full mt-1.5 left-0 right-0 max-h-[min(240px,40vh)] overflow-y-auto rounded-xl border border-[var(--surface-popover-border)] bg-[var(--surface-popover)] shadow-xl scrollbar-hide"
             >
               {searchResults.map((item: InventorySearchItem) => {
                 const outOfStock = item.quantity <= 0;
@@ -705,19 +705,19 @@ export function StepMaterials({
                     type="button"
                     onClick={() => addMaterial(item)}
                     className={cn(
-                      "w-full text-left px-3 py-2.5 flex items-center justify-between text-[14px] transition-colors cursor-pointer",
-                      "hover:bg-[var(--muted)] border-b border-[var(--border)] last:border-0",
+                      "w-full text-left px-3.5 py-3 flex items-center justify-between text-[14px] transition-colors cursor-pointer",
+                      "hover:bg-[var(--muted)] border-b border-[var(--surface-popover-border)] last:border-b-0",
                       outOfStock ? "opacity-50" : "text-[var(--foreground)]"
                     )}
                   >
-                    <div className="min-w-0">
-                      <span className="font-medium block truncate">{item.name}</span>
+                    <div className="min-w-0 pr-2">
+                      <span className="font-medium block truncate text-[var(--foreground)]">{item.name}</span>
                       <span className="text-[11px] text-[var(--muted-foreground)]">
                         {t("materialsSection.stock", { qty: item.quantity, unit: item.unit })}
                       </span>
                     </div>
                     {outOfStock && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[rgba(255,59,48,0.1)] text-[var(--destructive)] font-semibold whitespace-nowrap ml-2">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[rgba(255,59,48,0.1)] text-[var(--destructive)] font-semibold whitespace-nowrap ml-2 shrink-0">
                         {t("materialsSection.outOfStock")}
                       </span>
                     )}
