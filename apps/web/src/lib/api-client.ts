@@ -86,30 +86,122 @@ function buildUrl(url: string, params?: RequestOptions["params"]): string {
 
 async function parseResponseBody<T>(response: Response): Promise<T> {
   if (response.status === 204) {
-    return undefined as unknown as T;
+    return undefined as (T & undefined);
   }
 
   const contentType = response.headers.get("content-type") || "";
   if (!contentType.includes("application/json")) {
     const text = await response.text();
-    return text as unknown as T;
+    return text as (T & string);
   }
 
   try {
-    const data = await response.json();
-    return data as T;
+    const data: T = await response.json();
+    return data;
   } catch {
-    return undefined as unknown as T;
+    return undefined as (T & undefined);
   }
 }
 
+const EXEMPT_REDIRECT_PAGES = [
+  "/login",
+  "/admin/login",
+  "/staff/login",
+  "/forgot-password",
+  "/reset-password",
+  "/invite",
+  "/setup",
+  "/staff/setup",
+  "/access-denied",
+];
+
+import { generateId } from "@/lib/uuid";
+
+export const generateUUID = generateId;
+
+const DUPLICATE_WINDOW_MS = 2000;
+interface PendingRequestEntry {
+  timestamp: number;
+}
+const pendingRequests = new Map<string, PendingRequestEntry>();
+
+function getRequestFingerprint(method: string, url: string, body?: unknown): string {
+  let bodyKey = "";
+  if (body !== undefined) {
+    if (typeof body === "string") {
+      bodyKey = body;
+    } else {
+      try {
+        bodyKey = JSON.stringify(body);
+      } catch {
+        bodyKey = String(body);
+      }
+    }
+  }
+  return `${method.toUpperCase()}:${url}:${bodyKey}`;
+}
+
+export function isExemptFromAuthRedirect(pathname: string): boolean {
+  return EXEMPT_REDIRECT_PAGES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+export function isAuthApiEndpoint(url: string): boolean {
+  return url.startsWith("/api/auth/") || url.startsWith("/api/auth?") || url === "/api/auth";
+}
+
 async function request<T>(url: string, options: RequestOptions = {}): Promise<T> {
-  const { params, body, headers, skipAuthRedirect, ...fetchOptions } = options;
+  const { params, body, headers, skipAuthRedirect, method = "GET", ...fetchOptions } = options;
+  const upperMethod = method.toUpperCase();
   const finalUrl = buildUrl(url, params);
+
+  let fingerprint: string | undefined;
+
+  // Anti-duplicate protection for mutating requests
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(upperMethod)) {
+    fingerprint = getRequestFingerprint(upperMethod, finalUrl, body);
+    const existing = pendingRequests.get(fingerprint);
+    const now = Date.now();
+
+    if (existing && now - existing.timestamp < DUPLICATE_WINDOW_MS) {
+      if (process.env.NODE_ENV !== "test") {
+        console.warn(`[apiClient] Duplicate request blocked: ${upperMethod} ${finalUrl}`);
+      }
+      throw new ApiError({
+        message: "Duplicate request blocked. Please wait.",
+        status: 409,
+        code: "DUPLICATE_BLOCKED",
+      });
+    }
+
+    pendingRequests.set(fingerprint, { timestamp: now });
+
+    // Periodically prune stale entries
+    if (pendingRequests.size > 50) {
+      for (const [key, entry] of pendingRequests) {
+        if (now - entry.timestamp > DUPLICATE_WINDOW_MS * 5) {
+          pendingRequests.delete(key);
+        }
+      }
+    }
+  }
 
   const requestHeaders = new Headers(headers);
   if (body !== undefined && !requestHeaders.has("Content-Type")) {
     requestHeaders.set("Content-Type", "application/json");
+  }
+
+  // Auto-inject Idempotency-Key for POST, PUT, PATCH if not provided
+  if (["POST", "PUT", "PATCH"].includes(upperMethod) && !requestHeaders.has("Idempotency-Key")) {
+    requestHeaders.set("Idempotency-Key", generateId());
+  }
+
+  // Double-submit CSRF cookie reading if in browser and not already provided
+  if (typeof document !== "undefined" && !requestHeaders.has("x-csrf-token")) {
+    const match = document.cookie.split("; ").find((row) => row.startsWith("csrf_token="));
+    if (match) {
+      const token = match.split("=")[1];
+      if (token) requestHeaders.set("x-csrf-token", decodeURIComponent(token));
+    }
   }
 
   let requestBody: BodyInit | undefined;
@@ -125,10 +217,13 @@ async function request<T>(url: string, options: RequestOptions = {}): Promise<T>
   try {
     response = await fetch(finalUrl, {
       ...fetchOptions,
+      method: upperMethod,
       headers: requestHeaders,
       body: requestBody,
+      credentials: fetchOptions.credentials || "same-origin",
     });
   } catch (networkError: unknown) {
+    if (fingerprint) pendingRequests.delete(fingerprint);
     const message = networkError instanceof Error ? networkError.message : "Network request failed";
     throw new ApiError({
       message,
@@ -137,6 +232,9 @@ async function request<T>(url: string, options: RequestOptions = {}): Promise<T>
       details: networkError,
     });
   }
+
+  // Once response is received from server, clean up in-flight tracking
+  if (fingerprint) pendingRequests.delete(fingerprint);
 
   if (!response.ok) {
     const status = response.status;
@@ -178,9 +276,9 @@ async function request<T>(url: string, options: RequestOptions = {}): Promise<T>
       }
     }
 
-    if (status === 401 && !skipAuthRedirect && typeof window !== "undefined") {
+    if (status === 401 && !skipAuthRedirect && !isAuthApiEndpoint(url) && typeof window !== "undefined") {
       const currentPath = window.location.pathname;
-      if (!currentPath.startsWith("/login") && !currentPath.startsWith("/staff/login")) {
+      if (!isExemptFromAuthRedirect(currentPath)) {
         window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
       }
     }
@@ -218,5 +316,13 @@ export const apiClient = {
     return request<T>(url, { ...options, method: "DELETE" });
   },
 
+  postIdempotent<T>(url: string, body: unknown, idempotencyKey: string, options?: Omit<RequestOptions, "body" | "method">): Promise<T> {
+    const headers = new Headers(options?.headers);
+    headers.set("Idempotency-Key", idempotencyKey);
+    return request<T>(url, { ...options, method: "POST", body, headers });
+  },
+
   request,
 };
+
+export default apiClient;

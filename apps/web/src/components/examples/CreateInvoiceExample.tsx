@@ -50,7 +50,8 @@ export function CreateInvoiceExample() {
             }
         );
 
-        if (response.data._idempotent) {
+        const resData = response.data as { _idempotent?: boolean } | null;
+        if (resData?._idempotent) {
             toast.info("This invoice was already created (duplicate prevented)");
         }
 
