@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --cache",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "typecheck:scripts": "tsc --project tsconfig.scripts.json --noEmit",
     "analyze": "set ANALYZE=true && next build"

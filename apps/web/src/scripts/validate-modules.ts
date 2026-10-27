@@ -43,10 +43,17 @@ export function runAnchorEvidenceAudit(evidenceFilePath?: string): {
     throw new Error(`Evidence file not found: ${filePath}`);
   }
 
-  // Workspace root: two levels up from apps/web
-  const workspaceRoot = path.resolve(process.cwd(), "../..");
+  // Workspace root: directory containing apps/web
+  let workspaceRoot = process.cwd();
+  if (fs.existsSync(path.resolve(process.cwd(), "apps/web"))) {
+    workspaceRoot = process.cwd();
+  } else if (fs.existsSync(path.resolve(process.cwd(), "../apps/web"))) {
+    workspaceRoot = path.resolve(process.cwd(), "..");
+  } else if (fs.existsSync(path.resolve(process.cwd(), "../../apps/web"))) {
+    workspaceRoot = path.resolve(process.cwd(), "../..");
+  }
 
-  const content = fs.readFileSync(filePath, "utf-8");
+  const content = fs.readFileSync(filePath, "utf-8").replace(/\r\n/g, "\n");
   const results: EvidenceAuditResult[] = [];
   const allFailures: string[] = [];
   let totalClaims = 0;

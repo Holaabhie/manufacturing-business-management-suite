@@ -45,7 +45,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/app/dashboard/production/create/page.tsx#L160-L175`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/production/create/page.tsx)
   - **Anchor**: `selectedOrderId`
   - **Citation**: Production run creation links directly to open sales orders.
-- **[step-3]** **Track delivery and prompt invoicing**: *"Update physical delivery progress and choose to auto-generate a GST invoice when marking the order Completed."*
+- **[step-3]** **Track delivery and prompt invoicing**: *"Update physical delivery progress and choose Complete & Invoice to auto-generate a tax invoice, or Complete Only when finishing the order."*
   - **Proof**: [`apps/web/src/components/orders/CompletionModals.tsx#L115-L150`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/orders/CompletionModals.tsx)
   - **Anchor**: `completeAndInvoice`
   - **Citation**: Prompt dialog appears upon marking Completed offering to auto-generate a GST invoice.
@@ -67,12 +67,12 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/models/SalesOrder.ts#L82-L84`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/models/SalesOrder.ts)
   - **Anchor**: `urgent`
   - **Citation**: Priority field supporting workshop production scheduling.
-- **[feature-4]** *"Option to auto-generate GST tax invoices upon order completion"*
-  - **Proof**: [`apps/web/src/app/dashboard/orders/page.tsx#L820-L865`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/orders/page.tsx)
+- **[feature-4]** *"Choose Complete & Invoice or Complete Only upon marking orders Completed"*
+  - **Proof**: [`apps/web/src/app/dashboard/orders/page.tsx#L825-L865`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/orders/page.tsx)
   - **Anchor**: `handleCompleteAndInvoice`
   - **Citation**: handleCompleteAndInvoice triggers auto-generation of linked invoice.
 - **[feature-5]** *"Full registry export to PDF and Excel formats"*
-  - **Proof**: [`apps/web/src/app/dashboard/orders/page.tsx#L320-L360`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/orders/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/orders/page.tsx#L355-L375`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/orders/page.tsx)
   - **Anchor**: `exportToXLSX`
   - **Citation**: Direct spreadsheet and printable exports of order registers.
 
@@ -81,7 +81,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/models/SalesOrder.ts#L74-L80`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/models/SalesOrder.ts)
   - **Anchor**: `delivery_status`
   - **Citation**: Dual-enum architectural schema separating physical shipping from billing/production stages.
-- **[section-2]** **Completion & Invoicing Linkage**: *"When marking an order Completed, you are prompted to auto-generate a GST invoice..."*
+- **[section-2]** **Completion & Invoicing Linkage**: *"When marking an order Completed, you can choose Complete & Invoice to generate a..."*
   - **Proof**: [`apps/web/src/components/orders/CompletionModals.tsx#L115-L150`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/orders/CompletionModals.tsx)
   - **Anchor**: `onCompleteAndInvoice`
   - **Citation**: Order completion triggers modal linking completed quantities to tax invoices.
@@ -199,7 +199,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/modules/delivery-challans/domain/types.ts#L4-L6`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/modules/delivery-challans/domain/types.ts)
   - **Anchor**: `ChallanStatus`
   - **Citation**: ChallanStatus: 'Draft' | 'Dispatched' | 'Delivered' | 'Returned' | 'Cancelled'.
-- **[use-3]** *"Issue challans for job-work processing without raising premature tax invoices"*
+- **[use-3]** *"Issue challans for job work, samples, or sales without raising premature tax invoices"*
   - **Proof**: [`apps/web/src/modules/delivery-challans/domain/types.ts#L6-L8`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/modules/delivery-challans/domain/types.ts)
   - **Anchor**: `ChallanPurpose`
   - **Citation**: ChallanPurpose: 'Sale' | 'Job Work' | 'Sample' | 'Other'.
@@ -207,20 +207,20 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/app/dashboard/delivery-challans/page.tsx#L250-L290`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/delivery-challans/page.tsx)
   - **Anchor**: `handleDownloadPdf`
   - **Citation**: Print transport challan PDF with vehicle and consignee details.
-- **[use-5]** *"Link challans to customer sales orders to ensure dispatch quantities match ordered amounts"*
+- **[use-5]** *"Link challans to customer sales orders to pre-fill item descriptions and remaining dispatch quantities"*
   - **Proof**: [`apps/web/src/modules/delivery-challans/domain/types.ts#L30-L35`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/modules/delivery-challans/domain/types.ts)
   - **Anchor**: `order_id`
   - **Citation**: order_id and order_number link transport challan to customer orders.
 
 ### 2. How It Works Steps Evidence (4 items)
-- **[step-1]** **Generate challan**: *"Select consignee details, linked sales order, dispatch items, transport mode, vehicle registration, and transporter LR number."*
+- **[step-1]** **Generate challan**: *"Select consignee details, linked sales order, dispatch items, transport mode, vehicle number, transporter name, LR number, and e-way bill."*
   - **Proof**: [`apps/web/src/components/delivery-challans/CreateChallanModal.tsx#L125-L135`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/delivery-challans/CreateChallanModal.tsx)
   - **Anchor**: `vehicle_no`
   - **Citation**: Challan creation form records items, vehicle registration, and transporter LR number.
-- **[step-2]** **Print transport copy**: *"Download the formatted delivery challan PDF containing standard transit disclosures."*
+- **[step-2]** **Print transport copy**: *"Download the formatted delivery challan PDF containing transport details and dispatch notes."*
   - **Proof**: [`apps/web/src/components/delivery-challans/ChallanDetailModal.tsx#L40-L48`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/delivery-challans/ChallanDetailModal.tsx)
   - **Anchor**: `onDownloadPdf`
-  - **Citation**: PDF download formatted with standard Indian transport transit disclosures.
+  - **Citation**: PDF download formatted with standard Indian transport regulatory disclosures.
 - **[step-3]** **Dispatch and update status**: *"Mark the consignment as Dispatched when the vehicle leaves your factory gate."*
   - **Proof**: [`apps/web/src/modules/delivery-challans/application/delivery-challan.service.ts#L400-L415`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/modules/delivery-challans/application/delivery-challan.service.ts)
   - **Anchor**: `updateStatus`
@@ -239,7 +239,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/modules/delivery-challans/domain/types.ts#L4-L6`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/modules/delivery-challans/domain/types.ts)
   - **Anchor**: `Dispatched`
   - **Citation**: Full status enum: Draft, Dispatched, Delivered, Returned, Cancelled.
-- **[feature-3]** *"Job work and supply-on-approval challan workflows"*
+- **[feature-3]** *"Designated transit purposes: Sale, Job Work, Sample, and Other"*
   - **Proof**: [`apps/web/src/modules/delivery-challans/domain/types.ts#L6-L8`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/modules/delivery-challans/domain/types.ts)
   - **Anchor**: `Job Work`
   - **Citation**: Purpose categories supporting Job Work and Sale dispatch workflows.
@@ -247,7 +247,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/modules/delivery-challans/domain/types.ts#L30-L35`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/modules/delivery-challans/domain/types.ts)
   - **Anchor**: `client_id`
   - **Citation**: Direct relationship fields client_id and order_id.
-- **[feature-5]** *"PDF download formatted for transport checkpoints"*
+- **[feature-5]** *"PDF download formatted with vehicle number, LR number, and e-way bill"*
   - **Proof**: [`apps/web/src/components/delivery-challans/ChallanDetailModal.tsx#L40-L48`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/delivery-challans/ChallanDetailModal.tsx)
   - **Anchor**: `onDownloadPdf`
   - **Citation**: PDF rendering engine produces transit-compliant printable copies.
@@ -256,8 +256,8 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
 - **[section-1]** **Dispatch Status Tracking**: *"Manage delivery documents through Draft, Dispatched, Delivered, Returned, and Ca..."*
   - **Proof**: [`apps/web/src/modules/delivery-challans/domain/schemas.ts#L50-L60`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/modules/delivery-challans/domain/schemas.ts)
   - **Anchor**: `challanStatusTransitionSchema`
-  - **Citation**: challanStatusTransitionSchema restricts invalid transition sequences.
-- **[section-2]** **Logistics & Transport Records**: *"Record vehicle registration numbers, transporter details, LR numbers, and consig..."*
+  - **Citation**: challanStatusTransitionSchema restricts illegal transition sequences.
+- **[section-2]** **Logistics & Transport Records**: *"Record vehicle numbers, transporter names, LR numbers, e-way bill numbers, and c..."*
   - **Proof**: [`apps/web/src/modules/delivery-challans/domain/schemas.ts#L30-L50`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/modules/delivery-challans/domain/schemas.ts)
   - **Anchor**: `vehicle_no`
   - **Citation**: Validation schemas enforce correct vehicle registration and transport LR numbers.
@@ -283,7 +283,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/app/dashboard/production/create/page.tsx#L160-L175`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/production/create/page.tsx)
   - **Anchor**: `selectedOrderId`
   - **Citation**: Work orders populate product details directly from open sales orders.
-- **[use-2]** *"Assign workshop machines and operators to each manufacturing run"*
+- **[use-2]** *"Assign active workshop machines and multiple shop-floor operators to each manufacturing run"*
   - **Proof**: [`apps/web/src/app/dashboard/production/create/page.tsx#L164-L168`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/production/create/page.tsx)
   - **Anchor**: `assignedMachines`
   - **Citation**: Form provides assignedMachines and assignedOperators allocation.
@@ -291,7 +291,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/lib/production-types.ts#L3-L6`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/lib/production-types.ts)
   - **Anchor**: `ProductionStatus`
   - **Citation**: status: 'pending' | 'running' | 'paused' | 'completed'.
-- **[use-4]** *"Provide shop floor operators with a dedicated My Productions view for progress updates"*
+- **[use-4]** *"Provide shop floor operators with a dedicated dashboard work panel showing assigned orders and tasks"*
   - **Proof**: [`apps/web/src/app/dashboard/production/page.tsx#L195-L205`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/production/page.tsx)
   - **Anchor**: `statusFilter`
   - **Citation**: View tab switch allows filtering jobs across operational statuses.
@@ -299,17 +299,17 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/components/production/MaterialsStep.tsx#L30-L40`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/production/MaterialsStep.tsx)
   - **Anchor**: `showTemplateDialog`
   - **Citation**: Material templates pre-populate items for standard assembly runs.
-- **[use-6]** *"Deduct consumed raw materials from inventory automatically upon job completion"*
+- **[use-6]** *"Deduct required raw materials from inventory automatically upon launching each production run"*
   - **Proof**: [`apps/web/src/app/api/orders/route.ts#L313-L325`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/orders/route.ts)
   - **Anchor**: `$inc`
   - **Citation**: Atomic inventory decrements executed for allocated materials upon order processing.
 
 ### 2. How It Works Steps Evidence (4 items)
-- **[step-1]** **Schedule production run**: *"Create a work order for the required product and quantity linked to an open customer order."*
+- **[step-1]** **Schedule production run**: *"Create a work order for the required product and quantity linked to an open customer order, deducting bill of materials from inventory upon launch."*
   - **Proof**: [`apps/web/src/app/dashboard/production/create/page.tsx#L160-L175`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/production/create/page.tsx)
   - **Anchor**: `selectedOrderId`
   - **Citation**: Work order creation connects product output to order commitments.
-- **[step-2]** **Assign operators and machines**: *"Allocate available workshop machines by name and assign operators responsible for the job run."*
+- **[step-2]** **Assign operators and machines**: *"Allocate active workshop machines (excluding maintenance units) and assign operators responsible for the job run."*
   - **Proof**: [`apps/web/src/components/production/AssignStaffDialog.tsx#L35-L45`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/production/AssignStaffDialog.tsx)
   - **Anchor**: `AssignStaffDialog`
   - **Citation**: Supervisor assigns available workshop machines and operators.
@@ -317,8 +317,8 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/lib/production-types.ts#L3-L6`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/lib/production-types.ts)
   - **Anchor**: `ProductionStatus`
   - **Citation**: Status progression tracks jobs across Pending, Running, Paused, Completed.
-- **[step-4]** **Complete and deduct stock**: *"Marking the run Completed finishes the job, logs output figures, and decrements allocated raw materials."*
-  - **Proof**: [`apps/web/src/app/api/production/[id]/route.ts#L175-L185`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/production/[id]/route.ts)
+- **[step-4]** **Complete production run**: *"Marking the run Completed finishes the job, logs output figures in the activity log, and updates order fulfillment without double-deducting stock."*
+  - **Proof**: [`apps/web/src/app/api/production/[id]/route.ts#L180-L190`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/production/[id]/route.ts)
   - **Anchor**: `lowStockAlerts`
   - **Citation**: Completing run logs actual output and flags low-stock warnings.
 
@@ -327,11 +327,11 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/lib/production-types.ts#L3-L6`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/lib/production-types.ts)
   - **Anchor**: `paused`
   - **Citation**: State lifecycle: pending, running, paused, completed.
-- **[feature-2]** *"Machine and operator assignment per manufacturing run"*
+- **[feature-2]** *"Multiple operator and active machine assignment with maintenance exclusion"*
   - **Proof**: [`apps/web/src/lib/production-types.ts#L35-L45`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/lib/production-types.ts)
   - **Anchor**: `machineName`
   - **Citation**: Machine name and staff assignment records per job run.
-- **[feature-3]** *"Dedicated My Productions view for shop floor operators"*
+- **[feature-3]** *"Dedicated staff dashboard work panel showing assigned orders and tasks"*
   - **Proof**: [`apps/web/src/app/dashboard/production/page.tsx#L195-L205`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/production/page.tsx)
   - **Anchor**: `statusFilter`
   - **Citation**: Filtered status tabs dedicated to shop floor staff.
@@ -339,7 +339,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/components/production/MaterialsStep.tsx#L30-L40`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/production/MaterialsStep.tsx)
   - **Anchor**: `templateName`
   - **Citation**: MaterialsStep template dialog manages reusable definitions.
-- **[feature-5]** *"Automatic inventory deduction of raw materials on job completion"*
+- **[feature-5]** *"Automatic inventory deduction of raw materials upon production run launch"*
   - **Proof**: [`apps/web/src/app/api/orders/route.ts#L313-L325`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/orders/route.ts)
   - **Anchor**: `$inc`
   - **Citation**: Automated inventory stock deductions on order processing.
@@ -353,13 +353,13 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/lib/production-types.ts#L3-L6`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/lib/production-types.ts)
   - **Anchor**: `paused`
   - **Citation**: Shop floor status lifecycle with pause/resume capabilities.
-- **[section-2]** **My Productions Staff Portal**: *"Shop floor workers access a focused My Productions view showing only their assig..."*
+- **[section-2]** **Staff Dashboard Work Panel**: *"Shop floor workers access a focused work panel on the dashboard showing their as..."*
   - **Proof**: [`apps/web/src/app/dashboard/production/page.tsx#L195-L205`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/production/page.tsx)
   - **Anchor**: `statusFilter`
   - **Citation**: Shop floor worker view displaying individual assignments and progress updates.
 
 ### 5. FAQs Evidence (2 items)
-- **[faq-1]** **Q: Does completing a production run update inventory?**
+- **[faq-1]** **Q: When are raw materials deducted for a production run?**
   - **Proof**: [`apps/web/src/app/api/orders/route.ts#L313-L325`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/orders/route.ts)
   - **Anchor**: `$inc`
   - **Citation**: Atomic $inc: -quantity query updates on-hand stock when work order processes.
@@ -464,18 +464,18 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
 
 ### 1. Uses Evidence (6 items)
 - **[use-1]** *"Track current on-hand stock for raw materials, hardware components, and finished goods"*
-  - **Proof**: [`apps/web/src/app/dashboard/inventory/page.tsx#L145-L175`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/inventory/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/inventory/page.tsx#L195-L215`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/inventory/page.tsx)
   - **Anchor**: `quantity`
   - **Citation**: Inventory catalog displays on-hand quantity, unit, and item details.
 - **[use-2]** *"Filter inventory by Low Stock, Critical, Out of Stock, or Recently Updated items"*
-  - **Proof**: [`apps/web/src/app/dashboard/inventory/page.tsx#L408-L418`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/inventory/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/inventory/page.tsx#L645-L660`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/inventory/page.tsx)
   - **Anchor**: `low_stock`
   - **Citation**: Filter tabs: all, low_stock, critical, out_of_stock, recently_updated.
 - **[use-3]** *"Set minimum reorder points to trigger timely low stock notifications"*
-  - **Proof**: [`apps/web/src/app/dashboard/inventory/page.tsx#L408-L418`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/inventory/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/inventory/page.tsx#L195-L215`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/inventory/page.tsx)
   - **Anchor**: `min_stock_level`
   - **Citation**: min_stock_level threshold field sets safety stock limit.
-- **[use-4]** *"Deduct raw materials automatically when production work orders are completed"*
+- **[use-4]** *"Deduct raw materials automatically when orders are confirmed or production runs are launched"*
   - **Proof**: [`apps/web/src/app/api/orders/route.ts#L313-L325`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/orders/route.ts)
   - **Anchor**: `$inc`
   - **Citation**: Atomic deductions decrement stock when work orders finish.
@@ -484,20 +484,20 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `Received`
   - **Citation**: Marking purchase order Received increments item quantities in inventory.
 - **[use-6]** *"Store HSN codes, default units of measure, and purchase costs for accurate GST costing"*
-  - **Proof**: [`apps/web/src/app/dashboard/inventory/page.tsx#L150-L175`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/inventory/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/inventory/page.tsx#L195-L215`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/inventory/page.tsx)
   - **Anchor**: `hsn_code`
   - **Citation**: Table records HSN codes, default units, and purchase costs per unit.
 
 ### 2. How It Works Steps Evidence (4 items)
 - **[step-1]** **Add inventory items**: *"Define item names, unit of measurement, HSN code, unit purchase price, and safety stock threshold."*
-  - **Proof**: [`apps/web/src/app/dashboard/inventory/page.tsx#L408-L418`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/inventory/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/inventory/page.tsx#L195-L215`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/inventory/page.tsx)
   - **Anchor**: `min_stock_level`
   - **Citation**: Item modal creates raw material and finished goods records.
 - **[step-2]** **Receive inward stock**: *"Receive shipments from vendor purchase orders to automatically boost stock quantities."*
   - **Proof**: [`apps/web/src/app/dashboard/page.tsx#L105-L115`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/page.tsx)
   - **Anchor**: `Low Stock Items`
   - **Citation**: Low Stock Items widget on dashboard flags items below minimum threshold.
-- **[step-3]** **Deduct outward stock**: *"As factory production runs complete, consumed materials are deducted from on-hand inventory."*
+- **[step-3]** **Deduct outward stock**: *"When sales orders or production runs are created, required raw materials are deducted atomically from on-hand inventory."*
   - **Proof**: [`apps/web/src/app/api/orders/route.ts#L313-L325`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/orders/route.ts)
   - **Anchor**: `$inc`
   - **Citation**: Production completion atomically decrements material stock.
@@ -516,19 +516,19 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `Received`
   - **Citation**: Automated inward stock receipt from purchase orders.
 - **[feature-3]** *"Low Stock Items KPI widget on the executive dashboard"*
-  - **Proof**: [`apps/web/src/app/dashboard/inventory/page.tsx#L408-L418`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/inventory/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/inventory/page.tsx#L645-L660`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/inventory/page.tsx)
   - **Anchor**: `low_stock`
   - **Citation**: Dedicated status tabs: Low Stock, Critical, Out of Stock.
-- **[feature-4]** *"Automatic stock updates from purchasing inward receipts and production runs"*
+- **[feature-4]** *"Automatic stock updates from purchasing receipts, order confirmations, and production job launches"*
   - **Proof**: [`apps/web/src/app/dashboard/page.tsx#L105-L115`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/page.tsx)
   - **Anchor**: `Low Stock Items`
   - **Citation**: Executive dashboard Low Stock Items widget.
 - **[feature-5]** *"HSN code and tax rate mapping for GST billing accuracy"*
-  - **Proof**: [`apps/web/src/app/dashboard/inventory/page.tsx#L150-L175`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/inventory/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/inventory/page.tsx#L195-L215`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/inventory/page.tsx)
   - **Anchor**: `hsn_code`
   - **Citation**: HSN code and tax rate mapping for GST billing accuracy.
 - **[feature-6]** *"Purchase cost recording for margin and valuation calculations"*
-  - **Proof**: [`apps/web/src/app/dashboard/inventory/page.tsx#L150-L175`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/inventory/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/inventory/page.tsx#L195-L215`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/inventory/page.tsx)
   - **Anchor**: `purchase_cost_per_unit`
   - **Citation**: Purchase cost recording for margin and valuation calculations.
 
@@ -538,7 +538,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `$inc`
   - **Citation**: Atomic stock decrements and increments connected to operational workflows.
 - **[section-2]** **Low Stock Filters & Dashboard Monitoring**: *"Monitor shortages using dedicated Low Stock, Critical, and Out of Stock tab filt..."*
-  - **Proof**: [`apps/web/src/app/dashboard/inventory/page.tsx#L650-L665`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/inventory/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/inventory/page.tsx#L620-L630`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/inventory/page.tsx)
   - **Anchor**: `criticalStock`
   - **Citation**: Shortage identification via tab filters and dashboard widget.
 
@@ -559,7 +559,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
 **Claims Audit Summary**: 18 documented claims | 18 verified code evidence rows.
 
 ### 1. Uses Evidence (5 items)
-- **[use-1]** *"Maintain vendor profiles with GSTIN, PAN, payment terms, and contact details"*
+- **[use-1]** *"Maintain vendor profiles with contact persons, phone numbers, addresses, and 15-character GSTIN details"*
   - **Proof**: [`apps/web/src/modules/purchasing/domain/schemas.ts#L11-L32`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/modules/purchasing/domain/schemas.ts)
   - **Anchor**: `createVendorSchema`
   - **Citation**: Vendor schema stores name, contactPerson, phone, gstin, and address.
@@ -603,7 +603,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/modules/purchasing/domain/schemas.ts#L11-L32`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/modules/purchasing/domain/schemas.ts)
   - **Anchor**: `gstin`
   - **Citation**: Vendor master directory with GSTIN and contact details.
-- **[feature-2]** *"Itemized purchase order generation with tax rate calculations"*
+- **[feature-2]** *"Itemized purchase order generation with PO-level tax percentage calculation"*
   - **Proof**: [`apps/web/src/modules/purchasing/domain/schemas.ts#L46-L52`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/modules/purchasing/domain/schemas.ts)
   - **Anchor**: `taxPercent`
   - **Citation**: Itemized PO creation with unit pricing and tax calculations.
@@ -655,12 +655,12 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/modules/billing/domain/types.ts#L5-L15`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/modules/billing/domain/types.ts)
   - **Anchor**: `BillItem`
   - **Citation**: BillItem records description, hsn, quantity, unit, rate, gst_rate, and line totals.
-- **[use-3]** *"Auto-generate invoices directly from completed orders or delivery challans"*
+- **[use-3]** *"Choose Complete & Invoice when completing an order to generate a tax invoice automatically"*
   - **Proof**: [`apps/web/src/components/orders/CompletionModals.tsx#L115-L150`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/orders/CompletionModals.tsx)
   - **Anchor**: `completeAndInvoice`
   - **Citation**: Order completion triggers prompt to auto-generate a pre-filled tax invoice.
 - **[use-4]** *"Download clean PDF tax invoices or share payment links via WhatsApp"*
-  - **Proof**: [`apps/web/src/app/dashboard/billing/page.tsx#L548-L558`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/billing/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/billing/page.tsx#L550-L565`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/billing/page.tsx)
   - **Anchor**: `wa.me`
   - **Citation**: WhatsApp button generates pre-filled wa.me share link with invoice summary.
 - **[use-5]** *"Track invoice status from Unpaid and Partially Paid to Paid"*
@@ -669,7 +669,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Citation**: BillStatus: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled'.
 
 ### 2. How It Works Steps Evidence (4 items)
-- **[step-1]** **Create invoice**: *"Select a client and add line items with HSN codes, or auto-generate directly from an open sales order."*
+- **[step-1]** **Create invoice**: *"Select a client and add line items with HSN codes, or choose Complete & Invoice when completing a sales order."*
   - **Proof**: [`apps/web/src/app/dashboard/billing/page.tsx#L65-L75`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/billing/page.tsx)
   - **Anchor**: `CreateInvoiceModal`
   - **Citation**: Invoice creation modal accepts client and line items or imports sales orders.
@@ -678,7 +678,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `isInterState`
   - **Citation**: Automated GST rate calculation comparing company and client state codes.
 - **[step-3]** **Send to customer**: *"Download the formatted tax invoice PDF or share it with the customer over WhatsApp or email."*
-  - **Proof**: [`apps/web/src/app/dashboard/billing/page.tsx#L540-L568`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/billing/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/billing/page.tsx#L550-L565`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/billing/page.tsx)
   - **Anchor**: `wa.me`
   - **Citation**: Share invoice via WhatsApp deep link or download official PDF.
 - **[step-4]** **Track payment collection**: *"Review invoice settlement status and reconcile collections against open receivables."*
@@ -695,8 +695,8 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/modules/billing/domain/types.ts#L5-L15`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/modules/billing/domain/types.ts)
   - **Anchor**: `hsnCode`
   - **Citation**: HSN code line-item breakdown with itemized tax summaries.
-- **[feature-3]** *"Prompt to auto-generate invoices upon sales order completion"*
-  - **Proof**: [`apps/web/src/lib/invoice/browser-pool.ts#L260-L280`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/lib/invoice/browser-pool.ts)
+- **[feature-3]** *"Option to choose Complete & Invoice upon marking a sales order Completed"*
+  - **Proof**: [`apps/web/src/lib/invoice/browser-pool.ts#L280-L310`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/lib/invoice/browser-pool.ts)
   - **Anchor**: `generatePDFWithRetry`
   - **Citation**: Headless browser PDF rendering adhering to Indian GST tax layout.
 - **[feature-4]** *"Professional PDF invoice generation formatted to Indian tax standards"*
@@ -704,7 +704,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `completeAndInvoice`
   - **Citation**: Order completion triggers prompt to auto-generate a pre-filled tax invoice.
 - **[feature-5]** *"WhatsApp sharing and payment status tracking"*
-  - **Proof**: [`apps/web/src/app/dashboard/billing/page.tsx#L548-L558`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/billing/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/billing/page.tsx#L550-L565`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/billing/page.tsx)
   - **Anchor**: `wa.me`
   - **Citation**: Direct document sharing via pre-formatted WhatsApp messages.
 
@@ -714,7 +714,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `isInterState`
   - **Citation**: Automated GST rate calculation comparing company and client state codes.
 - **[section-2]** **Professional Tax Invoice Output**: *"Produce formatted PDF invoices carrying mandatory Indian tax disclosures: compan..."*
-  - **Proof**: [`apps/web/src/lib/invoice/browser-pool.ts#L260-L280`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/lib/invoice/browser-pool.ts)
+  - **Proof**: [`apps/web/src/lib/invoice/browser-pool.ts#L280-L310`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/lib/invoice/browser-pool.ts)
   - **Anchor**: `generatePDFWithRetry`
   - **Citation**: PDF output renders mandatory GSTIN, HSN, bank details, and signature zones.
 
@@ -724,7 +724,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `onCompleteAndInvoice`
   - **Citation**: Order completion prompts user to generate a linked tax invoice.
 - **[faq-2]** **Q: Can invoices be exported to Tally Prime?**
-  - **Proof**: [`apps/web/src/app/dashboard/billing/page.tsx#L548-L558`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/billing/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/billing/page.tsx#L550-L565`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/billing/page.tsx)
   - **Anchor**: `wa.me`
   - **Citation**: Share buttons open WhatsApp Web or native app with pre-composed bill text.
 
@@ -843,7 +843,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/components/vendor-bills/CreateBillModal.tsx#L135-L145`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/vendor-bills/CreateBillModal.tsx)
   - **Anchor**: `purchaseOrderId`
   - **Citation**: Link bills to purchase orders to verify items, quantities, and agreed prices.
-- **[use-5]** *"Log payments made to vendors across bank transfer, cheque, or cash modes"*
+- **[use-5]** *"Record vendor bill disbursements across Cash, Bank, UPI, Cheque, and Other modes"*
   - **Proof**: [`apps/web/src/modules/vendor-bills/domain/types.ts#L10-L12`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/modules/vendor-bills/domain/types.ts)
   - **Anchor**: `BillPaymentMode`
   - **Citation**: Log payments across Cash, Bank, UPI, Cheque, and Other modes.
@@ -883,7 +883,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/components/vendor-bills/CreateBillModal.tsx#L135-L145`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/vendor-bills/CreateBillModal.tsx)
   - **Anchor**: `purchaseOrderId`
   - **Citation**: Direct purchase order linking to prevent invoice discrepancies.
-- **[feature-5]** *"Payment disbursement logging with bank, cash, cheque, and UPI modes"*
+- **[feature-5]** *"Payment disbursement logging across Cash, Bank, UPI, Cheque, and Other modes"*
   - **Proof**: [`apps/web/src/modules/vendor-bills/domain/types.ts#L10-L12`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/modules/vendor-bills/domain/types.ts)
   - **Anchor**: `BillPaymentMode`
   - **Citation**: Payment disbursement logging with bank, cash, cheque, and UPI modes.
@@ -923,7 +923,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/app/dashboard/banking/page.tsx#L180-L195`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/banking/page.tsx)
   - **Anchor**: `BankAccount`
   - **Citation**: Dashboard displays current balances across registered bank accounts.
-- **[use-3]** *"Record incoming customer collections and outgoing vendor disbursements"*
+- **[use-3]** *"Record incoming customer collections and outgoing vendor bill disbursements"*
   - **Proof**: [`apps/web/src/modules/banking/domain/types.ts#L90-L100`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/modules/banking/domain/types.ts)
   - **Anchor**: `BankTransaction`
   - **Citation**: BankTransaction records debit/credit amounts and transaction dates.
@@ -931,7 +931,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/modules/banking/domain/types.ts#L1-L10`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/modules/banking/domain/types.ts)
   - **Anchor**: `BankAccountType`
   - **Citation**: Classification between internal transfers and customer/vendor entries.
-- **[use-5]** *"Import CSV bank statements to verify and reconcile account balances"*
+- **[use-5]** *"Import CSV statements and match bank entries to recorded payments with atomic paise allocation"*
   - **Proof**: [`apps/web/src/modules/banking/application/csv-parser.ts#L55-L65`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/modules/banking/application/csv-parser.ts)
   - **Anchor**: `parseRfc4180Csv`
   - **Citation**: CSV parser parses bank statements with column mapping.
@@ -941,7 +941,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/components/banking/AddAccountModal.tsx#L60-L70`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/banking/AddAccountModal.tsx)
   - **Anchor**: `account_last4`
   - **Citation**: Account modal registers account number, IFSC code, and branch.
-- **[step-2]** **Record transactions**: *"Link customer payments and vendor disbursements directly to the designated bank account."*
+- **[step-2]** **Record transactions**: *"Match imported bank transaction lines against recorded client payments and vendor bill payments."*
   - **Proof**: [`apps/web/src/components/banking/ImportStatementModal.tsx#L58-L62`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/banking/ImportStatementModal.tsx)
   - **Anchor**: `selectedFile`
   - **Citation**: Upload CSV statement and map transaction columns.
@@ -963,7 +963,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/modules/banking/application/csv-parser.ts#L55-L65`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/modules/banking/application/csv-parser.ts)
   - **Anchor**: `parseRfc4180Csv`
   - **Citation**: CSV bank statement import with flexible column mapping.
-- **[feature-3]** *"Direct linkage to client payments and supplier bill settlements"*
+- **[feature-3]** *"Match statement transactions to recorded client payments and vendor bill payments"*
   - **Proof**: [`apps/web/src/app/api/banking/imports/preview/route.ts#L95-L105`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/banking/imports/preview/route.ts)
   - **Anchor**: `previewImport`
   - **Citation**: Transaction preview and validation workflow.
@@ -981,7 +981,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/modules/banking/application/csv-parser.ts#L55-L65`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/modules/banking/application/csv-parser.ts)
   - **Anchor**: `parseRfc4180Csv`
   - **Citation**: CSV statement import engine maps standard bank export columns.
-- **[section-2]** **Cash Flow & Settlement Integrity**: *"Direct ties to incoming customer payments and outgoing supplier disbursements en..."*
+- **[section-2]** **Statement Matching & Allocation**: *"Link imported statement lines directly to recorded client payments or vendor bil..."*
   - **Proof**: [`apps/web/src/app/dashboard/banking/page.tsx#L180-L195`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/banking/page.tsx)
   - **Anchor**: `BankAccount`
   - **Citation**: Real-time cash flow overview across all connected accounts.
@@ -1020,13 +1020,13 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `ClientStatement`
   - **Citation**: Customer account statement compiles ledger transactions.
 - **[use-5]** *"Initiate new quotations or sales orders directly from the client profile"*
-  - **Proof**: [`apps/web/src/app/dashboard/clients/page.tsx#L170-L195`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/clients/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/clients/page.tsx#L210-L230`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/clients/page.tsx)
   - **Anchor**: `exportToPDF`
   - **Citation**: Export client directory to PDF format.
 
 ### 2. How It Works Steps Evidence (4 items)
 - **[step-1]** **Add customer details**: *"Enter company name, GSTIN, billing address, state, and contact person details."*
-  - **Proof**: [`apps/web/src/app/dashboard/clients/page.tsx#L200-L225`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/clients/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/clients/page.tsx#L240-L245`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/clients/page.tsx)
   - **Anchor**: `formData`
   - **Citation**: Add client with business name, contact info, and GSTIN.
 - **[step-2]** **Issue transactions**: *"Select the client across Quotes, Orders, Invoices, and Delivery Challans without typing details again."*
@@ -1038,7 +1038,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `ClientStatement`
   - **Citation**: Generate statement showing billed orders and received payments.
 - **[step-4]** **Communicate directly**: *"Reach out to clients via phone, email, or WhatsApp directly from their profile card."*
-  - **Proof**: [`apps/web/src/app/dashboard/clients/page.tsx#L100-L108`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/clients/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/clients/page.tsx#L100-L110`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/clients/page.tsx)
   - **Anchor**: `searchTerm`
   - **Citation**: Search and filter client directory by name or phone.
 
@@ -1056,7 +1056,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `ClientStatement`
   - **Citation**: Printable customer account statement generation.
 - **[feature-4]** *"Quick actions to generate quotes, orders, and invoices"*
-  - **Proof**: [`apps/web/src/app/dashboard/clients/page.tsx#L170-L195`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/clients/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/clients/page.tsx#L210-L230`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/clients/page.tsx)
   - **Anchor**: `exportToPDF`
   - **Citation**: Directory export to PDF format.
 - **[feature-5]** *"Contact management for owners, procurement officers, and accountants"*
@@ -1121,7 +1121,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/app/dashboard/analytics/page.tsx#L150-L162`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/analytics/page.tsx)
   - **Anchor**: `revenueData`
   - **Citation**: Review revenue graphs and fulfillment percentages.
-- **[step-3]** **Filter by timeframe**: *"Switch between monthly, quarterly, and annual views to assess seasonal trends."*
+- **[step-3]** **Filter by calendar month**: *"Select any month since account creation from the period dropdown to recalculate revenue, order flow, production rates, and inventory movements for that exact billing month."*
   - **Proof**: [`apps/web/src/app/dashboard/analytics/page.tsx#L150-L162`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/analytics/page.tsx)
   - **Anchor**: `topProducts`
   - **Citation**: Identify highest performing products and demand spikes.
@@ -1298,7 +1298,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `Hinglish`
   - **Citation**: Submit queries in plain English or Hinglish.
 - **[step-3]** **Assistant executes tools**: *"The assistant invokes read-only database tools (get_pending_orders, get_orders, get_order_details)."*
-  - **Proof**: [`apps/web/src/app/api/assistant/chat/route.ts#L558-L565`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/assistant/chat/route.ts)
+  - **Proof**: [`apps/web/src/app/api/assistant/chat/route.ts#L560-L565`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/assistant/chat/route.ts)
   - **Anchor**: `orderToolDeclarations`
   - **Citation**: Assistant executes orderToolDeclarations: get_pending_orders, get_orders, get_order_details.
 - **[step-4]** **Receive formatted reply**: *"Review structured answers with markdown tables, bullet points, and Indian Rupee (₹) amounts."*
@@ -1311,7 +1311,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/app/api/assistant/chat/route.ts#L15-L25`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/assistant/chat/route.ts)
   - **Anchor**: `SYSTEM_INSTRUCTION`
   - **Citation**: Orders-only natural language assistant supporting English and Hinglish.
-- **[feature-2]** *"Read-only tools: get_pending_orders, get_orders, and get_order_details"*
+- **[feature-2]** *"Dedicated order lookup tools for pending orders, order search, and order details"*
   - **Proof**: [`apps/web/src/app/api/assistant/chat/route.ts#L38-L103`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/assistant/chat/route.ts)
   - **Anchor**: `orderToolDeclarations`
   - **Citation**: Read-only tools: get_pending_orders, get_orders, get_order_details.
@@ -1324,13 +1324,13 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `Indian numbering`
   - **Citation**: Clear responses formatted with bullet points and INR figures.
 - **[feature-5]** *"Strict read-only safety ensuring records cannot be created, modified, or deleted via chat"*
-  - **Proof**: [`apps/web/src/app/api/assistant/chat/route.ts#L26-L30`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/assistant/chat/route.ts)
+  - **Proof**: [`apps/web/src/app/api/assistant/chat/route.ts#L28-L32`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/assistant/chat/route.ts)
   - **Anchor**: `READ-ONLY`
   - **Citation**: Strict read-only safety: assistant cannot create, update, or delete data.
 
 ### 4. Documentation Sections Evidence (2 items)
-- **[section-1]** **Read-Only Order Queries**: *"The assistant queries live order records using three dedicated tools: get_pendin..."*
-  - **Proof**: [`apps/web/src/app/api/assistant/chat/route.ts#L26-L30`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/assistant/chat/route.ts)
+- **[section-1]** **Read-Only Order Queries**: *"The assistant queries live order records using dedicated tools for active orders..."*
+  - **Proof**: [`apps/web/src/app/api/assistant/chat/route.ts#L28-L32`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/assistant/chat/route.ts)
   - **Anchor**: `READ-ONLY`
   - **Citation**: Read-only order queries with dedicated tools, no write permissions.
 - **[section-2]** **Bilingual Order Lookups**: *"Submit queries in English or everyday Hinglish. The assistant responds in the sa..."*
@@ -1344,7 +1344,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `orderToolDeclarations`
   - **Citation**: Capabilities limited strictly to order status, pending orders, and details.
 - **[faq-2]** **Q: Can the AI assistant modify or delete orders?**
-  - **Proof**: [`apps/web/src/app/api/assistant/chat/route.ts#L26-L30`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/assistant/chat/route.ts)
+  - **Proof**: [`apps/web/src/app/api/assistant/chat/route.ts#L28-L32`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/assistant/chat/route.ts)
   - **Anchor**: `READ-ONLY`
   - **Citation**: Assistant cannot modify or delete data.
 
@@ -1381,7 +1381,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/lib/notifications/dispatcher.ts#L65-L85`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/lib/notifications/dispatcher.ts)
   - **Anchor**: `triggerNotification`
   - **Citation**: System logs notification when business trigger fires.
-- **[step-2]** **Review in-app feed**: *"Open the notification drawer to inspect unread alerts, timestamps, and priority tags."*
+- **[step-2]** **Review in-app feed**: *"Open the notification page or navbar popover to inspect unread alerts and timestamps."*
   - **Proof**: [`apps/web/src/components/notifications/NotificationFeedItem.tsx#L57-L85`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/notifications/NotificationFeedItem.tsx)
   - **Anchor**: `NotificationFeedItem`
   - **Citation**: Review in-app feed with unread indicators and timestamps.
@@ -1535,8 +1535,8 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/app/dashboard/users/page.tsx#L42-L58`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/users/page.tsx)
   - **Anchor**: `email`
   - **Citation**: Add employee accounts with login credentials and email.
-- **[use-2]** *"Assign user roles across Owner, Admin, Manager, Accountant, and Staff"*
-  - **Proof**: [`apps/web/src/models/User.ts#L137-L141`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/models/User.ts)
+- **[use-2]** *"Assign user roles and permission templates across Full Access, Operations, Sales, and View Only"*
+  - **Proof**: [`apps/web/src/models/User.ts#L138-L142`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/models/User.ts)
   - **Anchor**: `enum: ['Admin', 'Owner', 'Manager', 'Staff', 'Accountant']`
   - **Citation**: Assign user roles: Owner, Admin, Manager, Accountant, Staff.
 - **[use-3]** *"Provide floor staff with access to update production jobs"*
@@ -1547,32 +1547,32 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/lib/permissions.ts#L22-L26`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/lib/permissions.ts)
   - **Anchor**: `Accountant`
   - **Citation**: Equip accountants with access to billing registers and vendor bills.
-- **[use-5]** *"Deactivate departing employee accounts to keep workshop access secure"*
+- **[use-5]** *"Deactivate employee accounts with immediate session termination to keep workshop access secure"*
   - **Proof**: [`apps/web/src/app/dashboard/users/page.tsx#L50-L53`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/users/page.tsx)
   - **Anchor**: `status`
   - **Citation**: Deactivate departing employee accounts to keep access secure.
 
 ### 2. How It Works Steps Evidence (4 items)
-- **[step-1]** **Add employee account**: *"Enter the staff member's name, email, and temporary password to create their login."*
+- **[step-1]** **Provision employee login**: *"Enter employee name, phone, department, designation, and direct login credentials."*
   - **Proof**: [`apps/web/src/app/dashboard/users/page.tsx#L42-L58`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/users/page.tsx)
   - **Anchor**: `email`
   - **Citation**: Add employee account with name, email, and temporary password.
-- **[step-2]** **Select role**: *"Assign the appropriate role—Owner, Admin, Manager, Accountant, or Staff—based on duties."*
-  - **Proof**: [`apps/web/src/models/User.ts#L137-L141`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/models/User.ts)
+- **[step-2]** **Assign permission template**: *"Select Full Access, Operations, Sales, or View Only to provision module access."*
+  - **Proof**: [`apps/web/src/models/User.ts#L138-L142`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/models/User.ts)
   - **Anchor**: `Manager`
   - **Citation**: Select role: Owner, Admin, Manager, Accountant, or Staff.
-- **[step-3]** **Role-based access applies**: *"The team member signs in and accesses modules suited to their assigned role."*
+- **[step-3]** **Work with role-focused views**: *"Staff see assigned production runs on their dashboard panel while financial records stay restricted."*
   - **Proof**: [`apps/web/src/lib/permissions.ts#L15-L25`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/lib/permissions.ts)
   - **Anchor**: `normalizeRoleType`
   - **Citation**: Role-based access applies based on assigned role.
-- **[step-4]** **Manage credentials**: *"Update staff account details, reset passwords, or deactivate user access at any time."*
+- **[step-4]** **Fast status deactivation**: *"Toggle employee status to inactive to terminate active sessions immediately."*
   - **Proof**: [`apps/web/src/app/dashboard/users/[id]/page.tsx#L235-L250`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/users/[id]/page.tsx)
   - **Anchor**: `handleResetPassword`
   - **Citation**: Manage credentials, reset passwords, or deactivate user access.
 
 ### 3. Key Features Evidence (5 items)
-- **[feature-1]** *"Standard role options: Owner, Admin, Manager, Accountant, and Staff"*
-  - **Proof**: [`apps/web/src/models/User.ts#L137-L141`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/models/User.ts)
+- **[feature-1]** *"Role presets for Owner, Manager, Staff, and Accountant with customizable permissions"*
+  - **Proof**: [`apps/web/src/models/User.ts#L138-L142`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/models/User.ts)
   - **Anchor**: `Accountant`
   - **Citation**: Standard role options: Owner, Admin, Manager, Accountant, Staff.
 - **[feature-2]** *"Individual employee login accounts with secure credentials"*
@@ -1583,28 +1583,28 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/lib/permissions.ts#L15-L25`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/lib/permissions.ts)
   - **Anchor**: `RoleType`
   - **Citation**: Focused workspace views suited for staff, managers, and accountants.
-- **[feature-4]** *"Simple account onboarding with initial password assignment"*
+- **[feature-4]** *"Direct credential provisioning with individual employee logins"*
   - **Proof**: [`apps/web/src/app/dashboard/users/page.tsx#L42-L58`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/users/page.tsx)
   - **Anchor**: `Employee`
   - **Citation**: Simple account onboarding with initial password assignment.
-- **[feature-5]** *"Fast account deactivation when employees leave the business"*
+- **[feature-5]** *"Fast account deactivation with immediate session termination"*
   - **Proof**: [`apps/web/src/app/dashboard/users/page.tsx#L50-L53`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/users/page.tsx)
   - **Anchor**: `status`
   - **Citation**: Fast account deactivation when employees leave the business.
 
 ### 4. Documentation Sections Evidence (2 items)
-- **[section-1]** **Assigned User Roles**: *"Assign team members to defined roles: Owner, Admin, Manager, Accountant, or Staf..."*
-  - **Proof**: [`apps/web/src/models/User.ts#L137-L141`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/models/User.ts)
+- **[section-1]** **Factory Role Separation**: *"Separate shop-floor execution from financial ledgers: Owner has full system cont..."*
+  - **Proof**: [`apps/web/src/models/User.ts#L138-L142`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/models/User.ts)
   - **Anchor**: `Owner`
   - **Citation**: Assigned user roles: Owner, Admin, Manager, Accountant, Staff.
-- **[section-2]** **User Credential Management**: *"Create new user credentials quickly and deactivate former staff members whenever..."*
+- **[section-2]** **Direct Provisioning & Fast Deactivation**: *"Provision employee accounts directly with username and password. When employees ..."*
   - **Proof**: [`apps/web/src/app/dashboard/users/[id]/page.tsx#L235-L250`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/users/[id]/page.tsx)
   - **Anchor**: `handleResetPassword`
   - **Citation**: User credential management and account deactivation.
 
 ### 5. FAQs Evidence (2 items)
 - **[faq-1]** **Q: Which roles can be assigned to team members?**
-  - **Proof**: [`apps/web/src/models/User.ts#L137-L141`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/models/User.ts)
+  - **Proof**: [`apps/web/src/models/User.ts#L138-L142`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/models/User.ts)
   - **Anchor**: `enum: ['Admin', 'Owner', 'Manager', 'Staff', 'Accountant']`
   - **Citation**: Available roles: Owner, Admin, Manager, Accountant, Staff.
 - **[faq-2]** **Q: Can an administrator reset employee passwords?**
@@ -1619,11 +1619,11 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
 **Claims Audit Summary**: 18 documented claims | 18 verified code evidence rows.
 
 ### 1. Uses Evidence (5 items)
-- **[use-1]** *"Export GST sales invoices as Tally Prime XML (party ledger, sales voucher, tax heads) for import into Tally"*
+- **[use-1]** *"Export customer party ledgers under Sundry Debtors formatted for Tally Prime"*
   - **Proof**: [`apps/web/src/services/tally/generateSalesVoucherXml.ts#L82-L155`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/services/tally/generateSalesVoucherXml.ts)
   - **Anchor**: `generateSalesVoucherXml`
   - **Citation**: Export GST sales invoices as Tally Prime XML for import into Tally.
-- **[use-2]** *"Generate Sundry Debtors party ledgers with client GSTIN, state code, and address details"*
+- **[use-2]** *"Generate party ledger definitions with client state code and address details"*
   - **Proof**: [`apps/web/src/services/tally/generateLedgerXml.ts#L15-L65`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/services/tally/generateLedgerXml.ts)
   - **Anchor**: `Sundry Debtors`
   - **Citation**: Generate Sundry Debtors party ledgers with client GSTIN.
@@ -1631,11 +1631,11 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/services/tally/generateSalesVoucherXml.ts#L168-L235`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/services/tally/generateSalesVoucherXml.ts)
   - **Anchor**: `buildLedgerEntriesXml`
   - **Citation**: Create standard GST ledger heads for CGST, SGST, IGST tax entries.
-- **[use-4]** *"Export stock item XML definitions matching invoiced products"*
+- **[use-4]** *"Generate invoice voucher XML for testing and import validation in Tally Prime"*
   - **Proof**: [`apps/web/src/services/tally/generateStockItemXml.ts#L75-L105`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/services/tally/generateStockItemXml.ts)
   - **Anchor**: `generateBatchStockItemXml`
   - **Citation**: Export stock item XML definitions matching invoiced products.
-- **[use-5]** *"Maintain accounting alignment by importing generated XML vouchers into Tally Prime"*
+- **[use-5]** *"Configure company name mapping to match your target Tally Prime company file"*
   - **Proof**: [`apps/web/src/app/api/tally/generate-xml/route.ts#L80-L105`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/tally/generate-xml/route.ts)
   - **Anchor**: `voucherXml`
   - **Citation**: Maintain accounting alignment by importing generated XML into Tally Prime.
@@ -1649,17 +1649,17 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/app/api/tally/generate-xml/route.ts#L40-L45`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/tally/generate-xml/route.ts)
   - **Anchor**: `invoiceId`
   - **Citation**: Select sales invoice from billing register.
-- **[step-3]** **Generate XML export**: *"Download structured Tally Prime XML containing party ledgers, sales vouchers, and GST tax heads."*
+- **[step-3]** **Generate XML export**: *"Download structured Tally Prime XML containing customer party ledgers and invoice voucher definitions."*
   - **Proof**: [`apps/web/src/app/api/tally/generate-xml/route.ts#L80-L105`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/tally/generate-xml/route.ts)
   - **Anchor**: `ledgerXml`
   - **Citation**: Generate XML export containing party ledgers, sales vouchers, GST tax heads.
-- **[step-4]** **Import into Tally Prime**: *"Use Tally Prime's Import Data feature to import the XML file into your books of accounts."*
+- **[step-4]** **Test import in Tally Prime**: *"Review exported XML and test import into your Tally Prime test environment while voucher import is being validated."*
   - **Proof**: [`apps/web/src/services/tally/generateSalesVoucherXml.ts#L120-L145`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/services/tally/generateSalesVoucherXml.ts)
   - **Anchor**: `VOUCHER`
   - **Citation**: Import XML into Tally Prime using Import Data feature.
 
 ### 3. Key Features Evidence (5 items)
-- **[feature-1]** *"Export GST sales invoices as Tally Prime XML for import into Tally"*
+- **[feature-1]** *"Export customer party ledgers with verified Tally Prime import"*
   - **Proof**: [`apps/web/src/services/tally/generateSalesVoucherXml.ts#L82-L155`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/services/tally/generateSalesVoucherXml.ts)
   - **Anchor**: `generateSalesVoucherXml`
   - **Citation**: Export GST sales invoices as Tally Prime XML for import into Tally.
@@ -1667,35 +1667,35 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Proof**: [`apps/web/src/services/tally/generateLedgerXml.ts#L15-L65`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/services/tally/generateLedgerXml.ts)
   - **Anchor**: `Sundry Debtors`
   - **Citation**: Automated ledger XML for Sundry Debtors, sales accounts, and GST tax heads.
-- **[feature-3]** *"Preservation of voucher dates, bill numbers, and client GSTIN identifiers"*
+- **[feature-3]** *"Tally Prime company name mapping configuration in settings"*
   - **Proof**: [`apps/web/src/services/tally/generateSalesVoucherXml.ts#L130-L140`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/services/tally/generateSalesVoucherXml.ts)
   - **Anchor**: `VOUCHERNUMBER`
   - **Citation**: Preservation of voucher dates, bill numbers, and GSTIN identifiers.
-- **[feature-4]** *"Stock item XML generation matching invoiced quantities and units"*
+- **[feature-4]** *"Voucher XML generation currently undergoing validation in beta"*
   - **Proof**: [`apps/web/src/services/tally/generateStockItemXml.ts#L75-L105`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/services/tally/generateStockItemXml.ts)
   - **Anchor**: `generateBatchStockItemXml`
   - **Citation**: Stock item XML generation matching invoiced quantities.
-- **[feature-5]** *"Automatic sync is in development while XML export is fully operational"*
+- **[feature-5]** *"Direct XML export available while automated bridge synchronization is in development"*
   - **Proof**: [`tools/tally-bridge/src/core/job-executor.ts#L36-L44`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/tools/tally-bridge/src/core/job-executor.ts)
   - **Anchor**: `EXECUTOR_NOT_IMPLEMENTED`
   - **Citation**: Automatic sync is in development while XML export is operational.
 
 ### 4. Documentation Sections Evidence (2 items)
-- **[section-1]** **Tally Prime XML Export**: *"The system generates standard Tally XML containing party ledgers under Sundry De..."*
+- **[section-1]** **Party Ledger Export**: *"The system generates standard Tally XML for party ledgers under Sundry Debtors, ..."*
   - **Proof**: [`apps/web/src/services/tally/generateLedgerXml.ts#L15-L65`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/services/tally/generateLedgerXml.ts)
   - **Anchor**: `Sundry Debtors`
   - **Citation**: Tally Prime XML export generating party ledgers and tax heads.
-- **[section-2]** **Accounting Import Workflow**: *"Download the XML payload for any invoice and import it directly into Tally Prime..."*
+- **[section-2]** **Voucher Import Beta Testing**: *"Sales invoice voucher XML export is in beta. Manual testing and validation are u..."*
   - **Proof**: [`tools/tally-bridge/src/core/job-executor.ts#L36-L44`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/tools/tally-bridge/src/core/job-executor.ts)
   - **Anchor**: `StubJobExecutor`
   - **Citation**: Download XML payload; automatic sync is in development.
 
 ### 5. FAQs Evidence (2 items)
-- **[faq-1]** **Q: How do I bring sales invoices into Tally Prime?**
+- **[faq-1]** **Q: Are ledgers verified to import into Tally Prime?**
   - **Proof**: [`apps/web/src/app/api/tally/generate-xml/route.ts#L80-L105`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/api/tally/generate-xml/route.ts)
   - **Anchor**: `voucherXml`
   - **Citation**: Generate Tally Prime XML and import via Import Data menu.
-- **[faq-2]** **Q: Is automatic background synchronization supported?**
+- **[faq-2]** **Q: What is the status of voucher import and automatic sync?**
   - **Proof**: [`tools/tally-bridge/src/core/job-executor.ts#L36-L44`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/tools/tally-bridge/src/core/job-executor.ts)
   - **Anchor**: `StubJobExecutor`
   - **Citation**: Automatic sync is in development; manual XML export is supported.
@@ -1710,7 +1710,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
 - **[use-1]** *"Configure registered business name, factory address, GSTIN, and PAN details"*
   - **Proof**: [`apps/web/src/models/CompanyProfile.ts#L3-L8`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/models/CompanyProfile.ts)
   - **Anchor**: `company_name`
-  - **Citation**: Maintain official registered business name, addresses, and registration numbers.
+  - **Citation**: Maintain official business legal name, addresses, and registration numbers.
 - **[use-2]** *"Upload company branding and logos for printed invoices and quotation headers"*
   - **Proof**: [`apps/web/src/models/CompanyProfile.ts#L5-L8`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/models/CompanyProfile.ts)
   - **Anchor**: `logo_url`
@@ -1772,7 +1772,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
 - **[section-1]** **Corporate Identity & Tax Setup**: *"Maintain verified corporate names, manufacturing plant addresses, GSTIN numbers,..."*
   - **Proof**: [`apps/web/src/models/CompanyProfile.ts#L3-L8`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/models/CompanyProfile.ts)
   - **Anchor**: `company_name`
-  - **Citation**: Corporate identity setup for standard business document issuance.
+  - **Citation**: Corporate identity setup for regulatory document compliance.
 - **[section-2]** **Payment Terms & Bank Defaults**: *"Specify default bank accounts, IFSC codes, and standard payment terms so every g..."*
   - **Proof**: [`apps/web/src/models/CompanyProfile.ts#L68-L75`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/models/CompanyProfile.ts)
   - **Anchor**: `bank_name`

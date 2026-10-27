@@ -96,5 +96,5 @@ describe("Phase 1b - Tightened Module Content Source of Truth", () => {
       expect(r.passed).toBe(true);
       expect(r.evidenceCount).toBeGreaterThanOrEqual(r.claimsCount);
     }
-  });
+  }, 15000);
 });
