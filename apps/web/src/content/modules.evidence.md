@@ -32,7 +32,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `quoteIdParam`
   - **Citation**: URL query parameter quoteIdParam imports selected quote line items.
 - **[use-6]** *"Export order registries directly to PDF or Excel spreadsheets for management reviews"*
-  - **Proof**: [`apps/web/src/app/dashboard/orders/page.tsx#L297-L360`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/orders/page.tsx)
+  - **Proof**: [`apps/web/src/components/orders/useOrderExport.ts#L18-L55`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/orders/useOrderExport.ts)
   - **Anchor**: `exportToPDF`
   - **Citation**: exportToPDF and exportToXLSX generate document exports.
 
@@ -46,7 +46,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `selectedOrderId`
   - **Citation**: Production run creation links directly to open sales orders.
 - **[step-3]** **Track delivery and prompt invoicing**: *"Update physical delivery progress and choose Complete & Invoice to auto-generate a tax invoice, or Complete Only when finishing the order."*
-  - **Proof**: [`apps/web/src/components/orders/CompletionModals.tsx#L115-L150`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/orders/CompletionModals.tsx)
+  - **Proof**: [`apps/web/src/components/orders/CompletionModals.tsx#L85-L160`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/orders/CompletionModals.tsx)
   - **Anchor**: `completeAndInvoice`
   - **Citation**: Prompt dialog appears upon marking Completed offering to auto-generate a GST invoice.
 - **[step-4]** **Reconcile customer balance**: *"Record incoming client receipts against the order balance to update payment status from Unpaid to Paid."*
@@ -68,11 +68,11 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `urgent`
   - **Citation**: Priority field supporting workshop production scheduling.
 - **[feature-4]** *"Choose Complete & Invoice or Complete Only upon marking orders Completed"*
-  - **Proof**: [`apps/web/src/app/dashboard/orders/page.tsx#L825-L865`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/orders/page.tsx)
+  - **Proof**: [`apps/web/src/components/orders/useOrderCompletion.ts#L35-L60`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/orders/useOrderCompletion.ts)
   - **Anchor**: `handleCompleteAndInvoice`
   - **Citation**: handleCompleteAndInvoice triggers auto-generation of linked invoice.
 - **[feature-5]** *"Full registry export to PDF and Excel formats"*
-  - **Proof**: [`apps/web/src/app/dashboard/orders/page.tsx#L355-L375`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/orders/page.tsx)
+  - **Proof**: [`apps/web/src/components/orders/useOrderExport.ts#L50-L85`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/orders/useOrderExport.ts)
   - **Anchor**: `exportToXLSX`
   - **Citation**: Direct spreadsheet and printable exports of order registers.
 
@@ -82,7 +82,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `delivery_status`
   - **Citation**: Dual-enum architectural schema separating physical shipping from billing/production stages.
 - **[section-2]** **Completion & Invoicing Linkage**: *"When marking an order Completed, you can choose Complete & Invoice to generate a..."*
-  - **Proof**: [`apps/web/src/components/orders/CompletionModals.tsx#L115-L150`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/orders/CompletionModals.tsx)
+  - **Proof**: [`apps/web/src/components/orders/CompletionModals.tsx#L85-L160`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/orders/CompletionModals.tsx)
   - **Anchor**: `onCompleteAndInvoice`
   - **Citation**: Order completion triggers modal linking completed quantities to tax invoices.
 
@@ -656,7 +656,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `BillItem`
   - **Citation**: BillItem records description, hsn, quantity, unit, rate, gst_rate, and line totals.
 - **[use-3]** *"Choose Complete & Invoice when completing an order to generate a tax invoice automatically"*
-  - **Proof**: [`apps/web/src/components/orders/CompletionModals.tsx#L115-L150`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/orders/CompletionModals.tsx)
+  - **Proof**: [`apps/web/src/components/orders/CompletionModals.tsx#L85-L160`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/orders/CompletionModals.tsx)
   - **Anchor**: `completeAndInvoice`
   - **Citation**: Order completion triggers prompt to auto-generate a pre-filled tax invoice.
 - **[use-4]** *"Download clean PDF tax invoices or share payment links via WhatsApp"*
@@ -700,7 +700,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `generatePDFWithRetry`
   - **Citation**: Headless browser PDF rendering adhering to Indian GST tax layout.
 - **[feature-4]** *"Professional PDF invoice generation formatted to Indian tax standards"*
-  - **Proof**: [`apps/web/src/components/orders/CompletionModals.tsx#L115-L150`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/orders/CompletionModals.tsx)
+  - **Proof**: [`apps/web/src/components/orders/CompletionModals.tsx#L85-L160`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/orders/CompletionModals.tsx)
   - **Anchor**: `completeAndInvoice`
   - **Citation**: Order completion triggers prompt to auto-generate a pre-filled tax invoice.
 - **[feature-5]** *"WhatsApp sharing and payment status tracking"*
@@ -720,7 +720,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
 
 ### 5. FAQs Evidence (2 items)
 - **[faq-1]** **Q: How does the system distinguish CGST/SGST from IGST?**
-  - **Proof**: [`apps/web/src/components/orders/CompletionModals.tsx#L115-L150`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/orders/CompletionModals.tsx)
+  - **Proof**: [`apps/web/src/components/orders/CompletionModals.tsx#L85-L160`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/orders/CompletionModals.tsx)
   - **Anchor**: `onCompleteAndInvoice`
   - **Citation**: Order completion prompts user to generate a linked tax invoice.
 - **[faq-2]** **Q: Can invoices be exported to Tally Prime?**
