@@ -37,8 +37,15 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    // Read locale from localStorage on mount
-    const stored = localStorage.getItem(LOCALE_STORAGE_KEY);
+    // Read locale from localStorage on mount (with cookie fallback)
+    let stored = localStorage.getItem(LOCALE_STORAGE_KEY);
+    if (!stored && typeof document !== "undefined") {
+      const match = document.cookie.match(
+        new RegExp(`(?:^|; )${LOCALE_STORAGE_KEY}=([^;]*)`)
+      );
+      if (match) stored = decodeURIComponent(match[1]);
+    }
+
     if (stored && LOCALES.includes(stored as Locale) && stored !== DEFAULT_LOCALE) {
       const targetLocale = stored as Exclude<Locale, "en">;
       setLocale(targetLocale);
@@ -59,6 +66,9 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
 
   const switchLocale = useCallback((newLocale: Locale) => {
     localStorage.setItem(LOCALE_STORAGE_KEY, newLocale);
+    if (typeof document !== "undefined") {
+      document.cookie = `${LOCALE_STORAGE_KEY}=${newLocale};path=/;max-age=31536000;SameSite=Lax`;
+    }
     // Reload the page to re-initialize the provider cleanly with the chosen locale
     window.location.reload();
   }, []);
