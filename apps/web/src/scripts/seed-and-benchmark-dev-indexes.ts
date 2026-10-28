@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 import path from "path";
 import { MongoClient, ObjectId } from "mongodb";
 
+dotenv.config({ path: path.resolve(process.cwd(), "apps/web/.env.local") });
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 dotenv.config();
 
@@ -10,6 +11,11 @@ const CLIENTS_TEMP = "__dev_benchmark_clients__";
 const INVENTORY_TEMP = "__dev_benchmark_inventory__";
 
 async function main() {
+  if (process.env.NODE_ENV === "production") {
+    console.error("ABORTED: Benchmark script cannot run in production (NODE_ENV=production).");
+    process.exit(1);
+  }
+
   const uri = process.env.MONGODB_URI;
   if (!uri) {
     console.error("MONGODB_URI not configured");

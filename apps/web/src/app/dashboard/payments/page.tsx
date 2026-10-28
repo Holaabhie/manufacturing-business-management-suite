@@ -58,6 +58,7 @@ import {
 } from "@/components/ui/ios";
 import { StatWidget } from "@/components/ui/StatWidget";
 import { ConfirmDeleteSheet } from "@/components/ui/ConfirmDeleteSheet";
+import { TruncatedDataBanner } from "@/components/ui/TruncatedDataBanner";
 
 // Animations
 import { motion } from "framer-motion";
@@ -814,6 +815,14 @@ export default function PaymentsPage() {
         </div>,
         document.body
       )}
+
+      <TruncatedDataBanner
+        truncated={Boolean(ordersRes?.truncated || (ordersRes?.total && ordersRes.total > orders.length))}
+        count={orders.length}
+        maxLimit={500}
+        entityName="orders"
+        className="mb-4"
+      />
 
       <div className="kpi-panel">
         <div className="kpi-panel__glow"></div>

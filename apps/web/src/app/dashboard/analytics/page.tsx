@@ -599,6 +599,9 @@ export default function AnalyticsPage() {
                                 const res = await fetch("/api/v1/orders");
                                 const ordersData = await res.json();
                                 const ordersList = Array.isArray(ordersData.data) ? ordersData.data : [];
+                                if (ordersData?.truncated) {
+                                    toast.warning("Display capped: Export enriched with top 500 orders.");
+                                }
                                 
                                 const enrichedData = revenueData.map(rt => {
                                     const monthOrders = ordersList.filter((o: any) => {
