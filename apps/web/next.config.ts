@@ -65,13 +65,10 @@ const nextConfig: NextConfig = {
     // Tree-shake these packages automatically
     optimizePackageImports: [
       "lucide-react",
-      "@tabler/icons-react",
-      "@heroicons/react",
       "recharts",
       "framer-motion",
       "motion",
       "date-fns",
-      "react-icons",
       "@radix-ui/react-accordion",
       "@radix-ui/react-alert-dialog",
       "@radix-ui/react-avatar",
@@ -99,7 +96,6 @@ const nextConfig: NextConfig = {
       "clsx",
       "tailwind-merge",
       "sonner",
-      "embla-carousel-react",
     ],
   },
 
