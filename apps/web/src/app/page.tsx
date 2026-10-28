@@ -1,5 +1,3 @@
-import { redirect } from "next/navigation";
-import { auth } from "@/auth";
 import { PLANS, formatPrice, getYearlySavings } from "@/lib/razorpay/plans";
 import Link from "next/link";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -34,13 +32,7 @@ export const metadata = {
     "Stop managing your factory on paper registers and Excel sheets. IND Manager unifies orders, inventory, production, payments, and clients in one platform built for Indian manufacturers.",
 };
 
-export default async function HomePage() {
-  // ── Server-side auth: logged-in users skip the marketing page entirely ──
-  const session = await auth();
-  if (session) {
-    redirect("/dashboard");
-  }
-
+export default function HomePage() {
   // ── Pull pricing from single source of truth (zero hardcoded numbers) ──
   const monthlyPrice = formatPrice(PLANS.pro_monthly.price); // ₹999
   const yearlyPrice = formatPrice(PLANS.pro_yearly.price); // ₹9,999
