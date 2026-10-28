@@ -22,6 +22,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint --workspace=apps/web
+      - name: Check i18n keys (warn-only)
+        run: npm run check:i18n --workspace=apps/web || true
 
   typecheck:
     name: Type Check

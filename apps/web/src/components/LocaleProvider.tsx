@@ -4,13 +4,16 @@ import { NextIntlClientProvider } from "next-intl";
 import { useState, useEffect, createContext, useContext, useCallback } from "react";
 import { type Locale, DEFAULT_LOCALE, LOCALE_STORAGE_KEY, LOCALES } from "@/lib/i18n";
 
-// Statically import all locale message files from src/messages
-import en from "@/messages/en";
-import hi from "@/messages/hi";
-import gu from "@/messages/gu";
-import mr from "@/messages/mr";
+// Statically import default locale (en) for instant zero-latency SSR & initial hydration
+import enMessages from "@/messages/en";
 
-const allMessages: Record<Locale, Record<string, any>> = { en, hi, gu, mr };
+// Dynamic chunk loaders for non-default locales (~280KB each)
+// This ensures that English visitors never download Hindi, Gujarati, or Marathi bundles
+const dynamicLocaleLoaders: Record<Exclude<Locale, "en">, () => Promise<{ default: Record<string, any> }>> = {
+  hi: () => import("@/messages/hi"),
+  gu: () => import("@/messages/gu"),
+  mr: () => import("@/messages/mr"),
+};
 
 // ─── Locale Context ──────────────────────────────────────
 interface LocaleContextType {
@@ -30,20 +33,33 @@ export function useAppLocale() {
 // ─── Provider Component ──────────────────────────────────
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocale] = useState<Locale>(DEFAULT_LOCALE);
+  const [messages, setMessages] = useState<Record<string, any>>(enMessages);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     // Read locale from localStorage on mount
     const stored = localStorage.getItem(LOCALE_STORAGE_KEY);
-    if (stored && LOCALES.includes(stored as Locale)) {
-      setLocale(stored as Locale);
+    if (stored && LOCALES.includes(stored as Locale) && stored !== DEFAULT_LOCALE) {
+      const targetLocale = stored as Exclude<Locale, "en">;
+      setLocale(targetLocale);
+      dynamicLocaleLoaders[targetLocale]()
+        .then((mod) => {
+          setMessages(mod.default);
+          setIsLoaded(true);
+        })
+        .catch((err) => {
+          console.error("[LocaleProvider] Failed to load messages for locale:", targetLocale, err);
+          setMessages(enMessages);
+          setIsLoaded(true);
+        });
+    } else {
+      setIsLoaded(true);
     }
-    setIsLoaded(true);
   }, []);
 
   const switchLocale = useCallback((newLocale: Locale) => {
     localStorage.setItem(LOCALE_STORAGE_KEY, newLocale);
-    // Reload the page to re-initialize the provider cleanly
+    // Reload the page to re-initialize the provider cleanly with the chosen locale
     window.location.reload();
   }, []);
 
@@ -52,13 +68,12 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
     return null;
   }
 
-
   return (
     <LocaleContext.Provider value={{ locale, switchLocale }}>
       <NextIntlClientProvider
         key={locale}
         locale={locale}
-        messages={allMessages[locale]}
+        messages={messages}
         timeZone="Asia/Kolkata"
       >
         {children}
