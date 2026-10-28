@@ -16,7 +16,7 @@ IND Manager is a cloud-native, responsive Manufacturing Operating System and Bus
 ## 🛠 Tech Stack
 
 - **Frontend**: Next.js 15.1 (App Router, Turbopack, React 19), Tailwind CSS, Framer Motion, Radix UI, Lucide Icons.
-- **Backend**: Next.js API Routes + NestJS (`apps/api`) + Express Auth Server (`apps/auth-server`).
+- **Backend**: Next.js API Routes + Express Auth Server (`apps/auth-server`).
 - **Database & Cache**: MongoDB (Core DB), Redis (Session / Cache / Queue), TimescaleDB (Optional telemetry).
 - **ERP Integration**: Tally Prime Desktop Bridge (`tools/tally-bridge`) via Electron.
 - **AI Engine**: Google Gemini 2.0 / 3.x conversational assistant.
