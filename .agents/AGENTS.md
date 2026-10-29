@@ -776,16 +776,12 @@ When building a full-screen mobile sheet that acts as a page:
 ### Fix 30: Orders Staff View Missing Next-Intl Translation Messages
 
 - **Files Changed**:
-  - `apps/web/messages/en.json`
-  - `apps/web/messages/hi.json`
-  - `apps/web/messages/mr.json`
-  - `apps/web/messages/gu.json`
   - `apps/web/src/messages/en.ts`
   - `apps/web/src/messages/hi.ts`
   - `apps/web/src/messages/mr.ts`
   - `apps/web/src/messages/gu.ts`
 - **Root Cause**: In `apps/web/src/app/dashboard/orders/page.tsx`, the staff view (`isStaff`) references `t("staff.totalOrders")`, `t("staff.completedOrders")`, and `t("staff.production")`. While `orders.kpi` defined `totalOrders`, `orders.staff` in all dictionary files only defined `pending`, `inProgress`, `done`, `productionQueue`, etc., lacking `totalOrders`, `completedOrders`, and `production`. When viewing orders in Hindi (`hi`) or other locales as a staff user, Next-intl threw `MISSING_MESSAGE: Could not resolve orders.staff.totalOrders in messages for locale hi`.
-- **What Changed**: Added `totalOrders`, `completedOrders`, and `production` with accurate translations under `orders.staff` across all 4 locales in both JSON (`messages/*.json`) and TypeScript (`src/messages/*.ts`) dictionaries:
+- **What Changed**: Added `totalOrders`, `completedOrders`, and `production` with accurate translations under `orders.staff` across all 4 locales in TypeScript (`src/messages/*.ts`) dictionaries (legacy JSON dictionaries deleted):
   - English: `"totalOrders": "Total Orders"`, `"completedOrders": "Completed Orders"`, `"production": "Production"`
   - Hindi: `"totalOrders": "कुल ऑर्डर"`, `"completedOrders": "पूर्ण ऑर्डर"`, `"production": "उत्पादन"`
   - Marathi: `"totalOrders": "एकूण ऑर्डर्स"`, `"completedOrders": "पूर्ण ऑर्डर्स"`, `"production": "उत्पादन"`
@@ -1094,7 +1090,6 @@ When building a full-screen mobile sheet that acts as a page:
   - `apps/web/src/components/vendor-bills/CreateBillModal.tsx`
   - `apps/web/src/components/vendor-bills/BillDetailModal.tsx`
   - `apps/web/src/components/vendor-bills/RecordVendorBillPaymentModal.tsx`
-  - `apps/web/messages/{en,hi,gu,mr}.json`
   - `apps/web/src/messages/{en,hi,gu,mr}.ts`
 - **Root Cause & Fixes Executed**:
   1. **Idempotency Scope Hardening**: Default `withIdempotency` derives user scope from individual session user ID, causing different sessions of the same tenant to have isolated idempotency caches. Created `getVendorBillTenantUserId` in `tenant-scope.ts` which extracts the tenant owner ID via `getDataOwnerId(user)` (with fallback session lookup) and wired it into all 6 vendor-bills write routes via `{ getUserId: getVendorBillTenantUserId }` without altering `with-idempotency.ts`. Verified same-key cross-session write returns cached 201 response.
@@ -1139,7 +1134,7 @@ When building a full-screen mobile sheet that acts as a page:
   - `src/app/dashboard/layout.tsx`: Added `Payables` link to sidebar navigation under `INTELLIGENCE` and to `moreSheetSections.REPORTS`.
   - `src/hooks/useCommandPaletteSearch.ts`: Added `Payables` to command palette search navigation items.
 - **Internationalization (i18n)**:
-  - Added `payables` namespace across `messages/{en,hi,gu,mr}.json` and `src/messages/{en,hi,gu,mr}.ts` with 60 keys each (240 total).
+  - Added `payables` namespace across `src/messages/{en,hi,gu,mr}.ts` with 60 keys each (240 total).
   - Exact 100% key parity across all 4 locales.
   - Standard Roman terms preserved: `GSTIN`, `GST`, `TDS`, `PDF`, `UPI`.
   - Zero hardcoded UI strings.
@@ -1202,7 +1197,7 @@ When building a full-screen mobile sheet that acts as a page:
   - `src/app/dashboard/payments/page.tsx`: Replaced placeholder Send Reminder toast at line 1258 with a read-only fetch of the order's latest reminder from `reminder_logs` (`/api/reminders/logs?order_id=...&limit=1`).
   - `src/app/dashboard/settings/page.tsx`: Added "Payment Reminders" card under Business settings.
 - **Internationalization (i18n)**:
-  - Added `reminders` namespace across `messages/{en,hi,gu,mr}.json` and `src/messages/{en,hi,gu,mr}.ts` with 72 keys each (288 total).
+  - Added `reminders` namespace across `src/messages/{en,hi,gu,mr}.ts` with 72 keys each (288 total).
   - Exact 100% key parity across all 4 locales.
   - Standard Roman terms preserved: `GST`, `GSTIN`, `UPI`, `PDF`.
   - Zero hardcoded UI strings.
@@ -1317,8 +1312,352 @@ When building a full-screen mobile sheet that acts as a page:
   - Bank Reconciliation Statement (BRS) report with unpresented cheques, uncleared deposits, and balance reconciliation.
   - Tally XML voucher generation for bank receipts and bank payments.
 
+### Feature 3: Linked Document Chips, Vendor iOS Bottom Sheet & Purchasing Header UX
 
+- **Files Changed**:
+  - `apps/web/src/lib/order-utils.ts`
+  - `apps/web/src/components/ui/LinkedDocChip.tsx`
+  - `apps/web/src/modules/delivery-challans/domain/types.ts`
+  - `apps/web/src/modules/delivery-challans/application/delivery-challan.service.ts`
+  - `apps/web/src/components/delivery-challans/ChallanDetailModal.tsx`
+  - `apps/web/src/components/delivery-challans/CreateChallanModal.tsx`
+  - `apps/web/src/modules/vendor-bills/application/vendor-bill.service.ts`
+  - `apps/web/src/components/vendor-bills/BillDetailModal.tsx`
+  - `apps/web/src/components/quotes/QuoteDetailModal.tsx`
+  - `apps/web/src/app/dashboard/settings/reminders/page.tsx`
+  - `apps/web/src/modules/purchasing/domain/schemas.ts`
+  - `apps/web/src/messages/{en,hi,gu,mr}.ts`
+  - `apps/web/src/app/dashboard/purchasing/page.tsx`
+- **What Changed**:
+  - **Delivery Challan & Vendor Bill Linked Identifiers**: Replaced raw 24-character Mongo ObjectIds with `<LinkedDocChip />` backed by single canonical helper `getOrderDisplayNumber(order)` (`ORD-C59BFC · cK`) and linked PO chips (`PO-0001 · saiv ram · ₹5,593`) with graceful fallback to `"PO not available"`. Zero raw ObjectIds exposed.
+  - **New Vendor Sheet iOS UI Upgrade**: Upgraded Add Vendor modal to iOS bottom sheet using Radix `DialogContent` with `fullScreenMobile` (Fix 5 compliant), 48px touch inputs, grouped visual sections, fixed `+91` prefix, Roman script GSTIN across `en`, `hi`, `gu`, `mr`, and Zod validation (10-digit Indian phone `^[6-9]\d{9}$`, uppercase optional 15-char GSTIN `^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$`).
+  - **Purchasing Page Header Buttons & KPIs**: Header buttons styled strictly via className (`!h-12 !rounded-xl !px-3 font-semibold`) without altering `IOSButton.tsx` global tokens ("Add Vendor" secondary gray, "New Purchase" primary blue). Converted mobile KPI grid to compact 2-column layout (`grid-cols-2 md:grid-cols-4 gap-3`) with Indian currency formatting (`₹...`).
 
+### Fix 23: Mobile Layout Bleed Harmonization & Step 3 Multi-Viewport Verification Audit
 
+- **Files Changed / Added**:
+  - `apps/web/src/app/globals.css`
+  - `apps/web/src/components/ui/PageBleed.tsx` (NEW)
+  - `apps/web/src/app/dashboard/analytics/page.tsx`
+  - `apps/web/src/app/dashboard/notifications/page.tsx`
+  - `apps/web/src/app/dashboard/page.tsx`
+  - `apps/web/src/app/dashboard/profile/page.tsx`
+  - `apps/web/src/components/notifications/NotificationFeedItem.tsx`
+  - `apps/web/src/app/dashboard/vendor-bills/page.tsx`
+  - `apps/web/src/app/dashboard/orders/[id]/edit/page.tsx`
+  - All 12 Settings sub-pages (`settings/page.tsx`, `settings/team`, `settings/tax`, `settings/tally-integration`, `settings/security`, `settings/reminders`, `settings/notifications`, `settings/modules`, `settings/language`, `settings/data`, `settings/company-info`, `settings/audit-trails`)
+- **Root Cause**:
+  - Shared layout `<main>` in `apps/web/src/app/dashboard/layout.tsx` applies responsive padding: `p-4` (mobile: 16px), `md:p-6` (tablet/desktop: 24px), and `lg:p-8` (large desktop: 32px).
+  - Multiple dashboard pages applied nested `px-4` or `px-4 sm:px-0`, creating double horizontal padding (32px each side = 64px gutter on a 360px screen, occupying only 82.2% of viewport width).
+  - Several pages applied `-m-6 p-6` (or `-mx-6`), which pulled negative 24px margins against the 16px mobile padding, pushing containers 8px past the left viewport edge (`left: -8px`), clipping page titles and content.
+  - At `lg:` (1024px+), existing negative margins only countered up to `md:p-6` (24px) against `lg:p-8` (32px), creating an asymmetric 8px desktop gutter shift.
+- **What Changed**:
+  - **Shared Responsive Bleed Utility**: Added `.page-bleed` (`-m-4 md:-m-6 lg:-m-8 p-4 md:p-6 lg:p-8`) in `globals.css` and created `<PageBleed>` component in `apps/web/src/components/ui/PageBleed.tsx` countering `<main>` padding with sub-pixel precision across all three responsive tiers (0px net shift on mobile, tablet, and 1024px+ desktop).
+  - **Analytics Page**: Migrated container to `.page-bleed`, added `activeChipRef` auto-scrolling active month chip into center view, matched month selector + Excel export buttons to `h-[38px]`, formatted zero KPI states to `"0"` with `"No activity"` caption instead of bare `"—"`, and applied `line-clamp-2 break-words` to KPI labels.
+  - **Notifications Page**: Migrated to `.page-bleed`, structured channel cards as equal-height 2x2 grid with `min-w-0 flex-1 truncate` so badge rules never spill out, and added single-line scrollable tab bar with active tab centering.
+  - **Profile Page**: Removed redundant `px-4 sm:px-6`, stacked avatar above user name on narrow viewports (`flex-col sm:flex-row`), and added `truncate break-all max-w-full min-w-0` to email address.
+  - **NotificationFeedItem**: Added `line-clamp-2 break-words` to both notification title and body.
+  - **Double-Padding Cleaned**: Removed redundant padding wrappers across Vendor Bills, Order Edit, and all 12 Settings pages.
+  - **Step 3 Verification Proof**: Automated Chrome/Edge CDP audit across all 11 dashboard pages (Dashboard, Orders, Inventory, Production, Purchasing, Billing, Clients, Settings, Analytics, Profile, Notifications) at 360px, 390px, 412px, and 1280px+ (desktop), plus Hindi (`hi`) locale at 390px. Every single page verified `document.documentElement.scrollWidth === clientWidth` (`diff: 0px`, zero horizontal overflow), and desktop 1280px verified `headerLeft === 240px, mainLeft === 240px, firstChildLeft === 272px` (zero 8px shift). Total 94 screenshot artifacts captured.
 
+### Fix 24: Receivables & Payables Aging Mobile Overhaul, Statement Sheet Redesign & WhatsApp Formatting
 
+- **Files Changed**:
+  - `apps/web/src/app/dashboard/reports/receivables/page.tsx`
+  - `apps/web/src/app/dashboard/reports/payables/page.tsx`
+  - `apps/web/src/components/reports/ClientStatement.tsx`
+  - `apps/web/src/components/reports/VendorStatement.tsx`
+  - `apps/web/src/components/reports/StatementDialog.tsx`
+  - `apps/web/src/components/reports/VendorStatementDialog.tsx`
+  - `apps/web/src/messages/{en,hi,gu,mr}.ts`
+- **Root Cause**:
+  1. **Blank Gap Void**: In `ClientStatement.tsx` and `VendorStatement.tsx`, `StatWidget` elements wrapped in `<motion.div variants={staggerItem}>` with initial `{ opacity: 0, y: 20 }` were rendered inside a static `div` with no motion orchestrator declaring `animate="animate"`, rendering the entire KPI section invisible at `opacity: 0` (~240px invisible void). In `receivables` and `payables` pages, the 4-card 2x2 `StatWidget` grid on mobile consumed ~230px height plus outer margins, pushing the party cards down the screen.
+  2. **Controls Clutter**: As-of date picker and Export Excel were stacked or wrapped unevenly with mismatched heights and border radii.
+  3. **Mobile Card Margins**: Nested `MobileTableCards` added internal padding on top of layout padding, reducing card content width on mobile. Buckets were incomplete (e.g. Payables lacked 1-30, 31-60, 61-90 and hardcoded "90+ d").
+  4. **WhatsApp Suffix**: Direct WhatsApp statement API message appended accounting suffixes ("Cr" / "Dr") to closing balance, and date period was raw ISO strings instead of readable Indian dates.
+- **What Changed**:
+  - **Aging Controls**: Unified As-of date input and Export Excel button into 1 row (`h-11`, `rounded-xl`, wrapping only below 360px). Added missing `asOf` localization to `statements` namespace across English, Hindi, Gujarati, and Marathi.
+  - **Mobile Summary Strip**: Replaced tall 2x2 `StatWidget` grid on mobile with a compact ~56px summary strip showing Total Outstanding (large) and Overdue amount in Indian currency format (`formatINR`). Desktop preserves full 4-card `StatWidget` grid (`hidden md:grid md:grid-cols-4`).
+  - **Full-Width Party & Vendor Cards**: Replaced `MobileTableCards` with dedicated full-width cards matching page content. Header displays party name and "⋯" menu. Includes a full-width Total Outstanding bar and a 2-column bucket grid with all 5 buckets in fixed order (`notDue`, `days1_30`, `days31_60`, `days61_90`, `days90Plus` spanning 2 columns). Zeros display as "—", tinted by severity, with flexible multiline wrapping for Indic scripts.
+  - **Statement of Account Sheet Redesign**: Added mobile drag handle, centered party title + "Statement of Account" subtitle, rounded top sheet layout (`max-h-[92dvh]`), segmented FY selector ("Current FY | Previous FY | Custom") with 2-column date fields, compact 2x2 summary card (Opening Balance, Total Debit, Total Credit, Closing Balance retaining "Cr"), month-grouped ledger cards with 3 equal columns (Debit, Credit, Balance), and a sticky 44px+ footer with Excel, PDF, and primary emerald green WhatsApp buttons.
+  - **Direct WhatsApp Message Fix**: Plain closing balance format `₹${Math.abs(closingBalance).toLocaleString("en-IN")}` omitting "Cr"/"Dr" suffix (UI and PDF displays retain "Cr" for credit balance). Formats period dates as readable `"dd MMM yyyy to dd MMM yyyy"` (e.g. `"01 Apr 2026 to 31 Mar 2027"`).
+  - **Verification**: Verified via Chrome DevTools MCP under mobile device emulation (360px & 412px viewports) across English and Hindi. Verified zero horizontal overflow (`scrollWidth === clientWidth: 360px`).
+
+### Fix 25: Turbopack Workspace Root Inference & Favicon RGBA Decoding Error
+
+- **Files Changed**:
+  - `apps/web/next.config.ts`
+  - `apps/web/src/app/favicon.ico`
+  - `apps/web/public/favicon.ico`
+  - `apps/web/public/brand/favicon.ico`
+  - `apps/web/src/app/apple-icon.png`
+- **Root Cause**:
+  1. Next.js 16 with Turbopack failed to detect monorepo workspace root because `node_modules/next` is installed at the workspace root while `apps/web/next.config.ts` had `turbopack: { root }` commented out. Turbopack fell back to inferring `src/app` as project root and failed.
+  2. Turbopack's Rust `ico` parser requires embedded PNGs inside `.ico` files to have 32-bit RGBA color format (`png::ColorType::Rgba`, type 6). The existing `favicon.ico` embedded 24-bit RGB PNG frames (`colorType: 2`, no alpha), causing Turbopack to crash with `Format error decoding Ico: The PNG is not in RGBA format!`. Additionally, `apple-icon.png` in `src/app` was a JPEG image mislabeled with a `.png` extension.
+- **What Changed**:
+  - Restored `turbopack: { root: path.resolve(__dirname, "../..") }` in `next.config.ts`.
+  - Re-generated `favicon.ico` (16x16, 32x32, 48x48, 64x64) with true 32-bit RGBA PNG frames (`colorType: 6`) via `sharp`. Synchronized copies in `public/` and `public/brand/`.
+  - Converted `src/app/apple-icon.png` from JPEG to a genuine RGBA PNG.
+
+### Fix 26: AI Assistant Mobile Overhaul, Stable Minimal Header, Dynamic Composer Clearance & Retry System
+
+- **Files Changed**:
+  - `apps/web/src/app/dashboard/assistant/page.tsx`
+  - `apps/web/src/components/ai/SmartInputBar.tsx`
+  - `apps/web/src/components/ai/ResponseCard.tsx`
+  - `apps/web/src/hooks/useAIChat.ts`
+  - `apps/web/src/app/api/assistant/chat/route.ts`
+  - `apps/web/src/messages/{en,hi,gu,mr}.ts`
+- **Root Cause**:
+  1. **Header Clutter & Collapse**: Variable button text ("New chat", "Actions & Insights") and loose flex containers caused header elements to collide, wrap, and truncate ("AI As...", "Y...") on mobile.
+  2. **Bloated Empty State & Stored Welcome Message**: The live assistant page rendered a large welcome card, 5 bulky module cards, and injected a long bulleted welcome text into chat history and `localStorage` on `clearChat()`.
+  3. **Input Bar Positioning & Clearance**: The chat input bar lacked dynamic height measurement, causing messages to hide behind the fixed bar and floating bottom nav dock on mobile viewports. Textarea with `<16px` font triggered iOS/Android browser auto-zoom. Non-functional Attach and Mic buttons cluttered the composer.
+  4. **Error Handling & Upstream Fragility**: Raw provider errors were exposed without structured status mappings (503 / 429) or client-side retry workflows, and backend lacked safe retry guards around data-mutating tool calls.
+- **What Changed**:
+  - **Stable Minimal Header**: Single-row layout with bot icon tile, "AI Assistant" title (`whitespace-nowrap`), tiny "Live" pulse dot, and two permanent 40px icon-only buttons ("New chat" dimmed when empty, and "Actions & Insights" quick actions drawer trigger). Subtitle hidden on mobile (`hidden md:block`). Zero shifting or wrapping between empty and active chat states.
+  - **Clean Empty State**: Compact bot icon tile, localized single-line heading ("How can I help?"), muted description, and 4 quick suggestion chips in a 2x2 grid ("Today's orders", "Low stock items", "Pending payments", "Production status"). Removed bulky welcome card and 5 module cards. Empty state is driven purely by "no user messages", filtering out legacy stored welcome messages on mount, with `clearChat()` resetting to `[]`.
+  - **Fixed Measured Composer Dock**: Kept window-level scroll without layout fight. Measured input bar height using `ResizeObserver` and applied dynamic `paddingBottom` to message feed (`calc(${composerHeight}px + 4.5rem + env(safe-area-inset-bottom, 0px) + 16px)` on mobile) so the last message is always fully visible above the fixed composer dock and bottom nav.
+  - **Clean SmartInputBar**: `16px` font size to eliminate mobile zoom, auto-resizing up to 4 lines, 40px circular send button, Enter-to-send on desktop (Enter-for-newline on mobile). Removed non-functional Attach and Mic buttons while preserving i18n keys.
+  - **ResponseCard & Error Bubble**: Markdown list items wrapped with tight list spacing (`<ul><li>`) without extraneous `<br />` breaks. Standardized inline error bubble with icon, friendly localized message, and an inline "Retry" button that resends the failed prompt.
+  - **Backend Retry Safety & Status Mapping**: Added retry safety loop around upstream Gemini calls (up to 2 retries with 800ms / 2000ms exponential backoff; total retry budget ~2.8s, well within route timeout). Tracked mutating tool operations so retry is aborted if a write operation occurred. Standardized error status (503 for `SERVICE_UNAVAILABLE`, 429 for `RATE_LIMIT`, 401 for `UNAUTHORIZED`, 400 for `VALIDATION_ERROR`, 500 for `SERVER_ERROR`) with sanitized `{ success: false, error: { code, message } }` output.
+  - **Multi-Language Support**: Added `emptyHeading`, `emptySubheading`, `chipOrders`, `chipStock`, `chipPayments`, `chipProduction`, and `aiBusy` across English, Hindi, Gujarati, and Marathi.
+  - **Untouched Orphaned Route**: `git diff --stat apps/web/src/app/ai-assistant apps/web/src/components/ai-assistant` is verified to be 100% clean and untouched.
+
+### Fix 27: Theme-Aware Brand Logo & Container Removal (Dark/Light Seamless Transition)
+
+- **Files Created / Changed**:
+  - `apps/web/src/components/BrandLogo.tsx` (NEW reusable component)
+  - `apps/web/public/brand/ind-manager-logo-full-light-theme.png` (NEW asset)
+  - `apps/web/public/brand/ind-manager-icon-light-theme.png` (NEW asset)
+  - `apps/web/public/brand/ind-manager-logo-full-dark-theme.png` (NEW asset)
+  - `apps/web/public/brand/ind-manager-icon-dark-theme.png` (NEW asset)
+  - `apps/web/src/components/landing/LandingNavbar.tsx`
+  - `apps/web/src/app/dashboard/layout.tsx`
+  - `apps/web/src/app/login/page.tsx`
+  - `apps/web/src/app/admin/login/page.tsx`
+  - `apps/web/src/app/forgot-password/page.tsx`
+  - `apps/web/src/app/staff/login/page.tsx`
+  - `apps/web/src/app/staff/setup/page.tsx`
+  - `apps/web/src/app/setup/page.tsx`
+  - `apps/web/src/app/page.tsx`
+  - `apps/web/src/components/landing/LandingHero.tsx`
+  - `apps/web/src/components/landing/LandingDemo.tsx`
+  - `apps/web/src/lib/notifications/channels/email-adapter.ts`
+  - `apps/web/src/app/api/team/invite/route.ts`
+- **Root Cause**:
+  - Previously, all UI locations rendered static `ind-manager-logo-full.png` or `ind-manager-icon.png` inside dark rounded wrappers (`bg-[#0B1018]`, `rounded-xl`, `border border-white/10`, dark circles) even in light mode.
+  - In light mode, the black containers created visual clash and inconsistency against light backgrounds.
+- **What Changed**:
+  - Extracted 4 transparent PNG assets from `ind-manager-theme-logos.zip` to `apps/web/public/brand/` (light full, light icon, dark full, dark icon).
+  - Created reusable `<BrandLogo variant="full" | "icon" />` component rendering both light-theme and dark-theme Next.js `<Image>` tags toggled via CSS classes `dark:hidden` and `hidden dark:block`. This eliminates flash-of-wrong-logo on initial page load and ensures instant, zero-hydration-mismatch theme transitions.
+  - Stripped all black background pills/boxes (`#0B1018`, border wrappers, rounded pill containers) across all pages:
+    - **Landing Navbar**: Logo sits directly on the transparent/blurred navbar in both light and dark modes.
+    - **Dashboard Sidebar (Expanded & Collapsed)**: 34x34 icon sits directly on the sidebar background without circles or container boxes in both modes. Collapsed mode remains centered and seamless.
+    - **Auth Pages (`/login`, `/admin/login`, `/staff/login`, `/forgot-password`, `/staff/setup`, `/setup`)**: Removed `#0B1018` container pills on both desktop panels and mobile headers; replaced with `<BrandLogo variant="full" />`.
+    - **Landing Page & Mockups**: Updated About icon and Footer logo in `page.tsx`, and sidebar mockup icons in `LandingHero.tsx` and `LandingDemo.tsx` to `<BrandLogo variant="icon" />` without container boxes or borders.
+    - **Email Templates**: Replaced dark pills in `email-adapter.ts` and `api/team/invite/route.ts` with transparent `ind-manager-logo-full-light-theme.png` directly on the white email body.
+  - Kept favicon, manifest, Capacitor/Electron icons completely untouched.
+  - Verified across light and dark modes via DevTools browser automation: Landing navbar, Dashboard sidebar (expanded + collapsed), and Login page.
+
+### Fix 28: AI Assistant Modern UI Overhaul, AIMark Component & Header Logo Restoration
+
+- **Files Created / Changed**:
+  - `apps/web/src/components/ai/AIMark.tsx` (NEW modern AI brand mark component)
+  - `apps/web/src/components/ai/ThinkingIndicator.tsx` (NEW thinking bubble component)
+  - `apps/web/src/components/ai/UserMessageCard.tsx`
+  - `apps/web/src/components/ai/ResponseCard.tsx`
+  - `apps/web/src/components/ai/SmartInputBar.tsx`
+  - `apps/web/src/app/dashboard/assistant/page.tsx`
+  - `apps/web/src/app/dashboard/layout.tsx`
+  - `apps/web/src/messages/en.ts`
+  - `apps/web/src/messages/hi.ts`
+  - `apps/web/src/messages/gu.ts`
+  - `apps/web/src/messages/mr.ts`
+- **Root Cause**:
+  - Global dashboard layout had a route override replacing the app brand logo with a bot icon tile on `/dashboard/assistant`.
+  - Assistant UI lacked a unified visual identity (used generic `Bot` icon and legacy orb loader).
+  - User messages lacked status checkmarks and 12-hour locale-aware timestamps.
+  - Composer was floating with inconsistent bottom nav clearance.
+- **What Changed**:
+  - **Header Logo Restoration**: Removed `pathname === "/dashboard/assistant"` icon override in `layout.tsx`; mobile header and desktop breadcrumb unconditionally render `<BrandLogo variant="icon" />`. Verified that Dashboard, Orders, and Purchasing headers remain identical.
+  - **Modern AIMark Component**: Built `<AIMark size={number} thinking={boolean} />` with squircle SVG, diagonal gradient (`#4F8CFF` -> `#7C5CFF` -> `#22D3EE`), center 4-point sparkle star, soft drop-shadow glow (`rgba(124, 92, 255, 0.35)`), and secondary dot conditionally rendered only when `size >= 24`. Optional `thinking` prop enables pulse animation.
+  - **User Message Cards**: Right-aligned primary blue bubble (`rounded-2xl rounded-br-[4px]`, max-width `85% sm:max-w-[80%]`), 12-hour localized time via `toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit", hour12: true })`, and clean checkmarks (single check on send, double check once assistant replies for that turn, stays single on error, updates to double check after successful retry).
+  - **Assistant Response Cards**: Left-aligned with `<AIMark size={28} />`, card background, 1px border, `rounded-2xl rounded-tl-[4px]`, max-width `88%`, 12-hour timestamp below bubble. Friendly error bubble with warning icon and outline Retry button.
+  - **Thinking Bubble**: Built `<ThinkingIndicator />` featuring `<AIMark size={28} thinking={true} />`, animated bouncing dots (`transform`/`y` and `opacity` only), and localized `t("thinking")`.
+  - **Actions & Insights Sheet**: Drawer header uses `Zap` for Quick Actions and `<AIMark size={18} />` (without secondary dot) for Recent Insights.
+  - **Composer Clearance**: Flat full-width bar at bottom above mobile bottom nav (`fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-40 bg-background/95 backdrop-blur-xl border-t border-border px-4 py-2 sm:px-6 lg:static lg:bg-transparent lg:border-t-0 lg:p-0 lg:z-10`) with dynamic clearance on container via `ResizeObserver`.
+  - **Deferred Icons**: Sidebar (`Sparkles`), command palette (`Bot`), and `notificationIconMap` (`Bot`) intentionally kept unchanged in this phase.
+  - **Unused Styles Preserved**: `AIThinkingLoader.tsx` and `.ai-thinking*` in `globals.css` kept untouched and marked for manual review.
+  - **Untouched Orphaned Route**: Verified `git diff --stat apps/web/src/app/ai-assistant apps/web/src/components/ai-assistant` is completely empty.
+
+### Fix 29: Dialog Viewport Height Scrolling (DialogBody Primitive), glass.css Resting Glow Removal & Client Profile Single-Border Unification
+
+- **Files Changed**:
+  - `apps/web/src/styles/glass.css`
+  - `apps/web/src/components/ui/dialog.tsx`
+  - `apps/web/src/app/globals.css`
+  - `apps/web/src/app/dashboard/clients/page.tsx`
+  - `apps/web/src/app/dashboard/users/page.tsx`
+  - `apps/web/src/app/dashboard/machines/page.tsx`
+- **Root Cause**:
+  1. **Dialog Short Viewport Cutoff**: Dialogs like "Add New Client" lacked an internal scroll region (`overflow-y-auto min-h-0`) between fixed header and pinned footer. On laptop-size and short viewports (1366x768, 1366x600, 1280x720, 150% browser zoom), `DialogContent` desktop height was clamped to `md:max-h-[85dvh]` while form content was taller, cutting off the form at "Address" and making the footer unreachable.
+  2. **glass.css Resting Input Glow**: `glass.css` applied `box-shadow: 0 0 0 3px rgba(99, 210, 255, 0.10) !important` to resting inputs inside `[data-slot="dialog-content"]`, creating an unwanted stuck blue glow even when inputs were unfocused. High-specificity selectors and `!important` clashed with input wrappers (`IOSInput`, `.client-profile-field`).
+  3. **Client Profile Edit Mode Double Borders**: Form fields in Client Profile edit mode rendered nested double borders (outer wrapper border + inner input border) with displaced icons and resting glow.
+- **What Changed**:
+  1. **`glass.css` Input Styling De-escalation**:
+     - Removed resting 3px box-shadow from dialog inputs. Resting state now has clean `border: 1px solid var(--glass-border)` with no shadow.
+     - Moved 3px focus ring exclusively to `:focus-visible` (`box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16)` in light mode, `rgba(99, 210, 255, 0.20)` in dark mode).
+     - Lowered rule specificity using `:where()` and added `input:not([type])` to selector list.
+     - Added explicit opt-out: `:not([data-bare], .field-bare, [data-bare] *, .field-bare *)` allowing custom input wrappers to own their border and focus rings without CSS interference.
+  2. **`components/ui/dialog.tsx` Primitives**:
+     - Added and exported `DialogBody` (`flex-1 min-h-0 overflow-y-auto overscroll-contain`).
+     - Enhanced `DialogFooter` with pinned `shrink-0`, subtle top border, card backdrop blur, and safe area padding (`shrink-0 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end border-t border-[var(--border)] bg-[var(--card)]/90 backdrop-blur pb-[max(env(safe-area-inset-bottom),14px)] pt-3 px-6`).
+     - Increased desktop `DialogContent` max height from `md:max-h-[85dvh]` to `md:max-h-[calc(100dvh-2rem)]` for maximum accessible screen area on short viewports.
+  3. **`globals.css` Single Border Tokens**:
+     - Scoped `.field-bare` and `.client-profile-field-input` with transparent background, border-free, and shadow-free styling.
+     - Applied unified single border to `.field-wrapper` and `.client-profile-field` with hover state and `:focus-within` accent glow (`border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent)`).
+     - Ensured mobile font size (`16px`) prevents iOS/Android viewport zoom.
+  4. **Component Migrations**:
+     - **Add New Client (`clients/page.tsx`)**: Rebuilt inside `<form id="add-client-form">` with fixed `DialogHeader`, scrollable `DialogBody`, and pinned `DialogFooter` (Cancel + Create Client buttons). Replaced double-bordered inputs with single-border `.field-wrapper` + `.field-bare` (`data-bare`), display-only `+91` chip, and 3-row textarea for Address.
+     - **Client Profile Modal (`clients/page.tsx`)**: Replaced hardcoded `maxHeight: '85vh'` with `DialogBody` (`flex-1 min-h-0`). Added `.field-bare` and `data-bare` to all inputs in edit mode, completely eliminating nested double borders.
+     - **Add Employee (`users/page.tsx`)**: Migrated to `DialogHeader` (fixed), `DialogBody` (scrollable), and `DialogFooter` (pinned with Cancel + Save buttons).
+     - **Add/Edit Machine (`machines/page.tsx`)**: Migrated to `DialogHeader` (fixed), `DialogBody` (scrollable), and `DialogFooter` (pinned with Cancel + Save buttons).
+  5. **Verification & Regression Checks**:
+     - Verified Add Client across 1366x768 (light & dark), 1366x600 / 150% zoom (height 502px, body scrolled to bottom, footer pinned), 1280x720, and mobile viewports (360px & 412px full-bleed sheet).
+     - Verified end-to-end client creation ("Apex Precision Tools") and client profile edit mode.
+     - Verified regression across Add Vendor, New PO, Add Bank Account, Import Statement, Add Employee, Machine dialog, and Settings forms (`IOSInput`). All confirmed zero resting glow, proper single borders, and smooth scrolling.
+
+### Fix 30: Transparent Browser-Tab Favicon Replacement & prefers-color-scheme Wiring
+
+- **Files Changed / Replaced / Deleted**:
+  - `apps/web/public/brand/favicons/` (EXTRACTED transparent asset suite from `ind-manager-favicons.zip`)
+  - `apps/web/src/app/layout.tsx` (UPDATED `metadata.icons` with light/dark media queries and fallback)
+  - `apps/web/src/app/favicon.ico` (DELETED old dark-background icon to prevent competing unconditioned link injection)
+  - `apps/web/public/favicon.ico` (REPLACED old dark-background icon with new transparent fallback ICO)
+  - `apps/web/public/brand/favicon.ico` (REPLACED old dark-background icon with new transparent fallback ICO)
+  - `apps/web/public/favicon-test.html` (NEW verification test harness)
+- **Root Cause**:
+  - The previous favicon displayed a dark rounded-corner bounding box behind the IND Manager logo.
+  - In light browser themes (or light OS desktops), this black box created an ugly visual contrast in the tab strip.
+  - Additionally, `layout.tsx` served generic dark-background PNG icons (`icon-32.png`, `icon-192.png`, `icon-512.png`) under `icons.icon` without `prefers-color-scheme` media conditions.
+- **What Changed**:
+  1. **Asset Deployment**:
+     - Unzipped `ind-manager-favicons.zip` into `apps/web/public/brand/favicons/` containing transparent 16/32/48/64/96/180/192/512 PNGs and fallback `favicon.ico`.
+  2. **Metadata Wiring (`layout.tsx`)**:
+     - Configured `metadata.icons.icon` with:
+       - Light tab: `/brand/favicons/favicon-light-32.png` (32x32) & `favicon-light-16.png` (16x16) with `media="(prefers-color-scheme: light)"`.
+       - Dark tab: `/brand/favicons/favicon-dark-32.png` (32x32) & `favicon-dark-16.png` (16x16) with `media="(prefers-color-scheme: dark)"`.
+       - Fallback: `/brand/favicons/favicon.ico` (no media attribute).
+  3. **Preserved Solid Launcher Icons**:
+     - Preserved `apple: [{ url: "/brand/icon-180.png", sizes: "180x180" }]` and `apps/web/src/app/apple-icon.png` with solid background for iOS touch icons.
+     - Preserved `apps/web/public/manifest.json` pointing to solid-background launcher icons (`/brand/icon-192.png`, `/brand/icon-512.png`) so Android and PWA launchers avoid black/white fill artifacts.
+  4. **Old Favicon Removal & Deletion Log**:
+     - Deleted `apps/web/src/app/favicon.ico` (old 11,810 bytes dark box) so Next.js does not inject an unconditioned 64x64 link.
+     - Replaced `apps/web/public/favicon.ico` (5,883 bytes, transparent RGBA).
+     - Replaced `apps/web/public/brand/favicon.ico` (5,883 bytes, transparent RGBA).
+  5. **Verification**:
+     - Verified `GET /favicon.ico`, `GET /brand/favicons/favicon.ico`, `GET /brand/favicons/favicon-light-32.png`, `GET /brand/favicons/favicon-dark-32.png` all return HTTP 200 with correct MIME types and sizes.
+     - Verified live media queries dynamically resolve light vs dark favicons under Chrome emulation.
+     - Captured `screenshots/favicon_verification_full.png`, `screenshots/favicon_tab_light.png`, and `screenshots/favicon_tab_dark.png` verifying clean tab appearance with zero bounding box.
+### Fix 31: Neutral Secondary IOSButton (variant="gray") & Scrollbar color-scheme Sync
+
+- **Files Changed**:
+  - `apps/web/src/components/ui/ios/IOSButton.tsx`
+  - `apps/web/src/app/dashboard/users/page.tsx`
+  - `apps/web/src/app/globals.css`
+- **Root Cause**:
+  1. `IOSButton variant="gray"` resolved to `--accent` (brand blue) in both light and dark modes, preventing secondary actions (Cancel, Export, etc.) from having a neutral appearance. Trigger buttons like Dashboard Export also suffered from dark/blue tints when active or open (`data-[state=open]`).
+  2. The Export button at `users/page.tsx:513` used hardcoded dark/white classes instead of the shared `IOSButton variant="gray"`.
+  3. The root browser scrollbar inherited the operating system's color scheme preference rather than the application's explicit light/dark theme class.
+- **What Changed**:
+  1. Updated `IOSButton variant="gray"` in `IOSButton.tsx`:
+     - Light mode: Card/white surface (`bg-white`), neutral 1px border (`border-[var(--border)]`), text `[var(--foreground)]`, hover `bg-[var(--muted)]`, pressed `active:bg-slate-200/70`.
+     - Dark mode: Subtle translucent surface (`dark:bg-white/[0.08]`), neutral border (`dark:border-white/[0.10]`), light text `[var(--foreground)]`, hover `dark:bg-white/[0.14]`, pressed `dark:bg-white/[0.18]`.
+     - Focus ring: `focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2`.
+     - Open state: `data-[state=open]:bg-[var(--muted)] dark:data-[state=open]:bg-white/[0.14]` ensuring Radix dropdown triggers maintain neutral contrast when menus are open.
+  2. Standardized `users/page.tsx` line 511 to `IOSButton variant="gray" size="medium"`.
+  3. Added explicit `html { color-scheme: light !important; }` and `html.dark { color-scheme: dark !important; }` in `globals.css` so browser scrollbars strictly track the app's theme class.
+
+### Fix 32: MobileSheet Header Slot, Opaque Background & Drag Constraints Containment
+
+- **Files Changed**:
+  - `apps/web/src/components/ui/MobileSheet.tsx`
+  - `apps/web/src/components/MoreMenuSheet.tsx`
+  - `apps/web/src/app/globals.css`
+- **Root Cause**:
+  1. In `MoreMenuSheet.tsx`, the "More" + "Customise" header row resided inside the scroll container, causing it to scroll up and get clipped/overlapped by child menu cards.
+  2. Translucent sheet background (`var(--overlay-sheet-bg, rgba(255,255,255,0.96))`) permitted background page artifacts to show through during scroll and drag interactions.
+  3. Scroll-driven maxHeight toggle (`70dvh -> 92dvh`) induced layout shifts during touch flings.
+  4. Missing top drag boundary allowed dragging sheets upward past their resting edge.
+- **What Changed**:
+  1. Added opt-in `header?: React.ReactNode` slot in `MobileSheet.tsx` rendered as a `flex-shrink-0 z-10` container between the drag handle and scroll container, with top rounded corners and bottom border.
+  2. Added `solidBackground?: boolean` prop in `MobileSheet.tsx` utilizing `--overlay-sheet-solid-bg: #FFFFFF` in `:root` and `#0F172A` in `.dark`.
+  3. Enforced `dragControls` on handle and header, bounded with `dragConstraints={{ top: 0 }}` and `dragElastic={{ top: 0, bottom: 0.2 }}` to completely prevent upward sheet overshoot.
+  4. Migrated `MoreMenuSheet.tsx` to pass its title and Customise action into `header`, enabled `solidBackground={true}`, set fixed `maxHeight="88dvh"`, removed scroll-driven `70dvh -> 92dvh` resizing, and added `pb-[calc(72px+env(safe-area-inset-bottom,16px)+16px)]` bottom nav clearance.
+  5. Kept default behavior 100% backward-compatible for all other callers (`CustomizeDashboardSheet`, `ConfirmDeleteSheet`, `NotificationDropdown`, `EditProductionSheet`, etc.).
+
+### Fix 33: Authentication Suite Overhaul (Remember Me, End-to-End Forgot Password with Dual Provider, Mongo Rate Limiting, Professional Create Account)
+
+- **Files Changed**:
+  - `apps/web/src/lib/auth-session.ts`
+  - `apps/web/src/app/api/auth/login/route.ts`
+  - `apps/web/middleware.ts`
+  - `apps/web/src/lib/rate-limit.ts`
+  - `apps/web/src/lib/auth-schemas.ts`
+  - `apps/web/src/services/verification.service.ts`
+  - `apps/web/src/app/api/auth/forgot-password/route.ts`
+  - `apps/web/src/app/api/auth/verify-otp/route.ts`
+  - `apps/web/src/app/api/auth/reset-password/route.ts`
+  - `apps/web/src/app/api/auth/register/route.ts`
+  - `apps/web/src/components/auth/AuthField.tsx`
+  - `apps/web/src/components/auth/PhoneField.tsx`
+  - `apps/web/src/components/auth/PasswordField.tsx`
+  - `apps/web/src/components/auth/OtpInput.tsx`
+  - `apps/web/src/components/auth/index.ts`
+  - `apps/web/src/app/login/page.tsx`
+  - `apps/web/src/app/forgot-password/page.tsx`
+- **What Changed**:
+  1. **Remember Me Persistence**:
+     - `rememberMe` flag persisted on the `sessions` document.
+     - Cookie headers dynamically configured: persistent (`rememberMe: true` -> `session_id` 24h, `refresh_token` 30d with `Expires`/`Max-Age`) vs session-only (`rememberMe: false` -> no `Expires`, no `Max-Age`, cleared on browser close).
+     - `rotateSession` & `refreshSession` strictly retain the session's persistence class.
+     - Native Capacitor app detection (`Capacitor.isNativePlatform()`) forces persistent mode.
+     - Logout explicitly destroys both cookies with `path: "/"`, `maxAge: 0`, `expires: new Date(0)`.
+  2. **Forgot Password End-to-End & Dual Verification**:
+     - Unified `IVerificationService` with two implementations: `TwilioVerifyService` (when real Twilio Verify SID is configured) and `LocalHmacVerificationService` (HMAC-SHA256, 10-minute expiry, 5 attempt limit, timingSafeEqual, console logs in dev mode only; fails closed in production without leaked OTPs).
+     - Phone lookup queries candidate formats with `$in` (`+91XXXXXXXXXX`, `91XXXXXXXXXX`, `XXXXXXXXXX`) supporting legacy 10-digit users.
+     - Multi-active phone collision detection: if >1 active user shares a phone, fails closed with generic response and server log warning.
+     - Google OAuth-only accounts prevented from setting passwords unless `isPhoneVerified` is true.
+     - Reset token: 32 cryptographically secure random bytes, SHA-256 stored in `password_resets` with 10-minute TTL, single-use, auto-deletes prior tokens.
+     - On password reset: bcrypt hash with 12 rounds, `passwordChangedAt` timestamp recorded, all active user sessions wiped across devices, and audit log recorded.
+     - Public middleware updated to explicitly whitelist `/forgot-password`.
+  3. **MongoDB Rate Limiting**:
+     - Implemented `checkRateLimitMongo` backed by `rate_limits` collection with `expiresAt` TTL index, atomic `findOneAndUpdate` + `$inc`.
+     - Keys hashed with SHA-256 for privacy. Applied to `forgot-password`, `verify-otp`, `reset-password`, and `register`. Returns 429 with `Retry-After` header.
+  4. **Create Account & Shared Auth Components**:
+     - Built `AuthField`, `PhoneField` (+91 chip), `PasswordField` (strength meter & criteria check), and `OtpInput` (6-box auto-focus).
+     - Refactored `register` API with Zod validation, E.164 phone normalization, uniqueness checks, and field error mapping (`PHONE_TAKEN`, `EMAIL_TAKEN`, `WEAK_PASSWORD`).
+     - Preserved existing login behavior and styling.
+
+### Fix 34: Transparent Material Search Dropdown in Add/New Order Wizard
+
+- **Files Changed**:
+  - `apps/web/src/app/dashboard/orders/create/steps.tsx`
+- **Root Cause**: The material search dropdown container in `StepMaterials` used `bg-[var(--card)]`, which in dark mode resolves to `rgba(255, 255, 255, 0.04)` (only 4% opacity / 96% transparent) and in light mode resolves to `rgba(255, 255, 255, 0.72)`. When users searched for materials with existing items already selected, the selected material cards directly underneath bled through the dropdown, causing text overlap. The dropdown container also lacked a dedicated higher z-index stacking context on its parent wrapper (`searchRef`) and had a fixed `200px` height cap instead of viewport-relative scaling.
+- **What Changed**:
+  - Replaced semi-transparent `bg-[var(--card)]` with 100% opaque surface design tokens: `bg-white dark:bg-[#161B27]`.
+  - Added elevated styling with `rounded-xl`, `border border-[var(--border)] dark:border-white/[0.14]`, `shadow-xl dark:shadow-[0_12px_36px_rgba(0,0,0,0.6)]`, and `.scrollbar-hide`.
+  - Capped height to `max-h-[40vh]` with `overflow-y-auto` so it does not collide with mobile keyboards.
+  - Positioned dropdown at `top-full mt-1.5 left-0 right-0` with `z-50` and added `relative z-30` to `searchRef` to isolate and raise its stacking context above the sibling selected material cards.
+### Fix 35: Razorpay Payment SDK Load Failure & CSP Whitelisting
+
+- **Files Changed**:
+  - `apps/web/next.config.ts`
+  - `apps/web/src/lib/razorpay/checkout.ts`
+- **Root Cause**:
+  1. Next.js strict Content-Security-Policy (CSP) in `next.config.ts` lacked whitelisting for Razorpay domains (`https://checkout.razorpay.com`, `https://*.razorpay.com`, `https://api.razorpay.com`). When the browser attempted to load `https://checkout.razorpay.com/v1/checkout.js`, the browser's CSP blocked the script tag, triggering `script.onerror`, which threw: `"Unable to load Razorpay payment SDK. Please check your internet connection."`
+  2. Even if the script had loaded, `frame-src` and `connect-src` CSP directives lacked Razorpay domains (`https://api.razorpay.com`, `https://checkout.razorpay.com`), which would block the checkout modal iframe and backend API/telemetry requests.
+  3. In `checkout.ts`, `loadRazorpayScript` lacked script deduplication and did not clean up failed/stale script DOM elements. If a script load errored or timed out, the dead script tag remained in `document.body`; subsequent retry clicks found the existing script tag and attached listeners to an already-errored node that would never fire events, hanging the UI indefinitely.
+- **What Changed**:
+  - `next.config.ts`: Added `https://checkout.razorpay.com https://*.razorpay.com` to `script-src`, `https://api.razorpay.com https://*.razorpay.com` to `connectSrc` (dev & prod), `https://api.razorpay.com https://checkout.razorpay.com https://*.razorpay.com` to `frame-src`, `data: https://*.razorpay.com` to `font-src`, and `https://api.razorpay.com` to `form-action`.
+  - `checkout.ts`: Refactored `loadRazorpayScript` with an in-flight singleton promise (`scriptLoadingPromise`), automatic cleanup of stale/failed script tags (`existingScript.remove()`), a 10s safety timeout to prevent hanging, and cleaned error handling so retries work seamlessly without page refresh. Updated error message to also advise disabling ad-blockers if blocking occurs.
