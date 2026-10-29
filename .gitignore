@@ -89,3 +89,7 @@ playwright-report/
 apps/web/public/screenshot_*.png
 apps/web/public/icons/ChatGPT*.png
 apps/web/public/icons/Screenshot*.png
+
+# tally spike outputs
+apps/web/tally-spike-output/
+tools/tally-spike-output/
