@@ -15,10 +15,32 @@ const dynamicLocaleLoaders: Record<Exclude<Locale, "en">, () => Promise<{ defaul
   mr: () => import("@/messages/mr"),
 };
 
-export function prefetchLocale(locale: Locale) {
+// Module-level in-flight promise cache to deduplicate and reuse ongoing downloads
+const inFlightLocalePromises: Partial<Record<Exclude<Locale, "en">, Promise<{ default: Record<string, any> }>>> = {};
+
+export function prefetchLocale(locale: Locale): Promise<{ default: Record<string, any> }> {
   if (locale !== "en" && dynamicLocaleLoaders[locale]) {
-    dynamicLocaleLoaders[locale]().catch(() => {});
+    if (!inFlightLocalePromises[locale]) {
+      inFlightLocalePromises[locale] = dynamicLocaleLoaders[locale]().catch((err) => {
+        delete inFlightLocalePromises[locale];
+        throw err;
+      });
+    }
+    return inFlightLocalePromises[locale]!;
   }
+  return Promise.resolve({ default: enMessages });
+}
+
+// ─── Eager Browser Preload ─────────────────────────────────
+// Start downloading non-English chunk immediately as soon as this script is parsed by browser
+if (typeof document !== "undefined") {
+  try {
+    const match = document.cookie.match(new RegExp(`(?:^|; )(?:${LOCALE_STORAGE_KEY}|NEXT_LOCALE)=([^;]*)`));
+    const target = match ? decodeURIComponent(match[1]) : null;
+    if (target && target !== "en" && (target === "hi" || target === "gu" || target === "mr")) {
+      prefetchLocale(target as Exclude<Locale, "en">);
+    }
+  } catch (_) {}
 }
 
 // ─── Locale Context ──────────────────────────────────────
@@ -55,30 +77,35 @@ function LocaleLoadingFallback() {
   );
 }
 
+// Helper to synchronously detect locale on initial client render
+function getInitialClientLocale(): Locale {
+  if (typeof document === "undefined") return DEFAULT_LOCALE;
+  try {
+    const match = document.cookie.match(new RegExp(`(?:^|; )(?:${LOCALE_STORAGE_KEY}|NEXT_LOCALE)=([^;]*)`));
+    if (match) {
+      const loc = decodeURIComponent(match[1]);
+      if (LOCALES.includes(loc as Locale)) return loc as Locale;
+    }
+    const stored = localStorage.getItem(LOCALE_STORAGE_KEY);
+    if (stored && LOCALES.includes(stored as Locale)) return stored as Locale;
+  } catch (_) {}
+  return DEFAULT_LOCALE;
+}
+
 // ─── Provider Component ──────────────────────────────────
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocale] = useState<Locale>(DEFAULT_LOCALE);
   const [messages, setMessages] = useState<Record<string, any>>(enMessages);
+  // Default locale (en) is synchronously available immediately (0ms delay)
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    // Read locale from localStorage on mount (with cookie fallback)
-    let stored: string | null = null;
-    try {
-      stored = localStorage.getItem(LOCALE_STORAGE_KEY);
-    } catch (_) {}
+    const initial = getInitialClientLocale();
 
-    if (!stored && typeof document !== "undefined") {
-      const match = document.cookie.match(
-        new RegExp(`(?:^|; )${LOCALE_STORAGE_KEY}=([^;]*)`)
-      );
-      if (match) stored = decodeURIComponent(match[1]);
-    }
-
-    if (stored && LOCALES.includes(stored as Locale) && stored !== DEFAULT_LOCALE) {
-      const targetLocale = stored as Exclude<Locale, "en">;
+    if (initial !== DEFAULT_LOCALE) {
+      const targetLocale = initial as Exclude<Locale, "en">;
       setLocale(targetLocale);
-      dynamicLocaleLoaders[targetLocale]()
+      prefetchLocale(targetLocale)
         .then((mod) => {
           setMessages(mod.default);
           setIsLoaded(true);
@@ -99,10 +126,11 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
     } catch (_) {}
     if (typeof document !== "undefined") {
       document.cookie = `${LOCALE_STORAGE_KEY}=${newLocale};path=/;max-age=31536000;SameSite=Lax`;
+      document.cookie = `NEXT_LOCALE=${newLocale};path=/;max-age=31536000;SameSite=Lax`;
     }
     // Preload target bundle into browser cache before reload so second paint is instant
     if (newLocale !== "en" && dynamicLocaleLoaders[newLocale as Exclude<Locale, "en">]) {
-      dynamicLocaleLoaders[newLocale as Exclude<Locale, "en">]()
+      prefetchLocale(newLocale as Exclude<Locale, "en">)
         .finally(() => {
           window.location.reload();
         });
