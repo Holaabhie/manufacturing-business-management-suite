@@ -6,7 +6,7 @@ const isDev = process.env.NODE_ENV === "development";
 
 const withPWA = withPWAInit({
   dest: "public",
-  disable: isDev,
+  disable: true,
   fallbacks: {
     document: "/offline",
   },
@@ -168,6 +168,20 @@ const nextConfig: NextConfig = {
               "form-action 'self' https://accounts.google.com https://api.razorpay.com",
               "frame-ancestors 'none'",
             ].join("; "),
+          },
+        ],
+      },
+      // ── Service Worker Kill-Switch (Always fresh, never cached) ──
+      {
+        source: "/sw.js",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+          {
+            key: "Content-Type",
+            value: "application/javascript; charset=utf-8",
           },
         ],
       },
