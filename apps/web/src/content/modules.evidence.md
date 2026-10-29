@@ -660,7 +660,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `completeAndInvoice`
   - **Citation**: Order completion triggers prompt to auto-generate a pre-filled tax invoice.
 - **[use-4]** *"Download clean PDF tax invoices or share payment links via WhatsApp"*
-  - **Proof**: [`apps/web/src/app/dashboard/billing/page.tsx#L550-L565`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/billing/page.tsx)
+  - **Proof**: [`apps/web/src/components/billing/useBillingActions.ts#L65-L80`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/billing/useBillingActions.ts)
   - **Anchor**: `wa.me`
   - **Citation**: WhatsApp button generates pre-filled wa.me share link with invoice summary.
 - **[use-5]** *"Track invoice status from Unpaid and Partially Paid to Paid"*
@@ -670,7 +670,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
 
 ### 2. How It Works Steps Evidence (4 items)
 - **[step-1]** **Create invoice**: *"Select a client and add line items with HSN codes, or choose Complete & Invoice when completing a sales order."*
-  - **Proof**: [`apps/web/src/app/dashboard/billing/page.tsx#L65-L75`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/billing/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/billing/page.tsx#L10-L15`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/billing/page.tsx)
   - **Anchor**: `CreateInvoiceModal`
   - **Citation**: Invoice creation modal accepts client and line items or imports sales orders.
 - **[step-2]** **Compute GST automatically**: *"The system identifies intrastate vs. interstate trade and computes correct CGST, SGST, or IGST amounts."*
@@ -678,11 +678,11 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `isInterState`
   - **Citation**: Automated GST rate calculation comparing company and client state codes.
 - **[step-3]** **Send to customer**: *"Download the formatted tax invoice PDF or share it with the customer over WhatsApp or email."*
-  - **Proof**: [`apps/web/src/app/dashboard/billing/page.tsx#L550-L565`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/billing/page.tsx)
+  - **Proof**: [`apps/web/src/components/billing/useBillingActions.ts#L65-L80`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/billing/useBillingActions.ts)
   - **Anchor**: `wa.me`
   - **Citation**: Share invoice via WhatsApp deep link or download official PDF.
 - **[step-4]** **Track payment collection**: *"Review invoice settlement status and reconcile collections against open receivables."*
-  - **Proof**: [`apps/web/src/app/dashboard/billing/page.tsx#L570-L600`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/billing/page.tsx)
+  - **Proof**: [`apps/web/src/components/billing/useBillingActions.ts#L95-L115`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/billing/useBillingActions.ts)
   - **Anchor**: `status`
   - **Citation**: Invoice status updates as customer payments are cleared.
 
@@ -704,7 +704,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `completeAndInvoice`
   - **Citation**: Order completion triggers prompt to auto-generate a pre-filled tax invoice.
 - **[feature-5]** *"WhatsApp sharing and payment status tracking"*
-  - **Proof**: [`apps/web/src/app/dashboard/billing/page.tsx#L550-L565`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/billing/page.tsx)
+  - **Proof**: [`apps/web/src/components/billing/useBillingActions.ts#L65-L80`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/billing/useBillingActions.ts)
   - **Anchor**: `wa.me`
   - **Citation**: Direct document sharing via pre-formatted WhatsApp messages.
 
@@ -724,7 +724,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `onCompleteAndInvoice`
   - **Citation**: Order completion prompts user to generate a linked tax invoice.
 - **[faq-2]** **Q: Can invoices be exported to Tally Prime?**
-  - **Proof**: [`apps/web/src/app/dashboard/billing/page.tsx#L550-L565`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/billing/page.tsx)
+  - **Proof**: [`apps/web/src/components/billing/useBillingActions.ts#L65-L80`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/billing/useBillingActions.ts)
   - **Anchor**: `wa.me`
   - **Citation**: Share buttons open WhatsApp Web or native app with pre-composed bill text.
 
