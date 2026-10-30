@@ -63,8 +63,8 @@
     "cmdk": "^1.1.1",
     "estree-walker": "2.0.2",
     "framer-motion": "^12.23.24",
-    "handlebars": "^4.7.8",
     "google-auth-library": "^10.6.2",
+    "handlebars": "^4.7.8",
     "howler": "^2.2.4",
     "input-otp": "^1.4.2",
     "jspdf": "^4.1.0",
@@ -103,17 +103,21 @@
     "@eslint/eslintrc": "^3.3.1",
     "@playwright/test": "^1.64.0",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.8",
     "@types/bcrypt": "^6.0.0",
     "@types/node": "^20",
     "@types/nodemailer": "^8.0.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^16.4.7",
     "eslint": "^9.38.0",
     "eslint-config-next": "^16.0.1",
+    "jsdom": "^27.0.1",
     "lint-staged": "^16.2.7",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^3.2.4",
-    "dotenv": "^16.4.7"
+    "vitest": "^3.2.4"
   }
 }
