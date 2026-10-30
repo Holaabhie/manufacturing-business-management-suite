@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import Image from "next/image";
 import { BrandLogo } from "@/components/BrandLogo";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -87,7 +87,7 @@ const OAUTH_ERROR_MESSAGES: Record<string, Record<Locale, string>> = {
   },
 };
 
-export default function LoginPage() {
+function LoginForm() {
   // ─── Core State ───────────────────────────────────────────────
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [portal, setPortal] = useState<Portal>("admin");
@@ -980,5 +980,13 @@ export default function LoginPage() {
 
       {/* SSO Phone Verification Modal removed — real OAuth flow used */}
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>}>
+      <LoginForm />
+    </Suspense>
   );
 }
