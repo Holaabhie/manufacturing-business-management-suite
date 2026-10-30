@@ -16,19 +16,29 @@ vi.mock("next-intl", () => ({
 vi.mock("framer-motion", () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   motion: {
-    div: React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-      ({ children, ...props }, ref) => (
-        <div ref={ref} {...props}>
-          {children}
-        </div>
-      )
+    div: Object.assign(
+      React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+        function MotionDiv({ children, ...props }, ref) {
+          return (
+            <div ref={ref} {...props}>
+              {children}
+            </div>
+          );
+        }
+      ),
+      { displayName: "MotionDiv" }
     ),
-    button: React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
-      ({ children, ...props }, ref) => (
-        <button ref={ref} {...props}>
-          {children}
-        </button>
-      )
+    button: Object.assign(
+      React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
+        function MotionButton({ children, ...props }, ref) {
+          return (
+            <button ref={ref} {...props}>
+              {children}
+            </button>
+          );
+        }
+      ),
+      { displayName: "MotionButton" }
     ),
   },
   useDragControls: () => ({ start: vi.fn() }),

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { ROLE_PRESETS, resolvePermissions } from "@/lib/permissions";
 import type { Bill } from "../types";
 
 describe("Billing Parity & Action Logic Verification", () => {
@@ -129,6 +130,30 @@ describe("Billing Parity & Action Logic Verification", () => {
     expect(isAccessDeniedForRole("Owner", false)).toBe(false);
     expect(isAccessDeniedForRole("Manager", false)).toBe(false);
     expect(isAccessDeniedForRole("Staff", true)).toBe(false); // Still loading
+  });
+
+  it("verifies billing access guard derived from invoices.view permission and role presets", () => {
+    function isBillingAccessDenied(canViewInvoices: boolean, roleLoading: boolean): boolean {
+      if (roleLoading) return false;
+      return !canViewInvoices;
+    }
+
+    // Default Staff preset has invoices.view = false -> DENIED
+    const staffPerms = ROLE_PRESETS.Staff.permissions;
+    expect(isBillingAccessDenied(staffPerms["invoices.view"], false)).toBe(true);
+    expect(isBillingAccessDenied(staffPerms["invoices.view"], true)).toBe(false); // loading
+
+    // Staff with custom permission override invoices.view = true -> ALLOWED
+    const customStaffPerms = resolvePermissions("Staff", { "invoices.view": true });
+    expect(isBillingAccessDenied(customStaffPerms["invoices.view"], false)).toBe(false);
+
+    // Accountant preset has invoices.view = true -> ALLOWED
+    const accountantPerms = ROLE_PRESETS.Accountant.permissions;
+    expect(isBillingAccessDenied(accountantPerms["invoices.view"], false)).toBe(false);
+
+    // Owner preset has invoices.view = true -> ALLOWED
+    const ownerPerms = ROLE_PRESETS.Owner.permissions;
+    expect(isBillingAccessDenied(ownerPerms["invoices.view"], false)).toBe(false);
   });
 
   it("verifies KPI computation logic (total, draft, sent, paid, totalValue, paidValue)", () => {

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { ROLE_PRESETS, resolvePermissions } from "@/lib/permissions";
 import type { PurchaseOrder, Vendor, InventoryItem } from "../types";
 import { matchesMonthYear } from "../../ui/month-year-filter";
 
@@ -72,6 +73,33 @@ describe("Purchasing Parity & Logic Verification", () => {
     expect(canDeleteOrder(mockPendingPO, false)).toBe(false);
     expect(canDeleteOrder(mockOrderedPO, false)).toBe(false);
     expect(canDeleteOrder(mockReceivedPO, false)).toBe(false);
+  });
+
+  it("verifies order deletion guard derived from orders.delete permission and presets", () => {
+    function canDeleteOrderWithPerm(order: PurchaseOrder, canDeleteOrders: boolean) {
+      if (order.status === "Received") return false;
+      return canDeleteOrders;
+    }
+
+    const staffPerms = ROLE_PRESETS.Staff.permissions;
+    const managerPerms = ROLE_PRESETS.Manager.permissions;
+    const ownerPerms = ROLE_PRESETS.Owner.permissions;
+
+    // Staff preset: orders.delete = false
+    expect(canDeleteOrderWithPerm(mockPendingPO, staffPerms["orders.delete"])).toBe(false);
+
+    // Staff with custom override: orders.delete = true
+    const customStaff = resolvePermissions("Staff", { "orders.delete": true });
+    expect(canDeleteOrderWithPerm(mockPendingPO, customStaff["orders.delete"])).toBe(true);
+
+    // Manager preset: orders.delete = true
+    expect(canDeleteOrderWithPerm(mockPendingPO, managerPerms["orders.delete"])).toBe(true);
+
+    // Owner preset: orders.delete = true
+    expect(canDeleteOrderWithPerm(mockPendingPO, ownerPerms["orders.delete"])).toBe(true);
+
+    // Received PO cannot be deleted even by owner
+    expect(canDeleteOrderWithPerm(mockReceivedPO, ownerPerms["orders.delete"])).toBe(false);
   });
 
   it("verifies Indian phone number validation and +91 normalization", () => {

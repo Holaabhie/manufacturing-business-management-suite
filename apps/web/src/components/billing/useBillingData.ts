@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { useCachedPage } from "@/hooks/useCachedPage";
 import { matchesMonthYear, type MonthYearFilterValue } from "@/components/ui/month-year-filter";
+import { apiClient } from "@/lib/api-client";
+import { resolvePermissions, hasPermission } from "@/lib/permissions";
 import type { Bill, CompanyInfo, BillingStats } from "./types";
 
 export function useBillingData() {
@@ -16,6 +18,7 @@ export function useBillingData() {
   const [isTruncated, setIsTruncated] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [canViewInvoices, setCanViewInvoices] = useState<boolean>(true);
   const [roleLoading, setRoleLoading] = useState(true);
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo | null>(null);
   const [companyLoading, setCompanyLoading] = useState(true);
@@ -28,9 +31,8 @@ export function useBillingData() {
   const fetchCompanyInfo = useCallback(async () => {
     setCompanyLoading(true);
     try {
-      const res = await fetch("/api/profile/company", { cache: "no-store" });
-      const data = await res.json();
-      if (data.company) {
+      const data = await apiClient.get<{ company?: CompanyInfo }>("/api/profile/company");
+      if (data?.company) {
         setCompanyInfo(data.company);
       }
     } catch (error) {
@@ -44,9 +46,9 @@ export function useBillingData() {
     setLoading(true);
     try {
       const [clientsRes, ordersRes, billsRes] = await Promise.all([
-        fetch("/api/v1/clients").then((r) => r.json()),
-        fetch("/api/v1/orders").then((r) => r.json()),
-        fetch("/api/v1/billing").then((r) => r.json()).catch(() => ({ data: [] })),
+        apiClient.get<{ data?: any[] }>("/api/v1/clients"),
+        apiClient.get<{ data?: any[]; truncated?: boolean }>("/api/v1/orders"),
+        apiClient.get<{ data?: Bill[]; truncated?: boolean }>("/api/v1/billing").catch(() => ({ data: [] as Bill[], truncated: false })),
       ]);
 
       setClients(clientsRes.data || []);
@@ -63,9 +65,12 @@ export function useBillingData() {
 
   const fetchUserRole = useCallback(async () => {
     try {
-      const res = await fetch("/api/auth/me");
-      const data = await res.json();
-      setUserRole(data?.user?.role || null);
+      const data = await apiClient.get<{ user?: any }>("/api/auth/me");
+      const role = data?.user?.role || null;
+      setUserRole(role);
+      const isOwner = role === "Admin" || role === "Owner";
+      const perms = data?.user?.resolvedPermissions || resolvePermissions(role, data?.user?.customPermissions);
+      setCanViewInvoices(hasPermission(perms, "invoices.view", isOwner));
     } catch (error) {
       console.error("Failed to fetch user role:", error);
     } finally {
@@ -145,10 +150,10 @@ export function useBillingData() {
     setMonthYear,
     userRole,
     roleLoading,
+    canViewInvoices,
     companyInfo,
     companyLoading,
     stats,
     fetchData,
   };
 }
-

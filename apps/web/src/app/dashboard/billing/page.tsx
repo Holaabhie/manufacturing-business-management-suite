@@ -53,6 +53,7 @@ export default function BillingPage() {
     setMonthYear,
     userRole,
     roleLoading,
+    canViewInvoices,
     companyInfo,
     companyLoading,
     stats,
@@ -106,8 +107,8 @@ export default function BillingPage() {
     );
   }
 
-  // Access denied for Staff users
-  if (!roleLoading && userRole === "Staff") {
+  // Access denied if user cannot view invoices (e.g. Staff preset without override)
+  if (!roleLoading && !canViewInvoices) {
     return (
       <AccessDenied
         title={tCommon("billingAccessRestricted")}

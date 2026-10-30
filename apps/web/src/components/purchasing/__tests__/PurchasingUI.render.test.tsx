@@ -21,8 +21,8 @@ vi.mock("framer-motion", () => ({
     {},
     {
       get: (_target, tag: string) => {
-        return React.forwardRef(
-          (
+        const Comp = React.forwardRef(
+          function MockMotionComp(
             {
               children,
               whileTap,
@@ -35,8 +35,12 @@ vi.mock("framer-motion", () => ({
               ...props
             }: any,
             ref
-          ) => React.createElement(tag, { ref, ...props }, children)
+          ) {
+            return React.createElement(tag, { ref, ...props }, children);
+          }
         );
+        Comp.displayName = `Motion${tag}`;
+        return Comp;
       },
     }
   ),
@@ -206,7 +210,9 @@ describe("Purchasing UI Component Tests (jsdom)", () => {
       <PurchasingToolbar
         activeTab="orders"
         ordersCount={5}
+        filteredOrdersCount={5}
         vendorsCount={3}
+        filteredVendorsCount={3}
         orderSearch=""
         vendorSearch=""
         monthYear={{ year: 2026, month: "all" }}
@@ -215,7 +221,7 @@ describe("Purchasing UI Component Tests (jsdom)", () => {
         onVendorSearchChange={vi.fn()}
         onMonthYearChange={vi.fn()}
         onOpenNewPO={vi.fn()}
-        onOpenAddVendor={vi.fn()}
+        onOpenVendorDialog={vi.fn()}
       />
     );
 

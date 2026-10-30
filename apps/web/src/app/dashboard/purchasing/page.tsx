@@ -33,7 +33,8 @@ export default function PurchasingPage() {
       : locale === "mr"
       ? "mr-IN"
       : "en-IN";
-  const { isAdmin } = useRole();
+  const { isAdmin, can } = useRole();
+  const canDeleteOrders = can("orders.delete") || isAdmin;
   const { earliestDate } = useTenantCreationDate();
 
   const data = usePurchasingData();
@@ -127,7 +128,7 @@ export default function PurchasingPage() {
             <PurchasingOrdersTable
               orders={data.filteredOrders}
               ordersLoading={data.ordersLoading}
-              isAdmin={isAdmin}
+              isAdmin={canDeleteOrders}
               dateLocale={dateLocale}
               onOpenNewPO={actions.openNewPO}
               onViewDetails={(order) => {
@@ -140,7 +141,7 @@ export default function PurchasingPage() {
               }}
               onStatusChange={actions.handleStatusChange}
               onDeleteOrder={(order) => {
-                actions.setDeleteTarget({ type: "order", id: order.id });
+                actions.setDeleteTarget({ type: "order", id: order.id, name: order.poNumber });
                 actions.setIsDeleteDialogOpen(true);
               }}
             />
@@ -158,14 +159,14 @@ export default function PurchasingPage() {
             <PurchasingVendorsTable
               vendors={data.filteredVendors}
               vendorsLoading={data.vendorsLoading}
-              isAdmin={isAdmin}
+              isAdmin={canDeleteOrders}
               onOpenVendorDialog={() => {
                 actions.setVendorForm(emptyVendorForm);
                 actions.setIsVendorDialogOpen(true);
               }}
               onSelectVendor={(vendor) => actions.setSelectedVendor(vendor)}
               onDeleteVendor={(vendor) => {
-                actions.setDeleteTarget({ type: "vendor", id: vendor.id });
+                actions.setDeleteTarget({ type: "vendor", id: vendor.id, name: vendor.name });
                 actions.setIsDeleteDialogOpen(true);
               }}
             />
