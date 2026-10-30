@@ -130,7 +130,7 @@ export async function runStagingSeed(args: string[] = process.argv.slice(2)): Pr
   }
 
   const { MongoClient } = await import("mongodb");
-  const bcrypt = await import("bcryptjs");
+  const bcrypt = await import("bcrypt");
   const client = new MongoClient(uri);
   try {
     await client.connect();
