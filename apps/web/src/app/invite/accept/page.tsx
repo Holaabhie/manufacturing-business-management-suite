@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Loader2, CheckCircle2, AlertCircle, Clock, UserCheck, Mail } from "lucide-react";
@@ -14,7 +14,7 @@ interface InvitationData {
     expiresAt: string;
 }
 
-export default function AcceptInvitePage() {
+function AcceptInviteForm() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const token = searchParams.get("token");
@@ -466,4 +466,12 @@ function ErrorScreen({
             </motion.div>
         </div>
     );
+}
+
+export default function AcceptInvitePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>}>
+      <AcceptInviteForm />
+    </Suspense>
+  );
 }
