@@ -1,655 +1,53 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { useAppLocale } from "@/components/LocaleProvider";
-import {
-  Plus,
-  Search,
-  MoreVertical,
-  Trash2,
-  ShoppingCart,
-  Truck,
-  PackageCheck,
-  Clock,
-  IndianRupee,
-  Building2,
-  ChevronRight,
-  ClipboardList,
-  X,
-  UserPlus,
-  User,
-  Loader2,
-  Send,
-  CheckCircle2,
-  Package,
-  Eye,
-  FileText,
-  Wallet,
-} from "lucide-react";
-import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import { playCompletionSound } from "@/hooks/useCompletionSound";
-import { useRole } from "@/lib/hooks/use-role";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { NumericInput, parseNumericValue } from "@/components/ui/numeric-input";
 import { motion, AnimatePresence } from "framer-motion";
-import { cn } from "@/lib/utils";
-import { IOSCard } from "@/components/ui/ios/IOSCard";
-import { IOSButton } from "@/components/ui/ios/IOSButton";
-import { IOSBadge } from "@/components/ui/ios/IOSBadge";
-import { staggerContainer, staggerItem } from "@/styles/animations";
-import { StatWidget } from "@/components/ui/StatWidget";
-import { MobileTableCards } from "@/components/ui/MobileTableCards";
-import { useCachedPage } from "@/hooks/useCachedPage";
+import { useAppLocale } from "@/components/LocaleProvider";
+import { useRole } from "@/lib/hooks/use-role";
+import { useTenantCreationDate } from "@/hooks/useTenantCreationDate";
+import { staggerContainer } from "@/styles/animations";
 import { ConfirmDeleteSheet } from "@/components/ui/ConfirmDeleteSheet";
-import { AddMaterialModal } from "@/components/inventory/AddMaterialModal";
 import { RecordPaymentModal } from "@/components/purchasing/RecordPaymentModal";
 import { VendorDetailDrawer } from "@/components/purchasing/VendorDetailDrawer";
-import { getPaymentStatus } from "@/modules/purchasing/domain/types";
-import { MonthYearFilter, matchesMonthYear, type MonthYearFilterValue } from "@/components/ui/month-year-filter";
-import { useTenantCreationDate } from "@/hooks/useTenantCreationDate";
-
-// ─── Types ──────────────────────────────────────────────────────
-
-interface Vendor {
-  id: string;
-  name: string;
-  contactPerson: string;
-  phone: string;
-  email: string;
-  address: string;
-  gstin?: string;
-}
-
-interface PurchaseOrderItem {
-  inventoryItemId: string;
-  materialName: string;
-  quantity: number;
-  unit: string;
-  unitPrice: number;
-  totalPrice: number;
-}
-
-interface PurchaseOrder {
-  id: string;
-  poNumber: string;
-  vendorId: string;
-  vendorName: string;
-  items: PurchaseOrderItem[];
-  status: "Pending" | "Ordered" | "Received";
-  subtotal: number;
-  taxAmount: number;
-  totalAmount: number;
-  paidAmount: number;
-  notes?: string;
-  orderedAt?: string;
-  receivedAt?: string;
-  createdAt: string;
-}
-
-interface InventoryItem {
-  id: string;
-  name: string;
-  quantity: number;
-  unit: string;
-  purchase_cost_per_unit: number;
-  purchaseCostPerUnit?: number;
-}
-
-type TabKey = "orders" | "vendors";
-
-// ─── Status Config ──────────────────────────────────────────────
-
-const STATUS_CONFIG = {
-  Pending: { color: "orange" as const, icon: Clock, label: "Pending" },
-  Ordered: { color: "blue" as const, icon: Truck, label: "Ordered" },
-  Received: { color: "green" as const, icon: PackageCheck, label: "Received" },
-};
-
-const PAYMENT_STATUS_CONFIG = {
-  pending: { color: "orange" as const, label: "Unpaid" },
-  partial: { color: "blue" as const, label: "Partial" },
-  paid: { color: "green" as const, label: "Paid" },
-};
-
-// ─── Component ──────────────────────────────────────────────────
+import { usePurchasingData } from "@/components/purchasing/usePurchasingData";
+import {
+  usePurchasingActions,
+  emptyVendorForm,
+} from "@/components/purchasing/usePurchasingActions";
+import { PurchasingStatsCards } from "@/components/purchasing/PurchasingStatsCards";
+import { PurchasingToolbar } from "@/components/purchasing/PurchasingToolbar";
+import { PurchasingOrdersTable } from "@/components/purchasing/PurchasingOrdersTable";
+import { PurchasingVendorsTable } from "@/components/purchasing/PurchasingVendorsTable";
+import { AddVendorModal } from "@/components/purchasing/AddVendorModal";
+import { CreatePOModal } from "@/components/purchasing/CreatePOModal";
+import { PODetailModal } from "@/components/purchasing/PODetailModal";
 
 export default function PurchasingPage() {
-  const t = useTranslations("purchasing.page");
-  const tKpi = useTranslations("purchasing.kpi");
-  const tStatus = useTranslations("purchasing.statuses");
-  const tPayStatus = useTranslations("purchasing.paymentStatuses");
-  const tVendorModal = useTranslations("purchasing.vendorModal");
-  const tOrderModal = useTranslations("purchasing.orderModal");
-  const tOrderDetail = useTranslations("purchasing.orderDetail");
-  const tToast = useTranslations("purchasing.toasts");
   const tDelete = useTranslations("purchasing.deleteModal");
-  const tCommon = useTranslations("common");
   const { locale } = useAppLocale();
-  const dateLocale = locale === "hi" ? "hi-IN" : locale === "gu" ? "gu-IN" : locale === "mr" ? "mr-IN" : "en-IN";
-
-  const getStatusLabel = (status: "Pending" | "Ordered" | "Received") => {
-    switch (status) {
-      case "Pending": return tStatus("pending");
-      case "Ordered": return tStatus("ordered");
-      case "Received": return tStatus("received");
-    }
-  };
+  const dateLocale =
+    locale === "hi"
+      ? "hi-IN"
+      : locale === "gu"
+      ? "gu-IN"
+      : locale === "mr"
+      ? "mr-IN"
+      : "en-IN";
   const { isAdmin } = useRole();
-  const [activeTab, setActiveTab] = useState<TabKey>("orders");
-  const [mounted, setMounted] = useState(false);
-
-  // Purchase Orders state
-  const [orders, setOrders] = useState<PurchaseOrder[]>([]);
-  const [ordersLoading, setOrdersLoading] = useState(true);
-  const [orderSearch, setOrderSearch] = useState("");
-
-  // Vendors state
-  const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [vendorsLoading, setVendorsLoading] = useState(true);
-  const [vendorSearch, setVendorSearch] = useState("");
-
-  // Inventory items for PO creation
-  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
-
-  // Server-side stats
-  const [stats, setStats] = useState<{
-    totalSpent: number;
-    pendingCount: number;
-    orderedCount: number;
-    receivedCount: number;
-  } | null>(null);
-
-  // Dialogs
-  const [isVendorDialogOpen, setIsVendorDialogOpen] = useState(false);
-  const [isPODialogOpen, setIsPODialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<{ type: "order" | "vendor"; id: string } | null>(null);
-  const [detailOrder, setDetailOrder] = useState<PurchaseOrder | null>(null);
-
-  // Record Payment state
-  const [paymentPO, setPaymentPO] = useState<PurchaseOrder | null>(null);
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-
-  // Vendor Detail Drawer state
-  const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
-
-  // Tenant earliest date & Month/Year filter
   const { earliestDate } = useTenantCreationDate();
-  const [monthYear, setMonthYear] = useState<MonthYearFilterValue>({
-    year: new Date().getFullYear(),
-    month: "all",
+
+  const data = usePurchasingData();
+  const actions = usePurchasingActions({
+    vendors: data.vendors,
+    inventoryItems: data.inventoryItems,
+    fetchOrders: data.fetchOrders,
+    fetchVendors: data.fetchVendors,
+    fetchInventory: data.fetchInventory,
+    fetchStats: data.fetchStats,
   });
-
-  // Vendor form
-  const emptyVendorForm = {
-    name: "",
-    contactPerson: "",
-    phone: "",
-    email: "",
-    address: "",
-    gstin: "",
-  };
-  const [vendorForm, setVendorForm] = useState(emptyVendorForm);
-  const [vendorErrors, setVendorErrors] = useState<{
-    name?: string;
-    contactPerson?: string;
-    phone?: string;
-    email?: string;
-    gstin?: string;
-  }>({});
-  const [isSubmittingVendor, setIsSubmittingVendor] = useState(false);
-
-  // PO form
-  const [poVendorId, setPoVendorId] = useState("");
-  const [poNotes, setPoNotes] = useState("");
-  const [poTaxPercent, setPoTaxPercent] = useState("18");
-  const [poItems, setPoItems] = useState<
-    { inventoryItemId: string; materialName: string; quantity: string; unit: string; unitPrice: string }[]
-  >([]);
-  const [addToInventory, setAddToInventory] = useState(false);
-
-  // Inline Add Material (nested inside PO dialog)
-  const [addMaterialTargetRow, setAddMaterialTargetRow] = useState<number | null>(null);
-  const [isAddMaterialOpen, setIsAddMaterialOpen] = useState(false);
-  const emptyMaterialForm = {
-    name: "",
-    quantity: "" as string,
-    unit: "kg",
-    min_stock_level: "" as string,
-    supplier_whatsapp: "",
-    purchase_cost_per_unit: "" as string,
-    hsn_code: "",
-    tax_rate: "18",
-    track_inventory: true,
-    track_batches: false,
-    item_type: "Goods",
-  };
-  const [materialFormData, setMaterialFormData] = useState(emptyMaterialForm);
-
-  // ─── Data Fetching ────────────────────────────────────────────
-
-  const fetchOrders = useCallback(async () => {
-    try {
-      const res = await fetch("/api/purchasing");
-      const data = await res.json();
-      if (data.success) setOrders(data.data || []);
-      else toast.error(tToast("fetchOrdersFailed"));
-    } catch {
-      toast.error(tToast("fetchOrdersFailed"));
-    } finally {
-      setOrdersLoading(false);
-    }
-  }, []);
-
-  const fetchVendors = useCallback(async () => {
-    try {
-      const res = await fetch("/api/purchasing/vendors");
-      const data = await res.json();
-      if (data.success) setVendors(data.data || []);
-      else toast.error(tToast("fetchVendorsFailed"));
-    } catch {
-      toast.error(tToast("fetchVendorsFailed"));
-    } finally {
-      setVendorsLoading(false);
-    }
-  }, []);
-
-  const fetchInventory = useCallback(async () => {
-    try {
-      const res = await fetch("/api/v1/inventory");
-      const data = await res.json();
-      if (data.success) setInventoryItems(data.data || []);
-    } catch {
-      // silent
-    }
-  }, []);
-
-  const fetchStats = useCallback(async () => {
-    try {
-      const res = await fetch("/api/purchasing/stats");
-      const data = await res.json();
-      if (data.success) setStats(data.data);
-    } catch {
-      // Fall back to client-side computation
-    }
-  }, []);
-
-  // ── Page State Persistence ────────────────────────────
-  const [restoredFromCache, setRestoredFromCache] = useState(false);
-  const { restoreState, persist, scrollYRef } = useCachedPage({ pageKey: "purchasing", maxAgeMs: 5 * 60 * 1000 });
-  const persistRef = useRef({ activeTab, orderSearch, vendorSearch, orders, vendors, stats });
-  useEffect(() => { persistRef.current = { activeTab, orderSearch, vendorSearch, orders, vendors, stats }; });
-  useEffect(() => {
-    const cached = restoreState();
-    if (cached) {
-      if (cached.activeTab) setActiveTab(cached.activeTab as TabKey);
-      if (cached.orderSearch) setOrderSearch(cached.orderSearch as string);
-      if (cached.vendorSearch) setVendorSearch(cached.vendorSearch as string);
-      if (Array.isArray(cached.orders) && (cached.orders as any[]).length > 0) {
-        setOrders(cached.orders as PurchaseOrder[]);
-        setOrdersLoading(false);
-      }
-      if (Array.isArray(cached.vendors) && (cached.vendors as any[]).length > 0) {
-        setVendors(cached.vendors as Vendor[]);
-        setVendorsLoading(false);
-      }
-      if (cached.stats) setStats(cached.stats as any);
-      setRestoredFromCache(true);
-    }
-    return () => {
-      persist({ ...persistRef.current, scrollY: scrollYRef.current });
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    setMounted(true);
-    // Always fetch fresh data (cached data is shown instantly while this runs)
-    fetchOrders();
-    fetchVendors();
-    fetchInventory();
-    fetchStats();
-  }, [fetchOrders, fetchVendors, fetchInventory, fetchStats]);
-
-  // ─── Vendor Actions ───────────────────────────────────────────
-
-  const handleVendorSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const errs: {
-      name?: string;
-      contactPerson?: string;
-      phone?: string;
-      email?: string;
-      gstin?: string;
-    } = {};
-
-    if (!vendorForm.name.trim()) {
-      errs.name = tVendorModal("errNameRequired");
-    }
-
-    if (!vendorForm.contactPerson.trim()) {
-      errs.contactPerson = tVendorModal("errContactRequired");
-    }
-
-    const cleanPhone = vendorForm.phone.replace(/[\s\-\+]/g, "");
-    if (!cleanPhone) {
-      errs.phone = tVendorModal("errPhoneRequired");
-    } else {
-      const digits = cleanPhone.startsWith("91") && cleanPhone.length === 12
-        ? cleanPhone.slice(2)
-        : cleanPhone;
-      if (!/^[6-9]\d{9}$/.test(digits)) {
-        errs.phone = tVendorModal("errPhoneInvalid");
-      }
-    }
-
-    if (vendorForm.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(vendorForm.email.trim())) {
-      errs.email = tVendorModal("errEmailInvalid");
-    }
-
-    const cleanGstin = vendorForm.gstin.trim().toUpperCase();
-    if (cleanGstin && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(cleanGstin)) {
-      errs.gstin = tVendorModal("errGstinInvalid");
-    }
-
-    if (Object.keys(errs).length > 0) {
-      setVendorErrors(errs);
-      return;
-    }
-
-    setVendorErrors({});
-    setIsSubmittingVendor(true);
-    try {
-      const res = await fetch("/api/purchasing/vendors", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...vendorForm,
-          phone: cleanPhone.startsWith("91") && cleanPhone.length === 12
-            ? `+${cleanPhone}`
-            : cleanPhone.length === 10
-            ? `+91${cleanPhone}`
-            : vendorForm.phone.trim(),
-          gstin: cleanGstin,
-          email: vendorForm.email.trim(),
-          address: vendorForm.address.trim(),
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success(tToast("vendorAdded"));
-        setIsVendorDialogOpen(false);
-        setVendorForm(emptyVendorForm);
-        setVendorErrors({});
-        fetchVendors();
-      } else {
-        toast.error(data.error || tToast("addVendorFailed"));
-      }
-    } catch {
-      toast.error(tToast("addVendorFailed"));
-    } finally {
-      setIsSubmittingVendor(false);
-    }
-  };
-
-  // ─── PO Actions ───────────────────────────────────────────────
-
-  const openNewPO = () => {
-    setPoVendorId("");
-    setPoNotes("");
-    setPoTaxPercent("18");
-    setPoItems([{ inventoryItemId: "", materialName: "", quantity: "", unit: "kg", unitPrice: "" }]);
-    setAddToInventory(false);
-    setIsPODialogOpen(true);
-  };
-
-  const addPOItem = () => {
-    setPoItems((prev) => [
-      ...prev,
-      { inventoryItemId: "", materialName: "", quantity: "", unit: "kg", unitPrice: "" },
-    ]);
-  };
-
-  const removePOItem = (index: number) => {
-    setPoItems((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const updatePOItem = (index: number, field: string, value: string) => {
-    setPoItems((prev) => {
-      const updated = [...prev];
-      (updated[index] as any)[field] = value;
-
-      // Auto-fill from inventory
-      if (field === "inventoryItemId" && value) {
-        const item = inventoryItems.find((i) => i.id === value);
-        if (item) {
-          updated[index].materialName = item.name;
-          updated[index].unit = item.unit;
-          updated[index].unitPrice = String(item.purchaseCostPerUnit || item.purchase_cost_per_unit || 0);
-        }
-      }
-      return updated;
-    });
-  };
-
-  // ─── Inline Add Material Submit ────────────────────────────────
-
-  const handleAddMaterialSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!materialFormData.supplier_whatsapp) {
-      toast.error(tToast("supplierPhoneMandatory"));
-      return;
-    }
-    try {
-      const payload = {
-        ...materialFormData,
-        quantity: parseNumericValue(materialFormData.quantity),
-        min_stock_level: parseNumericValue(materialFormData.min_stock_level, 10),
-        purchase_cost_per_unit: parseNumericValue(materialFormData.purchase_cost_per_unit),
-        tax_rate: parseNumericValue(materialFormData.tax_rate, 18),
-      };
-      const res = await fetch("/api/v1/inventory", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (data.error || !data.success) {
-        toast.error(data.error?.message || tToast("addMaterialFailed"));
-        return;
-      }
-      toast.success(tToast("materialAdded"));
-      // Auto-select in the triggering PO item row
-      const created = data.data;
-      if (addMaterialTargetRow !== null) {
-        setPoItems((prev) => {
-          const updated = [...prev];
-          if (updated[addMaterialTargetRow]) {
-            updated[addMaterialTargetRow] = {
-              ...updated[addMaterialTargetRow],
-              inventoryItemId: created.id,
-              materialName: created.name,
-              unit: created.unit,
-              unitPrice: String(created.purchase_cost_per_unit || 0),
-            };
-          }
-          return updated;
-        });
-      }
-      // Refresh shared inventory data so all rows / future POs see the new material
-      fetchInventory();
-      // Close nested modal and reset
-      setIsAddMaterialOpen(false);
-      setAddMaterialTargetRow(null);
-    } catch {
-      toast.error(tToast("addMaterialFailed"));
-    }
-  };
-
-  const handlePOSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!poVendorId) {
-      toast.error(tToast("selectVendor"));
-      return;
-    }
-    if (poItems.length === 0 || !poItems[0].inventoryItemId) {
-      toast.error(tToast("addMaterialMin"));
-      return;
-    }
-
-    const vendor = vendors.find((v) => v.id === poVendorId);
-
-    const payload = {
-      vendorId: poVendorId,
-      vendorName: vendor?.name || "",
-      taxPercent: parseNumericValue(poTaxPercent, 18),
-      notes: poNotes,
-      addToInventory,
-      items: poItems
-        .filter((item) => item.inventoryItemId)
-        .map((item) => ({
-          inventoryItemId: item.inventoryItemId,
-          materialName: item.materialName,
-          quantity: parseNumericValue(item.quantity),
-          unit: item.unit,
-          unitPrice: parseNumericValue(item.unitPrice),
-        })),
-    };
-
-    try {
-      const res = await fetch("/api/purchasing", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success(
-          data.inventorySynced
-            ? "Purchase order created & materials added to inventory"
-            : "Purchase order created",
-        );
-        setIsPODialogOpen(false);
-        fetchOrders();
-        if (data.inventorySynced) fetchInventory();
-      } else {
-        toast.error(data.error || tToast("createPOFailed"));
-      }
-    } catch {
-      toast.error(tToast("createPOFailed"));
-    }
-  };
-
-  const handleStatusChange = async (orderId: string, newStatus: "Received") => {
-    try {
-      const res = await fetch(`/api/purchasing/${orderId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success(tToast("orderReceived"));
-        playCompletionSound("general");
-        fetchOrders();
-        fetchStats();
-        if (newStatus === "Received") fetchInventory();
-      } else {
-        toast.error(data.error || tToast("updateStatusFailed"));
-      }
-    } catch {
-      toast.error(tToast("updateStatusFailed"));
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-    try {
-      const url =
-        deleteTarget.type === "order"
-          ? `/api/purchasing/${deleteTarget.id}`
-          : `/api/purchasing/vendors/${deleteTarget.id}`;
-      const res = await fetch(url, { method: "DELETE" });
-      const data = await res.json();
-      if (data.success) {
-        toast.success(tToast("deleteSuccess"));
-        if (deleteTarget.type === "order") fetchOrders();
-        else fetchVendors();
-      } else {
-        toast.error(data.error || tToast("deleteFailed"));
-      }
-    } catch {
-      toast.error(tToast("deleteFailed"));
-    } finally {
-      setIsDeleteDialogOpen(false);
-      setDeleteTarget(null);
-    }
-  };
-
-  // ─── Computed ─────────────────────────────────────────────────
-
-  const filteredOrders = orders.filter((o) => {
-    const matchesSearch =
-      o.poNumber.toLowerCase().includes(orderSearch.toLowerCase()) ||
-      o.vendorName.toLowerCase().includes(orderSearch.toLowerCase());
-    const orderDate = o.orderedAt || o.createdAt;
-    const matchesDate = matchesMonthYear(orderDate, monthYear);
-    return matchesSearch && matchesDate;
-  });
-
-  const filteredVendors = vendors.filter(
-    (v) =>
-      v.name.toLowerCase().includes(vendorSearch.toLowerCase()) ||
-      v.contactPerson.toLowerCase().includes(vendorSearch.toLowerCase()),
-  );
-
-  // Use server-side stats if available, otherwise fall back to client-side
-  const totalSpend = stats?.totalSpent ?? orders
-    .filter((o) => o.status === "Received")
-    .reduce((acc, o) => acc + o.totalAmount, 0);
-
-  const pendingCount = stats?.pendingCount ?? orders.filter((o) => o.status === "Pending").length;
-  const orderedCount = stats?.orderedCount ?? orders.filter((o) => o.status === "Ordered").length;
-  const receivedCount = stats?.receivedCount ?? orders.filter((o) => o.status === "Received").length;
-
-  const formatCurrency = (n: number) => `\u20B9${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
   // ─── Loading Skeleton ─────────────────────────────────────────
-
-  if (!mounted) {
+  if (!data.mounted) {
     return (
       <div className="space-y-6 w-full min-w-0 overflow-x-hidden">
         <div>
@@ -660,7 +58,10 @@ export default function PurchasingPage() {
           <div className="kpi-panel__glow" />
           <div className="kpi-grid !grid-cols-1 md:!grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="kpi-card flex flex-col justify-center min-h-[140px]">
+              <div
+                key={i}
+                className="kpi-card flex flex-col justify-center min-h-[140px]"
+              >
                 <div className="flex items-center justify-between mb-4">
                   <div className="h-[48px] w-[48px] rounded-[14px] bg-[var(--muted)] shimmer" />
                   <div className="h-[24px] w-[50px] rounded-full bg-[var(--muted)] shimmer" />
@@ -676,145 +77,46 @@ export default function PurchasingPage() {
   }
 
   return (
-    <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-6 w-full min-w-0 overflow-x-hidden">
-      {/* ── Header ── */}
-      <motion.div variants={staggerItem} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 min-w-0">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-[24px] sm:text-[28px] md:text-[34px] font-bold text-[var(--foreground)] leading-[1.2] md:leading-[41px] tracking-[0.37px] truncate">
-            {t("title")}
-          </h1>
-          <p className="text-[15px] text-[var(--muted-foreground)] mt-1 leading-[20px] break-words">
-            {t("subtitle")}
-          </p>
-        </div>
-        <div className="grid grid-cols-2 gap-3 w-full sm:flex sm:w-auto items-center">
-          <IOSButton
-            variant="gray"
-            size="medium"
-            onClick={() => { setVendorForm(emptyVendorForm); setVendorErrors({}); setIsVendorDialogOpen(true); }}
-            className="!h-12 !rounded-xl !px-3 !w-full sm:!w-auto justify-center whitespace-nowrap text-[13px] sm:text-sm font-semibold tracking-tight border border-[var(--border)] hover:bg-[var(--muted)]"
-            icon={<UserPlus className="h-4 w-4 shrink-0" />}
-          >
-            {t("btnAddVendor")}
-          </IOSButton>
-          <IOSButton
-            variant="filled"
-            size="medium"
-            onClick={openNewPO}
-            className="!h-12 !rounded-xl !px-3 !w-full sm:!w-auto justify-center whitespace-nowrap text-[13px] sm:text-sm font-semibold tracking-tight shadow-sm"
-            icon={<Plus className="h-4 w-4 shrink-0" />}
-          >
-            {t("btnNewPurchase")}
-          </IOSButton>
-        </div>
-      </motion.div>
-
-      {/* ── Stats Row ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 w-full min-w-0 overflow-hidden">
-        <StatWidget
-          label={tKpi("totalSpent")}
-          value={totalSpend}
-          displayValue={totalSpend > 0 ? `₹${totalSpend.toLocaleString("en-IN")}` : "₹0"}
-          valueTitle={`₹${totalSpend.toLocaleString("en-IN")}`}
-          icon={IndianRupee}
-          color="blue"
-          delay={0}
-        />
-        <StatWidget
-          label={tKpi("pending")}
-          value={pendingCount}
-          valueTitle={`${pendingCount} pending orders`}
-          icon={Clock}
-          color="orange"
-          delay={0.05}
-        />
-        <StatWidget
-          label={tKpi("inTransit")}
-          value={orderedCount}
-          valueTitle={`${orderedCount} orders in transit`}
-          icon={Truck}
-          color="purple"
-          delay={0.1}
-        />
-        <StatWidget
-          label={tKpi("received")}
-          value={receivedCount}
-          valueTitle={`${receivedCount} orders received`}
-          icon={PackageCheck}
-          color="green"
-          delay={0.15}
-        />
-      </div>
-
-      {/* ── Tabs ── */}
-      <motion.div variants={staggerItem} className="flex items-center gap-1 p-1 rounded-[12px] bg-[var(--muted)] max-w-fit">
-        {(["orders", "vendors"] as TabKey[]).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={cn(
-              "px-4 py-2 rounded-[10px] text-[14px] font-medium transition-all duration-200 cursor-pointer",
-              activeTab === tab
-                ? "bg-[var(--card)] text-[var(--foreground)] shadow-[var(--shadow-sm)]"
-                : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
-            )}
-          >
-            {tab === "orders" ? (
-              <span className="flex items-center gap-2">
-                <ClipboardList className="h-4 w-4" /> {t("tabOrders")}
-                {orders.length > 0 && (
-                  <span className="text-[11px] bg-[var(--primary)] text-white px-1.5 py-0.5 rounded-full font-bold">
-                    {orders.length}
-                  </span>
-                )}
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                <Building2 className="h-4 w-4" /> {t("tabVendors")}
-                {vendors.length > 0 && (
-                  <span className="text-[11px] bg-[var(--accent)] text-[var(--muted-foreground)] px-1.5 py-0.5 rounded-full font-bold">
-                    {vendors.length}
-                  </span>
-                )}
-              </span>
-            )}
-          </button>
-        ))}
-      </motion.div>
-
-      {/* ── Search Bar & Month/Year Filter ── */}
-<motion.div variants={staggerItem} className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 w-full min-w-0">
-  <div className="flex items-center space-x-2">
-    <div className="relative flex-1 sm:w-80">
-      <Search className="absolute left-[10px] top-1/2 -translate-y-1/2 h-[17px] w-[17px] text-[var(--muted-foreground)]" />
-      <input
-        placeholder={activeTab === "orders" ? t("searchOrdersPlaceholder") : t("searchVendorsPlaceholder")}
-        className="w-full h-[36px] rounded-[10px] bg-[var(--muted)] pl-[34px] pr-4 text-[15px] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] outline-none border-none focus:ring-1 focus:ring-[var(--primary)] transition-shadow"
-        value={activeTab === "orders" ? orderSearch : vendorSearch}
-        onChange={(e) =>
-          activeTab === "orders" ? setOrderSearch(e.target.value) : setVendorSearch(e.target.value)
-        }
-      />
-    </div>
-    <span className="text-[13px] text-[var(--muted-foreground)] shrink-0">
-      {activeTab === "orders" ? t("ordersCount", { count: filteredOrders.length }) : t("vendorsCount", { count: filteredVendors.length })}
-    </span>
-  </div>
-
-  {activeTab === "orders" && (
-    <div className="w-full md:w-auto min-w-0 md:max-w-xl">
-      <MonthYearFilter
+    <motion.div
+      variants={staggerContainer}
+      initial="initial"
+      animate="animate"
+      className="space-y-6 w-full min-w-0 overflow-x-hidden"
+    >
+      {/* ── Toolbar & Header ── */}
+      <PurchasingToolbar
+        activeTab={data.activeTab}
+        onTabChange={data.setActiveTab}
+        orderSearch={data.orderSearch}
+        onOrderSearchChange={data.setOrderSearch}
+        vendorSearch={data.vendorSearch}
+        onVendorSearchChange={data.setVendorSearch}
+        ordersCount={data.orders.length}
+        filteredOrdersCount={data.filteredOrders.length}
+        vendorsCount={data.vendors.length}
+        filteredVendorsCount={data.filteredVendors.length}
+        monthYear={data.monthYear}
+        onMonthYearChange={data.setMonthYear}
         earliestDate={earliestDate}
-        value={monthYear}
-        onChange={setMonthYear}
+        onOpenVendorDialog={() => {
+          actions.setVendorForm(emptyVendorForm);
+          actions.setVendorErrors({});
+          actions.setIsVendorDialogOpen(true);
+        }}
+        onOpenNewPO={actions.openNewPO}
       />
-    </div>
-  )}
-</motion.div>
 
-      {/* ════════════ PURCHASE ORDERS TAB ════════════ */}
+      {/* ── KPI Stats Cards ── */}
+      <PurchasingStatsCards
+        totalSpend={data.totalSpend}
+        pendingCount={data.pendingCount}
+        orderedCount={data.orderedCount}
+        receivedCount={data.receivedCount}
+      />
+
+      {/* ── Tabs Content ── */}
       <AnimatePresence mode="wait">
-        {activeTab === "orders" && (
+        {data.activeTab === "orders" && (
           <motion.div
             key="orders"
             initial={{ opacity: 0, y: 8 }}
@@ -822,249 +124,30 @@ export default function PurchasingPage() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2 }}
           >
-            {/* ── Mobile Card View ── */}
-            {!ordersLoading && filteredOrders.length > 0 && (
-              <MobileTableCards
-                data={filteredOrders}
-                className="md:hidden"
-                fields={[
-                  {
-                    key: "poNumber", label: "PO #", primary: true, render: (_v, o) => (
-                      <span className="text-[var(--primary)] font-bold">{o.poNumber} <span className="text-[var(--muted-foreground)] font-normal">— {o.vendorName}</span></span>
-                    )
-                  },
-                  { key: "items", label: t("thItems"), render: (_v, o) => t("itemsCount", { count: o.items.length }) },
-                  {
-                    key: "totalAmount", label: "Amount", render: (_v, o) => (
-                      <span className="font-semibold">{formatCurrency(o.totalAmount)}</span>
-                    )
-                  },
-                  {
-                    key: "status", label: "Status", render: (_v, o) => (
-                      <div className="flex items-center justify-between w-full">
-                        <IOSBadge color={STATUS_CONFIG[o.status].color} variant="tinted" dot size="medium">{getStatusLabel(o.status)}</IOSBadge>
-                        {(o.status === "Pending" || o.status === "Ordered") && (
-                          <motion.button
-                            whileTap={{ scale: 0.95 }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleStatusChange(o.id, "Received");
-                            }}
-                            className="text-[12px] font-medium text-[var(--primary)] bg-[var(--primary)]/10 px-[10px] py-[6px] rounded-[8px] active:bg-[var(--primary)]/15 cursor-pointer">
-                            {t("btnMarkReceived")}
-                          </motion.button>
-                        )}
-                      </div>
-                    )
-                  },
-                  { key: "createdAt", label: t("thDate"), render: (_v, o) => new Date(o.createdAt).toLocaleDateString(dateLocale, { day: "2-digit", month: "short", year: "2-digit" }) },
-                ]}
-                emptyMessage={t("emptyOrdersTitle")}
-                actionsTrigger={(order) => (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <motion.button
-                        whileTap={{ scale: 0.9 }}
-                        onClick={(e) => e.stopPropagation()}
-                        className="h-[32px] w-[32px] rounded-[10px] flex items-center justify-center bg-[rgba(15,23,42,0.04)] active:bg-[rgba(15,23,42,0.08)] cursor-pointer"
-                      >
-                        <MoreVertical className="h-[16px] w-[16px] text-[var(--muted-foreground)]" />
-                      </motion.button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="rounded-[12px] w-[180px]">
-                      <DropdownMenuItem
-                        onClick={() => { setDetailOrder(order); setIsDetailDialogOpen(true); }}
-                        className="rounded-[8px]"
-                      >
-                        <Eye className="mr-2 h-4 w-4" /> {t("actionViewDetails")}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => { setPaymentPO(order); setIsPaymentModalOpen(true); }}
-                        className="rounded-[8px]"
-                      >
-                        <Wallet className="mr-2 h-4 w-4" /> {t("actionRecordPayment")}
-                      </DropdownMenuItem>
-                      {order.status !== "Received" && isAdmin && (
-                        <DropdownMenuItem
-                          className="text-[var(--destructive)] rounded-[8px]"
-                          onClick={() => {
-                            setDeleteTarget({ type: "order", id: order.id });
-                            setIsDeleteDialogOpen(true);
-                          }}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" /> {t("actionDelete")}
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              />
-            )}
-            {/* ── Desktop Table ── */}
-            <IOSCard variant="elevated" padding="none" className="overflow-hidden glass-premium !rounded-[20px] hidden md:block">
-              <Table>
-                <TableHeader>
-                  <TableRow className="glass-table-header hover:bg-transparent border-b border-white/[0.07]">
-                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide pl-5">
-                      {t("thPONumberVendor")}
-                    </TableHead>
-                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">
-                      {t("thItems")}
-                    </TableHead>
-                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">
-                      {t("thAmount")}
-                    </TableHead>
-                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">
-                      {t("thStatus")}
-                    </TableHead>
-                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">
-                      {t("thDate")}
-                    </TableHead>
-                    <TableHead className="w-[100px] py-3" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {ordersLoading ? (
-                    Array.from({ length: 4 }).map((_, i) => (
-                      <TableRow key={i}>
-                        <TableCell><div className="h-12 w-full rounded-[10px] bg-[var(--muted)] shimmer" /></TableCell>
-                        <TableCell><div className="h-12 w-full rounded-[10px] bg-[var(--muted)] shimmer" /></TableCell>
-                        <TableCell><div className="h-12 w-full rounded-[10px] bg-[var(--muted)] shimmer" /></TableCell>
-                        <TableCell><div className="h-8 w-20 rounded-[6px] bg-[var(--muted)] shimmer" /></TableCell>
-                        <TableCell><div className="h-8 w-16 rounded-[6px] bg-[var(--muted)] shimmer" /></TableCell>
-                        <TableCell><div className="h-8 w-8 rounded-full bg-[var(--muted)] shimmer ml-auto" /></TableCell>
-                      </TableRow>
-                    ))
-                  ) : filteredOrders.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-16">
-                        <div className="flex flex-col items-center gap-3">
-                          <div className="w-[56px] h-[56px] rounded-[14px] bg-[var(--muted)] flex items-center justify-center">
-                            <ShoppingCart className="h-6 w-6 text-[var(--muted-foreground)]" />
-                          </div>
-                          <p className="text-[17px] font-medium text-[var(--muted-foreground)]">{t("emptyOrdersTitle")}</p>
-                          <p className="text-[13px] text-[var(--muted-foreground)]">
-                            {t("emptyOrdersSubtitle")}
-                          </p>
-                          <IOSButton variant="filled" size="small" onClick={openNewPO} icon={<Plus className="h-3.5 w-3.5" />}>
-                            {t("btnNewPO")}
-                          </IOSButton>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredOrders.map((order, index) => {
-                      const statusConfig = STATUS_CONFIG[order.status];
-                      const StatusIcon = statusConfig.icon;
-                      return (
-                        <motion.tr
-                          key={order.id}
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.03, duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                          className="group glass-table-row hover:bg-[var(--muted)] border-b border-[var(--border)] transition-colors"
-                        >
-                          <TableCell className="py-3.5 pl-5">
-                            <div className="flex items-center gap-3">
-                              <div className="w-[40px] h-[40px] rounded-[10px] bg-[var(--muted)] flex items-center justify-center flex-shrink-0">
-                                <ShoppingCart className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
-                              </div>
-                              <div>
-                                <span className="text-[15px] font-bold text-[var(--primary)] block leading-[20px]">
-                                  {order.poNumber}
-                                </span>
-                                <span className="text-[13px] text-[var(--muted-foreground)] mt-0.5 block">
-                                  {order.vendorName}
-                                </span>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="py-3.5">
-                            <span className="text-[15px] font-medium text-[var(--foreground)]">
-                              {t("itemsCount", { count: order.items.length })}
-                            </span>
-                          </TableCell>
-                          <TableCell className="py-3.5">
-                            <span className="text-[15px] font-semibold text-[var(--foreground)]">
-                              {formatCurrency(order.totalAmount)}
-                            </span>
-                            <span className="text-[11px] text-[var(--muted-foreground)] block">
-                              {t("taxLabel")} {formatCurrency(order.taxAmount)}
-                            </span>
-                          </TableCell>
-                          <TableCell className="py-3.5">
-                            <IOSBadge color={statusConfig.color} variant="tinted" dot size="medium">
-                              {getStatusLabel(order.status)}
-                            </IOSBadge>
-                          </TableCell>
-                          <TableCell className="py-3.5">
-                            <span className="text-[13px] text-[var(--muted-foreground)]">
-                              {new Date(order.createdAt).toLocaleDateString(dateLocale, {
-                                day: "2-digit",
-                                month: "short",
-                                year: "2-digit",
-                              })}
-                            </span>
-                          </TableCell>
-                          <TableCell className="py-3.5 text-right pr-4">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <motion.button
-                                  whileTap={{ scale: 0.9 }}
-                                  className="h-[36px] w-[36px] rounded-[10px] flex items-center justify-center hover:bg-[var(--muted)] transition-colors cursor-pointer"
-                                >
-                                  <MoreVertical className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
-                                </motion.button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="rounded-[12px]">
-                                <DropdownMenuItem
-                                  onClick={() => { setDetailOrder(order); setIsDetailDialogOpen(true); }}
-                                  className="rounded-[8px]"
-                                >
-                                  <Eye className="mr-2 h-4 w-4" /> {t("actionViewDetails")}
-                                </DropdownMenuItem>
-
-                                <DropdownMenuItem
-                                  onClick={() => { setPaymentPO(order); setIsPaymentModalOpen(true); }}
-                                  className="rounded-[8px]"
-                                >
-                                  <Wallet className="mr-2 h-4 w-4" /> {t("actionRecordPayment")}
-                                </DropdownMenuItem>
-
-                                {(order.status === "Pending" || order.status === "Ordered") && (
-                                  <DropdownMenuItem
-                                    onClick={() => handleStatusChange(order.id, "Received")}
-                                    className="rounded-[8px] text-[var(--erp-success)]"
-                                  >
-                                    <CheckCircle2 className="mr-2 h-4 w-4" /> {t("actionMarkReceived")}
-                                  </DropdownMenuItem>
-                                )}
-                                {order.status !== "Received" && isAdmin && (
-                                  <DropdownMenuItem
-                                    className="text-[var(--destructive)] rounded-[8px]"
-                                    onClick={() => {
-                                      setDeleteTarget({ type: "order", id: order.id });
-                                      setIsDeleteDialogOpen(true);
-                                    }}
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" /> {t("actionDelete")}
-                                </DropdownMenuItem>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </motion.tr>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </IOSCard>
+            <PurchasingOrdersTable
+              orders={data.filteredOrders}
+              ordersLoading={data.ordersLoading}
+              isAdmin={isAdmin}
+              dateLocale={dateLocale}
+              onOpenNewPO={actions.openNewPO}
+              onViewDetails={(order) => {
+                actions.setDetailOrder(order);
+                actions.setIsDetailDialogOpen(true);
+              }}
+              onRecordPayment={(order) => {
+                actions.setPaymentPO(order);
+                actions.setIsPaymentModalOpen(true);
+              }}
+              onStatusChange={actions.handleStatusChange}
+              onDeleteOrder={(order) => {
+                actions.setDeleteTarget({ type: "order", id: order.id });
+                actions.setIsDeleteDialogOpen(true);
+              }}
+            />
           </motion.div>
         )}
 
-        {/* ════════════ VENDORS TAB ════════════ */}
-        {activeTab === "vendors" && (
+        {data.activeTab === "vendors" && (
           <motion.div
             key="vendors"
             initial={{ opacity: 0, y: 8 }}
@@ -1072,787 +155,99 @@ export default function PurchasingPage() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2 }}
           >
-            {/* ── Mobile Card View ── */}
-            {!vendorsLoading && filteredVendors.length > 0 && (
-              <MobileTableCards
-                data={filteredVendors}
-                className="md:hidden"
-                fields={[
-                  {
-                    key: "name", label: "Vendor", primary: true, render: (_v, vendor) => (
-                      <span>{vendor.name} <span className="text-[var(--muted-foreground)] font-normal text-[13px]">({vendor.contactPerson})</span></span>
-                    )
-                  },
-                  {
-                    key: "phone", label: "Phone", render: (_v, vendor) => (
-                      <span className="text-[var(--primary)] font-medium">{vendor.phone}</span>
-                    )
-                  },
-                  { key: "email", label: t("thEmail") },
-                  { key: "gstin", label: t("thGstin"), render: (v) => v || "—" },
-                ]}
-                emptyMessage={t("emptyVendorsTitle")}
-                onCardClick={(vendor) => setSelectedVendor(vendor)}
-              />
-            )}
-            {/* ── Desktop Table ── */}
-            <IOSCard variant="elevated" padding="none" className="overflow-hidden glass-premium !rounded-[20px] hidden md:block">
-              <Table>
-                <TableHeader>
-                  <TableRow className="glass-table-header hover:bg-transparent border-b border-white/[0.07]">
-                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide pl-5">
-                      {t("thVendorContact")}
-                    </TableHead>
-                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">
-                      {t("thPhone")}
-                    </TableHead>
-                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">
-                      Email
-                    </TableHead>
-                    <TableHead className="font-semibold py-3 text-[13px] text-[var(--muted-foreground)] uppercase tracking-wide">
-                      GSTIN
-                    </TableHead>
-                    <TableHead className="w-[80px] py-3" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {vendorsLoading ? (
-                    Array.from({ length: 3 }).map((_, i) => (
-                      <TableRow key={i}>
-                        <TableCell><div className="h-12 w-full rounded-[10px] bg-[var(--muted)] shimmer" /></TableCell>
-                        <TableCell><div className="h-12 w-full rounded-[10px] bg-[var(--muted)] shimmer" /></TableCell>
-                        <TableCell><div className="h-12 w-full rounded-[10px] bg-[var(--muted)] shimmer" /></TableCell>
-                        <TableCell><div className="h-8 w-20 rounded-[6px] bg-[var(--muted)] shimmer" /></TableCell>
-                        <TableCell><div className="h-8 w-8 rounded-full bg-[var(--muted)] shimmer" /></TableCell>
-                      </TableRow>
-                    ))
-                  ) : filteredVendors.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-16">
-                        <div className="flex flex-col items-center gap-3">
-                          <div className="w-[56px] h-[56px] rounded-[14px] bg-[var(--muted)] flex items-center justify-center">
-                            <Building2 className="h-6 w-6 text-[var(--muted-foreground)]" />
-                          </div>
-                          <p className="text-[17px] font-medium text-[var(--muted-foreground)]">{t("emptyVendorsTitle")}</p>
-                          <p className="text-[13px] text-[var(--muted-foreground)]">{t("emptyVendorsSubtitle")}</p>
-                          <IOSButton
-                            variant="filled"
-                            size="small"
-                            onClick={() => { setVendorForm(emptyVendorForm); setIsVendorDialogOpen(true); }}
-                            icon={<UserPlus className="h-3.5 w-3.5" />}>
-                            {t("btnAddVendor")}
-                          </IOSButton>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredVendors.map((vendor, index) => (
-                      <motion.tr
-                        key={vendor.id}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.03, duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                        className="group glass-table-row hover:bg-[var(--muted)] border-b border-[var(--border)] transition-colors cursor-pointer"
-                        onClick={() => setSelectedVendor(vendor)}
-                      >
-                        <TableCell className="py-3.5 pl-5">
-                          <div className="flex items-center gap-3">
-                            <div className="w-[40px] h-[40px] rounded-[10px] bg-[rgba(88,86,214,0.1)] flex items-center justify-center flex-shrink-0">
-                              <Building2 className="h-[18px] w-[18px] text-[var(--chart-5)]" />
-                            </div>
-                            <div>
-                              <span className="text-[15px] font-semibold text-[var(--foreground)] block leading-[20px]">
-                                {vendor.name}
-                              </span>
-                              <span className="text-[13px] text-[var(--muted-foreground)] block mt-0.5">
-                                {vendor.contactPerson}
-                              </span>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-3.5">
-                          <span className="text-[15px] text-[var(--primary)] font-medium">{vendor.phone}</span>
-                        </TableCell>
-                        <TableCell className="py-3.5">
-                          <span className="text-[13px] text-[var(--muted-foreground)]">{vendor.email || "—"}</span>
-                        </TableCell>
-                        <TableCell className="py-3.5">
-                          <span className="text-[13px] text-[var(--muted-foreground)] font-mono">{vendor.gstin || "—"}</span>
-                        </TableCell>
-                        <TableCell className="py-3.5 text-right pr-4">
-                          {isAdmin && (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <motion.button
-                                  whileTap={{ scale: 0.9 }}
-                                  className="h-[36px] w-[36px] rounded-[10px] flex items-center justify-center hover:bg-[var(--muted)] transition-colors cursor-pointer"
-                                >
-                                  <MoreVertical className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
-                                </motion.button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="rounded-[12px]">
-                                <DropdownMenuItem
-                                  className="text-[var(--destructive)] rounded-[8px]"
-                                  onClick={() => {
-                                    setDeleteTarget({ type: "vendor", id: vendor.id });
-                                    setIsDeleteDialogOpen(true);
-                                  }}
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" /> {t("actionDeleteVendor")}
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
-                        </TableCell>
-                      </motion.tr>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </IOSCard>
+            <PurchasingVendorsTable
+              vendors={data.filteredVendors}
+              vendorsLoading={data.vendorsLoading}
+              isAdmin={isAdmin}
+              onOpenVendorDialog={() => {
+                actions.setVendorForm(emptyVendorForm);
+                actions.setIsVendorDialogOpen(true);
+              }}
+              onSelectVendor={(vendor) => actions.setSelectedVendor(vendor)}
+              onDeleteVendor={(vendor) => {
+                actions.setDeleteTarget({ type: "vendor", id: vendor.id });
+                actions.setIsDeleteDialogOpen(true);
+              }}
+            />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ════════════ ADD VENDOR DIALOG ════════════ */}
-      <Dialog
-        open={isVendorDialogOpen}
-        onOpenChange={(open) => {
-          setIsVendorDialogOpen(open);
-          if (!open) {
-            setVendorForm(emptyVendorForm);
-            setVendorErrors({});
-          }
-        }}
-      >
-        <DialogContent
-          fullScreenMobile
-          className="sm:max-w-[560px] max-h-[90dvh] md:max-h-[85dvh] flex flex-col overflow-hidden p-0 rounded-t-[24px] sm:rounded-[24px] border-[var(--border)] bg-[var(--card)]"
-        >
-          {/* Mobile drag handle */}
-          <div className="sm:hidden flex justify-center pt-2.5 pb-1 shrink-0">
-            <div className="w-10 h-1 rounded-full bg-[var(--muted-foreground)]/25" />
-          </div>
-
-          <form onSubmit={handleVendorSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
-            {/* Header */}
-            <div className="shrink-0 px-5 pt-2 pb-3.5 sm:pt-4 border-b border-[var(--border)] flex items-center justify-between gap-3 bg-[var(--card)]/50">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-500 flex items-center justify-center shrink-0 shadow-sm">
-                  <Building2 className="w-5 h-5" />
-                </div>
-                <div className="min-w-0">
-                  <DialogTitle className="text-base font-bold text-[var(--foreground)] truncate">
-                    {tVendorModal("titleNew")}
-                  </DialogTitle>
-                  <DialogDescription className="text-xs text-[var(--muted-foreground)] truncate mt-0.5">
-                    {tVendorModal("subtitle")}
-                  </DialogDescription>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsVendorDialogOpen(false)}
-                aria-label="Close"
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)]/60 transition-colors shrink-0 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Scrollable Form Body */}
-            <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-5">
-              {/* Section 1: Basic details */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 pb-1.5 border-b border-[var(--border)]/60">
-                  <User className="w-3.5 h-3.5 text-sky-500" />
-                  <h3 className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider">
-                    {tVendorModal("sectionBasic")}
-                  </h3>
-                </div>
-
-                {/* Vendor Name */}
-                <div>
-                  <label className="text-xs font-semibold text-[var(--foreground)] block mb-1.5">
-                    {tVendorModal("lblName")} <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={vendorForm.name}
-                    onChange={(e) => {
-                      setVendorForm({ ...vendorForm, name: e.target.value });
-                      if (vendorErrors.name) setVendorErrors((prev) => ({ ...prev, name: undefined }));
-                    }}
-                    placeholder={tVendorModal("placeholderName")}
-                    className={cn(
-                      "w-full h-12 px-3.5 text-sm rounded-xl bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] placeholder:text-[var(--muted-foreground)]/50 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all",
-                      vendorErrors.name && "border-red-500 focus:border-red-500 focus:ring-red-500/20"
-                    )}
-                  />
-                  {vendorErrors.name && (
-                    <p className="text-[11px] text-red-500 mt-1 font-medium">{vendorErrors.name}</p>
-                  )}
-                </div>
-
-                {/* Contact Person & Phone */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-semibold text-[var(--foreground)] block mb-1.5">
-                      {tVendorModal("lblContact")} <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={vendorForm.contactPerson}
-                      onChange={(e) => {
-                        setVendorForm({ ...vendorForm, contactPerson: e.target.value });
-                        if (vendorErrors.contactPerson) setVendorErrors((prev) => ({ ...prev, contactPerson: undefined }));
-                      }}
-                      placeholder={tVendorModal("placeholderContact")}
-                      className={cn(
-                        "w-full h-12 px-3.5 text-sm rounded-xl bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] placeholder:text-[var(--muted-foreground)]/50 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all",
-                        vendorErrors.contactPerson && "border-red-500 focus:border-red-500 focus:ring-red-500/20"
-                      )}
-                    />
-                    {vendorErrors.contactPerson && (
-                      <p className="text-[11px] text-red-500 mt-1 font-medium">{vendorErrors.contactPerson}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-[var(--foreground)] block mb-1.5">
-                      {tVendorModal("lblPhone")} <span className="text-rose-500">*</span>
-                    </label>
-                    <div className="relative flex items-center">
-                      <span className="absolute left-3 text-xs font-semibold text-[var(--muted-foreground)] select-none bg-[var(--muted)]/60 px-1.5 py-1 rounded">
-                        +91
-                      </span>
-                      <input
-                        type="tel"
-                        inputMode="numeric"
-                        maxLength={10}
-                        value={vendorForm.phone.replace(/^\+91/, "").replace(/\D/g, "")}
-                        onChange={(e) => {
-                          const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
-                          setVendorForm({ ...vendorForm, phone: digits });
-                          if (vendorErrors.phone) setVendorErrors((prev) => ({ ...prev, phone: undefined }));
-                        }}
-                        placeholder={tVendorModal("placeholderPhone")}
-                        className={cn(
-                          "w-full h-12 pl-14 pr-3.5 text-sm rounded-xl bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] placeholder:text-[var(--muted-foreground)]/50 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all font-mono tracking-wide",
-                          vendorErrors.phone && "border-red-500 focus:border-red-500 focus:ring-red-500/20"
-                        )}
-                      />
-                    </div>
-                    {vendorErrors.phone ? (
-                      <p className="text-[11px] text-red-500 mt-1 font-medium">{vendorErrors.phone}</p>
-                    ) : (
-                      <p className="text-[11px] text-[var(--muted-foreground)] mt-1">10-digit mobile number</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 2: Tax & contact */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 pb-1.5 border-b border-[var(--border)]/60">
-                  <Building2 className="w-3.5 h-3.5 text-sky-500" />
-                  <h3 className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider">
-                    {tVendorModal("sectionTaxContact")}
-                  </h3>
-                </div>
-
-                {/* Email & GSTIN */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-semibold text-[var(--foreground)] block mb-1.5">
-                      {tVendorModal("lblEmail")}
-                    </label>
-                    <input
-                      type="email"
-                      value={vendorForm.email}
-                      onChange={(e) => {
-                        setVendorForm({ ...vendorForm, email: e.target.value });
-                        if (vendorErrors.email) setVendorErrors((prev) => ({ ...prev, email: undefined }));
-                      }}
-                      placeholder={tVendorModal("placeholderEmail")}
-                      className={cn(
-                        "w-full h-12 px-3.5 text-sm rounded-xl bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] placeholder:text-[var(--muted-foreground)]/50 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all",
-                        vendorErrors.email && "border-red-500 focus:border-red-500 focus:ring-red-500/20"
-                      )}
-                    />
-                    {vendorErrors.email && (
-                      <p className="text-[11px] text-red-500 mt-1 font-medium">{vendorErrors.email}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-[var(--foreground)] block mb-1.5">
-                      {tVendorModal("lblGstin")}
-                    </label>
-                    <input
-                      type="text"
-                      maxLength={15}
-                      value={vendorForm.gstin}
-                      onChange={(e) => {
-                        const val = e.target.value.toUpperCase().slice(0, 15);
-                        setVendorForm({ ...vendorForm, gstin: val });
-                        if (vendorErrors.gstin) setVendorErrors((prev) => ({ ...prev, gstin: undefined }));
-                      }}
-                      placeholder={tVendorModal("placeholderGstin")}
-                      className={cn(
-                        "w-full h-12 px-3.5 text-sm rounded-xl bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] placeholder:text-[var(--muted-foreground)]/50 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all font-mono uppercase tracking-wider",
-                        vendorErrors.gstin && "border-red-500 focus:border-red-500 focus:ring-red-500/20"
-                      )}
-                    />
-                    {vendorErrors.gstin ? (
-                      <p className="text-[11px] text-red-500 mt-1 font-medium">{vendorErrors.gstin}</p>
-                    ) : (
-                      <p className="text-[11px] text-[var(--muted-foreground)] mt-1">{tVendorModal("helperGstin")}</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Address */}
-                <div>
-                  <label className="text-xs font-semibold text-[var(--foreground)] block mb-1.5">
-                    {tVendorModal("lblAddress")}
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={vendorForm.address}
-                    onChange={(e) => setVendorForm({ ...vendorForm, address: e.target.value })}
-                    placeholder={tVendorModal("placeholderAddress")}
-                    className="w-full py-2.5 px-3.5 text-sm rounded-xl bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] placeholder:text-[var(--muted-foreground)]/50 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all resize-none"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Sticky Footer */}
-            <div className="shrink-0 px-5 py-3 border-t border-[var(--border)] bg-[var(--card)]/90 backdrop-blur pb-[max(env(safe-area-inset-bottom),14px)]">
-              <div className="grid grid-cols-2 gap-3 w-full">
-                <button
-                  type="button"
-                  onClick={() => setIsVendorDialogOpen(false)}
-                  disabled={isSubmittingVendor}
-                  className="h-12 rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--muted)]/50 font-medium text-sm transition-colors flex items-center justify-center disabled:opacity-50 cursor-pointer"
-                >
-                  {tVendorModal("btnCancel")}
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmittingVendor}
-                  className="h-12 rounded-xl bg-sky-500 hover:bg-sky-600 active:scale-[0.98] text-white font-semibold text-sm transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
-                >
-                  {isSubmittingVendor ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>{tCommon("loading")}</span>
-                    </>
-                  ) : (
-                    <span>{tVendorModal("btnSave")}</span>
-                  )}
-                </button>
-              </div>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* ════════════ NEW PURCHASE ORDER DIALOG ════════════ */}
-      <Dialog open={isPODialogOpen} onOpenChange={setIsPODialogOpen}>
-        <DialogContent fullScreenMobile className="w-full max-w-[420px] sm:max-w-[560px] md:max-w-[680px] lg:max-w-[750px] p-0 md:max-h-[85dvh] overflow-hidden rounded-[24px] border-[var(--glass-border)] glass-dialog flex flex-col">
-          <div className="overflow-y-auto flex-1 min-h-0">
-            <div className="p-4 sm:p-6 md:p-8">
-              <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid var(--glass-border)" }}>
-                <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, rgba(34,197,94,0.4), rgba(255,255,255,0.06))", border: "1px solid var(--glass-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <ShoppingCart className="h-[18px] w-[18px] text-[#4ade80]" />
-                </div>
-                <div>
-                  <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "var(--g-text-primary)", lineHeight: "22px", margin: 0 }}>{tOrderModal("titleNew")}</DialogTitle>
-                  <p style={{ fontSize: 13, color: "var(--g-text-secondary)", lineHeight: "18px", margin: "2px 0 0" }}>{tOrderModal("subtitle")}</p>
-                </div>
-              </div>
-              <form onSubmit={handlePOSubmit} className="space-y-5 pt-4">
-                {/* Vendor Select */}
-                <div className="space-y-1.5">
-                  <Label className="text-[13px] text-[var(--muted-foreground)]">{tOrderModal("lblVendor")}</Label>
-                  <Select
-                    value={poVendorId}
-                    onValueChange={setPoVendorId}
-                    required
-                  >
-                    <SelectTrigger className="w-full h-[44px] rounded-[10px] bg-[var(--muted)] px-3 text-[15px] text-[var(--foreground)] border-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] transition-shadow cursor-pointer">
-                      <SelectValue placeholder={tOrderModal("placeholderVendor")} />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[220px] overflow-y-auto scrollbar-thin">
-                      {vendors.map((v) => (
-                        <SelectItem key={v.id} value={v.id}>
-                          {v.name} — {v.contactPerson}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {vendors.length === 0 && (
-                    <p className="text-[12px] text-[var(--erp-warning)]">
-                      {tOrderModal("noVendorsHint")}
-                    </p>
-                  )}
-                </div>
-
-                {/* Line Items */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-[13px] font-semibold text-[var(--foreground)]">{tOrderModal("lblMaterials")}</Label>
-                    <button
-                      type="button"
-                      onClick={addPOItem}
-                      className="text-[13px] text-[var(--primary)] font-medium hover:underline cursor-pointer"
-                    >
-                      {tOrderModal("btnAddItem")}
-                    </button>
-                  </div>
-
-                  {poItems.map((item, idx) => (
-                    <div key={idx} className="p-3 rounded-[12px] bg-[var(--muted)] space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[12px] font-bold text-[var(--muted-foreground)] uppercase">
-                          {tOrderModal("thItem")} {idx + 1}
-                        </span>
-                        {poItems.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removePOItem(idx)}
-                            className="p-1 hover:bg-[var(--muted)] rounded-[6px] cursor-pointer"
-                          >
-                            <X className="h-3.5 w-3.5 text-[var(--destructive)]" />
-                          </button>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Select
-                          value={item.inventoryItemId}
-                          onValueChange={(val) => updatePOItem(idx, "inventoryItemId", val)}
-                        >
-                          <SelectTrigger className="w-full h-[40px] rounded-[8px] bg-[var(--muted)] px-3 text-[14px] text-[var(--foreground)] border-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] transition-shadow cursor-pointer">
-                            <SelectValue placeholder={tOrderModal("selectMaterial")} />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-[220px] overflow-y-auto scrollbar-thin">
-                            {inventoryItems.map((inv) => (
-                              <SelectItem key={inv.id} value={inv.id}>
-                                {inv.name} ({inv.quantity} {inv.unit} {tOrderModal("inStock")}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <button
-                          type="button"
-                          title={tOrderModal("titleCreateMaterial")}
-                          onClick={() => {
-                            setMaterialFormData({ ...emptyMaterialForm });
-                            setAddMaterialTargetRow(idx);
-                            setIsAddMaterialOpen(true);
-                          }}
-                          className="p-1 hover:bg-[var(--muted)] rounded-[6px] cursor-pointer flex-shrink-0"
-                        >
-                          <Plus className="h-3.5 w-3.5 text-[var(--primary)]" />
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2 md:gap-4">
-                        <div>
-                          <Label className="text-[11px] text-[var(--muted-foreground)]">{tOrderModal("thQty")}</Label>
-                          <NumericInput
-                            value={item.quantity}
-                            onValueChange={(v) => updatePOItem(idx, "quantity", v)}
-                            placeholder="0"
-                            allowDecimal
-                            min={0}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-[11px] text-[var(--muted-foreground)]">{tOrderModal("thUnit")}</Label>
-                          <Input
-                            value={item.unit}
-                            onChange={(e) => updatePOItem(idx, "unit", e.target.value)}
-                            className="glass-input h-[40px] px-2 text-[14px]"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-[11px] text-[var(--muted-foreground)]">₹{tOrderModal("thRateUnit")}</Label>
-                          <NumericInput
-                            value={item.unitPrice}
-                            onValueChange={(v) => updatePOItem(idx, "unitPrice", v)}
-                            placeholder="0.00"
-                            prefix={"\u20B9"}
-                            allowDecimal
-                            min={0}
-                          />
-                        </div>
-                      </div>
-                      {item.quantity && item.unitPrice && (
-                        <div className="text-right text-[13px] font-semibold text-[var(--primary)]">
-                          {tOrderModal("lblLineTotal")} {formatCurrency(parseNumericValue(item.quantity) * parseNumericValue(item.unitPrice))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Tax & Notes */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-[13px] text-[var(--muted-foreground)]">{tOrderModal("lblTaxPercent")}</Label>
-                    <NumericInput
-                      value={poTaxPercent}
-                      onValueChange={setPoTaxPercent}
-                      placeholder="18"
-                      allowDecimal
-                      min={0}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[13px] text-[var(--muted-foreground)]">{tOrderModal("lblNotes")}</Label>
-                    <Input
-                      value={poNotes}
-                      onChange={(e) => setPoNotes(e.target.value)}
-                      placeholder={tOrderModal("placeholderNotes")}
-                      className="glass-input h-[44px] px-3"
-                    />
-                  </div>
-                </div>
-
-                {/* Grand Total Preview */}
-                {poItems.some((i) => i.quantity && i.unitPrice) && (
-                  <div className="p-3 rounded-[12px] bg-[rgba(0,122,255,0.06)] border border-[var(--primary)]/20">
-                    <div className="flex justify-between text-[13px] text-[var(--muted-foreground)]">
-                      <span>{tOrderModal("lblSubtotal")}</span>
-                      <span>
-                        {formatCurrency(
-                          poItems.reduce((a, i) => a + parseNumericValue(i.quantity) * parseNumericValue(i.unitPrice), 0),
-                        )}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-[13px] text-[var(--muted-foreground)] mt-1">
-                      <span>{tOrderModal("lblTaxWithPercent", { percent: poTaxPercent })}</span>
-                      <span>
-                        {formatCurrency(
-                          poItems.reduce((a, i) => a + parseNumericValue(i.quantity) * parseNumericValue(i.unitPrice), 0) *
-                          (parseNumericValue(poTaxPercent, 18) / 100),
-                        )}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-[17px] font-bold text-[var(--foreground)] mt-2 pt-2 border-t border-[var(--border)]">
-                      <span>{tOrderModal("lblTotal")}</span>
-                      <span className="text-[var(--primary)]">
-                        {formatCurrency(
-                          poItems.reduce((a, i) => a + parseNumericValue(i.quantity) * parseNumericValue(i.unitPrice), 0) *
-                          (1 + parseNumericValue(poTaxPercent, 18) / 100),
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* ── Add to Inventory Toggle ── */}
-                <div
-                  className={cn(
-                    "p-3 rounded-[14px] border transition-all duration-200 cursor-pointer select-none",
-                    addToInventory
-                      ? "border-[#2563EB]/40 bg-blue-50 dark:bg-blue-950/30"
-                      : "border-[var(--border)] bg-[var(--muted)]"
-                  )}
-                  onClick={() => setAddToInventory((v) => !v)}
-                  role="switch"
-                  aria-checked={addToInventory}
-                  tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setAddToInventory((v) => !v); } }}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div
-                        className={cn(
-                          "w-[32px] h-[32px] rounded-[8px] flex items-center justify-center transition-colors",
-                          addToInventory
-                            ? "bg-[#2563EB]/15 text-[#2563EB]"
-                            : "bg-[var(--muted)] text-[var(--muted-foreground)]"
-                        )}
-                      >
-                        <Package className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <span className={cn(
-                          "text-[13px] font-semibold block leading-[18px]",
-                          addToInventory ? "text-[#2563EB] dark:text-blue-400" : "text-[var(--foreground)]"
-                        )}>
-                          {tOrderModal("lblAddToInventory")}
-                        </span>
-                        <span className="text-[11px] text-[var(--muted-foreground)] leading-[14px] block">
-                          {tOrderModal("lblAddToInventoryDesc")}
-                        </span>
-                      </div>
-                    </div>
-                    {/* Pill toggle */}
-                    <div
-                      className={cn(
-                        "w-[42px] h-[24px] rounded-full p-[2px] transition-colors duration-200",
-                        addToInventory ? "bg-[#2563EB]" : "bg-slate-300 dark:bg-[#1C2333]"
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          "w-[20px] h-[20px] rounded-full bg-white shadow-sm transition-transform duration-200",
-                          addToInventory ? "translate-x-[18px]" : "translate-x-0"
-                        )}
-                      />
-                    </div>
-                  </div>
-                  {addToInventory && (
-                    <p className="text-[11px] text-[#2563EB]/70 dark:text-blue-400/70 mt-2 leading-[15px] pl-[42px]">
-                      {tOrderModal("inventorySyncHintPrefix")} <strong>{tOrderModal("inventorySyncHintNot")}</strong> {tOrderModal("inventorySyncHintSuffix")}
-                    </p>
-                  )}
-                </div>
-
-                <DialogFooter className="pt-2">
-                  <button type="submit" className="glow-btn w-full h-[50px] text-[17px] flex items-center justify-center gap-2">
-                    <ShoppingCart className="h-5 w-5" /> {tOrderModal("btnCreatePO")}
-                  </button>
-                </DialogFooter>
-              </form>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* ════════════ NESTED ADD MATERIAL MODAL (inside PO flow) ════════════ */}
-      <AddMaterialModal
-        isOpen={isAddMaterialOpen}
-        onClose={() => {
-          setIsAddMaterialOpen(false);
-          setAddMaterialTargetRow(null);
-        }}
-        formData={materialFormData}
-        setFormData={setMaterialFormData}
-        onSubmit={handleAddMaterialSubmit}
-        isEditing={false}
-        zIndex={1100}
+      {/* ── Add Vendor Dialog ── */}
+      <AddVendorModal
+        isOpen={actions.isVendorDialogOpen}
+        onClose={() => actions.setIsVendorDialogOpen(false)}
+        vendorForm={actions.vendorForm}
+        setVendorForm={actions.setVendorForm}
+        vendorErrors={actions.vendorErrors}
+        setVendorErrors={actions.setVendorErrors}
+        isSubmitting={actions.isSubmittingVendor}
+        onSubmit={actions.handleVendorSubmit}
       />
 
-      {/* ════════════ ORDER DETAIL DIALOG ════════════ */}
-      <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-        <DialogContent fullScreenMobile className="max-w-md md:max-w-lg p-0 overflow-hidden rounded-[24px] border-[var(--glass-border)] glass-dialog md:max-h-[85dvh] flex flex-col">
-          {detailOrder && (
-            <ScrollArea className="flex-1 min-h-0">
-              <div className="p-6 space-y-4">
-                <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid var(--glass-border)" }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, rgba(168,85,247,0.4), rgba(255,255,255,0.06))", border: "1px solid var(--glass-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <FileText className="h-[18px] w-[18px] text-[#c084fc]" />
-                  </div>
-                  <div>
-                    <DialogTitle style={{ fontSize: 18, fontWeight: 700, color: "var(--g-text-primary)", lineHeight: "22px", margin: 0 }}>{detailOrder.poNumber}</DialogTitle>
-                    <DialogDescription style={{ fontSize: 13, color: "var(--g-text-secondary)", lineHeight: "18px", margin: "2px 0 0" }}>{tOrderDetail("lblVendor")} {detailOrder.vendorName}</DialogDescription>
-                  </div>
-                </div>
+      {/* ── Create Purchase Order Dialog ── */}
+      <CreatePOModal
+        isOpen={actions.isPODialogOpen}
+        onClose={() => actions.setIsPODialogOpen(false)}
+        vendors={data.vendors}
+        inventoryItems={data.inventoryItems}
+        poVendorId={actions.poVendorId}
+        setPoVendorId={actions.setPoVendorId}
+        poNotes={actions.poNotes}
+        setPoNotes={actions.setPoNotes}
+        poTaxPercent={actions.poTaxPercent}
+        setPoTaxPercent={actions.setPoTaxPercent}
+        poItems={actions.poItems}
+        setPoItems={actions.setPoItems}
+        addToInventory={actions.addToInventory}
+        setAddToInventory={actions.setAddToInventory}
+        onAddPOItem={actions.addPOItem}
+        onRemovePOItem={actions.removePOItem}
+        onUpdatePOItem={actions.updatePOItem}
+        onSubmit={actions.handlePOSubmit}
+        onRefreshInventory={data.fetchInventory}
+      />
 
-                <div className="flex items-center gap-2">
-                  <IOSBadge color={STATUS_CONFIG[detailOrder.status].color} variant="tinted" size="medium">
-                    {detailOrder.status}
-                  </IOSBadge>
-                  <span className="text-[13px] text-[var(--muted-foreground)]">
-                    {tOrderDetail("lblCreated")} {new Date(detailOrder.createdAt).toLocaleDateString(dateLocale)}
-                  </span>
-                </div>
+      {/* ── Order Detail Dialog ── */}
+      <PODetailModal
+        isOpen={actions.isDetailDialogOpen}
+        onClose={() => actions.setIsDetailDialogOpen(false)}
+        order={actions.detailOrder}
+        dateLocale={dateLocale}
+      />
 
-                {/* Items list */}
-                <div className="space-y-2">
-                  <h4 className="text-[13px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">
-                    {tOrderDetail("lblMaterials")}
-                  </h4>
-                  {detailOrder.items.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between p-3 rounded-[10px] bg-[var(--muted)]"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Package className="h-4 w-4 text-[var(--muted-foreground)]" />
-                        <div>
-                          <span className="text-[14px] font-medium text-[var(--foreground)] block">
-                            {item.materialName}
-                          </span>
-                          <span className="text-[12px] text-[var(--muted-foreground)]">
-                            {item.quantity} {item.unit} × {formatCurrency(item.unitPrice)}
-                          </span>
-                        </div>
-                      </div>
-                      <span className="text-[14px] font-semibold text-[var(--foreground)]">
-                        {formatCurrency(item.totalPrice)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Totals */}
-                <div className="p-3 rounded-[12px] bg-[var(--muted)] space-y-1">
-                  <div className="flex justify-between text-[13px] text-[var(--muted-foreground)]">
-                    <span>{tOrderDetail("lblSubtotal")}</span>
-                    <span>{formatCurrency(detailOrder.subtotal)}</span>
-                  </div>
-                  <div className="flex justify-between text-[13px] text-[var(--muted-foreground)]">
-                    <span>{tOrderDetail("lblTax")}</span>
-                    <span>{formatCurrency(detailOrder.taxAmount)}</span>
-                  </div>
-                  <div className="flex justify-between text-[17px] font-bold text-[var(--foreground)] pt-2 border-t border-[var(--border)]">
-                    <span>{tOrderDetail("lblTotal")}</span>
-                    <span className="text-[var(--primary)]">{formatCurrency(detailOrder.totalAmount)}</span>
-                  </div>
-                </div>
-
-                {detailOrder.notes && (
-                  <div className="text-[13px] text-[var(--muted-foreground)]">
-                    <span className="font-medium">{tOrderDetail("lblNotes")}</span> {detailOrder.notes}
-                  </div>
-                )}
-
-                {detailOrder.orderedAt && (
-                  <div className="text-[13px] text-[var(--muted-foreground)]">
-                    {tOrderDetail("lblOrdered")} {new Date(detailOrder.orderedAt).toLocaleDateString(dateLocale)}
-                  </div>
-                )}
-                {detailOrder.receivedAt && (
-                  <div className="text-[13px] text-[var(--erp-success)] font-medium">
-                    {tOrderDetail("lblReceived")} {new Date(detailOrder.receivedAt).toLocaleDateString(dateLocale)}
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* ════════════ DELETE CONFIRM ════════════ */}
+      {/* ── Delete Confirmation Sheet ── */}
       <ConfirmDeleteSheet
-        open={isDeleteDialogOpen}
-        onClose={() => setIsDeleteDialogOpen(false)}
-        onConfirm={handleDelete}
-        entityLabel={deleteTarget?.type === "order" ? tDelete("entityOrder") : tDelete("entityVendor")}
+        open={actions.isDeleteDialogOpen}
+        onClose={() => actions.setIsDeleteDialogOpen(false)}
+        onConfirm={actions.handleDelete}
+        entityLabel={
+          actions.deleteTarget?.type === "order"
+            ? tDelete("entityOrder")
+            : tDelete("entityVendor")
+        }
         entityName={
-          deleteTarget?.type === "order"
-            ? orders.find((o) => o.id === deleteTarget.id)?.poNumber
-            : vendors.find((v) => v.id === deleteTarget?.id)?.name
+          actions.deleteTarget?.type === "order"
+            ? data.orders.find((o) => o.id === actions.deleteTarget?.id)?.poNumber
+            : data.vendors.find((v) => v.id === actions.deleteTarget?.id)?.name
         }
         consequenceText={
-          deleteTarget?.type === "order"
+          actions.deleteTarget?.type === "order"
             ? tDelete("consequenceOrder")
             : tDelete("consequenceVendor")
         }
       />
 
-      {/* ════════════ RECORD PAYMENT MODAL ════════════ */}
+      {/* ── Record Payment Modal ── */}
       <RecordPaymentModal
-        isOpen={isPaymentModalOpen}
-        onClose={() => { setIsPaymentModalOpen(false); setPaymentPO(null); }}
-        purchaseOrder={paymentPO}
+        isOpen={actions.isPaymentModalOpen}
+        onClose={() => {
+          actions.setIsPaymentModalOpen(false);
+          actions.setPaymentPO(null);
+        }}
+        purchaseOrder={actions.paymentPO}
         onPaymentRecorded={(updatedPO) => {
-          // Update local orders state in-place for instant UI refresh
-          setOrders((prev) =>
+          data.setOrders((prev) =>
             prev.map((o) =>
               o.id === updatedPO.id
                 ? { ...o, paidAmount: updatedPO.paidAmount }
@@ -1862,13 +257,12 @@ export default function PurchasingPage() {
         }}
       />
 
-      {/* ════════════ VENDOR DETAIL DRAWER ════════════ */}
+      {/* ── Vendor Detail Drawer ── */}
       <VendorDetailDrawer
-        vendor={selectedVendor}
-        orders={orders}
-        onClose={() => setSelectedVendor(null)}
+        vendor={actions.selectedVendor}
+        orders={data.orders}
+        onClose={() => actions.setSelectedVendor(null)}
       />
-
     </motion.div>
   );
 }

@@ -582,7 +582,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
 
 ### 2. How It Works Steps Evidence (4 items)
 - **[step-1]** **Select vendor and items**: *"Choose a supplier and enter the raw materials, quantities, and agreed prices required."*
-  - **Proof**: [`apps/web/src/app/dashboard/purchasing/page.tsx#L235-L245`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/purchasing/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/purchasing/page.tsx#L190-L200`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/purchasing/page.tsx)
   - **Anchor**: `poVendorId`
   - **Citation**: Purchase order creator selects vendor and raw material line items.
 - **[step-2]** **Create pending order**: *"Generate the purchase order in Pending status with complete item and pricing details."*
