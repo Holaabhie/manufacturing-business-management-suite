@@ -41,6 +41,29 @@ export const INVENTORY_SORT_FIELDS = [
   "category",
 ] as const;
 
+export const PURCHASING_ORDER_SORT_FIELDS = [
+  "createdAt",
+  "totalAmount",
+  "poNumber",
+  "status",
+] as const;
+
+export const VENDOR_SORT_FIELDS = [
+  "createdAt",
+  "name",
+  "email",
+  "phone",
+] as const;
+
+export const VENDOR_BILL_SORT_FIELDS = [
+  "createdAt",
+  "total_amount",
+  "bill_number",
+  "bill_date",
+  "due_date",
+  "status",
+] as const;
+
 export function isValidSortField(
   sort: string | undefined,
   whitelist: readonly string[]

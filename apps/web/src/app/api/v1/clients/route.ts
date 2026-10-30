@@ -40,7 +40,7 @@ export const GET = withRateLimit(
 
             const parsed = paginationQuerySchema.safeParse({
                 page: searchParams.get("page") ?? 1,
-                limit: searchParams.get("limit") ?? (hasPagination ? 25 : 500),
+                limit: searchParams.get("limit") ?? 25,
                 sort: rawSort ?? "name",
                 order: searchParams.get("order") ?? "asc",
                 q: searchParams.get("q") ?? undefined,

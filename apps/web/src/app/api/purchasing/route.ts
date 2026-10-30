@@ -8,25 +8,120 @@ type PurchasingItemCandidate = { inventoryItemId?: string; inventoryId?: string;
  *        addToInventory is true (request-only flag).
  */
 
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { ObjectId } from "mongodb";
 import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
 import { requireRole } from "@/lib/require-role";
 import { getPurchasingService } from "@/modules/purchasing";
 import { getDb } from "@/lib/mongodb";
 import { assertCanCreate } from "@/lib/entitlements";
+import {
+    paginationQuerySchema,
+    buildPaginatedEnvelope,
+    buildTruncatedEnvelope,
+    PURCHASING_ORDER_SORT_FIELDS,
+    isValidSortField,
+    escapeRegex,
+} from "@/shared/lib/pagination";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
         const user = await getSessionUser();
         if (!user) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const service = getPurchasingService();
-        const orders = await service.findAllOrders(getDataOwnerId(user));
+        const url = new URL(req.url);
+        const searchParams = url.searchParams;
+        const hasPagination = searchParams.has("page") || searchParams.has("limit") || searchParams.has("q") || searchParams.has("sort");
 
-        return NextResponse.json({ success: true, data: orders });
+        const rawSort = searchParams.get("sort") || undefined;
+        if (rawSort && !isValidSortField(rawSort, PURCHASING_ORDER_SORT_FIELDS)) {
+            return NextResponse.json(
+                { success: false, error: `Invalid sort field '${rawSort}'. Whitelisted: ${PURCHASING_ORDER_SORT_FIELDS.join(", ")}` },
+                { status: 400 }
+            );
+        }
+
+        const parsed = paginationQuerySchema.safeParse({
+            page: searchParams.get("page") ?? 1,
+            limit: searchParams.get("limit") ?? 25,
+            sort: rawSort ?? "createdAt",
+            order: searchParams.get("order") ?? "desc",
+            q: searchParams.get("q") ?? undefined,
+        });
+
+        if (!parsed.success) {
+            return NextResponse.json(
+                { success: false, error: parsed.error.issues[0]?.message || "Invalid query parameters" },
+                { status: 400 }
+            );
+        }
+
+        const query = parsed.data;
+        const db = await getDb();
+        const userId = getDataOwnerId(user);
+        const filter: Record<string, unknown> = { userId };
+
+        if (query.q && query.q.trim()) {
+            const escaped = escapeRegex(query.q.trim());
+            filter.$or = [
+                { poNumber: { $regex: escaped, $options: "i" } },
+                { vendorName: { $regex: escaped, $options: "i" } },
+            ];
+        }
+
+        const col = db.collection("purchase_orders");
+        const total = await col.countDocuments(filter);
+
+        const sortDirection = query.order === "asc" ? 1 : -1;
+        const sortField = query.sort || "createdAt";
+        const skip = (query.page - 1) * query.limit;
+        const take = hasPagination ? query.limit : 500;
+
+        const docs = await col
+            .find(filter)
+            .sort({ [sortField]: sortDirection })
+            .skip(skip)
+            .limit(take)
+            .toArray();
+
+        const formatted = docs.map((doc) => ({
+            id: doc._id.toString(),
+            userId: doc.userId,
+            poNumber: doc.poNumber,
+            vendorId: doc.vendorId,
+            vendorName: doc.vendorName,
+            items: doc.items,
+            status: doc.status,
+            subtotal: doc.subtotal,
+            taxAmount: doc.taxAmount,
+            totalAmount: doc.totalAmount,
+            paidAmount: doc.paidAmount ?? 0,
+            notes: doc.notes,
+            orderedAt: doc.orderedAt,
+            receivedAt: doc.receivedAt,
+            inventorySyncedOnCreate: doc.inventorySyncedOnCreate,
+            lastPaymentMode: doc.lastPaymentMode,
+            lastPaymentDate: doc.lastPaymentDate,
+            lastPaymentReference: doc.lastPaymentReference,
+            lastPaymentNotes: doc.lastPaymentNotes,
+            createdAt: doc.createdAt,
+            updatedAt: doc.updatedAt,
+        }));
+
+        if (hasPagination) {
+            return NextResponse.json(buildPaginatedEnvelope(formatted, query.page, query.limit, total), {
+                headers: { "X-Total-Count": String(total) },
+            });
+        }
+
+        return NextResponse.json(buildTruncatedEnvelope(formatted, total, 500), {
+            headers: {
+                "X-Total-Count": String(total),
+                "X-Truncated": String(total > 500),
+            },
+        });
     } catch (error: unknown) {
         console.error("Error fetching purchase orders:", error);
         return NextResponse.json({ error: (error as Error).message }, { status: 500 });
