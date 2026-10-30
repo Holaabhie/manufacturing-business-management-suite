@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api-client";
+import { queryKeys } from "@/lib/query-keys";
 import { ShoppingCart, Plus, X, Package } from "lucide-react";
 import {
   Dialog,
@@ -65,6 +68,7 @@ export function CreatePOModal({
   onRefreshInventory,
 }: CreatePOModalProps) {
   const tOrderModal = useTranslations("purchasing.orderModal");
+  const queryClient = useQueryClient();
 
   // Inline Add Material state
   const [addMaterialTargetRow, setAddMaterialTargetRow] = useState<number | null>(null);
@@ -102,12 +106,8 @@ export function CreatePOModal({
         ),
         tax_rate: parseNumericValue(materialFormData.tax_rate, 18),
       };
-      const res = await fetch("/api/v1/inventory", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
+      const data = await apiClient.post<{ error?: string; success?: boolean; data?: any }>("/api/v1/inventory", payload);
+      queryClient.invalidateQueries({ queryKey: queryKeys.inventory });
       if (data.error || !data.success) {
         return;
       }

@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import { apiClient } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { StatWidget } from "@/components/ui/StatWidget";
 import { MonthYearFilter, matchesMonthYear, type MonthYearFilterValue } from "@/components/ui/month-year-filter";
@@ -63,19 +64,17 @@ function VendorBillsContent() {
     const loadBills = useCallback(async () => {
         setIsLoading(true);
         try {
-            const res = await fetch("/api/vendor-bills");
-            if (!res.ok) throw new Error("Failed to load vendor bills");
-            const data = await res.json();
-            setBills(Array.isArray(data) ? data : data.bills || []);
-            if (data.summary) {
+            const data = await apiClient.get<any>("/api/vendor-bills");
+            setBills(Array.isArray(data) ? data : data?.bills || []);
+            if (data?.summary) {
                 setSummary(data.summary);
             }
         } catch (err: any) {
-            toast.error(err.message || t("errLoadBills"));
+            toast.error(err?.message || t("errLoadBills"));
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [t]);
 
     useEffect(() => {
         loadBills();

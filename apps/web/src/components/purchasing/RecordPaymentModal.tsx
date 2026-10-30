@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api-client";
+import { queryKeys } from "@/lib/query-keys";
 import { createPortal } from "react-dom";
 import { X, IndianRupee } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -40,6 +43,7 @@ export function RecordPaymentModal({
 }: RecordPaymentModalProps) {
   const t = useTranslations("purchasing.recordPayment");
   const tToast = useTranslations("purchasing.toasts");
+  const queryClient = useQueryClient();
   const [portalMounted, setPortalMounted] = useState(false);
   const [animateOpen, setAnimateOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -98,27 +102,24 @@ export function RecordPaymentModal({
 
     setSubmitting(true);
     try {
-      const res = await fetch(
+      const data = await apiClient.post<{ success?: boolean; error?: string; data?: any }>(
         `/api/v1/purchase-orders/${purchaseOrder.id}/record-payment`,
         {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            amount: enteredAmount,
-            mode,
-            date: paymentDate,
-            reference,
-            notes,
-          }),
+          amount: enteredAmount,
+          mode,
+          date: paymentDate,
+          reference,
+          notes,
         }
       );
-      const data = await res.json();
-      if (data.success) {
+      if (data?.success) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.purchasing });
+        queryClient.invalidateQueries({ queryKey: queryKeys.banking });
         toast.success(tToast("paymentRecorded"));
         onPaymentRecorded(data.data);
         handleModalClose();
       } else {
-        toast.error(data.error || "Failed to record payment");
+        toast.error(data?.error || "Failed to record payment");
       }
     } catch {
       toast.error(tToast("recordPaymentFailed"));

@@ -20,6 +20,9 @@ import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { useAppLocale } from "@/components/LocaleProvider";
 import { playCompletionSound } from "@/hooks/useCompletionSound";
+import { useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api-client";
+import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { SearchableSelectPanel } from "@/components/ui/SearchableSelectPanel";
 
@@ -227,6 +230,7 @@ export default function CreateInvoiceModal({
   const [clientSearch, setClientSearch] = useState("");
   const [importDropdownOpen, setImportDropdownOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const queryClient = useQueryClient();
 
   const clientDropdownRef = useRef<HTMLDivElement>(null);
   const importButtonRef = useRef<HTMLButtonElement>(null);
@@ -459,17 +463,21 @@ export default function CreateInvoiceModal({
     };
 
     try {
-      const res = await fetch("/api/v1/billing", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(billData),
-      });
-      const json = await res.json();
+      const json = await apiClient.post<{ data?: { billNumber?: string }; error?: { message?: string } }>("/api/v1/billing", billData);
+      queryClient.invalidateQueries({ queryKey: queryKeys.invoices });
+      queryClient.invalidateQueries({ queryKey: queryKeys.billing });
+      queryClient.invalidateQueries({ queryKey: queryKeys.stats });
 
-      if (json.error) {
+
+
+
+
+
+
+      if (json?.error) {
         toast.error(json.error.message || t("toasts.billCreateFailed"));
       } else {
-        const serverBillNumber = json.data?.billNumber || billData.billNumber;
+        const serverBillNumber = json?.data?.billNumber || billData.billNumber;
         toast.success(t("toasts.billCreated", { number: serverBillNumber }));
         playCompletionSound("general");
         onClose();

@@ -23,6 +23,9 @@ import {
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api-client";
+import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { LinkedDocChip } from "@/components/ui/LinkedDocChip";
 import type { VendorBill, VendorBillPayment } from "@/modules/vendor-bills/domain/types";
@@ -45,6 +48,7 @@ export function BillDetailModal({
 }: BillDetailModalProps) {
     const t = useTranslations("vendorBills");
     const router = useRouter();
+    const queryClient = useQueryClient();
     const [portalMounted, setPortalMounted] = useState(false);
 
     const formatDisplayDate = (dateStr?: string | Date | null): string => {
@@ -99,9 +103,7 @@ export function BillDetailModal({
         if (!billId) return;
         setIsLoading(true);
         try {
-            const res = await fetch(`/api/vendor-bills/${billId}`);
-            if (!res.ok) throw new Error("Failed to load vendor bill");
-            const data = await res.json();
+            const data = await apiClient.get<any>(`/api/vendor-bills/${billId}`);
             setBill(data.bill);
             setPayments(data.payments || []);
             setEditDueDate(data.bill?.due_date || "");
@@ -138,18 +140,13 @@ export function BillDetailModal({
     const handleMarkOpen = async () => {
         if (!bill) return;
         try {
-            const res = await fetch(`/api/vendor-bills/${bill.id}/status`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status: "Open" }),
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Failed to open bill");
+            await apiClient.post(`/api/vendor-bills/${bill.id}/status`, { status: "Open" });
+            queryClient.invalidateQueries({ queryKey: queryKeys.vendorBills });
             toast.success(t("toastStatusOpen"));
             await fetchBillDetails();
             onRefresh();
         } catch (err: any) {
-            toast.error(err.message || t("errOpenBill"));
+            toast.error(err?.message || t("errOpenBill"));
         }
     };
 
@@ -162,20 +159,15 @@ export function BillDetailModal({
 
         setIsVoidingBill(true);
         try {
-            const res = await fetch(`/api/vendor-bills/${bill.id}/status`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status: "Void", void_reason: voidBillReason.trim() }),
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Failed to void bill");
+            await apiClient.post(`/api/vendor-bills/${bill.id}/status`, { status: "Void", void_reason: voidBillReason.trim() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.vendorBills });
             toast.success(t("toastVoided"));
             setIsVoidBillOpen(false);
             setVoidBillReason("");
             await fetchBillDetails();
             onRefresh();
         } catch (err: any) {
-            toast.error(err.message || t("errVoidBill"));
+            toast.error(err?.message || t("errVoidBill"));
         } finally {
             setIsVoidingBill(false);
         }
@@ -190,20 +182,16 @@ export function BillDetailModal({
 
         setIsVoidingPayment(true);
         try {
-            const res = await fetch(`/api/vendor-bills/${bill.id}/payments/${paymentToVoid.id}/void`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ void_reason: voidPaymentReason.trim() }),
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Failed to void payment");
+            await apiClient.post(`/api/vendor-bills/${bill.id}/payments/${paymentToVoid.id}/void`, { void_reason: voidPaymentReason.trim() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.vendorBills });
+            queryClient.invalidateQueries({ queryKey: queryKeys.banking });
             toast.success(t("toastPaymentVoided"));
             setPaymentToVoid(null);
             setVoidPaymentReason("");
             await fetchBillDetails();
             onRefresh();
         } catch (err: any) {
-            toast.error(err.message || t("errVoidPayment"));
+            toast.error(err?.message || t("errVoidPayment"));
         } finally {
             setIsVoidingPayment(false);
         }
@@ -213,17 +201,13 @@ export function BillDetailModal({
     const handleDuplicate = async () => {
         if (!bill) return;
         try {
-            const res = await fetch(`/api/vendor-bills/${bill.id}/duplicate`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Failed to duplicate bill");
+            await apiClient.post(`/api/vendor-bills/${bill.id}/duplicate`);
+            queryClient.invalidateQueries({ queryKey: queryKeys.vendorBills });
             toast.success(t("toastDuplicated"));
             onRefresh();
             onClose();
         } catch (err: any) {
-            toast.error(err.message || t("errDuplicateBill"));
+            toast.error(err?.message || t("errDuplicateBill"));
         }
     };
 
@@ -232,17 +216,14 @@ export function BillDetailModal({
         if (!bill) return;
         setIsDeleting(true);
         try {
-            const res = await fetch(`/api/vendor-bills/${bill.id}`, {
-                method: "DELETE",
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Failed to delete bill");
+            await apiClient.delete(`/api/vendor-bills/${bill.id}`);
+            queryClient.invalidateQueries({ queryKey: queryKeys.vendorBills });
             toast.success(t("toastDeleted"));
             setIsDeleteOpen(false);
             onRefresh();
             onClose();
         } catch (err: any) {
-            toast.error(err.message || t("errDeleteBill"));
+            toast.error(err?.message || t("errDeleteBill"));
         } finally {
             setIsDeleting(false);
         }
@@ -253,22 +234,17 @@ export function BillDetailModal({
         if (!bill) return;
         setIsSavingOpenFields(true);
         try {
-            const res = await fetch(`/api/vendor-bills/${bill.id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    due_date: editDueDate,
-                    notes: editNotes.trim(),
-                }),
+            await apiClient.patch(`/api/vendor-bills/${bill.id}`, {
+                due_date: editDueDate,
+                notes: editNotes.trim(),
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Failed to update bill");
+            queryClient.invalidateQueries({ queryKey: queryKeys.vendorBills });
             toast.success(t("toastUpdated"));
             setIsEditOpenFields(false);
             await fetchBillDetails();
             onRefresh();
         } catch (err: any) {
-            toast.error(err.message || t("errUpdateBill"));
+            toast.error(err?.message || t("errUpdateBill"));
         } finally {
             setIsSavingOpenFields(false);
         }

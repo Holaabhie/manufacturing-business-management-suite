@@ -24,4 +24,23 @@ export const queryKeys = {
   production: ["production"] as const,
   productionDetail: (id: string) => ["production", id] as const,
   stats: ["dashboard-stats"] as const,
+
+  // Invoices & Billing
+  invoices: ["invoices"] as const,
+  invoice: (id: string) => ["invoices", id] as const,
+  billing: ["billing"] as const,
+  billingStats: ["billing", "stats"] as const,
+
+  // Purchasing & Vendors
+  purchasing: ["purchasing"] as const,
+  purchasingOrders: ["purchasing", "orders"] as const,
+  purchasingOrder: (id: string) => ["purchasing", "orders", id] as const,
+  purchasingVendors: ["purchasing", "vendors"] as const,
+  purchasingStats: ["purchasing", "stats"] as const,
+
+  // Vendor Bills & Banking
+  vendorBills: ["vendor-bills"] as const,
+  vendorBill: (id: string) => ["vendor-bills", id] as const,
+  vendorBillSummary: ["vendor-bills", "summary"] as const,
+  banking: ["banking"] as const,
 } as const;

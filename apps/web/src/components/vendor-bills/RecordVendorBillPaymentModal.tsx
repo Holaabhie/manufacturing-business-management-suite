@@ -6,6 +6,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { CreditCard, X, DollarSign, Calendar, FileText, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api-client";
+import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import type { VendorBill, VendorBillPayment, BillPaymentMode } from "@/modules/vendor-bills/domain/types";
 import { generateId } from "@/lib/uuid";
@@ -40,6 +43,7 @@ export function RecordVendorBillPaymentModal({
     bill,
 }: RecordVendorBillPaymentModalProps) {
     const t = useTranslations("vendorBills");
+    const queryClient = useQueryClient();
     const [portalMounted, setPortalMounted] = useState(false);
 
     useEffect(() => {
@@ -109,25 +113,20 @@ export function RecordVendorBillPaymentModal({
         setIsSubmitting(true);
         try {
             const idempotencyKey = generateId();
-            const res = await fetch(`/api/vendor-bills/${bill.id}/payments`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "idempotency-key": idempotencyKey,
-                },
-                body: JSON.stringify({
+            const data = await apiClient.postIdempotent<{ payment: VendorBillPayment; updatedBill: VendorBill }>(
+                `/api/vendor-bills/${bill.id}/payments`,
+                {
                     amount: Number(amount),
                     payment_date: paymentDate,
                     payment_mode: paymentMode,
                     reference: reference.trim(),
                     notes: notes.trim(),
-                }),
-            });
+                },
+                idempotencyKey
+            );
 
-            const data = await res.json();
-            if (!res.ok) {
-                throw new Error(data.error || "Failed to record payment");
-            }
+            queryClient.invalidateQueries({ queryKey: queryKeys.vendorBills });
+            queryClient.invalidateQueries({ queryKey: queryKeys.banking });
 
             toast.success(t("toastPaymentRecorded"));
             onSuccess(data.payment, data.updatedBill);

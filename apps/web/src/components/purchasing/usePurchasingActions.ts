@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
 import { playCompletionSound } from "@/hooks/useCompletionSound";
 import { parseNumericValue } from "@/components/ui/numeric-input";
+import { apiClient } from "@/lib/api-client";
+import { queryKeys } from "@/lib/query-keys";
 import type {
   Vendor,
   PurchaseOrder,
@@ -40,6 +43,7 @@ export function usePurchasingActions({
 }: UsePurchasingActionsProps) {
   const tToast = useTranslations("purchasing.toasts");
   const tVendorModal = useTranslations("purchasing.vendorModal");
+  const queryClient = useQueryClient();
 
   // Modal dialog states
   const [isVendorDialogOpen, setIsVendorDialogOpen] = useState(false);
@@ -48,10 +52,11 @@ export function usePurchasingActions({
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
-  // Selected targets
+  // Selected entities
   const [deleteTarget, setDeleteTarget] = useState<{
-    type: "order" | "vendor";
     id: string;
+    name: string;
+    type: "order" | "vendor";
   } | null>(null);
   const [detailOrder, setDetailOrder] = useState<PurchaseOrder | null>(null);
   const [paymentPO, setPaymentPO] = useState<PurchaseOrder | null>(null);
@@ -179,31 +184,28 @@ export function usePurchasingActions({
     setVendorErrors({});
     setIsSubmittingVendor(true);
     try {
-      const res = await fetch("/api/purchasing/vendors", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...vendorForm,
-          phone:
-            cleanPhone.startsWith("91") && cleanPhone.length === 12
-              ? `+${cleanPhone}`
-              : cleanPhone.length === 10
-              ? `+91${cleanPhone}`
-              : vendorForm.phone.trim(),
-          gstin: cleanGstin,
-          email: vendorForm.email.trim(),
-          address: vendorForm.address.trim(),
-        }),
+      const data = await apiClient.post<{ success?: boolean; error?: string }>("/api/purchasing/vendors", {
+        ...vendorForm,
+        phone:
+          cleanPhone.startsWith("91") && cleanPhone.length === 12
+            ? `+${cleanPhone}`
+            : cleanPhone.length === 10
+            ? `+91${cleanPhone}`
+            : vendorForm.phone.trim(),
+        gstin: cleanGstin,
+        email: vendorForm.email.trim(),
+        address: vendorForm.address.trim(),
       });
-      const data = await res.json();
-      if (data.success) {
+      if (data?.success) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.purchasingVendors });
+        queryClient.invalidateQueries({ queryKey: queryKeys.purchasing });
         toast.success(tToast("vendorAdded"));
         setIsVendorDialogOpen(false);
         setVendorForm(emptyVendorForm);
         setVendorErrors({});
         fetchVendors();
       } else {
-        toast.error(data.error || tToast("addVendorFailed"));
+        toast.error(data?.error || tToast("addVendorFailed"));
       }
     } catch {
       toast.error(tToast("addVendorFailed"));
@@ -243,13 +245,12 @@ export function usePurchasingActions({
     };
 
     try {
-      const res = await fetch("/api/purchasing", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (data.success) {
+      const data = await apiClient.post<{ success?: boolean; error?: string; inventorySynced?: boolean }>("/api/purchasing", payload);
+      if (data?.success) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.purchasing });
+        if (data.inventorySynced) {
+          queryClient.invalidateQueries({ queryKey: queryKeys.inventory });
+        }
         toast.success(
           data.inventorySynced
             ? "Purchase order created & materials added to inventory"
@@ -259,7 +260,7 @@ export function usePurchasingActions({
         fetchOrders();
         if (data.inventorySynced) fetchInventory();
       } else {
-        toast.error(data.error || tToast("createPOFailed"));
+        toast.error(data?.error || tToast("createPOFailed"));
       }
     } catch {
       toast.error(tToast("createPOFailed"));
@@ -271,20 +272,19 @@ export function usePurchasingActions({
     newStatus: "Received"
   ) => {
     try {
-      const res = await fetch(`/api/purchasing/${orderId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
+      const data = await apiClient.patch<{ success?: boolean; error?: string }>(`/api/purchasing/${orderId}`, {
+        status: newStatus,
       });
-      const data = await res.json();
-      if (data.success) {
+      if (data?.success) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.purchasing });
+        queryClient.invalidateQueries({ queryKey: queryKeys.inventory });
         toast.success(tToast("orderReceived"));
         playCompletionSound("general");
         fetchOrders();
         fetchStats();
         if (newStatus === "Received") fetchInventory();
       } else {
-        toast.error(data.error || tToast("updateStatusFailed"));
+        toast.error(data?.error || tToast("updateStatusFailed"));
       }
     } catch {
       toast.error(tToast("updateStatusFailed"));
@@ -298,14 +298,17 @@ export function usePurchasingActions({
         deleteTarget.type === "order"
           ? `/api/purchasing/${deleteTarget.id}`
           : `/api/purchasing/vendors/${deleteTarget.id}`;
-      const res = await fetch(url, { method: "DELETE" });
-      const data = await res.json();
-      if (data.success) {
+      const data = await apiClient.delete<{ success?: boolean; error?: string }>(url);
+      if (data?.success) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.purchasing });
+        if (deleteTarget.type !== "order") {
+          queryClient.invalidateQueries({ queryKey: queryKeys.purchasingVendors });
+        }
         toast.success(tToast("deleteSuccess"));
         if (deleteTarget.type === "order") fetchOrders();
         else fetchVendors();
       } else {
-        toast.error(data.error || tToast("deleteFailed"));
+        toast.error(data?.error || tToast("deleteFailed"));
       }
     } catch {
       toast.error(tToast("deleteFailed"));

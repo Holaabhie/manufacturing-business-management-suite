@@ -14,8 +14,8 @@ import {
     Check,
     Loader2,
 } from "lucide-react";
-import { toast } from "sonner";
-import { useTranslations } from "next-intl";
+import { toast } from "sonner"; import { useTranslations } from "next-intl"; import { useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api-client"; import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { SearchableSelectPanel } from "@/components/ui/SearchableSelectPanel";
 import { DEFAULT_CREDIT_DAYS } from "@/lib/reports/receivables";
@@ -178,6 +178,7 @@ export function CreateBillModal({
     ]);
 
     // UI state
+    const queryClient = useQueryClient();
     const [savingAction, setSavingAction] = useState<"Draft" | "Open" | null>(null);
     const isSaving = savingAction !== null;
     const isDraftSaving = savingAction === "Draft";
@@ -207,9 +208,9 @@ export function CreateBillModal({
         setIsLoadingData(true);
 
         Promise.allSettled([
-            fetch("/api/purchasing/vendors").then((r) => r.json()),
-            fetch("/api/purchasing").then((r) => r.json()),
-            fetch("/api/profile/company").then((r) => r.json()),
+            apiClient.get<any>("/api/purchasing/vendors"),
+            apiClient.get<any>("/api/purchasing"),
+            apiClient.get<any>("/api/profile/company"),
         ]).then(([vendorsRes, poRes, compRes]) => {
             if (vendorsRes.status === "fulfilled") {
                 const raw = vendorsRes.value;
@@ -353,9 +354,8 @@ export function CreateBillModal({
 
         setPurchaseOrderId(poId);
         try {
-            const res = await fetch(`/api/vendor-bills/po-summary?purchase_order_id=${poId}`);
-            if (res.ok) {
-                const data = await res.json();
+            const data = await apiClient.get<any>(`/api/vendor-bills/po-summary?purchase_order_id=${poId}`);
+            if (data) {
                 setPoSummaryData(data);
 
                 // Auto-set vendor if not already set
@@ -556,37 +556,22 @@ export function CreateBillModal({
             let savedBill: VendorBill;
 
             if (billToEdit) {
-                const res = await fetch(`/api/vendor-bills/${billToEdit.id}`, {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload),
-                });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || "Failed to update vendor bill");
-                savedBill = data;
+                savedBill = await apiClient.patch<VendorBill>(`/api/vendor-bills/${billToEdit.id}`, payload);
                 toast.success(t("toastUpdated"));
             } else {
-                const res = await fetch("/api/vendor-bills", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload),
-                });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || "Failed to create vendor bill");
-                savedBill = data;
+                savedBill = await apiClient.post<VendorBill>("/api/vendor-bills", payload);
                 toast.success(t("toastCreated"));
+            }
+
+            queryClient.invalidateQueries({ queryKey: queryKeys.vendorBills });
+            if (payload.purchase_order_id) {
+                queryClient.invalidateQueries({ queryKey: queryKeys.purchasing });
             }
 
             // If user clicked "Open Bill" directly from creation
             if (targetStatus === "Open" && savedBill.status === "Draft") {
-                const openRes = await fetch(`/api/vendor-bills/${savedBill.id}/status`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ status: "Open" }),
-                });
-                const openData = await openRes.json();
-                if (!openRes.ok) throw new Error(openData.error || "Failed to open bill");
-                savedBill = openData;
+                savedBill = await apiClient.post<VendorBill>(`/api/vendor-bills/${savedBill.id}/status`, { status: "Open" });
+                queryClient.invalidateQueries({ queryKey: queryKeys.vendorBills });
                 toast.success(t("toastStatusOpen"));
             }
 

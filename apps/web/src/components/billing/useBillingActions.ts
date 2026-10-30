@@ -3,6 +3,9 @@
 import { useState, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api-client";
+import { queryKeys } from "@/lib/query-keys";
 import type { InvoicePayload } from "@/lib/invoice/types";
 import type { Bill, CompanyInfo } from "./types";
 
@@ -14,6 +17,7 @@ interface UseBillingActionsProps {
 
 export function useBillingActions({ companyInfo, dateLocale, onRefresh }: UseBillingActionsProps) {
   const t = useTranslations("billing");
+  const queryClient = useQueryClient();
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [billToDelete, setBillToDelete] = useState<string | null>(null);
@@ -76,16 +80,12 @@ export function useBillingActions({ companyInfo, dateLocale, onRefresh }: UseBil
       toast.success(t("toasts.openingWhatsApp"));
 
       try {
-        await fetch("/api/billing/share-log", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            billId: bill.id,
-            billNumber: bill.billNumber,
-            clientName: bill.clientName,
-            totalAmount: bill.totalAmount,
-            channel: "whatsapp",
-          }),
+        await apiClient.post("/api/billing/share-log", {
+          billId: bill.id,
+          billNumber: bill.billNumber,
+          clientName: bill.clientName,
+          totalAmount: bill.totalAmount,
+          channel: "whatsapp",
         });
       } catch {
         /* non-critical */
@@ -97,45 +97,36 @@ export function useBillingActions({ companyInfo, dateLocale, onRefresh }: UseBil
   const updateStatus = useCallback(
     async (id: string, status: Bill["status"]) => {
       try {
-        const res = await fetch(`/api/v1/billing/${id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status }),
-        });
-        const json = await res.json();
-
-        if (json.error) {
-          toast.error(json.error.message || t("toasts.statusFailed"));
-        } else {
-          toast.success(t("toasts.statusUpdated", { status }));
-          onRefresh();
-        }
-      } catch (error) {
-        toast.error(t("toasts.statusFailed"));
+        await apiClient.put(`/api/v1/billing/${id}`, { status });
+        queryClient.invalidateQueries({ queryKey: queryKeys.invoices });
+        queryClient.invalidateQueries({ queryKey: queryKeys.billing });
+        queryClient.invalidateQueries({ queryKey: queryKeys.stats });
+        toast.success(t("toasts.statusUpdated", { status }));
+        onRefresh();
+      } catch (error: any) {
+        toast.error(error?.message || t("toasts.statusFailed"));
       }
     },
-    [onRefresh, t]
+    [onRefresh, queryClient, t]
   );
 
   const handleDelete = useCallback(
     async (id: string) => {
       try {
-        const res = await fetch(`/api/v1/billing/${id}`, { method: "DELETE" });
-        if (res.ok || res.status === 404) {
-          toast.success(t("toasts.billDeleted"));
-          onRefresh();
-        } else {
-          const json = await res.json().catch(() => ({}));
-          toast.error(json?.error?.message || json?.error || t("toasts.billDeleteFailed"));
-        }
-      } catch (error) {
-        toast.error(t("toasts.billDeleteFailed"));
+        await apiClient.delete(`/api/v1/billing/${id}`);
+        queryClient.invalidateQueries({ queryKey: queryKeys.invoices });
+        queryClient.invalidateQueries({ queryKey: queryKeys.billing });
+        queryClient.invalidateQueries({ queryKey: queryKeys.stats });
+        toast.success(t("toasts.billDeleted"));
+        onRefresh();
+      } catch (error: any) {
+        toast.error(error?.message || t("toasts.billDeleteFailed"));
       } finally {
         setIsDeleteDialogOpen(false);
         setBillToDelete(null);
       }
     },
-    [onRefresh, t]
+    [onRefresh, queryClient, t]
   );
 
   const generatePDF = useCallback(

@@ -6,6 +6,7 @@ import {
   matchesMonthYear,
   type MonthYearFilterValue,
 } from "@/components/ui/month-year-filter";
+import { apiClient } from "@/lib/api-client";
 import type {
   PurchaseOrder,
   Vendor,
@@ -42,9 +43,8 @@ export function usePurchasingData() {
 
   const fetchOrders = useCallback(async () => {
     try {
-      const res = await fetch("/api/purchasing");
-      const data = await res.json();
-      if (data.success) setOrders(data.data || []);
+      const data = await apiClient.get<{ success?: boolean; data?: PurchaseOrder[] }>("/api/purchasing");
+      if (data?.success) setOrders(data.data || []);
       else toast.error(tToast("fetchOrdersFailed"));
     } catch {
       toast.error(tToast("fetchOrdersFailed"));
@@ -55,9 +55,8 @@ export function usePurchasingData() {
 
   const fetchVendors = useCallback(async () => {
     try {
-      const res = await fetch("/api/purchasing/vendors");
-      const data = await res.json();
-      if (data.success) setVendors(data.data || []);
+      const data = await apiClient.get<{ success?: boolean; data?: Vendor[] }>("/api/purchasing/vendors");
+      if (data?.success) setVendors(data.data || []);
       else toast.error(tToast("fetchVendorsFailed"));
     } catch {
       toast.error(tToast("fetchVendorsFailed"));
@@ -68,9 +67,8 @@ export function usePurchasingData() {
 
   const fetchInventory = useCallback(async () => {
     try {
-      const res = await fetch("/api/v1/inventory");
-      const data = await res.json();
-      if (data.success) setInventoryItems(data.data || []);
+      const data = await apiClient.get<{ success?: boolean; data?: InventoryItem[] }>("/api/v1/inventory");
+      if (data?.success) setInventoryItems(data.data || []);
     } catch {
       // silent
     }
@@ -78,9 +76,8 @@ export function usePurchasingData() {
 
   const fetchStats = useCallback(async () => {
     try {
-      const res = await fetch("/api/purchasing/stats");
-      const data = await res.json();
-      if (data.success) setStats(data.data);
+      const data = await apiClient.get<{ success?: boolean; data?: PurchasingStats }>("/api/purchasing/stats");
+      if (data?.success && data.data) setStats(data.data);
     } catch {
       // Fall back to client-side computation
     }
