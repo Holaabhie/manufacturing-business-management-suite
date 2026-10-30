@@ -10,13 +10,5 @@ self.addEventListener("activate", (event) => {
       .then((cacheNames) => Promise.all(cacheNames.map((name) => caches.delete(name))))
       .then(() => self.registration.unregister())
       .then(() => self.clients.claim())
-      .then(() => self.clients.matchAll({ type: "window" }))
-      .then((clients) => {
-        clients.forEach((client) => {
-          if (client.url && "navigate" in client) {
-            client.navigate(client.url);
-          }
-        });
-      })
   );
 });
