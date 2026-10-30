@@ -295,6 +295,8 @@ export const ROLE_PRESETS: Record<RoleType, { label: string; description: string
             "inventory.edit": true,
             "inventory.delete": true,
             "inventory.restock": true,
+            // Invoices — view
+            "invoices.view": true,
         },
     },
     Staff: {

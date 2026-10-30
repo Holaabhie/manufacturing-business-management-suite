@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ROLE_PRESETS, resolvePermissions } from "@/lib/permissions";
+import { ROLE_PRESETS, resolvePermissions, hasPermission } from "@/lib/permissions";
 import type { Bill } from "../types";
 
 describe("Billing Parity & Action Logic Verification", () => {
@@ -69,91 +69,111 @@ describe("Billing Parity & Action Logic Verification", () => {
     });
   });
 
-  it("verifies WhatsApp URL builder formatting with Indian 91 phone prefix handling", () => {
-    function buildWhatsAppUrl(bill: Bill, dateLocale = "en-IN") {
-      const message = `Invoice ${bill.billNumber}\nClient: ${bill.clientName}\nAmount: \u20B9${bill.totalAmount.toLocaleString(dateLocale)}\nDue: ${new Date(bill.dueDate).toLocaleDateString("en-IN")}`;
-      const phoneNumber = bill.clientPhone?.replace(/[^0-9]/g, "") || "";
-      return phoneNumber
-        ? `https://wa.me/${phoneNumber.startsWith("91") ? phoneNumber : "91" + phoneNumber}?text=${encodeURIComponent(message)}`
-        : `https://wa.me/?text=${encodeURIComponent(message)}`;
+  it("verifies phone number normalization with 91 prefix for WhatsApp sharing", () => {
+    function getWhatsAppHref(rawPhone: string, billNumber: string, totalAmount: number): string {
+      const cleanPhone = rawPhone.replace(/\D/g, "");
+      const formattedPhone = cleanPhone.startsWith("91")
+        ? cleanPhone
+        : `91${cleanPhone}`;
+      const message = encodeURIComponent(
+        `Hello, here is your invoice #${billNumber} for ₹${totalAmount.toLocaleString("en-IN")}.`
+      );
+      return `https://wa.me/${formattedPhone}?text=${message}`;
     }
 
-    // Standard 10-digit phone
-    const url1 = buildWhatsAppUrl(mockDraftBill);
-    expect(url1).toContain("https://wa.me/919876543210?text=");
-    expect(url1).toContain(encodeURIComponent("Invoice INV-101"));
+    // Phone without prefix
+    expect(getWhatsAppHref("9876543210", "INV-101", 59000)).toBe(
+      "https://wa.me/919876543210?text=Hello%2C%20here%20is%20your%20invoice%20%23INV-101%20for%20%E2%82%B959%2C000."
+    );
 
     // Phone already prefixed with 91
-    const billWith91: Bill = { ...mockDraftBill, clientPhone: "919876543210" };
-    const url2 = buildWhatsAppUrl(billWith91);
-    expect(url2).toContain("https://wa.me/919876543210?text=");
+    expect(getWhatsAppHref("919876543210", "INV-101", 59000)).toBe(
+      "https://wa.me/919876543210?text=Hello%2C%20here%20is%20your%20invoice%20%23INV-101%20for%20%E2%82%B959%2C000."
+    );
 
-    // Missing phone fallback
-    const billWithoutPhone: Bill = { ...mockDraftBill, clientPhone: "" };
-    const url3 = buildWhatsAppUrl(billWithoutPhone);
-    expect(url3).toContain("https://wa.me/?text=");
+    // Formatted phone with dashes and spaces
+    expect(getWhatsAppHref("+91 98765-43210", "INV-101", 59000)).toBe(
+      "https://wa.me/919876543210?text=Hello%2C%20here%20is%20your%20invoice%20%23INV-101%20for%20%E2%82%B959%2C000."
+    );
   });
 
-  it("verifies updateStatus API contract when marking invoice as paid or sent", async () => {
-    const fetchSpy = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ success: true, data: { status: "paid" } }),
-    });
-    global.fetch = fetchSpy;
-
-    async function updateStatus(id: string, status: Bill["status"]) {
-      const res = await fetch(`/api/v1/billing/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-      return res.json();
+  it("verifies month/year date filtering matches bills strictly against billDate", () => {
+    function matchesMonthYearFilter(
+      billDateStr: string,
+      filter: { year: number | "all"; month: number | "all" }
+    ): boolean {
+      if (filter.year === "all" && filter.month === "all") return true;
+      const d = new Date(billDateStr);
+      if (isNaN(d.getTime())) return false;
+      const matchYear = filter.year === "all" || d.getFullYear() === filter.year;
+      const matchMonth = filter.month === "all" || d.getMonth() + 1 === filter.month;
+      return matchYear && matchMonth;
     }
 
-    const result = await updateStatus("bill-sent-102", "paid");
-    expect(fetchSpy).toHaveBeenCalledWith("/api/v1/billing/bill-sent-102", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "paid" }),
-    });
-    expect(result.data.status).toBe("paid");
+    const billOct2026 = "2026-10-01";
+    const billNov2026 = "2026-11-01";
+    const billOct2025 = "2025-10-01";
+
+    expect(matchesMonthYearFilter(billOct2026, { year: 2026, month: 10 })).toBe(true);
+    expect(matchesMonthYearFilter(billNov2026, { year: 2026, month: 10 })).toBe(false);
+    expect(matchesMonthYearFilter(billOct2025, { year: 2026, month: 10 })).toBe(false);
+    expect(matchesMonthYearFilter(billOct2026, { year: 2026, month: "all" })).toBe(true);
+    expect(matchesMonthYearFilter(billNov2026, { year: 2026, month: "all" })).toBe(true);
   });
 
-  it("verifies Staff permission guard blocking billing page access", () => {
-    function isAccessDeniedForRole(role: string | null, roleLoading: boolean): boolean {
-      if (roleLoading) return false;
-      return role === "Staff";
+  it("verifies long-press touch gesture distance thresholds for cancellation (>10px cancels)", () => {
+    function shouldCancelLongPress(
+      startX: number,
+      startY: number,
+      currentX: number,
+      currentY: number,
+      threshold = 10
+    ): boolean {
+      const diffX = Math.abs(currentX - startX);
+      const diffY = Math.abs(currentY - startY);
+      return diffX > threshold || diffY > threshold;
     }
 
-    expect(isAccessDeniedForRole("Staff", false)).toBe(true);
-    expect(isAccessDeniedForRole("Admin", false)).toBe(false);
-    expect(isAccessDeniedForRole("Owner", false)).toBe(false);
-    expect(isAccessDeniedForRole("Manager", false)).toBe(false);
-    expect(isAccessDeniedForRole("Staff", true)).toBe(false); // Still loading
+    // Small micro-movements <= 10px do NOT cancel
+    expect(shouldCancelLongPress(100, 100, 105, 105)).toBe(false);
+    expect(shouldCancelLongPress(100, 100, 110, 100)).toBe(false);
+
+    // Movements > 10px cancel
+    expect(shouldCancelLongPress(100, 100, 112, 100)).toBe(true);
+    expect(shouldCancelLongPress(100, 100, 100, 115)).toBe(true);
+    expect(shouldCancelLongPress(100, 100, 120, 120)).toBe(true);
   });
 
-  it("verifies billing access guard derived from invoices.view permission and role presets", () => {
+  it("verifies role-based access control for billing page (Owner, Admin, Manager, Accountant default ALLOWED; Staff default BLOCKED)", () => {
     function isBillingAccessDenied(canViewInvoices: boolean, roleLoading: boolean): boolean {
-      if (roleLoading) return false;
-      return !canViewInvoices;
+      return !roleLoading && !canViewInvoices;
     }
 
-    // Default Staff preset has invoices.view = false -> DENIED
-    const staffPerms = ROLE_PRESETS.Staff.permissions;
-    expect(isBillingAccessDenied(staffPerms["invoices.view"], false)).toBe(true);
-    expect(isBillingAccessDenied(staffPerms["invoices.view"], true)).toBe(false); // loading
+    function checkRoleBillingAccess(role: "Owner" | "Admin" | "Manager" | "Accountant" | "Staff", customPerms?: Record<string, boolean>) {
+      const isOwner = role === "Owner" || role === "Admin";
+      const perms = resolvePermissions(role, customPerms);
+      const canView = hasPermission(perms, "invoices.view", isOwner);
+      return !isBillingAccessDenied(canView, false);
+    }
 
-    // Staff with custom permission override invoices.view = true -> ALLOWED
-    const customStaffPerms = resolvePermissions("Staff", { "invoices.view": true });
-    expect(isBillingAccessDenied(customStaffPerms["invoices.view"], false)).toBe(false);
+    // 1. Owner & Admin: full bypass -> ALLOWED
+    expect(checkRoleBillingAccess("Owner")).toBe(true);
+    expect(checkRoleBillingAccess("Admin")).toBe(true);
 
-    // Accountant preset has invoices.view = true -> ALLOWED
-    const accountantPerms = ROLE_PRESETS.Accountant.permissions;
-    expect(isBillingAccessDenied(accountantPerms["invoices.view"], false)).toBe(false);
+    // 2. Manager preset has invoices.view = true -> ALLOWED (restores legacy default behavior)
+    expect(checkRoleBillingAccess("Manager")).toBe(true);
 
-    // Owner preset has invoices.view = true -> ALLOWED
-    const ownerPerms = ROLE_PRESETS.Owner.permissions;
-    expect(isBillingAccessDenied(ownerPerms["invoices.view"], false)).toBe(false);
+    // 3. Accountant preset has invoices.view = true -> ALLOWED (matches legacy behavior)
+    expect(checkRoleBillingAccess("Accountant")).toBe(true);
+
+    // 4. Default Staff preset has invoices.view = false -> BLOCKED (matches legacy behavior)
+    expect(checkRoleBillingAccess("Staff")).toBe(false);
+
+    // 5. Staff with explicit custom permission override -> ALLOWED
+    expect(checkRoleBillingAccess("Staff", { "invoices.view": true })).toBe(true);
+
+    // 6. Manager with explicit custom restriction override -> BLOCKED
+    expect(checkRoleBillingAccess("Manager", { "invoices.view": false })).toBe(false);
   });
 
   it("verifies KPI computation logic (total, draft, sent, paid, totalValue, paidValue)", () => {

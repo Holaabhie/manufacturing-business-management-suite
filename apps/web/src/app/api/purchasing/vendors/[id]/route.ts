@@ -41,7 +41,8 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string }> },
 ) {
     try {
-        const authResult = await requireRole(["Owner", "Admin", "Manager", "Accountant"]);
+        // Enforce Owner/Admin only for deleting vendors (aligned with UI isAdmin check)
+        const authResult = await requireRole(["Owner", "Admin"]);
         if (authResult.error || !authResult.user) {
             return NextResponse.json({ error: authResult.error || "Unauthorized" }, { status: authResult.status || 401 });
         }

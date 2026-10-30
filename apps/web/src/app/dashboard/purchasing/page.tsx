@@ -33,8 +33,7 @@ export default function PurchasingPage() {
       : locale === "mr"
       ? "mr-IN"
       : "en-IN";
-  const { isAdmin, can } = useRole();
-  const canDeleteOrders = can("orders.delete") || isAdmin;
+  const { isAdmin } = useRole();
   const { earliestDate } = useTenantCreationDate();
 
   const data = usePurchasingData();
@@ -128,7 +127,7 @@ export default function PurchasingPage() {
             <PurchasingOrdersTable
               orders={data.filteredOrders}
               ordersLoading={data.ordersLoading}
-              isAdmin={canDeleteOrders}
+              isAdmin={isAdmin}
               dateLocale={dateLocale}
               onOpenNewPO={actions.openNewPO}
               onViewDetails={(order) => {
@@ -159,7 +158,7 @@ export default function PurchasingPage() {
             <PurchasingVendorsTable
               vendors={data.filteredVendors}
               vendorsLoading={data.vendorsLoading}
-              isAdmin={canDeleteOrders}
+              isAdmin={isAdmin}
               onOpenVendorDialog={() => {
                 actions.setVendorForm(emptyVendorForm);
                 actions.setIsVendorDialogOpen(true);

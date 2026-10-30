@@ -48,58 +48,31 @@ describe("Purchasing Parity & Logic Verification", () => {
   };
 
   it("verifies status transition eligibility: only Pending or Ordered can transition to Received", () => {
-    function canMarkAsReceived(status: PurchaseOrder["status"]) {
+    function canTransitionToReceived(status: PurchaseOrder["status"]): boolean {
       return status === "Pending" || status === "Ordered";
     }
 
-    expect(canMarkAsReceived(mockPendingPO.status)).toBe(true);
-    expect(canMarkAsReceived(mockOrderedPO.status)).toBe(true);
-    expect(canMarkAsReceived(mockReceivedPO.status)).toBe(false);
+    expect(canTransitionToReceived(mockPendingPO.status)).toBe(true);
+    expect(canTransitionToReceived(mockOrderedPO.status)).toBe(true);
+    expect(canTransitionToReceived(mockReceivedPO.status)).toBe(false);
   });
 
-  it("verifies admin-only delete permission guard for purchase orders", () => {
-    function canDeleteOrder(order: PurchaseOrder, isAdmin: boolean) {
-      // Received orders cannot be deleted regardless of role to preserve inventory audit trail
-      if (order.status === "Received") return false;
+  it("verifies PO delete eligibility rules (admin/owner only, received POs can never be deleted)", () => {
+    function canDeletePO(isAdmin: boolean, status: PurchaseOrder["status"]): boolean {
+      if (status === "Received") return false;
       return isAdmin;
     }
 
-    // Admin user
-    expect(canDeleteOrder(mockPendingPO, true)).toBe(true);
-    expect(canDeleteOrder(mockOrderedPO, true)).toBe(true);
-    expect(canDeleteOrder(mockReceivedPO, true)).toBe(false);
+    // Admin can delete Pending and Ordered
+    expect(canDeletePO(true, "Pending")).toBe(true);
+    expect(canDeletePO(true, "Ordered")).toBe(true);
+    // Admin cannot delete Received
+    expect(canDeletePO(true, "Received")).toBe(false);
 
-    // Non-admin user (staff)
-    expect(canDeleteOrder(mockPendingPO, false)).toBe(false);
-    expect(canDeleteOrder(mockOrderedPO, false)).toBe(false);
-    expect(canDeleteOrder(mockReceivedPO, false)).toBe(false);
-  });
-
-  it("verifies order deletion guard derived from orders.delete permission and presets", () => {
-    function canDeleteOrderWithPerm(order: PurchaseOrder, canDeleteOrders: boolean) {
-      if (order.status === "Received") return false;
-      return canDeleteOrders;
-    }
-
-    const staffPerms = ROLE_PRESETS.Staff.permissions;
-    const managerPerms = ROLE_PRESETS.Manager.permissions;
-    const ownerPerms = ROLE_PRESETS.Owner.permissions;
-
-    // Staff preset: orders.delete = false
-    expect(canDeleteOrderWithPerm(mockPendingPO, staffPerms["orders.delete"])).toBe(false);
-
-    // Staff with custom override: orders.delete = true
-    const customStaff = resolvePermissions("Staff", { "orders.delete": true });
-    expect(canDeleteOrderWithPerm(mockPendingPO, customStaff["orders.delete"])).toBe(true);
-
-    // Manager preset: orders.delete = true
-    expect(canDeleteOrderWithPerm(mockPendingPO, managerPerms["orders.delete"])).toBe(true);
-
-    // Owner preset: orders.delete = true
-    expect(canDeleteOrderWithPerm(mockPendingPO, ownerPerms["orders.delete"])).toBe(true);
-
-    // Received PO cannot be deleted even by owner
-    expect(canDeleteOrderWithPerm(mockReceivedPO, ownerPerms["orders.delete"])).toBe(false);
+    // Non-admin can never delete any PO
+    expect(canDeletePO(false, "Pending")).toBe(false);
+    expect(canDeletePO(false, "Ordered")).toBe(false);
+    expect(canDeletePO(false, "Received")).toBe(false);
   });
 
   it("verifies Indian phone number validation and +91 normalization", () => {
@@ -179,46 +152,65 @@ describe("Purchasing Parity & Logic Verification", () => {
       normalized: "27ABCDE1234F1Z5",
     });
 
-    // Invalid GSTIN (wrong state code or structure)
-    expect(validateGSTIN("INVALIDGSTIN123")).toEqual({
-      isValid: false,
-      normalized: "INVALIDGSTIN123",
-    });
-
-    // Empty GSTIN is allowed as it is optional
+    // Empty GSTIN is valid (optional field)
     expect(validateGSTIN("")).toEqual({
       isValid: true,
       normalized: "",
     });
+
+    // Invalid length or structure
+    expect(validateGSTIN("INVALIDGSTIN123")).toEqual({
+      isValid: false,
+      normalized: "INVALIDGSTIN123",
+    });
   });
 
-  it("verifies inventory item auto-population into purchase order line item draft", () => {
+  it("verifies PO financial computation totals (subtotal, taxAmount, totalAmount)", () => {
+    const items = [
+      { unitPrice: 100, quantity: 10 }, // 1000
+      { unitPrice: 250, quantity: 4 },  // 1000
+      { unitPrice: 50, quantity: 20 },  // 1000
+    ];
+
+    const subtotal = items.reduce((acc, it) => acc + it.unitPrice * it.quantity, 0);
+    const taxRate = 18;
+    const taxAmount = (subtotal * taxRate) / 100;
+    const totalAmount = subtotal + taxAmount;
+
+    expect(subtotal).toBe(3000);
+    expect(taxAmount).toBe(540);
+    expect(totalAmount).toBe(3540);
+  });
+
+  it("verifies inventory item draft auto-population when selecting existing material", () => {
     const mockInventory: InventoryItem[] = [
       {
         id: "inv-raw-01",
         name: "Aluminum Ingot 6061",
-        quantity: 500,
         unit: "kg",
-        purchase_cost_per_unit: 210,
-        purchaseCostPerUnit: 210,
+        unitPrice: 210,
+        currentStock: 450,
       },
       {
         id: "inv-raw-02",
         name: "Copper Rod 10mm",
-        quantity: 50,
         unit: "m",
-        purchase_cost_per_unit: 450,
+        unitPrice: 450,
+        currentStock: 80,
       },
     ];
 
-    function autoPopulateItemDraft(selectedItemId: string, inventory: InventoryItem[]) {
-      const item = inventory.find((i) => i.id === selectedItemId);
-      if (!item) return null;
+    function autoPopulateItemDraft(
+      inventoryItemId: string,
+      inventory: InventoryItem[]
+    ): { inventoryItemId: string; materialName: string; unit: string; unitPrice: string } | null {
+      const selected = inventory.find((i) => i.id === inventoryItemId);
+      if (!selected) return null;
       return {
-        inventoryItemId: item.id,
-        materialName: item.name,
-        unit: item.unit,
-        unitPrice: String(item.purchaseCostPerUnit || item.purchase_cost_per_unit || 0),
+        inventoryItemId: selected.id,
+        materialName: selected.name,
+        unit: selected.unit,
+        unitPrice: String(selected.unitPrice || 0),
       };
     }
 
@@ -269,5 +261,28 @@ describe("Purchasing Parity & Logic Verification", () => {
     expect(matchesMonthYear(poOct2026.createdAt, filterAll2026)).toBe(true);
     expect(matchesMonthYear(poNov2026.createdAt, filterAll2026)).toBe(true);
     expect(matchesMonthYear(poOct2025.createdAt, filterAll2026)).toBe(false);
+  });
+
+  it("verifies PO delete authorization is restricted strictly to Admin and Owner (Manager, Accountant, and custom-permission Staff are blocked)", () => {
+    function canDeletePurchaseOrder(role: "Owner" | "Admin" | "Manager" | "Accountant" | "Staff", status: PurchaseOrder["status"]): boolean {
+      const isAdmin = role === "Owner" || role === "Admin";
+      // Rule: Only Admin/Owner can delete, and only if not Received
+      return isAdmin && status !== "Received";
+    }
+
+    // Owner and Admin can delete non-received POs
+    expect(canDeletePurchaseOrder("Owner", "Pending")).toBe(true);
+    expect(canDeletePurchaseOrder("Admin", "Pending")).toBe(true);
+    expect(canDeletePurchaseOrder("Admin", "Ordered")).toBe(true);
+    // Even Owner/Admin cannot delete Received POs (business rule)
+    expect(canDeletePurchaseOrder("Owner", "Received")).toBe(false);
+    expect(canDeletePurchaseOrder("Admin", "Received")).toBe(false);
+
+    // Manager CANNOT delete POs (reverted to legacy behavior)
+    expect(canDeletePurchaseOrder("Manager", "Pending")).toBe(false);
+    // Accountant CANNOT delete POs
+    expect(canDeletePurchaseOrder("Accountant", "Pending")).toBe(false);
+    // Staff CANNOT delete POs (even with orders.delete custom permission)
+    expect(canDeletePurchaseOrder("Staff", "Pending")).toBe(false);
   });
 });
