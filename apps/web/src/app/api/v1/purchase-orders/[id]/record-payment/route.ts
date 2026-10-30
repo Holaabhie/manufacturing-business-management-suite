@@ -1,3 +1,4 @@
+import { withIdempotency } from "@/lib/with-idempotency";
 /**
  * Record Vendor Payment — /api/v1/purchase-orders/[id]/record-payment
  * ─────────────────────────────────────────────────────────
@@ -12,10 +13,11 @@ import { requireRole } from "@/lib/require-role";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
-export async function POST(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> },
-) {
+export const POST = withIdempotency(
+    async (
+        request: NextRequest,
+        { params }: { params: Promise<{ id: string }> },
+    ) => {
     try {
         const authResult = await requireRole(["Owner", "Admin", "Manager", "Accountant"]);
         if (authResult.error || !authResult.user) {
@@ -150,4 +152,4 @@ export async function POST(
         const status = (error as { statusCode?: number })?.statusCode || 500;
         return NextResponse.json({ error: (error as Error).message }, { status });
     }
-}
+});

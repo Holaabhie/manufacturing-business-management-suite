@@ -92,6 +92,21 @@ export const PROPOSED_INDEXES: IndexDefinition[] = [
     options: { name: "idx_inventory_tenant_quantity" },
     rationale: "Accelerates sorting inventory by quantity ascending or descending.",
   },
+  // ─── Idempotency Keys Collection (Max 2) ────────────────────────
+  {
+    collection: "idempotency_keys",
+    name: "idx_idempotency_key_user",
+    keys: { key: 1, userId: 1 },
+    options: { name: "idx_idempotency_key_user" },
+    rationale: "Enforces uniqueness of idempotency keys per user/tenant to prevent duplicate submissions.",
+  },
+  {
+    collection: "idempotency_keys",
+    name: "idx_idempotency_expires",
+    keys: { expiresAt: 1 },
+    options: { name: "idx_idempotency_expires" },
+    rationale: "TTL index to automatically purge idempotency records after 24 hours.",
+  },
 ];
 
 export async function runIndexProposal(args: string[] = process.argv.slice(2)): Promise<void> {
@@ -103,12 +118,13 @@ export async function runIndexProposal(args: string[] = process.argv.slice(2)): 
   console.log(" Note: { background: true } omitted (ignored in MongoDB 4.2+)");
   console.log("=================================================================\n");
 
-  const collections = ["orders", "clients", "inventory"];
+  const collections = ["orders", "clients", "inventory", "idempotency_keys"];
   
   const collectionStats: Record<string, { count: number; hostType: string }> = {
     orders: { count: 0, hostType: "unknown" },
     clients: { count: 0, hostType: "unknown" },
     inventory: { count: 0, hostType: "unknown" },
+    idempotency_keys: { count: 0, hostType: "unknown" },
   };
 
   const uri = process.env.MONGODB_URI;
@@ -117,10 +133,10 @@ export async function runIndexProposal(args: string[] = process.argv.slice(2)): 
     detectedHostType = uri.includes("localhost") || uri.includes("127.0.0.1") ? "local" : "remote (Atlas/Cloud)";
   }
 
-  if (uri) {
+  if (uri && !isDryRun) {
     let client: MongoClient | null = null;
     try {
-      client = new MongoClient(uri, { serverSelectionTimeoutMS: 5000 });
+      client = new MongoClient(uri, { serverSelectionTimeoutMS: 2000, connectTimeoutMS: 2000 });
       await client.connect();
       const db = client.db();
       for (const col of collections) {
@@ -183,6 +199,9 @@ export async function runIndexProposal(args: string[] = process.argv.slice(2)): 
 }
 
 // Auto-run if executed directly
-if (typeof require !== "undefined" && require.main === module) {
+if (
+  (typeof require !== "undefined" && require.main === module) ||
+  (typeof process !== "undefined" && process.argv[1]?.includes("create-phase4-indexes"))
+) {
   runIndexProposal().catch(console.error);
 }

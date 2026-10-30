@@ -188,15 +188,15 @@ describe("Purchasing Parity & Logic Verification", () => {
         id: "inv-raw-01",
         name: "Aluminum Ingot 6061",
         unit: "kg",
-        unitPrice: 210,
-        currentStock: 450,
+        purchase_cost_per_unit: 210,
+        quantity: 450,
       },
       {
         id: "inv-raw-02",
         name: "Copper Rod 10mm",
         unit: "m",
-        unitPrice: 450,
-        currentStock: 80,
+        purchase_cost_per_unit: 450,
+        quantity: 80,
       },
     ];
 
@@ -210,7 +210,7 @@ describe("Purchasing Parity & Logic Verification", () => {
         inventoryItemId: selected.id,
         materialName: selected.name,
         unit: selected.unit,
-        unitPrice: String(selected.unitPrice || 0),
+        unitPrice: String(selected.purchase_cost_per_unit ?? selected.purchaseCostPerUnit ?? 0),
       };
     }
 

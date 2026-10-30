@@ -1,3 +1,4 @@
+import { withIdempotency } from "@/lib/with-idempotency";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
 import { getSessionUser, getDataOwnerId } from "@/lib/auth-session";
@@ -64,10 +65,11 @@ export async function GET(
     }
 }
 
-export async function PUT(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
+export const PUT = withIdempotency(
+    async (
+        request: NextRequest,
+        { params }: { params: Promise<{ id: string }> }
+    ) => {
     try {
         const user = await getSessionUser();
         if (!user) {
@@ -133,7 +135,7 @@ export async function PUT(
         console.error("Error updating bill:", error);
         return NextResponse.json({ error: "Failed to update bill" }, { status: 500 });
     }
-}
+});
 
 export async function DELETE(
     request: NextRequest,

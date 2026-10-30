@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { withIdempotency } from "@/lib/with-idempotency";
+import { NextResponse, type NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/require-role";
 import { getDataOwnerId } from "@/lib/auth-session";
 import { getDb } from "@/lib/mongodb";
@@ -94,7 +95,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export const POST = withIdempotency(async (request: NextRequest) => {
   try {
     // Admin-only: Staff cannot create payments
     const authResult = await requireAdmin();
@@ -153,4 +154,4 @@ export async function POST(request: Request) {
     console.error("Error creating payment:", error);
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
-}
+});

@@ -1,3 +1,4 @@
+import { withIdempotency } from "@/lib/with-idempotency";
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getDb } from "@/lib/mongodb";
@@ -70,7 +71,7 @@ function computeLegacyPaymentStatus(totalPaid: number, totalAmount: number): str
 // NOTE: computeOrderStatusFromPayment() was removed as part of the order-status fix.
 // Payments no longer write to order.status — production status is tracked independently.
 
-export async function POST(req: NextRequest) {
+export const POST = withIdempotency(async (req: NextRequest) => {
     try {
         await connectToDatabase();
 
@@ -289,4 +290,4 @@ export async function POST(req: NextRequest) {
         console.error("[payments/record] Error:", e);
         return NextResponse.json({ success: false, error: (e as Error).message || 'Internal Server Error' }, { status: 500 });
     }
-}
+});
