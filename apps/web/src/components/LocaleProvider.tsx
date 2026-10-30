@@ -141,7 +141,7 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <LocaleContext.Provider value={{ locale, switchLocale, prefetchLocale }}>
-      {!isLoaded ? (
+      {!isLoaded && locale !== DEFAULT_LOCALE ? (
         <LocaleLoadingFallback />
       ) : (
         <NextIntlClientProvider

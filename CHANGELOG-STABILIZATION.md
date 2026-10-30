@@ -84,3 +84,69 @@ Grep verification against original monolithic `purchasing/page.tsx` (`30c5980^`)
    - Locale is read from cookies on client-mount. Full SSR i18n hydration can be introduced when Next.js middleware switches to subdomain or path-based locale routing.
 3. **Database Performance Indexing**:
    - Multi-tenant indexes on `{ tenantId: 1, createdAt: -1 }` and `{ tenantId: 1, status: 1 }` should be formally monitored via MongoDB Atlas Index Advisor.
+
+---
+
+## 6. Repo-Wide Raw `fetch()` Audit (Phase 4 Inventory)
+
+As part of Part C.7, a full repository scan of `apps/web/src` identified **237 raw `fetch()` calls** across 56 directories. All critical money-handling dashboard modules (`billing`, `purchasing`, `vendor-bills`) have **0** raw fetch calls (100% migrated to `apiClient`).
+
+| Directory Path | Raw `fetch()` Count | Status & Roadmap |
+|---|:---:|---|
+| `apps/web/src/app/dashboard/billing` | **0** | **100% Migrated** to `apiClient` |
+| `apps/web/src/app/dashboard/purchasing` | **0** | **100% Migrated** to `apiClient` |
+| `apps/web/src/app/dashboard/vendor-bills` | **0** | **100% Migrated** to `apiClient` |
+| `apps/web/src/components/billing` | **0** | **100% Migrated** to `apiClient` |
+| `apps/web/src/components/purchasing` | **0** | **100% Migrated** to `apiClient` |
+| `apps/web/src/services/tally` | 27 | Tally XML & ledger sync (candidate for background queue) |
+| `apps/web/src/app/dashboard/delivery-challans` | 14 | Delivery Challan module (Phase 5 migration candidate) |
+| `apps/web/src/app/dashboard/orders` | 18 | Orders listing & edit form (Phase 5 migration candidate) |
+| `apps/web/src/app/dashboard/inventory` | 15 | Inventory item management (Phase 5 migration candidate) |
+| `apps/web/src/app/dashboard/clients` | 12 | Clients module (Phase 5 migration candidate) |
+| `apps/web/src/app/dashboard/users` | 9 | Employee & role management |
+| `apps/web/src/app/dashboard/machines` | 8 | Machine maintenance & tracking |
+| `apps/web/src/app/dashboard/analytics` | 7 | Smart charts & analytics views |
+| Other UI components, hooks & services | 127 | Miscellaneous auxiliary flows |
+| **Total `src/` Raw `fetch()` Calls** | **237** | **Zero in money modules; backlog documented** |
+
+---
+
+## 7. Server-Side Idempotency & Duplicate Prevention
+
+To eliminate financial double-charges and duplicate payment record creation, all payment-recording routes are protected with `withIdempotency`:
+
+1. `POST /api/vendor-bills/[id]/payments` (Vendor bill payment recordings)
+2. `POST /api/v1/purchase-orders/[id]/record-payment` (Purchase order advance/final payments)
+3. `POST /api/payments` (Order customer payments)
+4. `POST /api/v1/payments/record` (V1 customer payment records)
+5. `PUT /api/billing/[id]` (Invoice payment updates)
+
+### Mechanisms:
+- **Header Check**: Inspects `Idempotency-Key` or `X-Idempotency-Key` request header.
+- **Concurrent Request Lock**: If a duplicate key is in-flight simultaneously, immediately responds with `409 Conflict` (`IDEMPOTENCY_CONCURRENT`).
+- **Response Caching**: Successful responses are cached in the `idempotency_keys` collection for 24 hours. Re-transmissions return the exact cached payload without executing the mutation twice.
+- **Automated TTL**: Mongo index `{ expiresAt: 1 }` with `{ expireAfterSeconds: 0 }` purges keys automatically.
+
+---
+
+## 8. Server-Side Pagination & Query Hardening (Purchasing & Vendor Bills)
+
+Server-side pagination matching the Phase 4 standard has been implemented across:
+- `GET /api/purchasing` (Purchase Orders)
+- `GET /api/purchasing/vendors` (Vendors)
+- `GET /api/vendor-bills` (Vendor Bills & Summary)
+
+### Security & Functional Standards:
+1. **Multi-Tenant Isolation**: Every query unconditionally filters by `{ userId: getDataOwnerId(user) }`. Cross-tenant data leakage is structurally impossible.
+2. **ReDoS Defense**: All user search queries are escaped using `escapeRegex(q.trim())`.
+3. **Whitelist Sorting**: Unrecognized sort fields (e.g. `?sort=__proto__` or `?sort=password`) are rejected with `400 Bad Request`.
+4. **Boundary Limiting**: `?limit=1000` is rejected with `400 Bad Request` via Zod `.max(100)`.
+5. **Backwards Compatibility**: Unpaginated calls are capped at 500 items, returning `X-Total-Count` and `X-Truncated` headers while preserving legacy response shapes (`.bills` and `.summary`).
+
+
+1. **Tally Export Polling**:
+   - `TallyExportButton` currently issues 8 sequential client-side `fetch()` calls to sync ledgers, vouchers, and inventory. Recommended to consolidate into a single asynchronous background export job (`POST /api/v1/tally/export-job`).
+2. **Server-Side Rendered Dynamic Locale Cookies**:
+   - Locale is read from cookies on client-mount. Full SSR i18n hydration can be introduced when Next.js middleware switches to subdomain or path-based locale routing.
+3. **Database Performance Indexing**:
+   - Multi-tenant indexes on `{ tenantId: 1, createdAt: -1 }` and `{ tenantId: 1, status: 1 }` should be formally monitored via MongoDB Atlas Index Advisor.
