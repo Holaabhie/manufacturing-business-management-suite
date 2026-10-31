@@ -52,16 +52,16 @@ const nextConfig: NextConfig = {
 
   // ── Experimental Speed Features ────────────────────────
   experimental: {
-    // Local memory/worker guard for constrained systems (<=8GB RAM) - leaves Vercel untouched
-    ...(process.env.VERCEL
-      ? {}
-      : {
+    // Low-memory worker guard for constrained systems (<=8GB RAM) - gated by LOW_MEM_BUILD=1 (default OFF)
+    ...(process.env.LOW_MEM_BUILD === "1"
+      ? {
           cpus: 1,
           webpackBuildWorker: false,
           workerThreads: false,
           staticGenerationMaxConcurrency: 1,
           staticGenerationMinPagesPerWorker: 1000,
-        }),
+        }
+      : {}),
     // Tree-shake these packages automatically
     optimizePackageImports: [
       "lucide-react",
