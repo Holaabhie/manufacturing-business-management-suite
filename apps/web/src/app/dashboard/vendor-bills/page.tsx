@@ -30,6 +30,8 @@ import type { VendorBill, VendorBillListSummary, BillStatus } from "@/modules/ve
 import { CreateBillModal } from "@/components/vendor-bills/CreateBillModal";
 import { BillDetailModal } from "@/components/vendor-bills/BillDetailModal";
 import { RecordVendorBillPaymentModal } from "@/components/vendor-bills/RecordVendorBillPaymentModal";
+import { useURLSyncedPagination } from "@/hooks/useURLSyncedPagination";
+import { TablePagination } from "@/components/ui/TablePagination";
 
 function VendorBillsContent() {
     const t = useTranslations("vendorBills");
@@ -48,11 +50,36 @@ function VendorBillsContent() {
 
     // Filters
     const [activeTab, setActiveTab] = useState<string>("all");
-    const [searchQuery, setSearchQuery] = useState("");
     const [monthYear, setMonthYear] = useState<MonthYearFilterValue>({
         month: "all",
         year: new Date().getFullYear(),
     });
+
+    // URL-synced pagination & search
+    const { initialPage, initialSearch, initialLimit, syncToURL } = useURLSyncedPagination({ debounceMs: 300 });
+
+    const [currentPage, setCurrentPage] = useState(initialPage);
+    const [pageSize, setPageSize] = useState(initialLimit);
+    const [searchQuery, setSearchQuery] = useState(initialSearch);
+    const [debouncedQuery, setDebouncedQuery] = useState(initialSearch);
+    const [pagination, setPagination] = useState({ page: 1, limit: 25, total: 0, totalPages: 1 });
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedQuery(searchQuery);
+            setCurrentPage(1);
+        }, 300);
+        return () => clearTimeout(handler);
+    }, [searchQuery]);
+
+    useEffect(() => {
+        syncToURL({
+            page: currentPage,
+            limit: pageSize,
+            q: debouncedQuery,
+            filters: { tab: activeTab !== "all" ? activeTab : null },
+        });
+    }, [currentPage, pageSize, debouncedQuery, activeTab, syncToURL]);
 
     // Modals
     const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -64,8 +91,21 @@ function VendorBillsContent() {
     const loadBills = useCallback(async () => {
         setIsLoading(true);
         try {
-            const data = await apiClient.get<any>("/api/vendor-bills");
-            setBills(Array.isArray(data) ? data : data?.bills || []);
+            const data = await apiClient.get<any>("/api/vendor-bills", {
+                params: {
+                    page: currentPage,
+                    limit: pageSize,
+                    q: debouncedQuery.trim() ? debouncedQuery.trim().slice(0, 100) : undefined,
+                    status: activeTab !== "all" ? activeTab : undefined,
+                },
+            });
+            const list = Array.isArray(data) ? data : data?.bills || data?.data || [];
+            setBills(list);
+            if (data?.pagination) {
+                setPagination(data.pagination);
+            } else {
+                setPagination({ page: currentPage, limit: pageSize, total: list.length, totalPages: 1 });
+            }
             if (data?.summary) {
                 setSummary(data.summary);
             }
@@ -74,7 +114,7 @@ function VendorBillsContent() {
         } finally {
             setIsLoading(false);
         }
-    }, [t]);
+    }, [currentPage, pageSize, debouncedQuery, activeTab, t]);
 
     useEffect(() => {
         loadBills();
@@ -552,6 +592,21 @@ function VendorBillsContent() {
                                 </div>
                             </div>
                         ))}
+                    </div>
+                    {/* Server-Side Pagination */}
+                    <div className="mt-4">
+                        <TablePagination
+                            currentPage={currentPage}
+                            totalPages={pagination.totalPages}
+                            totalItems={pagination.total}
+                            pageSize={pageSize}
+                            onPageChange={setCurrentPage}
+                            onPageSizeChange={(newSize) => {
+                                setPageSize(newSize);
+                                setCurrentPage(1);
+                            }}
+                            pageSizeOptions={[25, 50, 100]}
+                        />
                     </div>
                 </>
             )}

@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { useCachedPage } from "@/hooks/useCachedPage";
+import { useURLSyncedPagination } from "@/hooks/useURLSyncedPagination";
 import {
   matchesMonthYear,
   type MonthYearFilterValue,
@@ -41,29 +42,117 @@ export function usePurchasingData() {
     month: "all",
   });
 
+  // URL-synced pagination & search
+  const { initialPage, initialSearch, initialLimit, syncToURL } = useURLSyncedPagination({ debounceMs: 300 });
+
+  const [orderPage, setOrderPage] = useState(initialPage);
+  const [orderLimit, setOrderLimit] = useState(initialLimit);
+  const [debouncedOrderSearch, setDebouncedOrderSearch] = useState(initialSearch || orderSearch);
+  const [ordersPagination, setOrdersPagination] = useState({ page: 1, limit: 25, total: 0, totalPages: 1 });
+
+  const [vendorPage, setVendorPage] = useState(1);
+  const [vendorLimit, setVendorLimit] = useState(25);
+  const [debouncedVendorSearch, setDebouncedVendorSearch] = useState("");
+  const [vendorsPagination, setVendorsPagination] = useState({ page: 1, limit: 25, total: 0, totalPages: 1 });
+
+  // Debounce order search
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedOrderSearch(orderSearch);
+      setOrderPage(1);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [orderSearch]);
+
+  // Debounce vendor search
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedVendorSearch(vendorSearch);
+      setVendorPage(1);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [vendorSearch]);
+
+  // Sync state to URL
+  useEffect(() => {
+    if (activeTab === "orders") {
+      syncToURL({
+        page: orderPage,
+        limit: orderLimit,
+        q: debouncedOrderSearch,
+        filters: { tab: "orders" },
+      });
+    } else {
+      syncToURL({
+        page: vendorPage,
+        limit: vendorLimit,
+        q: debouncedVendorSearch,
+        filters: { tab: "vendors" },
+      });
+    }
+  }, [activeTab, orderPage, orderLimit, debouncedOrderSearch, vendorPage, vendorLimit, debouncedVendorSearch, syncToURL]);
+
   const fetchOrders = useCallback(async () => {
+    setOrdersLoading(true);
     try {
-      const data = await apiClient.get<{ success?: boolean; data?: PurchaseOrder[] }>("/api/purchasing");
-      if (data?.success) setOrders(data.data || []);
-      else toast.error(tToast("fetchOrdersFailed"));
+      const data = await apiClient.get<{
+        success?: boolean;
+        data?: PurchaseOrder[];
+        pagination?: { page: number; limit: number; total: number; totalPages: number };
+      }>("/api/purchasing", {
+        params: {
+          page: orderPage,
+          limit: orderLimit,
+          q: debouncedOrderSearch.trim() ? debouncedOrderSearch.trim().slice(0, 100) : undefined,
+        },
+      });
+      if (data?.success) {
+        setOrders(data.data || []);
+        if (data.pagination) {
+          setOrdersPagination(data.pagination);
+        } else {
+          setOrdersPagination({ page: orderPage, limit: orderLimit, total: data.data?.length || 0, totalPages: 1 });
+        }
+      } else {
+        toast.error(tToast("fetchOrdersFailed"));
+      }
     } catch {
       toast.error(tToast("fetchOrdersFailed"));
     } finally {
       setOrdersLoading(false);
     }
-  }, [tToast]);
+  }, [orderPage, orderLimit, debouncedOrderSearch, tToast]);
 
   const fetchVendors = useCallback(async () => {
+    setVendorsLoading(true);
     try {
-      const data = await apiClient.get<{ success?: boolean; data?: Vendor[] }>("/api/purchasing/vendors");
-      if (data?.success) setVendors(data.data || []);
-      else toast.error(tToast("fetchVendorsFailed"));
+      const data = await apiClient.get<{
+        success?: boolean;
+        data?: Vendor[];
+        pagination?: { page: number; limit: number; total: number; totalPages: number };
+      }>("/api/purchasing/vendors", {
+        params: {
+          page: vendorPage,
+          limit: vendorLimit,
+          q: debouncedVendorSearch.trim() ? debouncedVendorSearch.trim().slice(0, 100) : undefined,
+        },
+      });
+      if (data?.success) {
+        setVendors(data.data || []);
+        if (data.pagination) {
+          setVendorsPagination(data.pagination);
+        } else {
+          setVendorsPagination({ page: vendorPage, limit: vendorLimit, total: data.data?.length || 0, totalPages: 1 });
+        }
+      } else {
+        toast.error(tToast("fetchVendorsFailed"));
+      }
     } catch {
       toast.error(tToast("fetchVendorsFailed"));
     } finally {
       setVendorsLoading(false);
     }
-  }, [tToast]);
+  }, [vendorPage, vendorLimit, debouncedVendorSearch, tToast]);
 
   const fetchInventory = useCallback(async () => {
     try {
@@ -193,5 +282,15 @@ export function usePurchasingData() {
     fetchVendors,
     fetchInventory,
     fetchStats,
+    orderPage,
+    setOrderPage,
+    orderLimit,
+    setOrderLimit,
+    ordersPagination,
+    vendorPage,
+    setVendorPage,
+    vendorLimit,
+    setVendorLimit,
+    vendorsPagination,
   };
 }

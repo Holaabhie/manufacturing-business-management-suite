@@ -7,6 +7,7 @@ import { useRole } from "@/lib/hooks/use-role";
 import { useTenantCreationDate } from "@/hooks/useTenantCreationDate";
 import { staggerContainer } from "@/styles/animations";
 import { ConfirmDeleteSheet } from "@/components/ui/ConfirmDeleteSheet";
+import { TablePagination } from "@/components/ui/TablePagination";
 import { RecordPaymentModal } from "@/components/purchasing/RecordPaymentModal";
 import { VendorDetailDrawer } from "@/components/purchasing/VendorDetailDrawer";
 import { usePurchasingData } from "@/components/purchasing/usePurchasingData";
@@ -144,6 +145,20 @@ export default function PurchasingPage() {
                 actions.setIsDeleteDialogOpen(true);
               }}
             />
+            <div className="mt-4">
+              <TablePagination
+                currentPage={data.orderPage}
+                totalPages={data.ordersPagination.totalPages}
+                totalItems={data.ordersPagination.total}
+                pageSize={data.orderLimit}
+                onPageChange={data.setOrderPage}
+                onPageSizeChange={(newSize) => {
+                  data.setOrderLimit(newSize);
+                  data.setOrderPage(1);
+                }}
+                pageSizeOptions={[25, 50, 100]}
+              />
+            </div>
           </motion.div>
         )}
 
@@ -169,6 +184,20 @@ export default function PurchasingPage() {
                 actions.setIsDeleteDialogOpen(true);
               }}
             />
+            <div className="mt-4">
+              <TablePagination
+                currentPage={data.vendorPage}
+                totalPages={data.vendorsPagination.totalPages}
+                totalItems={data.vendorsPagination.total}
+                pageSize={data.vendorLimit}
+                onPageChange={data.setVendorPage}
+                onPageSizeChange={(newSize) => {
+                  data.setVendorLimit(newSize);
+                  data.setVendorPage(1);
+                }}
+                pageSizeOptions={[25, 50, 100]}
+              />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
