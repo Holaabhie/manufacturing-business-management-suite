@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
+import { generateId } from "@/lib/uuid";
 import { queryKeys } from "@/lib/query-keys";
 import { createPortal } from "react-dom";
 import { X, IndianRupee } from "lucide-react";
@@ -55,6 +56,7 @@ export function RecordPaymentModal({
   );
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
+  const idempotencyKeyRef = useRef<string>(generateId());
 
   useEffect(() => {
     setPortalMounted(true);
@@ -63,6 +65,7 @@ export function RecordPaymentModal({
   // Animate in
   useEffect(() => {
     if (isOpen) {
+      idempotencyKeyRef.current = generateId();
       // Reset form
       const outstanding = Math.max(
         0,
@@ -102,7 +105,7 @@ export function RecordPaymentModal({
 
     setSubmitting(true);
     try {
-      const data = await apiClient.post<{ success?: boolean; error?: string; data?: any }>(
+      const data = await apiClient.postIdempotent<{ success?: boolean; error?: string; data?: any }>(
         `/api/v1/purchase-orders/${purchaseOrder.id}/record-payment`,
         {
           amount: enteredAmount,
@@ -110,13 +113,15 @@ export function RecordPaymentModal({
           date: paymentDate,
           reference,
           notes,
-        }
+        },
+        idempotencyKeyRef.current
       );
       if (data?.success) {
         queryClient.invalidateQueries({ queryKey: queryKeys.purchasing });
         queryClient.invalidateQueries({ queryKey: queryKeys.banking });
         toast.success(tToast("paymentRecorded"));
         onPaymentRecorded(data.data);
+        idempotencyKeyRef.current = generateId();
         handleModalClose();
       } else {
         toast.error(data?.error || "Failed to record payment");

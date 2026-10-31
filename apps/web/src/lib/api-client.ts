@@ -322,6 +322,12 @@ export const apiClient = {
     return request<T>(url, { ...options, method: "POST", body, headers });
   },
 
+  putIdempotent<T>(url: string, body: unknown, idempotencyKey: string, options?: Omit<RequestOptions, "body" | "method">): Promise<T> {
+    const headers = new Headers(options?.headers);
+    headers.set("Idempotency-Key", idempotencyKey);
+    return request<T>(url, { ...options, method: "PUT", body, headers });
+  },
+
   request,
 };
 

@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
+import { generateId } from "@/lib/uuid";
 import type { InvoicePayload } from "@/lib/invoice/types";
 import type { Bill, CompanyInfo } from "./types";
 
@@ -95,9 +96,10 @@ export function useBillingActions({ companyInfo, dateLocale, onRefresh }: UseBil
   );
 
   const updateStatus = useCallback(
-    async (id: string, status: Bill["status"]) => {
+    async (id: string, status: Bill["status"], idempotencyKey?: string) => {
       try {
-        await apiClient.put(`/api/v1/billing/${id}`, { status });
+        const key = idempotencyKey || generateId();
+        await apiClient.putIdempotent(`/api/v1/billing/${id}`, { status }, key);
         queryClient.invalidateQueries({ queryKey: queryKeys.invoices });
         queryClient.invalidateQueries({ queryKey: queryKeys.billing });
         queryClient.invalidateQueries({ queryKey: queryKeys.stats });

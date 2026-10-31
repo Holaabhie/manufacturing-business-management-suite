@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useCachedPage } from "@/hooks/useCachedPage";
 import { useLongPress } from "@/hooks/useLongPress";
 import { MobileSheet } from "@/components/ui/MobileSheet";
+import { generateId } from "@/lib/uuid";
 import { useTranslations } from "next-intl";
 import { useAppLocale } from "@/components/LocaleProvider";
 import { AccessDenied } from "@/components/AccessDenied";
@@ -306,11 +307,13 @@ export default function PaymentsPage() {
   const [animateOpen, setAnimateOpen] = useState(false);
   const [portalMounted, setPortalMounted] = useState(false);
   const firstInputRef = useRef<HTMLSelectElement>(null);
+  const paymentIdempotencyKeyRef = useRef<string>(generateId());
 
   useEffect(() => setPortalMounted(true), []);
 
   useEffect(() => {
     if (isDialogOpen) {
+      paymentIdempotencyKeyRef.current = generateId();
       // Lock body scroll
       document.body.style.overflow = 'hidden';
       // Trigger entrance animation on next frame
@@ -462,9 +465,11 @@ export default function PaymentsPage() {
         payment_date: formData.paymentDate,
         reference_id: formData.referenceId,
         notes: formData.notes,
+        idempotencyKey: paymentIdempotencyKeyRef.current,
       },
       {
         onSuccess: () => {
+          paymentIdempotencyKeyRef.current = generateId();
           setIsDialogOpen(false);
           setFormData({
             clientId: "",

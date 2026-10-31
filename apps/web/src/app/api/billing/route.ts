@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
-import { requireAdmin } from "@/lib/require-role";
+import { requirePermission } from "@/lib/require-role";
 import { getDataOwnerId } from "@/lib/auth-session";
 import { withIdempotency } from "@/lib/with-idempotency";
 import { triggerNotification } from "@/lib/notifications/dispatcher";
@@ -8,8 +8,8 @@ import { getFinancialYear } from "@/lib/utils/financial-year";
 
 export async function GET() {
     try {
-        // Admin-only: Staff cannot view billing
-        const result = await requireAdmin();
+        // invoices.view permission check (Owner/Admin bypass, Manager/Accountant allowed)
+        const result = await requirePermission("invoices.view");
         if (result.error) {
             return NextResponse.json({ error: result.error }, { status: result.status });
         }
@@ -63,8 +63,8 @@ export async function GET() {
  */
 export const POST = withIdempotency(async (request: NextRequest) => {
     try {
-        // Admin-only: Staff cannot create bills
-        const result = await requireAdmin();
+        // invoices.create permission check (Owner/Admin bypass, Accountant allowed, Manager blocked)
+        const result = await requirePermission("invoices.create");
         if (result.error) {
             return NextResponse.json({ error: result.error }, { status: result.status });
         }

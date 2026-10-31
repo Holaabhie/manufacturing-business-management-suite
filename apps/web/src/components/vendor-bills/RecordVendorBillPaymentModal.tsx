@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { CreditCard, X, DollarSign, Calendar, FileText, CheckCircle2 } from "lucide-react";
@@ -60,10 +60,12 @@ export function RecordVendorBillPaymentModal({
     const [reference, setReference] = useState("");
     const [notes, setNotes] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const idempotencyKeyRef = useRef<string>(generateId());
 
     // Sync default amount when bill changes
     useEffect(() => {
         if (bill) {
+            idempotencyKeyRef.current = generateId();
             const rem = Math.max(0, bill.balance ?? (bill.payable_amount - bill.paid_total));
             setAmount(Math.round(rem * 100) / 100);
             setPaymentDate(getToday());
@@ -112,7 +114,6 @@ export function RecordVendorBillPaymentModal({
 
         setIsSubmitting(true);
         try {
-            const idempotencyKey = generateId();
             const data = await apiClient.postIdempotent<{ payment: VendorBillPayment; updatedBill: VendorBill }>(
                 `/api/vendor-bills/${bill.id}/payments`,
                 {
@@ -122,13 +123,14 @@ export function RecordVendorBillPaymentModal({
                     reference: reference.trim(),
                     notes: notes.trim(),
                 },
-                idempotencyKey
+                idempotencyKeyRef.current
             );
 
             queryClient.invalidateQueries({ queryKey: queryKeys.vendorBills });
             queryClient.invalidateQueries({ queryKey: queryKeys.banking });
 
             toast.success(t("toastPaymentRecorded"));
+            idempotencyKeyRef.current = generateId();
             onSuccess(data.payment, data.updatedBill);
             onClose();
         } catch (err: any) {

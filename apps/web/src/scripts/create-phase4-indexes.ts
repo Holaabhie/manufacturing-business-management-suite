@@ -1,7 +1,10 @@
 /**
- * Phase 3b Index Creation & Optimization Plan (PROPOSAL & DRY-RUN)
+ * Phase 4 Index Creation & Optimization Plan (PROPOSAL & DRY-RUN)
  * ───────────────────────────────────────────────────────────
- * Proposes optimized compound indexes for Orders, Clients, and Inventory.
+ * Proposes optimized compound indexes for:
+ * 1. Orders, Clients, Inventory
+ * 2. Idempotency Keys (unique compound key + TTL index)
+ * 3. Scanned Documents, Vendor Aliases, Item Aliases (F0 Bill Scan plumbing)
  *
  * NOTE ON MONGODB 4.2+:
  * `{ background: true }` has been removed. In MongoDB 4.2 and higher, the
@@ -94,20 +97,83 @@ export const PROPOSED_INDEXES: IndexDefinition[] = [
     options: { name: "idx_inventory_tenant_quantity" },
     rationale: "Accelerates sorting inventory by quantity ascending or descending.",
   },
+
   // ─── Idempotency Keys Collection (Max 2) ────────────────────────
   {
     collection: "idempotency_keys",
     name: "idx_idempotency_user_key",
     keys: { userId: 1, key: 1 },
     options: { name: "idx_idempotency_user_key", unique: true },
-    rationale: "Enforces uniqueness of idempotency keys per user/tenant to prevent duplicate submissions.",
+    rationale: "Enforces uniqueness of idempotency keys per user/tenant to prevent duplicate financial submissions.",
   },
   {
     collection: "idempotency_keys",
     name: "idx_idempotency_expires",
     keys: { expiresAt: 1 },
     options: { name: "idx_idempotency_expires", expireAfterSeconds: 0 },
-    rationale: "TTL index to automatically purge idempotency records after 24 hours.",
+    rationale: "TTL index to automatically purge idempotency records once expired (e.g. 24h retention).",
+  },
+
+  // ─── F0 Scanned Documents Collection (Max 4) ────────────────────
+  {
+    collection: "scanned_documents",
+    name: "idx_scanned_docs_tenant_status_created",
+    keys: { tenantId: 1, status: 1, createdAt: -1 },
+    options: { name: "idx_scanned_docs_tenant_status_created" },
+    rationale: "Optimizes tenant bill-scan queue filtered by status (uploaded, failed, processed) sorted by newest first.",
+  },
+  {
+    collection: "scanned_documents",
+    name: "idx_scanned_docs_tenant_sha256",
+    keys: { tenantId: 1, sha256: 1 },
+    options: { name: "idx_scanned_docs_tenant_sha256" },
+    rationale: "Enforces instant deduplication lookup to detect duplicate bill uploads per tenant without full table scan.",
+  },
+  {
+    collection: "scanned_documents",
+    name: "idx_scanned_docs_tenant_bill_id",
+    keys: { tenantId: 1, linkedVendorBillId: 1 },
+    options: { name: "idx_scanned_docs_tenant_bill_id", sparse: true },
+    rationale: "Sparse index to quickly resolve the source scan document linked to a generated vendor bill.",
+  },
+  {
+    collection: "scanned_documents",
+    name: "idx_scanned_docs_tenant_created",
+    keys: { tenantId: 1, createdAt: -1 },
+    options: { name: "idx_scanned_docs_tenant_created" },
+    rationale: "Default chronological scan list pagination for tenant billing and audit history.",
+  },
+
+  // ─── F0 Vendor Aliases Collection (Max 2) ───────────────────────
+  {
+    collection: "vendor_aliases",
+    name: "idx_vendor_aliases_tenant_gstin",
+    keys: { tenantId: 1, gstin: 1 },
+    options: { name: "idx_vendor_aliases_tenant_gstin", sparse: true },
+    rationale: "Fast O(1) matching of scanned vendor GSTIN to existing master vendor record.",
+  },
+  {
+    collection: "vendor_aliases",
+    name: "idx_vendor_aliases_tenant_norm_name",
+    keys: { tenantId: 1, normalizedName: 1 },
+    options: { name: "idx_vendor_aliases_tenant_norm_name" },
+    rationale: "Fuzzy / normalized trade name matching when bill lacks explicit GSTIN.",
+  },
+
+  // ─── F0 Item Aliases Collection (Max 2) ─────────────────────────
+  {
+    collection: "item_aliases",
+    name: "idx_item_aliases_tenant_norm_desc",
+    keys: { tenantId: 1, normalizedDescription: 1 },
+    options: { name: "idx_item_aliases_tenant_norm_desc" },
+    rationale: "Matches OCR raw line-item descriptions to internal SKU / inventory items.",
+  },
+  {
+    collection: "item_aliases",
+    name: "idx_item_aliases_tenant_inventory_id",
+    keys: { tenantId: 1, inventoryId: 1 },
+    options: { name: "idx_item_aliases_tenant_inventory_id" },
+    rationale: "Reverse lookup to list all known OCR naming variations for a specific inventory SKU.",
   },
 ];
 
@@ -116,18 +182,24 @@ export async function runIndexProposal(args: string[] = process.argv.slice(2)): 
   const isDryRun = args.includes("--dry-run") || !isApply;
 
   console.log("=================================================================");
-  console.log(` PHASE 3b INDEX PLAN — MODE: ${isDryRun ? "DRY-RUN (Proposal Only)" : "LIVE APPLY"}`);
+  console.log(` PHASE 4 INDEX PLAN — MODE: ${isDryRun ? "DRY-RUN (Proposal Only)" : "LIVE APPLY"}`);
   console.log(" Note: { background: true } omitted (ignored in MongoDB 4.2+)");
   console.log("=================================================================\n");
 
-  const collections = ["orders", "clients", "inventory", "idempotency_keys"];
+  const collections = [
+    "orders",
+    "clients",
+    "inventory",
+    "idempotency_keys",
+    "scanned_documents",
+    "vendor_aliases",
+    "item_aliases",
+  ];
   
-  const collectionStats: Record<string, { count: number; hostType: string }> = {
-    orders: { count: 0, hostType: "unknown" },
-    clients: { count: 0, hostType: "unknown" },
-    inventory: { count: 0, hostType: "unknown" },
-    idempotency_keys: { count: 0, hostType: "unknown" },
-  };
+  const collectionStats: Record<string, { count: number; hostType: string }> = {};
+  for (const c of collections) {
+    collectionStats[c] = { count: 0, hostType: "unknown" };
+  }
 
   const uri = process.env.MONGODB_URI;
   let detectedHostType = "not_configured";
@@ -197,7 +269,7 @@ export async function runIndexProposal(args: string[] = process.argv.slice(2)): 
       await db.collection(idx.collection).createIndex(idx.keys, idx.options);
       console.log(`✓ Index ${idx.name} successfully established.`);
     }
-    console.log("\nAll Phase 3b compound indexes applied successfully.");
+    console.log("\nAll Phase 4 compound indexes applied successfully.");
   } catch (error) {
     console.error("Index creation failed:", error);
     process.exit(1);

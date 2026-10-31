@@ -16,7 +16,7 @@ export const GET = withRateLimit(
             const service = getBillingService();
             const items = await service.findAll(getDataOwnerId(user));
             return envelope.ok(items);
-        }, { role: "Admin" }),
+        }, { permission: "invoices.view" }),
     ),
     { tier: "read" },
 );
@@ -28,7 +28,7 @@ export const POST = withRateLimit(
             const service = getBillingService();
             const item = await service.create(getDataOwnerId(user), body);
             return envelope.created(item);
-        }, { role: "Admin" }),
+        }, { permission: "invoices.create" }),
     ),
     { tier: "write" },
 );

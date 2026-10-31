@@ -218,16 +218,28 @@ export function useDeleteOrder() {
 export function useRecordPayment() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (payload: Record<string, unknown>) =>
-            apiClient.post<{
-                success: boolean;
-                order_summary?: {
-                    payment_status?: string;
-                    total_paid?: number;
-                    balance_due?: number;
-                    order_status?: string;
-                };
-            }>("/api/v1/payments/record", payload),
+        mutationFn: (payload: Record<string, unknown> & { idempotencyKey?: string }) => {
+            const { idempotencyKey, ...body } = payload;
+            return idempotencyKey
+                ? apiClient.postIdempotent<{
+                    success: boolean;
+                    order_summary?: {
+                        payment_status?: string;
+                        total_paid?: number;
+                        balance_due?: number;
+                        order_status?: string;
+                    };
+                }>("/api/v1/payments/record", body, idempotencyKey)
+                : apiClient.post<{
+                    success: boolean;
+                    order_summary?: {
+                        payment_status?: string;
+                        total_paid?: number;
+                        balance_due?: number;
+                        order_status?: string;
+                    };
+                }>("/api/v1/payments/record", body);
+        },
         onSuccess: (data, variables) => {
             if (data.order_summary) {
                 const summary = data.order_summary;
@@ -345,7 +357,13 @@ export function useCreatePayment() {
             payment_date: string;
             reference_id: string;
             notes: string;
-        }) => apiClient.post<PaymentItem>("/api/v1/payments", payload),
+            idempotencyKey?: string;
+        }) => {
+            const { idempotencyKey, ...body } = payload;
+            return idempotencyKey
+                ? apiClient.postIdempotent<PaymentItem>("/api/v1/payments", body, idempotencyKey)
+                : apiClient.post<PaymentItem>("/api/v1/payments", body);
+        },
         onSuccess: () => {
             toast.success("Payment recorded successfully");
             playCompletionSound("payment");

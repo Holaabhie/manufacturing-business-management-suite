@@ -30,7 +30,7 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import { getSessionUser, type UserDoc } from "@/lib/auth-session";
-import { hasPermission, type PermissionModule, type PermissionMap } from "@/lib/permissions";
+import { hasPermission, resolvePermissions, type PermissionModule, type PermissionMap, type FlatPermissionMap } from "@/lib/permissions";
 import type { WithId } from "mongodb";
 import { AuthenticationError, AuthorizationError } from "@/shared/lib/errors";
 
@@ -75,12 +75,15 @@ export function withAuth<C = unknown>(
 
         // 3. Permission check
         if (options.permission) {
-            const [module, action] = options.permission.split(".") as [PermissionModule, string];
-            const userPermissions = user.permissions as PermissionMap | undefined;
-
-            // Admins/Owners have all permissions
-            if (!hasPermission(userPermissions, options.permission, user.role === "Admin" || user.role === "Owner")) {
-                throw new AuthorizationError(options.permission);
+            const isOwner = user.role === "Admin" || user.role === "Owner";
+            if (!isOwner) {
+                const resolved = resolvePermissions(
+                    user.role,
+                    (user.customPermissions || (user as any).permissions) as FlatPermissionMap | undefined
+                );
+                if (!hasPermission(resolved, options.permission, false)) {
+                    throw new AuthorizationError(options.permission);
+                }
             }
         }
 
