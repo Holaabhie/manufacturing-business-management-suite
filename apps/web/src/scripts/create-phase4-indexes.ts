@@ -33,6 +33,8 @@ export interface IndexDefinition {
   options: {
     name: string;
     sparse?: boolean;
+    unique?: boolean;
+    expireAfterSeconds?: number;
   };
   rationale: string;
 }

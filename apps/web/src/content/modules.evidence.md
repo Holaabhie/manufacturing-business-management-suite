@@ -214,7 +214,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
 
 ### 2. How It Works Steps Evidence (4 items)
 - **[step-1]** **Generate challan**: *"Select consignee details, linked sales order, dispatch items, transport mode, vehicle number, transporter name, LR number, and e-way bill."*
-  - **Proof**: [`apps/web/src/components/delivery-challans/CreateChallanModal.tsx#L125-L135`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/delivery-challans/CreateChallanModal.tsx)
+  - **Proof**: [`apps/web/src/components/delivery-challans/CreateChallanModal.tsx#L130-L142`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/delivery-challans/CreateChallanModal.tsx)
   - **Anchor**: `vehicle_no`
   - **Citation**: Challan creation form records items, vehicle registration, and transporter LR number.
 - **[step-2]** **Print transport copy**: *"Download the formatted delivery challan PDF containing transport details and dispatch notes."*
@@ -582,7 +582,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
 
 ### 2. How It Works Steps Evidence (4 items)
 - **[step-1]** **Select vendor and items**: *"Choose a supplier and enter the raw materials, quantities, and agreed prices required."*
-  - **Proof**: [`apps/web/src/app/dashboard/purchasing/page.tsx#L190-L200`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/purchasing/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/purchasing/page.tsx#L218-L228`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/purchasing/page.tsx)
   - **Anchor**: `poVendorId`
   - **Citation**: Purchase order creator selects vendor and raw material line items.
 - **[step-2]** **Create pending order**: *"Generate the purchase order in Pending status with complete item and pricing details."*
@@ -740,7 +740,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `paymentMethod`
   - **Citation**: Payment modes: Cash, UPI, Bank Transfer, Cheque.
 - **[use-2]** *"Record TDS deduction details including section, tax rate, and deducted amount with each receipt"*
-  - **Proof**: [`apps/web/src/components/vendor-bills/CreateBillModal.tsx#L150-L156`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/vendor-bills/CreateBillModal.tsx)
+  - **Proof**: [`apps/web/src/components/vendor-bills/CreateBillModal.tsx#L158-L166`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/vendor-bills/CreateBillModal.tsx)
   - **Anchor**: `tdsSection`
   - **Citation**: TDS deduction inputs: section, rate %, and deducted amount.
 - **[use-3]** *"Track partial payments and automatically recalculate pending order balances"*
@@ -762,7 +762,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `selectedOrder`
   - **Citation**: Select client and target sales order for receipt allocation.
 - **[step-2]** **Enter payment and TDS fields**: *"Record the amount received, payment method, reference number, and applicable TDS section, rate, and amount."*
-  - **Proof**: [`apps/web/src/components/vendor-bills/CreateBillModal.tsx#L150-L156`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/vendor-bills/CreateBillModal.tsx)
+  - **Proof**: [`apps/web/src/components/vendor-bills/CreateBillModal.tsx#L158-L166`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/vendor-bills/CreateBillModal.tsx)
   - **Anchor**: `tdsSection`
   - **Citation**: Enter settlement amount, payment mode, and optional TDS fields.
 - **[step-3]** **Update order balance and status**: *"The system recalculates the order balance due and transitions payment status across Unpaid, Partial, or Paid."*
@@ -784,7 +784,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `payment_status`
   - **Citation**: Automatic payment_status transitions: Unpaid, Partial, Paid, Overdue.
 - **[feature-3]** *"Structured TDS logging with section, rate, and deduction amount fields"*
-  - **Proof**: [`apps/web/src/components/vendor-bills/CreateBillModal.tsx#L150-L156`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/vendor-bills/CreateBillModal.tsx)
+  - **Proof**: [`apps/web/src/components/vendor-bills/CreateBillModal.tsx#L158-L166`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/vendor-bills/CreateBillModal.tsx)
   - **Anchor**: `tdsSection`
   - **Citation**: Structured TDS recording with section and deduction amounts.
 - **[feature-4]** *"Support for multiple payment modes: UPI, Bank Transfer, Cheque, and Cash"*
@@ -802,7 +802,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `total_paid`
   - **Citation**: Order-level payment tracking updates balance due and payment statuses.
 - **[section-2]** **TDS Deduction Recording**: *"Log withholding taxes cleanly by recording TDS applicability, statutory section ..."*
-  - **Proof**: [`apps/web/src/components/vendor-bills/CreateBillModal.tsx#L150-L156`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/vendor-bills/CreateBillModal.tsx)
+  - **Proof**: [`apps/web/src/components/vendor-bills/CreateBillModal.tsx#L158-L166`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/components/vendor-bills/CreateBillModal.tsx)
   - **Anchor**: `tdsSection`
   - **Citation**: Withholding tax recording captures section and deduction sums.
 - **[section-3]** **Folio & Financial Boundaries**: *"Payments & Accounts handles customer sales settlements and banking balances. Int..."*
@@ -836,7 +836,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `PaymentStatus`
   - **Citation**: Payment status tracks Unpaid, Partially Paid, and Paid stages.
 - **[use-3]** *"Use the computed Overdue filter to identify unpaid bills past their due date"*
-  - **Proof**: [`apps/web/src/app/dashboard/vendor-bills/page.tsx#L227-L234`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/vendor-bills/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/vendor-bills/page.tsx#L265-L275`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/vendor-bills/page.tsx)
   - **Anchor**: `filterOverdue`
   - **Citation**: Computed Overdue filter identifies unpaid bills past their due date.
 - **[use-4]** *"Link bills to purchase orders to verify items, quantities, and agreed prices"*
@@ -858,7 +858,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `purchaseOrderId`
   - **Citation**: Select purchase order to pull in line items and verify quoted rates.
 - **[step-3]** **Check computed overdue filter**: *"Use the Overdue filter tab to view unpaid or partially paid bills whose due date has passed."*
-  - **Proof**: [`apps/web/src/app/dashboard/vendor-bills/page.tsx#L227-L234`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/vendor-bills/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/vendor-bills/page.tsx#L265-L275`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/vendor-bills/page.tsx)
   - **Anchor**: `filterOverdue`
   - **Citation**: Overdue filter tab views unpaid bills whose due date has passed.
 - **[step-4]** **Record disbursements**: *"Log payments against the bill to advance payment status from Unpaid to Partially Paid or Paid."*
@@ -876,7 +876,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
   - **Anchor**: `Partially Paid`
   - **Citation**: Payment status tracking: Unpaid, Partially Paid, and Paid.
 - **[feature-3]** *"Computed Overdue filter for unpaid bills past their scheduled due date"*
-  - **Proof**: [`apps/web/src/app/dashboard/vendor-bills/page.tsx#L227-L234`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/vendor-bills/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/vendor-bills/page.tsx#L265-L275`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/vendor-bills/page.tsx)
   - **Anchor**: `filterOverdue`
   - **Citation**: Computed Overdue filter for unpaid bills past their scheduled due date.
 - **[feature-4]** *"Direct purchase order linking to prevent invoice discrepancies"*
@@ -900,7 +900,7 @@ Audited across all 21 modules in the suite. Every claim bullet has a direct `fil
 
 ### 5. FAQs Evidence (2 items)
 - **[faq-1]** **Q: Is Overdue a separate bill status?**
-  - **Proof**: [`apps/web/src/app/dashboard/vendor-bills/page.tsx#L227-L234`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/vendor-bills/page.tsx)
+  - **Proof**: [`apps/web/src/app/dashboard/vendor-bills/page.tsx#L265-L275`](file:///C:/Users/HP/OneDrive/Desktop/manufacturing-business-management-suite/apps/web/src/app/dashboard/vendor-bills/page.tsx)
   - **Anchor**: `filterOverdue`
   - **Citation**: Overdue is a computed filter showing open bills whose due date has passed.
 - **[faq-2]** **Q: What bill and payment statuses are supported?**
