@@ -27,6 +27,7 @@ import { GET as getBillV1, PUT as putBillV1, DELETE as deleteBillV1 } from "@/ap
 
 const TENANT_ID = "507f191e810c19729de860ea";
 const BILL_ID = "507f191e810c19729de860eb";
+const emptyCtx: any = { params: Promise.resolve({}) };
 
 let currentMockUser: any = null;
 const mockBillsStore: any[] = [];
@@ -149,7 +150,7 @@ describe("Billing RBAC & Granular Permission Matrix", () => {
       const resPostLegacy = await postBillLegacy(makeReq("http://localhost:3000/api/billing", "POST", {
         billNumber: "INV-OWNER-1",
         totalAmount: 1000,
-      }));
+      }), emptyCtx);
       expect(resPostLegacy.status).toBe(200);
 
       // Legacy GET /api/billing/[id]
@@ -173,11 +174,11 @@ describe("Billing RBAC & Granular Permission Matrix", () => {
       expect(resDelLegacy.status).toBe(200);
 
       // v1 GET /api/v1/billing
-      const resGetV1 = await getBillsV1(makeReq("http://localhost:3000/api/v1/billing"));
+      const resGetV1 = await getBillsV1(makeReq("http://localhost:3000/api/v1/billing"), emptyCtx);
       expect(resGetV1.status).toBe(200);
 
       // v1 POST /api/v1/billing
-      const resPostV1 = await postBillV1(makeReq("http://localhost:3000/api/v1/billing", "POST", { totalAmount: 1000 }));
+      const resPostV1 = await postBillV1(makeReq("http://localhost:3000/api/v1/billing", "POST", { totalAmount: 1000 }), emptyCtx);
       expect(resPostV1.status).toBe(201);
 
       // v1 PUT /api/v1/billing/[id]
@@ -211,7 +212,7 @@ describe("Billing RBAC & Granular Permission Matrix", () => {
       const postRes = await postBillLegacy(makeReq("http://localhost:3000/api/billing", "POST", {
         billNumber: "INV-ACC-1",
         totalAmount: 25000,
-      }));
+      }), emptyCtx);
       expect(postRes.status).toBe(200);
 
       // PUT /api/billing/[id] with status: "paid" -> 200
@@ -229,8 +230,8 @@ describe("Billing RBAC & Granular Permission Matrix", () => {
       expect(delRes.status).toBe(200);
 
       // v1 routes: GET -> 200, POST -> 201, PUT -> 200, DELETE -> 204
-      expect((await getBillsV1(makeReq("http://localhost:3000/api/v1/billing"))).status).toBe(200);
-      expect((await postBillV1(makeReq("http://localhost:3000/api/v1/billing", "POST", { totalAmount: 200 }))).status).toBe(201);
+      expect((await getBillsV1(makeReq("http://localhost:3000/api/v1/billing"), emptyCtx)).status).toBe(200);
+      expect((await postBillV1(makeReq("http://localhost:3000/api/v1/billing", "POST", { totalAmount: 200 }), emptyCtx)).status).toBe(201);
       expect((await putBillV1(makeReq(`http://localhost:3000/api/v1/billing/${BILL_ID}`, "PUT", { status: "sent" }), {
         params: Promise.resolve({ id: BILL_ID }),
       })).status).toBe(200);
@@ -260,18 +261,18 @@ describe("Billing RBAC & Granular Permission Matrix", () => {
       expect(getIdRes.status).toBe(200);
 
       // v1 GET /api/v1/billing -> 200 OK
-      const getV1Res = await getBillsV1(makeReq("http://localhost:3000/api/v1/billing"));
+      const getV1Res = await getBillsV1(makeReq("http://localhost:3000/api/v1/billing"), emptyCtx);
       expect(getV1Res.status).toBe(200);
 
       // POST /api/billing -> 403 Forbidden
       const postRes = await postBillLegacy(makeReq("http://localhost:3000/api/billing", "POST", {
         billNumber: "INV-MGR-FAIL",
         totalAmount: 12000,
-      }));
+      }), emptyCtx);
       expect(postRes.status).toBe(403);
 
       // v1 POST /api/v1/billing -> 403 Forbidden
-      const postV1Res = await postBillV1(makeReq("http://localhost:3000/api/v1/billing", "POST", { totalAmount: 12000 }));
+      const postV1Res = await postBillV1(makeReq("http://localhost:3000/api/v1/billing", "POST", { totalAmount: 12000 }), emptyCtx);
       expect(postV1Res.status).toBe(403);
 
       // PUT /api/billing/[id] -> 403 Forbidden
@@ -320,7 +321,7 @@ describe("Billing RBAC & Granular Permission Matrix", () => {
       })).status).toBe(403);
 
       // POST /api/billing -> 403
-      expect((await postBillLegacy(makeReq("http://localhost:3000/api/billing", "POST", {}))).status).toBe(403);
+      expect((await postBillLegacy(makeReq("http://localhost:3000/api/billing", "POST", {}), emptyCtx)).status).toBe(403);
 
       // PUT /api/billing/[id] -> 403
       expect((await putBillLegacy(makeReq(`http://localhost:3000/api/billing/${BILL_ID}`, "PUT", { status: "paid" }), {
@@ -333,10 +334,10 @@ describe("Billing RBAC & Granular Permission Matrix", () => {
       })).status).toBe(403);
 
       // v1 GET -> 403
-      expect((await getBillsV1(makeReq("http://localhost:3000/api/v1/billing"))).status).toBe(403);
+      expect((await getBillsV1(makeReq("http://localhost:3000/api/v1/billing"), emptyCtx)).status).toBe(403);
 
       // v1 POST -> 403
-      expect((await postBillV1(makeReq("http://localhost:3000/api/v1/billing", "POST", {}))).status).toBe(403);
+      expect((await postBillV1(makeReq("http://localhost:3000/api/v1/billing", "POST", {}), emptyCtx)).status).toBe(403);
 
       // v1 PUT -> 403
       expect((await putBillV1(makeReq(`http://localhost:3000/api/v1/billing/${BILL_ID}`, "PUT", { status: "paid" }), {
@@ -366,10 +367,10 @@ describe("Billing RBAC & Granular Permission Matrix", () => {
       expect((await getBillsLegacy()).status).toBe(200);
 
       // v1 GET /api/v1/billing -> 200
-      expect((await getBillsV1(makeReq("http://localhost:3000/api/v1/billing"))).status).toBe(200);
+      expect((await getBillsV1(makeReq("http://localhost:3000/api/v1/billing"), emptyCtx)).status).toBe(200);
 
       // POST -> 403
-      expect((await postBillLegacy(makeReq("http://localhost:3000/api/billing", "POST", {}))).status).toBe(403);
+      expect((await postBillLegacy(makeReq("http://localhost:3000/api/billing", "POST", {}), emptyCtx)).status).toBe(403);
 
       // PUT -> 403
       expect((await putBillLegacy(makeReq(`http://localhost:3000/api/billing/${BILL_ID}`, "PUT", { status: "paid" }), {

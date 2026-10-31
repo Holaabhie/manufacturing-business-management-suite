@@ -79,7 +79,7 @@ export function withAuth<C = unknown>(
             if (!isOwner) {
                 const resolved = resolvePermissions(
                     user.role,
-                    (user.customPermissions || (user as any).permissions) as FlatPermissionMap | undefined
+                    (user.customPermissions || user.permissions) as FlatPermissionMap | undefined
                 );
                 if (!hasPermission(resolved, options.permission, false)) {
                     throw new AuthorizationError(options.permission);

@@ -16,7 +16,7 @@ export async function GET(
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const perms = resolvePermissions(user.role, (user.customPermissions || (user as any).permissions));
+        const perms = resolvePermissions(user.role, (user.customPermissions || user.permissions));
         if (!hasPermission(perms, "invoices.view", isOwnerRole(user.role))) {
             return NextResponse.json({ error: "Forbidden: invoices.view permission required" }, { status: 403 });
         }
@@ -90,7 +90,7 @@ export const PUT = withIdempotency(
         if (body.status === "paid") requiredPerm = "invoices.markPaid";
         else if (body.status === "sent") requiredPerm = "invoices.send";
 
-        const perms = resolvePermissions(user.role, (user.customPermissions || (user as any).permissions));
+        const perms = resolvePermissions(user.role, (user.customPermissions || user.permissions));
         if (!hasPermission(perms, requiredPerm, isOwnerRole(user.role))) {
             return NextResponse.json({ error: `Forbidden: ${requiredPerm} permission required` }, { status: 403 });
         }
@@ -153,7 +153,7 @@ export async function DELETE(
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const perms = resolvePermissions(user.role, (user.customPermissions || (user as any).permissions));
+        const perms = resolvePermissions(user.role, (user.customPermissions || user.permissions));
         if (!hasPermission(perms, "invoices.delete", isOwnerRole(user.role))) {
             return NextResponse.json({ error: "Forbidden: invoices.delete permission required" }, { status: 403 });
         }

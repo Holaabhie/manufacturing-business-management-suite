@@ -66,7 +66,7 @@ export async function requirePermission(
     const isOwner = isOwnerRole(user.role);
     if (isOwner) return { user };
 
-    const resolved = resolvePermissions(user.role, (user.customPermissions || (user as any).permissions) as FlatPermissionMap);
+    const resolved = resolvePermissions(user.role, (user.customPermissions || user.permissions) as FlatPermissionMap);
 
     if (!hasPermission(resolved, permissionKey, false)) {
         return {

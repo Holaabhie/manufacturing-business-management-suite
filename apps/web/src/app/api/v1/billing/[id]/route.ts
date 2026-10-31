@@ -42,7 +42,7 @@ export const PUT = withRateLimit(
             if (!isOwner) {
                 const resolved = resolvePermissions(
                     user.role,
-                    (user.customPermissions || (user as any).permissions) as FlatPermissionMap | undefined
+                    (user.customPermissions || user.permissions) as FlatPermissionMap | undefined
                 );
                 if (!hasPermission(resolved, requiredPerm, false)) {
                     throw new AuthorizationError(requiredPerm);
