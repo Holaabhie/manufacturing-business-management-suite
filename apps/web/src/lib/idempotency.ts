@@ -25,7 +25,7 @@ async function ensureIndexes() {
     const db = await getDb();
     const col = db.collection(COLLECTION);
 
-    await col.createIndex({ key: 1, userId: 1 }, { unique: true });
+    await col.createIndex({ userId: 1, key: 1 }, { unique: true });
     await col.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
     indexesCreated = true;

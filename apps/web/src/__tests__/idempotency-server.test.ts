@@ -259,4 +259,36 @@ describe("Server-side Idempotency Verification (withIdempotency & idempotency_ke
     expect((await resB.json()).count).toBe(2);
     expect(mockStore.idempotency_keys.length).toBe(2);
   });
+
+  it("handles concurrent parallel requests with same key gracefully via unique index (code 11000 duplicate key race)", async () => {
+    let handlerExecutions = 0;
+    const testHandler = withIdempotency(
+      async (req: NextRequest) => {
+        handlerExecutions++;
+        // Simulate real-world database or external gateway latency
+        await new Promise((r) => setTimeout(r, 25));
+        return NextResponse.json({ success: true, count: handlerExecutions }, { status: 200 });
+      },
+      { getUserId: async () => "tenant_user_1" }
+    );
+
+    const makeReq = () =>
+      new NextRequest("http://localhost:3000/api/v1/payments/record", {
+        method: "POST",
+        headers: { "idempotency-key": validKey1 },
+        body: JSON.stringify({ amount: 500 }),
+      });
+
+    // Fire two identical requests in parallel
+    const [res1, res2] = await Promise.all([
+      testHandler(makeReq(), {} as any),
+      testHandler(makeReq(), {} as any),
+    ]);
+
+    const statuses = [res1.status, res2.status].sort();
+    // One request must succeed with 200, the other must be rejected with 409
+    expect(statuses).toEqual([200, 409]);
+    // The underlying business logic must ONLY have executed once
+    expect(handlerExecutions).toBe(1);
+  });
 });

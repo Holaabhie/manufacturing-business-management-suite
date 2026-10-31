@@ -95,16 +95,16 @@ export const PROPOSED_INDEXES: IndexDefinition[] = [
   // ─── Idempotency Keys Collection (Max 2) ────────────────────────
   {
     collection: "idempotency_keys",
-    name: "idx_idempotency_key_user",
-    keys: { key: 1, userId: 1 },
-    options: { name: "idx_idempotency_key_user" },
+    name: "idx_idempotency_user_key",
+    keys: { userId: 1, key: 1 },
+    options: { name: "idx_idempotency_user_key", unique: true },
     rationale: "Enforces uniqueness of idempotency keys per user/tenant to prevent duplicate submissions.",
   },
   {
     collection: "idempotency_keys",
     name: "idx_idempotency_expires",
     keys: { expiresAt: 1 },
-    options: { name: "idx_idempotency_expires" },
+    options: { name: "idx_idempotency_expires", expireAfterSeconds: 0 },
     rationale: "TTL index to automatically purge idempotency records after 24 hours.",
   },
 ];
@@ -166,7 +166,11 @@ export async function runIndexProposal(args: string[] = process.argv.slice(2)): 
     for (const idx of colIndexes) {
       console.log(`  * Index Name : ${idx.name}`);
       console.log(`    Keys       : ${JSON.stringify(idx.keys)}`);
-      console.log(`    Options    : ${idx.options.sparse ? "sparse=true" : "none"}`);
+      const optionsEntries = Object.entries(idx.options)
+        .filter(([k]) => k !== "name")
+        .map(([k, v]) => `${k}=${v}`);
+      const optionsStr = optionsEntries.length > 0 ? optionsEntries.join(", ") : "none";
+      console.log(`    Options    : ${optionsStr}`);
       console.log(`    Rationale  : ${idx.rationale}`);
       console.log();
     }

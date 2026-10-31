@@ -123,6 +123,13 @@ export function CreateQuoteModal({
 
   const [clientDropdownOpen, setClientDropdownOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
+  const actionIdempotencyKeyRef = useRef<string>(typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : "key-" + Date.now());
+
+  useEffect(() => {
+    if (open) {
+      actionIdempotencyKeyRef.current = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : "key-" + Date.now();
+    }
+  }, [open]);
   const [submitting, setSubmitting] = useState(false);
 
   const clientDropdownRef = useRef<HTMLDivElement>(null);
@@ -392,9 +399,14 @@ export function CreateQuoteModal({
       const url = quoteToEdit ? `/api/quotes/${quoteToEdit.id}` : "/api/quotes";
       const method = quoteToEdit ? "PATCH" : "POST";
 
+      const reqHeaders: Record<string, string> = { "Content-Type": "application/json" };
+      if (!quoteToEdit) {
+        reqHeaders["Idempotency-Key"] = actionIdempotencyKeyRef.current;
+      }
+
       const res = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: reqHeaders,
         body: JSON.stringify(payload),
       });
 
@@ -404,6 +416,7 @@ export function CreateQuoteModal({
       }
 
       toast.success(quoteToEdit ? t("toastUpdated") : t("toastCreated"));
+      actionIdempotencyKeyRef.current = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : "key-" + Date.now();
       onSuccess();
       onClose();
     } catch (err: any) {

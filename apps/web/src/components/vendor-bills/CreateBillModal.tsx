@@ -143,6 +143,13 @@ export function CreateBillModal({
     const [vendorInvoiceNumber, setVendorInvoiceNumber] = useState("");
     const [billDate, setBillDate] = useState(getToday());
     const [dueDate, setDueDate] = useState(getInitialDueDate(getToday()));
+    const actionIdempotencyKeyRef = useRef<string>(typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : "key-" + Date.now());
+
+    useEffect(() => {
+        if (open) {
+            actionIdempotencyKeyRef.current = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : "key-" + Date.now();
+        }
+    }, [open]);
     const [supplyType, setSupplyType] = useState<SupplyType | null>("intra");
     const [placeOfSupplyStateCode, setPlaceOfSupplyStateCode] = useState("");
     const [reverseCharge, setReverseCharge] = useState(false);
@@ -559,7 +566,11 @@ export function CreateBillModal({
                 savedBill = await apiClient.patch<VendorBill>(`/api/vendor-bills/${billToEdit.id}`, payload);
                 toast.success(t("toastUpdated"));
             } else {
-                savedBill = await apiClient.post<VendorBill>("/api/vendor-bills", payload);
+                savedBill = await apiClient.post<VendorBill>("/api/vendor-bills", payload, {
+                    headers: {
+                        "Idempotency-Key": actionIdempotencyKeyRef.current,
+                    },
+                });
                 toast.success(t("toastCreated"));
             }
 
@@ -575,6 +586,7 @@ export function CreateBillModal({
                 toast.success(t("toastStatusOpen"));
             }
 
+            actionIdempotencyKeyRef.current = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : "key-" + Date.now();
             onSuccess(savedBill);
             onClose();
         } catch (err: any) {

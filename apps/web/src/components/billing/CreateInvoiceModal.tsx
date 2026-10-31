@@ -192,6 +192,13 @@ export default function CreateInvoiceModal({
   const t = useTranslations("billing");
   const { locale } = useAppLocale();
   const dateLocale = locale === "hi" ? "hi-IN" : locale === "gu" ? "gu-IN" : locale === "mr" ? "mr-IN" : "en-IN";
+  const actionIdempotencyKeyRef = useRef<string>(typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : "key-" + Date.now());
+
+  useEffect(() => {
+    if (open) {
+      actionIdempotencyKeyRef.current = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : "key-" + Date.now();
+    }
+  }, [open]);
 
   // ─── Invoice Number ────────────────────────────────────
   const [invoiceNumber] = useState(
@@ -463,7 +470,11 @@ export default function CreateInvoiceModal({
     };
 
     try {
-      const json = await apiClient.post<{ data?: { billNumber?: string }; error?: { message?: string } }>("/api/v1/billing", billData);
+      const json = await apiClient.post<{ data?: { billNumber?: string }; error?: { message?: string } }>("/api/v1/billing", billData, {
+        headers: {
+          "Idempotency-Key": actionIdempotencyKeyRef.current,
+        },
+      });
       queryClient.invalidateQueries({ queryKey: queryKeys.invoices });
       queryClient.invalidateQueries({ queryKey: queryKeys.billing });
       queryClient.invalidateQueries({ queryKey: queryKeys.stats });
@@ -480,6 +491,7 @@ export default function CreateInvoiceModal({
         const serverBillNumber = json?.data?.billNumber || billData.billNumber;
         toast.success(t("toasts.billCreated", { number: serverBillNumber }));
         playCompletionSound("general");
+        actionIdempotencyKeyRef.current = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : "key-" + Date.now();
         onClose();
         onSuccess();
       }

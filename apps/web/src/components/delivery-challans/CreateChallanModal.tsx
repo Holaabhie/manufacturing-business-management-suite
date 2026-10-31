@@ -97,6 +97,13 @@ export function CreateChallanModal({
   const [orderDropdownOpen, setOrderDropdownOpen] = useState(false);
   const [orderSummary, setOrderSummary] = useState<any>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
+  const actionIdempotencyKeyRef = useRef<string>(typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : "key-" + Date.now());
+
+  useEffect(() => {
+    if (open) {
+      actionIdempotencyKeyRef.current = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : "key-" + Date.now();
+    }
+  }, [open]);
 
   const clientDropdownRef = useRef<HTMLDivElement>(null);
   const orderDropdownRef = useRef<HTMLDivElement>(null);
@@ -382,9 +389,14 @@ export function CreateChallanModal({
         expected_delivery_date: formData.expected_delivery_date || null,
       };
 
+      const reqHeaders: Record<string, string> = { "Content-Type": "application/json" };
+      if (!challanToEdit) {
+        reqHeaders["Idempotency-Key"] = actionIdempotencyKeyRef.current;
+      }
+
       const res = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: reqHeaders,
         body: JSON.stringify(payload),
       });
 
@@ -402,6 +414,7 @@ export function CreateChallanModal({
         );
       }
 
+      actionIdempotencyKeyRef.current = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : "key-" + Date.now();
       onSuccess();
       onClose();
     } catch (err: any) {
