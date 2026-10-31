@@ -11,13 +11,84 @@
 
 
 // ─── Environment & Safety Guards ─────────────────────────────
-const ALLOWED_ENVIRONMENTS = ["staging", "development"];
+const ALLOWED_ENVIRONMENTS = ["staging", "development", "test"];
 const currentEnv = process.env.NODE_ENV || "development";
+const ALLOWED_DB_SUFFIXES = ["-staging", "_staging", "-dev", "_dev", "-local", "_local"];
+const PROD_HOST_PATTERNS = [/prod/i, /production/i, /live/i, /cluster-prod/i];
 
-if (!ALLOWED_ENVIRONMENTS.includes(currentEnv) || process.env.VERCEL_ENV === "production") {
-  console.error("❌ CRITICAL SAFETY VIOLATION: seed-staging-data.ts cannot run in PRODUCTION!");
-  console.error(`Current environment: NODE_ENV=${currentEnv}, VERCEL_ENV=${process.env.VERCEL_ENV}`);
-  process.exit(1);
+export function extractDatabaseName(uri: string): string | null {
+  try {
+    const withoutProtocol = uri.replace(/^mongodb(?:\+srv)?:\/\//, "");
+    const slashIdx = withoutProtocol.indexOf("/");
+    if (slashIdx === -1) return null;
+    const afterSlash = withoutProtocol.slice(slashIdx + 1);
+    const qIdx = afterSlash.indexOf("?");
+    return (qIdx === -1 ? afterSlash : afterSlash.slice(0, qIdx)).trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+export function validateSeedSafety(uri?: string): { safe: boolean; reason?: string; dbName?: string } {
+  // 1. Mandatory ALLOW_SEED=1 flag
+  if (process.env.ALLOW_SEED !== "1") {
+    return {
+      safe: false,
+      reason: "ALLOW_SEED=1 environment variable is strictly required to execute database seeding.",
+    };
+  }
+
+  // 2. Reject production environment flags
+  if (currentEnv === "production" || process.env.VERCEL_ENV === "production") {
+    return {
+      safe: false,
+      reason: `Execution forbidden in production environment (NODE_ENV=${currentEnv}, VERCEL_ENV=${process.env.VERCEL_ENV}).`,
+    };
+  }
+
+  // 3. Inspect target host and database name if URI provided
+  if (uri) {
+    let hostname = "";
+    try {
+      const withoutProtocol = uri.replace(/^mongodb(?:\+srv)?:\/\//, "");
+      const atIdx = withoutProtocol.indexOf("@");
+      const hostPart = atIdx !== -1 ? withoutProtocol.slice(atIdx + 1) : withoutProtocol;
+      hostname = hostPart.split("/")[0].split(":")[0];
+    } catch {
+      hostname = uri;
+    }
+
+    // Refuse production-like hosts
+    for (const pattern of PROD_HOST_PATTERNS) {
+      if (pattern.test(hostname)) {
+        return {
+          safe: false,
+          reason: `Refusing to seed against production-like host: '${hostname}' (matched pattern ${pattern}).`,
+        };
+      }
+    }
+
+    const dbName = extractDatabaseName(uri);
+    if (!dbName) {
+      return {
+        safe: false,
+        reason: "Unable to parse database name from MONGODB_URI. Seed requires an explicit database path.",
+      };
+    }
+
+    const hasValidSuffix = ALLOWED_DB_SUFFIXES.some((sfx) => dbName.endsWith(sfx));
+    if (!hasValidSuffix) {
+      return {
+        safe: false,
+        dbName,
+        reason: `Database name '${dbName}' does not end with an approved suffix (${ALLOWED_DB_SUFFIXES.join(", ")}).`,
+      };
+    }
+
+    return { safe: true, dbName };
+  }
+
+  return { safe: true };
 }
 
 // ─── Deterministic Seed Identifiers ──────────────────────────
@@ -111,6 +182,19 @@ export async function runStagingSeed(args: string[] = process.argv.slice(2)): Pr
   console.log(`Tenant B : ${TENANT_B.companyName} (${TENANT_B.id}) - Plan: ${TENANT_B.plan}`);
   console.log(`Users    : ${STAGING_USERS.length} across both tenants\n`);
 
+  const uri = process.env.MONGODB_URI;
+  const safetyCheck = validateSeedSafety(uri);
+
+  if (!safetyCheck.safe) {
+    console.error("\n❌ CRITICAL SAFETY GUARD REFUSAL:");
+    console.error(`   Reason: ${safetyCheck.reason}\n`);
+    throw new Error(`Seed safety check failed: ${safetyCheck.reason}`);
+  }
+
+  if (safetyCheck.dbName) {
+    console.log(`Verified Target Database: [${safetyCheck.dbName}] (Approved staging suffix verified)\n`);
+  }
+
   if (isDryRun) {
     console.log("Simulating collections to populate:");
     console.log("  - users            : 8 accounts (with bcrypt hash)");
@@ -124,7 +208,6 @@ export async function runStagingSeed(args: string[] = process.argv.slice(2)): Pr
     return;
   }
 
-  const uri = process.env.MONGODB_URI;
   if (!uri) {
     throw new Error("MONGODB_URI environment variable is required to execute seed.");
   }

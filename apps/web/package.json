@@ -12,7 +12,9 @@
     "typecheck": "tsc --noEmit",
     "typecheck:scripts": "tsc --project tsconfig.scripts.json --noEmit",
     "analyze": "set ANALYZE=true && next build",
-    "check:i18n": "node scripts/check-i18n-keys.mjs"
+    "check:i18n": "node scripts/check-i18n-keys.mjs",
+    "staging:seed": "node --experimental-strip-types src/scripts/seed-staging-data.ts --dry-run",
+    "staging:start": "next start -H 0.0.0.0"
   },
   "dependencies": {
     "@babel/parser": "^7.28.5",

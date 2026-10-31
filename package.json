@@ -5,7 +5,9 @@
         "build": "turbo build",
         "dev": "turbo dev",
         "lint": "turbo lint",
-        "format": "prettier --write \"**/*.{ts,tsx,md}\""
+        "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+        "staging:seed": "node --experimental-strip-types apps/web/src/scripts/seed-staging-data.ts --dry-run",
+        "staging:start": "npm run staging:start -w apps/web"
     },
     "devDependencies": {
         "prettier": "^3.4.2",
